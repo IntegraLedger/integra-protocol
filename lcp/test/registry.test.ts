@@ -52,6 +52,7 @@ import type { TvmPayment } from "../src/internal/tvm.js";
 import type { BatchPaymentPayload, CloudflarePaymentPayload } from "../src/internal/x402-batch-settlement.js";
 import type { XrplCloseRef } from "../src/internal/xrpl-session.js";
 import type { XrplNetwork, XrplPaymentPayload, XrplQuery, XrplReader, XrplRef, XrplStatus } from "../src/internal/xrpl.js";
+import type { XrplChannelRef } from "../src/internal/xrpl-read.js";
 import { chargeLightning, sessionLightning, type LnRef } from "../src/lightning.js";
 import {
   CARRIER,
@@ -72,6 +73,7 @@ import {
   sessionEvm,
   sessionTempo,
   sessionXrpl,
+  sessionXrplStock,
   sessionSolanaMemo,
   sessionSolanaStock,
   subscriptionSolana,
@@ -179,7 +181,8 @@ const OWN = {
   "mpp/subscription/solana": subscriptionSolana satisfies Entry<"mpp/subscription/solana", MppCredential, Omit<SvmRef, "fromSlot">, SvmReader, Own<typeof subscriptionSolana>>,
   "mpp/charge/xrpl": chargeXrpl satisfies Entry<"mpp/charge/xrpl", MppCredential, Omit<XrplRef, "fromLedger">, XrplReader, Own<typeof chargeXrpl>>,
   "mpp/charge/nearintents": chargeNearIntents satisfies Entry<"mpp/charge/nearintents", MppCredential, NearIntentsRef, never, Own<typeof chargeNearIntents>>,
-  "mpp/session/xrpl": sessionXrpl satisfies Entry<"mpp/session/xrpl", MppCredential, Omit<XrplRef, "expect" | "fromLedger">, XrplReader, Own<typeof sessionXrpl>>,
+  "mpp/session/xrpl": sessionXrpl satisfies Entry<"mpp/session/xrpl", MppCredential, Omit<XrplRef, "fromLedger">, XrplReader, Own<typeof sessionXrpl>>,
+  "mpp/session/xrpl/stock": sessionXrplStock satisfies Entry<"mpp/session/xrpl/stock", MppCredential, Omit<XrplChannelRef, "fromLedger">, XrplReader, Own<typeof sessionXrplStock>>,
   "mpp/session/hedera/stock": sessionHederaStock satisfies Entry<"mpp/session/hedera/stock", MppCredential, HederaStockRef, HederaStockReader, Own<typeof sessionHederaStock>>,
   "mpp/charge/card": chargeCard satisfies Entry<"mpp/charge/card", MppCredential, never, never, Own<typeof chargeCard>>,
   "mpp/charge/stripe": chargeStripe satisfies Entry<"mpp/charge/stripe", MppCredential, never, never, Own<typeof chargeStripe>>,
@@ -360,7 +363,7 @@ async function callEvery<Id extends string, Presented, Ref, Reader, F extends Fa
 
 // ── Run time.
 
-const ENTRIES = rowsOf(BINDINGS, "BINDINGS", { exact: 68 });
+const ENTRIES = rowsOf(BINDINGS, "BINDINGS", { exact: 69 });
 const IDS = new Set<string>(ENTRIES.map((b) => b.id));
 
 // Each member's values. A key these objects lack, or one outside the member's type, does not compile.
@@ -401,16 +404,19 @@ type XrplSessionFamily = MppForms & {
   unsigned: XrplSessionUnsigned;
   landed: Pick<XrplRef, "fromLedger">;
   network: XrplNetwork;
-  query: XrplQuery<Omit<XrplRef, "expect"> | XrplCloseRef>;
+  query: XrplQuery<XrplRef | XrplCloseRef>;
   answer: XrplStatus;
 };
 
 /** An XRPL reader that holds no transaction, at a validated ledger of 1000. */
 const XRPL_READER: XrplReader = {
   network: "xrpl:0",
+  server: async () => ({ validated: 1000, latest: 1001, completeLedgers: "1-1001" }),
   tx: async () => ({ notFound: true, searchedAll: true }),
-  txBlob: async () => null,
-  validatedLedger: async () => 1000,
+  accountTx: async (_a, range) => ({ transactions: [], min: range.min, max: range.max }),
+  accountInfo: async (_a, ledger) => ({ notFound: true, ledgerIndex: ledger === "validated" ? 1000 : 1001 }),
+  ticket: async () => ({ present: false, ledgerIndex: 1000 }),
+  channel: async () => ({ notFound: true, ledgerIndex: 1000 }),
 };
 
 describe("the registry's codec type", () => {
@@ -449,7 +455,7 @@ describe("the registry's codec type", () => {
       choice: S.SS1.xrpl.choice,
       presented: { challenge: session, payload: { action: "open", transaction: S.XS2.blob, amount: "100", signature: "00" } },
     };
-    expect(await callEvery<typeof sessionXrpl.id, MppCredential, Omit<XrplRef, "expect" | "fromLedger">, XrplReader, XrplSessionFamily>(sessionXrpl, sessionForms, { ...xrplReads, option: session })).toEqual([
+    expect(await callEvery<typeof sessionXrpl.id, MppCredential, Omit<XrplRef, "fromLedger">, XrplReader, XrplSessionFamily>(sessionXrpl, sessionForms, { ...xrplReads, option: session })).toEqual([
       "read", "advertise", "build", "bound", "broadcaster", "channel", "reference", "status", "recover",
     ]);
 
@@ -535,7 +541,7 @@ describe("the registry's type test", () => {
 
   it("CARRIER is the table the MPP entries' carrier datum gives, and the entries of one intent and method agree", () => {
     const table: { [intent: string]: { [method: string]: readonly string[] | null } } = {};
-    const mpp = rowsOf(ENTRIES.filter((b) => b.id.startsWith("mpp/")), "the MPP entries", { exact: 25 });
+    const mpp = rowsOf(ENTRIES.filter((b) => b.id.startsWith("mpp/")), "the MPP entries", { exact: 26 });
     for (const b of mpp) {
       const [, intent, method] = b.id.split("/") as [string, string, string];
       if (method === "usdc") continue;

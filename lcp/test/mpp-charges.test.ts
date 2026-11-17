@@ -37,11 +37,13 @@ import {
 import { MEMO_V3 } from "../src/svm.js";
 import type { SvmLanded, SvmReader } from "../src/svm.js";
 import type { XrplReader } from "../src/xrpl.js";
+import { landed, xrplReader } from "./fixtures/xrpl-reader.js";
 import { networkIdHeld } from "../src/internal/xrpl.js";
 import { counting } from "./fixtures/counting-reader.js";
 import { resigned } from "./fixtures/xrpl-resign.js";
 import { readsOnlyFetched } from "./mpp-fixtures.js";
 import { rowsOf } from "./rows.js";
+import { MPP_SOURCE_TAG } from "../src/mpp-xrpl.js";
 
 const load = (n: string) => JSON.parse(readFileSync(new URL(`../vectors/${n}`, import.meta.url), "utf8"));
 const SO = load("mpp-charge-solana.json");
@@ -376,6 +378,38 @@ describe("mpp-charge-xrpl.json", () => {
     expect(await issuedDigest(issued)).toBe(await issuedDigest(V.challenge));
   });
 
+  it("reference refuses a credential, by blob or by hash, whose echoed challenge is not the challenge it is given", async () => {
+    const other = { ...placed, realm: "other.seller.example" };
+    for (const payload of [{ type: "transaction", blob: V.V3.blob }, V.refusals[0].payload]) {
+      expect(await chargeXrpl.reference(credential(placed, payload), other)).toEqual(refused("mpp/challenge-not-option"));
+    }
+  });
+
+  // read: the charge's read through its status, from the reference of each row's credential under the placed challenge.
+  // The reader answers the payer's account alone; tx answers V3's blob only where the row's lookup finds it.
+  it("read: a hash credential found by its lookup, and the search's gate", async () => {
+    type Row = { case: string; payload: MppCredential["payload"]; lookup: boolean; landed: string[]; ledger?: number; accountSequence: number; expect: unknown };
+    const payer = V.V3.expectReference.signed.account as string;
+    for (const row of rowsOf<Row>(V.read.rows, "mpp-charge-xrpl.json read.rows", { exact: 2 })) {
+      const ref = await chargeXrpl.reference(credential(placed, row.payload), placed);
+      if ("refused" in ref) throw new Error(ref.code);
+      const validated = row.ledger ?? 1000;
+      const at = (l: string) => (l === "validated" ? validated : validated + 1);
+      const found = landed(V.V3.blob, { delivered: "1000000" });
+      const r = xrplReader({
+        server: async () => ({ validated, latest: validated + 1, completeLedgers: `1-${validated + 1}` }),
+        tx: async (h) => (row.lookup && h === found.hash ? found : { notFound: true, searchedAll: true }),
+        accountTx: async (a, range) => ({
+          transactions: a === payer ? row.landed.map((b) => landed(b, { delivered: "1000000" })) : [],
+          min: range.min,
+          max: range.max,
+        }),
+        accountInfo: async (a, l) => (a === payer ? { sequence: row.accountSequence, ledgerIndex: at(l) } : { notFound: true, ledgerIndex: at(l) }),
+      });
+      expect(await chargeXrpl.status({ ...ref, fromLedger: 900 }, r, { act: "payment", finality: "validated" }), row.case).toStrictEqual(row.expect);
+    }
+  });
+
   it("V3: bound and reference of the vector's MPP blob; V4: the x402 blob is refused", async () => {
     const cr = credential(placed, { type: "transaction", blob: V.V3.blob });
     expect(await chargeXrpl.bound(cr)).toBe(V.V3.expectBound);
@@ -385,7 +419,7 @@ describe("mpp-charge-xrpl.json", () => {
     expect(await chargeXrpl.bound(credential(placed, { type: "transaction", blob: V.V4.blob }))).toEqual(refused(V.V4.expect));
   });
 
-  it("build gives V3's decoded fields other than the signature", async () => {
+  it("build gives V3's decoded fields other than the signature, with the stock default SourceTag, and complete names the payer", async () => {
     const u = await chargeXrpl.build(
       { challenge: placed, account: V.fixed.account, fee: V.build.fee, sequence: V.build.sequence, lastLedgerSequence: V.build.lastLedgerSequence },
       H,
@@ -394,11 +428,14 @@ describe("mpp-charge-xrpl.json", () => {
     const decoded = decodeXrpl(V.V3.blob) as Record<string, unknown>;
     delete decoded["SigningPubKey"];
     delete decoded["TxnSignature"];
-    expect(u.request.txJson).toEqual(decoded);
+    expect(u.request.txJson).toEqual({ ...decoded, SourceTag: V.build.defaultSourceTag });
+    expect(V.build.defaultSourceTag).toBe(MPP_SOURCE_TAG);
     const cr = await u.complete(V.V3.blob);
     if ("refused" in cr) throw new Error(cr.code);
+    expect(cr).toEqual({ challenge: placed, payload: { type: "transaction", blob: V.V3.blob }, source: V.completeBlob.source });
     expect(await chargeXrpl.bound(cr)).toBe(H);
-    const memos = withRequest(placed, { ...V.fixed.request, methodDetails: { network: "testnet", invoiceId: V.fixed.invoiceId, memos: [] } });
+    const rippledMemos = [{ Memo: { MemoData: "6C6370" } }];
+    const memos = withRequest(placed, { ...V.fixed.request, methodDetails: { network: "testnet", invoiceId: V.fixed.invoiceId, memos: rippledMemos } });
     expect(await chargeXrpl.build({ challenge: memos as never, account: V.fixed.account, fee: "12", sequence: 7, lastLedgerSequence: 1000 }, H)).toEqual(
       refused(V.refusals[1].expect),
     );
@@ -407,8 +444,8 @@ describe("mpp-charge-xrpl.json", () => {
   // An issued currency's Amount and SendMax are its {currency, issuer, value} amount, and the request's tags ride as
   // DestinationTag and SourceTag; an MPT's Amount is its {mpt_issuance_id, value} amount, with no SendMax. Each
   // expectTxJson is written by hand from xrpl.org's Payment fields (the rows' cases), and build's txJson is held to it.
-  it("build.issued and build.mpt: an issued currency's SendMax and tags, and an MPT's amount, as written by hand", async () => {
-    for (const row of [V.build.issued, V.build.mpt]) {
+  it("build.issued, build.mpt and build.issuedJson: each currency string form, the tags and the memos, as the stock client writes them", async () => {
+    for (const row of [V.build.issued, V.build.mpt, V.build.issuedJson]) {
       const challenge = withRequest(V.challenge, row.request);
       const rowPlaced = chargeXrpl.advertise([challenge], H, V.fixed.link, challenge, 0);
       if (!Array.isArray(rowPlaced)) throw new Error(rowPlaced.code);
@@ -427,15 +464,23 @@ describe("mpp-charge-xrpl.json", () => {
     }
   });
 
+  it("build.refused: a currency or memos the stock schema does not take is refused by pairingsOf and build", async () => {
+    for (const change of rowsOf<Record<string, unknown>>(V.build.refused.rows, "mpp-charge-xrpl.json build.refused", { exact: 4 })) {
+      const { memos, ...top } = change as { memos?: unknown };
+      const request = { ...V.fixed.request, ...top, methodDetails: { ...V.fixed.request.methodDetails, ...(memos === undefined ? {} : { memos }) } };
+      const challenge = withRequest(V.challenge, request);
+      expect(pairingsOf(challenge), JSON.stringify(change)).toEqual(refused(V.build.refused.expect));
+      const rowPlaced = withRequest(placed, { ...request, methodDetails: { ...request.methodDetails, invoiceId: V.fixed.invoiceId } });
+      const u = await chargeXrpl.build({ challenge: rowPlaced as never, account: V.fixed.account, fee: "12", sequence: 7, lastLedgerSequence: 1000 }, H);
+      expect(u, JSON.stringify(change)).toEqual(refused(V.build.refused.expect));
+    }
+  });
+
   it("push: fetchPresented reads the blob by hash; read-first before it", async () => {
     expect(await chargeXrpl.bound(credential(placed, V.refusals[0].payload))).toEqual(refused(V.refusals[0].expect));
-    const landed = { validated: true, result: "tesSUCCESS", ledgerIndex: 990, transactionType: "Payment" };
-    const reader: XrplReader = {
-      network: "xrpl:1",
-      tx: async (h) => (h === V.V3.expectReference.transaction ? landed : { notFound: true, searchedAll: true }),
-      txBlob: async (h) => (h === V.V3.expectReference.transaction ? V.V3.blob : null),
-      validatedLedger: async () => 1000,
-    };
+    const reader: XrplReader = xrplReader({
+      tx: async (h) => (h === V.V3.expectReference.transaction ? landed(V.V3.blob) : { notFound: true, searchedAll: true }),
+    });
     const fetched = await chargeXrpl.fetchPresented(credential(placed, V.refusals[0].payload), reader);
     if ("refused" in fetched) throw new Error(fetched.code);
     expect(await chargeXrpl.bound(fetched)).toBe(H);
@@ -443,35 +488,29 @@ describe("mpp-charge-xrpl.json", () => {
 
   // The blob read by hash is read only from the member FETCHED keys, which fetchPresented writes and no wire form
   // carries: a hash credential the buyer sends with a payload blob, the one that binds H under FETCHED, is
-  // xrpl/read-first, as it is without one (refusals[3]), and one held with both is read by its FETCHED member alone.
+  // xrpl/read-first to bound, as it is without one (refusals[3]), and one held with both is read by its FETCHED member
+  // alone. reference reads no blob of a hash credential: the transaction its hash names is what was presented, and the
+  // read finds the instrument from it, so reference gives the hash credential's keys however the blob is held.
   it("push: the blob is read only from fetchPresented's FETCHED member, never from a hash credential's blob", async () => {
-    const landed = { validated: true, result: "tesSUCCESS", ledgerIndex: 990, transactionType: "Payment" };
-    const reader: XrplReader = {
-      network: "xrpl:1",
-      tx: async (h) => (h === V.V3.expectReference.transaction ? landed : { notFound: true, searchedAll: true }),
-      txBlob: async (h) => (h === V.V3.expectReference.transaction ? V.V3.blob : null),
-      validatedLedger: async () => 1000,
-    };
+    const reader: XrplReader = xrplReader({
+      tx: async (h) => (h === V.V3.expectReference.transaction ? landed(V.V3.blob) : { notFound: true, searchedAll: true }),
+    });
     const sent = credential(placed, V.refusals[0].payload);
     const fetched = await chargeXrpl.fetchPresented(sent, reader);
     const carrying = (c: unknown, read: unknown) =>
       ({ ...(c as MppCredential), payload: { ...(c as MppCredential).payload, blob: (read as { blob: string }).blob } });
-    const reads = { bound: chargeXrpl.bound, reference: (c: unknown) => chargeXrpl.reference(c, placed) };
-    await readsOnlyFetched(reads, sent, fetched, H, { blob: V.V3.blob }, { blob: V.plant.blob }, carrying, "xrpl/read-first");
+    await readsOnlyFetched({ bound: chargeXrpl.bound }, sent, fetched, H, { blob: V.V3.blob }, { blob: V.plant.blob }, carrying, "xrpl/read-first");
     const row = V.refusals[3];
     expect(row.payload).toEqual({ ...V.refusals[0].payload, blob: V.V3.blob });
     expect(await chargeXrpl.bound(credential(placed, row.payload))).toEqual(refused(row.expect));
-    expect(await chargeXrpl.reference(credential(placed, row.payload), placed)).toEqual(refused(row.expect));
+    const { signed: _signed, ...byHash } = V.V3.expectReference;
+    for (const c of [sent, fetched, credential(placed, row.payload)]) expect(await chargeXrpl.reference(c, placed)).toEqual(byHash);
   });
 
   it("push: fetchPresented refuses a transaction not yet validated, and a validated result other than tesSUCCESS", async () => {
     const row = (code: string) => V.agreedRefusals.rows.find((r: { expect: string }) => r.expect === code);
-    const readerOf = (landed: { validated: boolean; result: string }): XrplReader => ({
-      network: "xrpl:1",
-      tx: async () => ({ ...landed, ledgerIndex: 990, transactionType: "Payment" }),
-      txBlob: async () => V.V3.blob,
-      validatedLedger: async () => 1000,
-    });
+    const readerOf = (over: { validated: boolean; result: string }): XrplReader =>
+      xrplReader({ tx: async () => landed(V.V3.blob, over) });
     const push = credential(placed, V.refusals[0].payload);
     const pending = row("xrpl/not-validated");
     expect(await chargeXrpl.fetchPresented(push, readerOf({ validated: false, result: "tesSUCCESS" }))).toEqual(
@@ -491,17 +530,10 @@ describe("mpp-charge-xrpl.json", () => {
   // hash only, so recover settles on the transaction status settles on.
   it("recover looks the Payment up in upper case, as status does, and reads nothing for a malformed transaction", async () => {
     const ref = V.V3.expectReference;
-    const landed = { validated: true, result: "tesSUCCESS", ledgerIndex: 990, transactionType: "Payment", invoiceId: ref.expect };
-    const holding: XrplReader = {
-      network: "xrpl:1",
-      tx: async (h) => (h === ref.transaction ? landed : { notFound: true, searchedAll: true }),
-      txBlob: async () => null,
-      validatedLedger: async () => 1001,
-    };
-    const settled = { state: "settled", transaction: ref.transaction, position: 990, finality: "validated", foreign: [] };
-    const query = { act: "payment", finality: "validated" } as const;
+    const holding: XrplReader = xrplReader({
+      tx: async (h) => (h === ref.transaction ? landed(V.V3.blob) : { notFound: true, searchedAll: true }),
+    });
     for (const transaction of [ref.transaction, ref.transaction.toLowerCase()]) {
-      expect(await chargeXrpl.status({ ...ref, fromLedger: 980, transaction }, holding, query)).toEqual(settled);
       expect(await chargeXrpl.recover({ network: ref.network, tx: transaction, option: placed }, holding)).toBe(V.V3.expectBound);
     }
     for (const transaction of [undefined, 7, `0x${ref.transaction}`, ref.transaction.slice(2)]) {
@@ -512,13 +544,18 @@ describe("mpp-charge-xrpl.json", () => {
     }
   });
 
-  it("multisigned: bound and reference refuse a blob that carries Signers", async () => {
+  it("multisigned: bound gives H, and reference names one signed body for both quorums' copies of one payment", async () => {
+    const bodies = new Set<string>();
     for (const row of rowsOf(V.multisigned.rows, "mpp-charge-xrpl.json multisigned.rows")) {
       const cr = credential(placed, { type: "transaction", blob: row.blob });
-      expect(await chargeXrpl.bound(cr), row.case).toEqual(refused(row.expect));
-      expect(await chargeXrpl.reference(cr, placed), row.case).toEqual(refused(row.expect));
+      expect(row.expect, row.case).toBe("admitted");
+      expect(await chargeXrpl.bound(cr), row.case).toBe(H);
+      const ref = await chargeXrpl.reference(cr, placed);
+      if ("refused" in ref) throw new Error(ref.code);
+      bodies.add(ref.signed!.body);
       expect((decodeXrpl(row.blob) as { InvoiceID: string }).InvoiceID, row.case).toBe(V.fixed.invoiceId);
     }
+    expect(bodies.size).toBe(1);
   });
 
   it("plant: a memo carrying L without InvoiceID is refused, never H", async () => {
@@ -755,16 +792,11 @@ describe("mpp-charge-xrpl.json agreedRefusals: every row runs", () => {
   const H: AtrHash = V.fixed.H;
   const placed = placedOf(V);
   const push = credential(placed, { type: "hash", hash: V.V3.expectReference.transaction });
-  const landed = { validated: true, result: "tesSUCCESS", ledgerIndex: 990, transactionType: "Payment" };
+  const found = landed(V.V3.blob);
   const fails = async (): Promise<never> => {
     throw new ReaderError("transport");
   };
-  const readerOf = (tx: XrplReader["tx"], txBlob: XrplReader["txBlob"] = async () => V.V3.blob): XrplReader => ({
-    network: "xrpl:1",
-    tx,
-    txBlob,
-    validatedLedger: async () => 1000,
-  });
+  const readerOf = (tx: XrplReader["tx"]): XrplReader => xrplReader({ tx });
   const choice = {
     challenge: placed,
     account: V.fixed.account,
@@ -806,14 +838,10 @@ describe("mpp-charge-xrpl.json agreedRefusals: every row runs", () => {
         pairingsOf(editedRequest(V.challenge, (_, d) => (d["destinationTag"] = -1))),
         pairingsOf(editedRequest(V.challenge, (_, d) => (d["sourceTag"] = 2 ** 32))),
       ],
-    // The first read throws; then the transaction is found and the blob read throws.
-    "fetchPresented when the reader fails": async () => [
-      await chargeXrpl.fetchPresented(push, readerOf(fails)),
-      await chargeXrpl.fetchPresented(push, readerOf(async () => landed, fails)),
-    ],
+    // The one read, `tx`, which answers the blob with the transaction, throws.
+    "fetchPresented when the reader fails": async () => [await chargeXrpl.fetchPresented(push, readerOf(fails))],
     "fetchPresented when the transaction or its blob is not found": async () => [
       await chargeXrpl.fetchPresented(push, readerOf(async () => ({ notFound: true, searchedAll: true }))),
-      await chargeXrpl.fetchPresented(push, readerOf(async () => landed, async () => null)),
     ],
     // The challenge placed under H2, its invoiceId then set to H's: V3's signed InvoiceID is that invoiceId, and the
     // challenge's id and opaque name H2.

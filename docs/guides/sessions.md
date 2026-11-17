@@ -35,7 +35,7 @@ the ATR through the channel it belongs to.
 
 ## The pairings
 
-Eight pairings have a `channel` member. The table says where H rides at the opening, which later payments count as
+Nine pairings have a `channel` member. The table says where H rides at the opening, which later payments count as
 within the channel, and what `channel.boundWithin` and `channel.until` read.
 
 | Pairing | H at the opening | Within, and the close | `boundWithin` | `until` |
@@ -44,7 +44,8 @@ within the channel, and what `channel.boundWithin` and `channel.until` read.
 | `x402/batch-settlement/solana` | The opening transaction's seller Memo instruction, H's LCP string (the option's `extra.memo`), beside x402's receiver-authorizer binding memo. | A voucher or a top-up is within; a refund is the close. | Refuses `x402/not-bound-within`. | none |
 | `mpp/session/evm` | The channel's `salt`: in the signed `open` call, the EIP-3009 nonce MPP derives over the channel parameters and the salt, or the Permit2 witness. | A voucher or a top-up is within; `close` is the close. | Refuses `mpp/not-bound-within`. | none |
 | `mpp/session/tempo` | The `salt` of the signed `open` call to the channel escrow, in a transaction signed for the challenge's chain, `methodDetails.chainId` (4217 where a v1 challenge names none), else `tempo/tx-malformed`. On the v2 escrow, the payload's descriptor carries that salt and, as draft-tempo-session-00 requires, the `open` call's payee, operator, token and authorizedSigner, the open transaction's sender, recovered from its signature, as its payer and the expiring nonce hash of that transaction under that sender, else `tempo/descriptor-mismatch`. On the v1 escrow, the payload's `channelId` is the channel that transaction opens, computed from its sender and its `open` call, else `mpp/channel-not-bound`. The transaction is checked first, its `open` call and then its sender, as draft-tempo-session-00's open verification orders them, and with its sender its `aa_authorization_list`, each entry a list of four items ending in a signature that is not a keychain signature of type `0x03`, which Tempo's node refuses there as in the sender's, so an opening with a fault in its transaction and another in its channel id or descriptor is refused with the transaction's code. `build`'s `complete` returns no credential `bound` refuses: it gives the code `bound` gives the credential it would give for a transaction, which names the build's `from` (as the v2 descriptor's payer, and in the v1 `channelId`) and the `open` call `build` made, so it refuses each fault above, a sender other than `from`, a call naming other parties, and a transaction whose credential is over the credential size bound (`mpp/credential-malformed`); `voucher` refuses the same transactions. | A voucher or a top-up is within; `close` is the close. | On the v2 escrow, the salt in the payment's channel descriptor, once the descriptor's channel id is the payment's channel and its operator is the challenge's `methodDetails.operator`, the zero address where the challenge names none, as on the opening. | none |
-| `mpp/session/xrpl` | The `PaymentChannelCreate`'s one memo holding an LCP string, H's, in an opening the payer signs with a single key and that carries no `NetworkID`, as rippled requires on each network the challenge names, whose ids are at most 1024, else `xrpl/network-mismatch`, which `build`'s `complete` also gives. | A voucher is within; `close` is the close. | Refuses `mpp/not-bound-within`. | The opening's `CancelAfter`, where it sets one. |
+| `mpp/session/xrpl` | The `PaymentChannelCreate`'s one memo holding an LCP string, H's, in an opening the payer signs, single-signed or multisigned, that carries no `NetworkID`, as rippled requires on each network the challenge names, whose ids are at most 1024, else `xrpl/network-mismatch`, which `build`'s `complete` also gives. | A voucher is within; `close` is the close. | Refuses `mpp/not-bound-within`. | The opening's `CancelAfter`, where it sets one. |
+| `mpp/session/xrpl/stock` | None: the stock client opens the channel itself, out of band, with no memo, so the session is served only after an agreement on its own network is recorded (coverage `none`); an `open` credential is refused `mpp/session-action`. | A voucher, which names the channel, is within; `close` is the close. | Refuses `mpp/not-bound-within`. | none |
 | `mpp/session/lightning` | The deposit invoice's description hash `h`, which the seller's node signs. | A bearer proof or a top-up is within; `close` is the close. | Refuses `mpp/not-bound-within`. | none |
 | `mpp/subscription/tempo` | The `witness` of the key authorization the payer's root key signs. | Only the activation, a key authorization, is classified: it is the opening. | Refuses `mpp/not-bound-within`. | The request's `subscriptionExpires`. |
 | `mpp/subscription/stripe` | The request's `methodDetails.metadata.legal_context`. | Every payment the seller reports on this pairing is the activation. | Refuses `mpp/not-bound-within`. | none |
@@ -77,7 +78,7 @@ console.log(channels.sort().join("\n"));
 ```
 
 ```text
-12
+13
 mpp/session/evm
 mpp/session/hedera/stock
 mpp/session/lightning
@@ -85,6 +86,7 @@ mpp/session/solana/memo
 mpp/session/solana/stock
 mpp/session/tempo
 mpp/session/xrpl
+mpp/session/xrpl/stock
 mpp/subscription/solana
 mpp/subscription/stripe
 mpp/subscription/tempo

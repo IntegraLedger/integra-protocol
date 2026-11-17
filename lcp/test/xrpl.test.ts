@@ -11,6 +11,7 @@ import { decodeBlob, mppInvoiceId, x402InvoiceId, xrplStatus, type XrplReader, t
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { rowsOf } from "./rows.js";
+import { landed, xrplReader } from "./fixtures/xrpl-reader.js";
 import { chargeXrpl } from "../src/mpp.js";
 import { vi } from "vitest";
 
@@ -27,17 +28,15 @@ const payment = (blob: string, accepted: PaymentRequirements) => ({
   payload: { signedTxBlob: blob },
 });
 
-function readerFor(tx: unknown, validated = 0, onTx?: (hash: string) => void): XrplReader {
-  return {
-    network: "xrpl:1",
+function readerFor(tx: unknown, validated = 1000, onTx?: (hash: string) => void): XrplReader {
+  return xrplReader({
+    server: async () => ({ validated, latest: validated + 1, completeLedgers: `1-${validated + 1}` }),
     tx: async (hash) => {
       onTx?.(hash);
       if (tx === "reader-error") throw new ReaderError("transport");
       return tx as Awaited<ReturnType<XrplReader["tx"]>>;
     },
-    txBlob: async () => null,
-    validatedLedger: async () => validated,
-  };
+  });
 }
 
 describe("x402-exact-xrpl.json", () => {
@@ -60,6 +59,11 @@ describe("x402-exact-xrpl.json", () => {
     expect(
       exactXrpl.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [occupied] }, H, V.fixed.link, occupied),
     ).toEqual(refused("xrpl/carrier-occupied"));
+  });
+
+  it("reference refuses a payment whose accepted is not the option it is given", async () => {
+    const other = { ...V.V2.accepted, payTo: "rPPdduC9MRTrXZP1J7MQyEKKEYiFigWZ6Q" };
+    expect(await exactXrpl.reference(payment(V.V2.blob, V.V2.accepted), other)).toEqual(refused("x402/accepted-not-option"));
   });
 
   it("V2: bound, reference, and build's txJson equal to the blob's signed fields", async () => {
@@ -95,89 +99,6 @@ describe("x402-exact-xrpl.json", () => {
     expect(d.tx.InvoiceID).toBe(V.V3.invoiceId);
   });
 
-  it("V4: three conventions", async () => {
-    const hex = createHash("sha512").update(V.V4.challengeId).digest("hex").slice(0, 64).toUpperCase();
-    expect(hex).toBe(V.V4.derivedInvoiceId);
-    const row = V.V4.x402Row;
-    expect(await xrplStatus(row.ref as XrplRef, readerFor(row.landed), row.query)).toEqual(row.expect);
-    expect(await exactXrpl.bound(payment(V.V4.v3UnderX402.blob, V.V4.v3UnderX402.accepted))).toEqual(
-      refused(V.V4.v3UnderX402.expect),
-    );
-  });
-
-  it("V5: status", async () => {
-    for (const row of rowsOf(V.V5.rows, "x402-exact-xrpl.json V5.rows")) {
-      expect(await xrplStatus(V.V5.ref as XrplRef, readerFor(row.tx, row.validated ?? 0), row.query), row.case).toEqual(row.expect);
-    }
-  });
-
-  // A rejected read is unreadable by the reader's own word for it: a ReaderError of kind too-large is too-large, one of
-  // kind malformed unparseable, and any other rejection transport. A reader for another network is chain-mismatch, and
-  // a query of another form unparseable, each with nothing read.
-  it("V5: a rejected read gives its reason; another network and a malformed query read nothing", async () => {
-    const rejecting = (e: unknown): XrplReader => ({
-      ...readerFor(null),
-      tx: async () => {
-        throw e;
-      },
-    });
-    const rows: [unknown, string][] = [
-      [new ReaderError("timeout"), "transport"],
-      [new ReaderError("too-large"), "too-large"],
-      [new ReaderError("malformed"), "unparseable"],
-      [new Error("down"), "transport"],
-    ];
-    for (const [e, reason] of rows) expect(await xrplStatus(V.V5.ref, rejecting(e), VALIDATED), reason).toEqual(unreadable(reason));
-    const landed = V.V5.rows[0];
-    const { reader, calls } = counting(readerFor(landed.tx));
-    expect(await xrplStatus(V.V5.ref, { ...reader, network: "xrpl:2" }, VALIDATED)).toEqual(unreadable("chain-mismatch"));
-    for (const q of [undefined, {}, { act: "payment", finality: "closed" }, { act: "charge", finality: "validated" }]) {
-      expect(await xrplStatus(V.V5.ref, reader, q as never), JSON.stringify(q)).toEqual(unreadable("unparseable"));
-    }
-    expect(calls).toEqual([]);
-  });
-
-  // An expect that is not 64 hex digits cannot name the landed Payment's InvoiceID: the ref is not one reference
-  // writes, so the read is unreadable, unparseable, never failed; XRPL hex is the same 32 bytes in either case.
-  it("V5: a ref whose expect is malformed is unreadable, unparseable, with nothing read", async () => {
-    const landed = V.V5.rows[0];
-    for (const invoice of [undefined, `0x${V.V5.ref.expect}`, V.V5.ref.expect.slice(2), 1]) {
-      const { reader, calls } = counting(readerFor(landed.tx));
-      expect(await xrplStatus({ ...V.V5.ref, expect: invoice }, reader, VALIDATED)).toEqual(unreadable("unparseable"));
-      expect(calls).toEqual([]);
-    }
-    expect(await xrplStatus({ ...V.V5.ref, expect: V.V5.ref.expect.toLowerCase() }, readerFor(landed.tx), VALIDATED)).toEqual(landed.expect);
-  });
-
-  // A transaction's identifying hash is 64 hex digits (xrpl.org, Basic Data Types, "Hashes"), and decodeBlob writes
-  // it in upper case. A transaction in any other form cannot name the landed Payment, so the read is unreadable,
-  // unparseable, never expired. This reader holds V5's landed Payment under the hash decodeBlob wrote and answers V5's
-  // not-found, whole-range, past-LastLedgerSequence row for any other hash.
-  it("V5: a ref whose transaction is malformed is unreadable, unparseable, with nothing read", async () => {
-    const [landed, , , expired] = V.V5.rows;
-    const holding: XrplReader = {
-      ...readerFor(expired.tx, expired.validated),
-      tx: async (hash) => (hash === V.V5.ref.transaction ? landed.tx : expired.tx),
-    };
-    for (const transaction of [undefined, `0x${V.V5.ref.transaction}`, V.V5.ref.transaction.slice(2), 7]) {
-      const { reader, calls } = counting(holding);
-      expect([transaction, await xrplStatus({ ...V.V5.ref, transaction }, reader, VALIDATED)]).toEqual([
-        transaction,
-        unreadable("unparseable"),
-      ]);
-      expect(calls).toEqual([]);
-    }
-    expect(await xrplStatus({ ...V.V5.ref, transaction: V.V5.ref.transaction.toLowerCase() }, holding, VALIDATED)).toEqual(landed.expect);
-  });
-
-  it("V6: reads by the blob's hash, never the facilitator's", async () => {
-    const asked: string[] = [];
-    const reader = readerFor({ notFound: true, searchedAll: false }, 990, (h) => asked.push(h));
-    expect(await xrplStatus(V.V6.ref as XrplRef, reader, V.V6.query)).toEqual(V.V6.expect);
-    expect(asked).toEqual([V.V6.ref.transaction]);
-    expect(asked).not.toContain(V.V6.named);
-  });
-
   it("strictEncoding: a blob that is not the canonical serialization of what it decodes to is refused", async () => {
     for (const row of rowsOf(V.strictEncoding.rows, "x402-exact-xrpl.json strictEncoding.rows")) {
       expect(() => decode(row.blob), row.case).not.toThrow();
@@ -186,15 +107,21 @@ describe("x402-exact-xrpl.json", () => {
     }
   });
 
-  it("multisigned: bound and reference refuse a blob that carries Signers", async () => {
+  it("multisigned: bound gives H, and reference names one signed body for both quorums' copies of one payment", async () => {
     const [three, two] = V.multisigned.rows;
+    const bodies = new Set<string>();
     for (const row of rowsOf(V.multisigned.rows, "x402-exact-xrpl.json multisigned.rows")) {
       const d = await decodeBlob(row.blob);
       if ("refused" in d) throw new Error(d.code);
       expect(d.hash, row.case).toBe(row.hash);
-      expect(await exactXrpl.bound(payment(row.blob, V.V2.accepted)), row.case).toEqual(refused(row.expect));
-      expect(await exactXrpl.reference(payment(row.blob, V.V2.accepted), V.V2.accepted), row.case).toEqual(refused(row.expect));
+      expect(row.expect, row.case).toBe("admitted");
+      expect(await exactXrpl.bound(payment(row.blob, V.V2.accepted)), row.case).toBe(H);
+      const ref = await exactXrpl.reference(payment(row.blob, V.V2.accepted), V.V2.accepted);
+      if ("refused" in ref) throw new Error(ref.code);
+      expect([ref.transaction, ref.signed?.account, ref.signed?.sequence], row.case).toEqual([row.hash, V.fixed.payer, 7]);
+      bodies.add(ref.signed!.body);
     }
+    expect(bodies.size).toBe(1);
     const a = decode(three.blob) as { InvoiceID: string; Sequence: number; Signers: unknown[] };
     const b = decode(two.blob) as { InvoiceID: string; Sequence: number; Signers: unknown[] };
     expect([a.InvoiceID, a.Sequence, a.Signers.length]).toEqual([V.V1.x402InvoiceId, 7, 3]);
@@ -212,7 +139,7 @@ describe("x402-exact-xrpl.json", () => {
 
 // x402-exact-xrpl.json's agreedRefusals rows state each refusal in words. Each case below calls the entry points its row
 // names, once for each condition the row lists, with inputs built from the file's V2 payment and choice, its
-// strictEncoding blobs and V5's ref, and every result is the row's code. The recover row's function is the XRPL rail's
+// strictEncoding blobs and V2's reference, and every result is the row's code. The recover row's function is the XRPL rail's
 // recover, which mpp/charge/xrpl exports: x402/exact/xrpl has none.
 describe("x402-exact-xrpl.json agreedRefusals: every row runs", () => {
   const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [V.V2.accepted] };
@@ -252,12 +179,12 @@ describe("x402-exact-xrpl.json agreedRefusals: every row runs", () => {
     ],
     "a blob that is not the canonical serialization of what it decodes to (strictEncoding)": async () =>
       (await Promise.all((V.strictEncoding.rows as { blob: string }[]).map((r) => read(r.blob)))).flat(),
-    "a blob over 4096 hex characters": async () => [
-      ...(await read("00".repeat(2049))),
-      ...(await read(`${V.V2.blob}${"00".repeat(2049 - V.V2.blob.length / 2)}`)),
+    "a blob over 32768 hex characters (16,384 bytes, XRPL_MAX_BLOB_BYTES)": async () => [
+      ...(await read("00".repeat(16385))),
+      ...(await read(`${V.V2.blob}${"00".repeat(16385 - V.V2.blob.length / 2)}`)),
     ],
     "recover when the reader fails or answers malformed": async () => {
-      const ref = { network: V.V5.ref.network, tx: V.V5.ref.transaction, option: V.V2.accepted as PaymentRequirements };
+      const ref = { network: V.V2.expectReference.network, tx: V.V2.expectReference.transaction, option: V.V2.accepted as PaymentRequirements };
       return [
         await chargeXrpl.recover(ref, readerFor("reader-error")),
         await chargeXrpl.recover(ref, readerFor(null)),

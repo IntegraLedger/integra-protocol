@@ -13,16 +13,20 @@ import {
   xrplChannelId,
   xrplClaim,
   xrplCloseStatus,
-  xrplOpenStatus,
   type XrplCloseRef,
   type XrplCloseStatus,
 } from "./internal/xrpl-session.js";
 import { mppPayee } from "./internal/payee.js";
 import type { RecoverInput } from "./internal/read.js";
+import { xrplChannelStatus, xrplOpenStatus, type XrplChannelRef } from "./internal/xrpl-read.js";
+import { accountIdOf } from "./internal/xrpl-session.js";
 import {
-  decodeBlob,
+  echoesOption,
   decodePresented,
+  landedFor,
+  lcpMemoOf,
   networkIdHeld,
+  signedOf,
   type XrplNetwork,
   type XrplQuery,
   type XrplReader,
@@ -33,6 +37,7 @@ import {
 import {
   chosenFor,
   credentialOf,
+  credentialShape,
   decodeObject,
   deepFreeze,
   echoedFor,
@@ -57,8 +62,10 @@ import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 import { XRPL as XRPL_DATA } from "./internal/data/xrpl.js";
 import type { Entry } from "./internal/registry.js";
+import type { Act } from "./internal/read.js";
 
 const XRPL = "mpp/session/xrpl" as const;
+const XRPL_STOCK = "mpp/session/xrpl/stock" as const;
 const MAX_MEMOS = 8;
 const HASH256 = /^[0-9A-Fa-f]{64}$/;
 const HEX = /^(?:[0-9A-Fa-f]{2})+$/;
@@ -200,32 +207,10 @@ function xrplKind(presented: MppCredential): Kind | Refusal {
   return actionKind(presented, ["voucher"]);
 }
 
-/** The exactly one memo among at most 8 whose `MemoData` is UTF-8 parsing as an LCP string, and its hash. */
-function xrplLcpMemo(tx: XrplTxJson): AtrHash | Refusal {
-  const memos = Array.isArray(tx.Memos) ? (tx.Memos as unknown[]) : [];
-  if (memos.length > MAX_MEMOS) return refusal("xrpl/memo-count");
-  const found: AtrHash[] = [];
-  for (const m of memos) {
-    const data = isObject(m) && isObject(m["Memo"]) ? (m["Memo"] as { [k: string]: unknown })["MemoData"] : undefined;
-    if (typeof data !== "string" || !HEX.test(data)) continue;
-    let text: string;
-    try {
-      text = UTF8.decode(Uint8Array.from(data.match(/../g)!.map((x) => Number.parseInt(x, 16))));
-    } catch {
-      continue;
-    }
-    const h = fromLcpString(text);
-    if (h !== null) found.push(h);
-  }
-  if (found.length === 0) return refusal("xrpl/no-memo");
-  if (found.length > 1) return refusal("xrpl/memo-count");
-  return found[0]!;
-}
-
 /**
- * The opening's blob, decoded once per payload: a `PaymentChannelCreate` the payer signed with a single key (a blob that
- * carries `Signers` is refused `xrpl/multisigned`), whose `NetworkID` a node of the challenge's network takes, as
- * rippled reads it (`networkIdHeld`, else `xrpl/network-mismatch`), and whose one LCP memo is the echoed challenge's H.
+ * The opening's blob, decoded once per payload: a `PaymentChannelCreate` the payer signed, single-signed or
+ * multisigned, whose `NetworkID` a node of the challenge's network takes, as rippled reads it (`networkIdHeld`, else
+ * `xrpl/network-mismatch`), and whose one LCP memo (`lcpMemoOf`) is the echoed challenge's H.
  */
 async function xrplOpening(
   presented: MppCredential,
@@ -240,7 +225,7 @@ async function xrplOpening(
   if (isRefusal(network)) return network;
   if (!networkIdHeld(decoded.tx, network)) return refusal("xrpl/network-mismatch");
   if (decoded.tx.TransactionType !== "PaymentChannelCreate") return refusal("xrpl/not-channel-create");
-  const h = xrplLcpMemo(decoded.tx);
+  const h = lcpMemoOf(decoded.tx);
   if (isRefusal(h)) return h;
   if (!hashEquals(h, e.h)) return refusal("mpp/carrier-not-challenge");
   return { h: e.h, checked: e.checked, tx: decoded.tx, hash: decoded.hash, blob };
@@ -254,20 +239,28 @@ async function xrplBound(input: unknown): Promise<AtrHash | Refusal> {
 }
 
 /**
- * The opening's read keys: the network, the hash of its signed blob and its `LastLedgerSequence` or null; and the
- * payee of `option`, the challenge the payment answers (`mppPayee`).
+ * The opening's read keys: the network, the hash of its signed blob, H, and the payer's instrument and signed body
+ * (`signedOf`; a blob whose sequence, ticket or body does not read is `xrpl/blob-malformed`); and the payee of
+ * `option`, the challenge the payment answers (`mppPayee`), a credential whose echoed challenge is not `option`
+ * (`echoesOption`) being `mpp/challenge-not-option`. The act changes nothing.
  */
-async function xrplReference(input: unknown, option: MppChallenge): Promise<Omit<XrplRef, "fromLedger" | "expect"> | Refusal> {
+async function xrplReference(
+  input: unknown,
+  option: MppChallenge,
+  _given?: { act: Act; h: AtrHash },
+): Promise<Omit<XrplRef, "fromLedger"> | Refusal> {
   const presented = credentialOf(input);
   if (isRefusal(presented)) return presented;
   const o = await xrplOpening(presented);
   if (isRefusal(o)) return o;
+  if (!echoesOption(presented.challenge, option)) return refusal("mpp/challenge-not-option");
   const network = xrplNetworkOf(o.checked.details);
   if (isRefusal(network)) return network;
   const payee = mppPayee(option);
   if (isRefusal(payee)) return payee;
-  const last = o.tx.LastLedgerSequence;
-  return { network, transaction: o.hash, lastLedgerSequence: typeof last === "number" ? last : null, payee };
+  const signed = await signedOf(o.tx);
+  if (signed === undefined) return refusal("xrpl/blob-malformed");
+  return { network, transaction: o.hash, h: o.h, payee, signed };
 }
 
 /**
@@ -324,53 +317,26 @@ function xrplUntil(presented: MppCredential): number | undefined {
 
 /** The opening's read, or, for a ref with `phase: "close"`, the reported close's. */
 async function xrplStatusOf(
-  ref: Omit<XrplRef, "expect"> | XrplCloseRef,
+  ref: XrplRef | XrplCloseRef,
   reader: XrplReader,
-  query: XrplQuery<Omit<XrplRef, "expect"> | XrplCloseRef>,
+  query: XrplQuery<XrplRef | XrplCloseRef>,
 ): Promise<XrplStatus | XrplCloseStatus> {
   return isObject(ref) && "phase" in ref
     ? xrplCloseStatus(ref, reader, query as XrplQuery<XrplCloseRef>)
-    : xrplOpenStatus(ref, reader, query as XrplQuery<Omit<XrplRef, "expect">>);
+    : xrplOpenStatus(ref, reader, query as XrplQuery<XrplRef>);
 }
 
 /**
  * Zero-party: the one LCP memo of the opening, read by its signed blob, when a validated ledger holds the transaction
- * `tx` names with `tesSUCCESS` as a `PaymentChannelCreate`, as `status` settles it; `option`, the challenge the ATR's
- * binding slot holds, must be an object, and no member of it is read. Not found is `xrpl/not-found`; not yet validated
- * is `xrpl/not-validated`; another result is `xrpl/not-success`; another type is `xrpl/not-channel-create`. The blob
- * must be that transaction's: a blob that does not decode, whose hash is not the transaction's, or whose
- * `TransactionType` is not the one the validated answer gives is `xrpl/unreadable`, an answer out of the reader's
- * documented form; a codec that cannot be loaded is `xrpl/peer-missing`. An input or option that is not an object, and
- * a `tx` that is not 64 hex digits, are `xrpl/wrong-reader`, with nothing read; the transaction and its blob are looked
- * up in upper case, as `status` looks the transaction up. Two calls.
+ * `tx` names with `tesSUCCESS` (`landedFor`, with its codes); `option`, the challenge the ATR's binding slot holds, must
+ * be an object, and no member of it is read. Another type is `xrpl/not-channel-create`; a create without one LCP memo
+ * gets `lcpMemoOf`'s code. One call.
  */
 async function xrplRecover(input: RecoverInput<XrplNetwork, MppChallenge>, reader: XrplReader): Promise<AtrHash | Refusal> {
-  if (!isObject(input) || !isObject(input.option)) return refusal("xrpl/wrong-reader");
-  if (!isObject(reader) || reader.network !== input.network) return refusal("xrpl/wrong-reader");
-  if (typeof input.tx !== "string" || !HASH256.test(input.tx)) return refusal("xrpl/wrong-reader");
-  const transaction = input.tx.toUpperCase();
-  let landed: Awaited<ReturnType<XrplReader["tx"]>>;
-  try {
-    landed = await reader.tx(transaction, null);
-  } catch {
-    return refusal("xrpl/unreadable");
-  }
-  if (typeof landed !== "object" || landed === null) return refusal("xrpl/unreadable");
-  if ("notFound" in landed) return refusal("xrpl/not-found");
-  if (landed.validated !== true) return refusal("xrpl/not-validated");
-  if (landed.result !== "tesSUCCESS") return refusal("xrpl/not-success");
-  if (landed.transactionType !== "PaymentChannelCreate") return refusal("xrpl/not-channel-create");
-  let blob: string | null;
-  try {
-    blob = await reader.txBlob(transaction);
-  } catch {
-    return refusal("xrpl/unreadable");
-  }
-  if (blob === null) return refusal("xrpl/not-found");
-  const decoded = await decodeBlob(blob);
-  if (isRefusal(decoded)) return decoded.code === "xrpl/peer-missing" ? decoded : refusal("xrpl/unreadable");
-  if (decoded.hash !== transaction || decoded.tx.TransactionType !== landed.transactionType) return refusal("xrpl/unreadable");
-  return xrplLcpMemo(decoded.tx);
+  const landed = await landedFor(input, reader);
+  if (isRefusal(landed)) return landed;
+  if (landed.tx.TransactionType !== "PaymentChannelCreate") return refusal("xrpl/not-channel-create");
+  return lcpMemoOf(landed.tx);
 }
 
 /**
@@ -489,6 +455,92 @@ async function xrplBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWit
   };
 }
 
+// ── mpp/session/xrpl/stock.
+
+/**
+ * The stock session's credential kinds: a voucher is within the channel and a close closes it. An `open`, which the
+ * stock server would submit with no memo, is refused `mpp/session-action` before anything is submitted, as any other
+ * action is: the stock client opens its channel itself, out of band, and presents vouchers that name it.
+ */
+function stockKind(presented: MppCredential): Kind | Refusal {
+  const k = actionKind(presented, ["voucher"]);
+  return k === "open" ? refusal("mpp/session-action") : k;
+}
+
+/**
+ * The payer a credential names, by its `source`, `did:pkh:xrpl:{network}:{address}`, read as the stock server reads it
+ * (`xrpl-mpp-sdk` 0.1.0-beta.4, `dist/chunk-ZKD7D3D6.js:149-170`): five segments, the third `xrpl`, a network segment,
+ * and a classic address whose checksum holds. Absent is `mpp/source-required`; another form `mpp/credential-malformed`.
+ */
+function sourcePayer(presented: MppCredential): string | Refusal {
+  const source = (presented as { source?: unknown }).source;
+  if (source === undefined) return refusal("mpp/source-required");
+  if (typeof source !== "string") return refusal("mpp/credential-malformed");
+  const parts = source.split(":");
+  if (parts.length !== 5 || parts[0] !== "did" || parts[1] !== "pkh" || parts[2] !== "xrpl" || parts[3] === "") {
+    return refusal("mpp/credential-malformed");
+  }
+  return accountIdOf(parts[4]!) === null ? refusal("mpp/credential-malformed") : parts[4]!;
+}
+
+/**
+ * The channel a voucher or close names: the echoed challenge's `methodDetails`, read from its request as the in-band
+ * session's within payments are (`echoedDetails`: the credential's shape, the intent `session` and the method `xrpl`),
+ * since the stock server's later challenges name the channel; its network; and the payload's `channelId`, 64 hex
+ * digits, in upper case, else `mpp/credential-malformed`. An `open` is `mpp/session-action`.
+ */
+function stockChannel(presented: MppCredential): { network: XrplNetwork; channel: string } | Refusal {
+  const d = echoedDetails(presented, "xrpl");
+  if (isRefusal(d)) return d;
+  const k = stockKind(presented);
+  if (isRefusal(k)) return k;
+  const network = xrplNetworkOf(d);
+  if (isRefusal(network)) return network;
+  const c = presented.payload["channelId"];
+  if (typeof c !== "string" || !HASH256.test(c)) return refusal("mpp/credential-malformed");
+  return { network, channel: c.toUpperCase() };
+}
+
+/**
+ * Nothing the payer signs carries H at coverage `none`: once the credential passes the shape gate (`credentialShape`)
+ * and is a voucher or a close naming its channel (`stockChannel`), `mpp/no-signed-place`. The challenge's id and `opaque` name H, which lcp's MPP checks read.
+ */
+async function stockBound(input: unknown, _given?: { act: Act; h: AtrHash }): Promise<AtrHash | Refusal> {
+  const presented = credentialShape(input);
+  if (isRefusal(presented)) return presented;
+  const held = stockChannel(presented);
+  return isRefusal(held) ? held : refusal("mpp/no-signed-place");
+}
+
+/**
+ * The read keys of a voucher or close: the network, the channel it names (`stockChannel`), the payer its `source`
+ * names (`sourcePayer`), and the payee of `option`, the challenge the payment answers (`mppPayee`), a credential whose
+ * echoed challenge is not `option` (`echoesOption`) being `mpp/challenge-not-option`. The ledger index
+ * the channel's create must come after is the caller's.
+ */
+async function stockReference(
+  input: unknown,
+  option: MppChallenge,
+  _given?: { act: Act; h: AtrHash },
+): Promise<Omit<XrplChannelRef, "fromLedger"> | Refusal> {
+  const presented = credentialShape(input);
+  if (isRefusal(presented)) return presented;
+  const held = stockChannel(presented);
+  if (isRefusal(held)) return held;
+  if (!echoesOption(presented.challenge, option)) return refusal("mpp/challenge-not-option");
+  const payer = sourcePayer(presented);
+  if (isRefusal(payer)) return payer;
+  const payee = mppPayee(option);
+  if (isRefusal(payee)) return payee;
+  return { network: held.network, channel: held.channel, payer, payee };
+}
+
+/** The channel a voucher or close names, as `stockChannel` reads it. */
+async function stockRef(presented: MppCredential): Promise<{ network: string; channel: string } | Refusal> {
+  const held = stockChannel(presented);
+  return isRefusal(held) ? held : { network: held.network, channel: held.channel };
+}
+
 // ── Resume.
 
 /**
@@ -512,6 +564,7 @@ export function railSessionResume(c: MppChallenge): { network: string; channel: 
 }
 
 // ── The records.
+
 
 function sessionPattern(p: Pick<LcpPattern, "pattern" | "zeroPartyRecoverable">, profile: string): LcpPattern {
   return deepFreeze({
@@ -561,14 +614,56 @@ export const sessionXrpl = Object.freeze({
 }) satisfies Entry<
   typeof XRPL,
   MppCredential,
-  Omit<XrplRef, "expect" | "fromLedger">,
+  Omit<XrplRef, "fromLedger">,
   XrplReader,
   MppForms & {
     choice: RailSessionChoice;
     unsigned: XrplSessionUnsigned;
     landed: Pick<XrplRef, "fromLedger">;
     network: XrplNetwork;
-    query: XrplQuery<Omit<XrplRef, "expect"> | XrplCloseRef>;
+    query: XrplQuery<XrplRef | XrplCloseRef>;
+    answer: XrplStatus;
+  }
+>;
+
+/**
+ * `mpp/session/xrpl/stock`, a stock client's session at coverage `none`, served after the agreement. The buyer's client
+ * opens the channel itself, out of band, which is no credential of the pairing, and presents vouchers that name it. The
+ * payee broadcasts every payment the pairing takes: it redeems the vouchers and submits the close's
+ * `PaymentChannelClaim` from the recipient's wallet (`xrpl-mpp-sdk` 0.1.0-beta.4, `dist/channel/server/index.js:686-697`),
+ * so `broadcaster` answers `"payee"` for a voucher and for a close; an `open` is `mpp/session-action`. `status` reads
+ * the channel's create (`xrplChannelStatus`).
+ */
+export const sessionXrplStock = Object.freeze({
+  id: XRPL_STOCK,
+  data: XRPL_DATA[XRPL_STOCK],
+  pattern: sessionPattern({ pattern: "opaque-challenge", zeroPartyRecoverable: false }, "mpp/session/hedera-solana-xrpl"),
+  claims: false as const,
+  unplaced,
+  tie,
+  advertise,
+  read,
+  bound: stockBound,
+  broadcaster: sessionBroadcaster(stockKind, () => "payee", () => refusal("mpp/session-action")),
+  reference: stockReference,
+  status: xrplChannelStatus,
+  channel: Object.freeze({
+    kind: measuring((p: MppCredential) => stockKind(p)),
+    ref: measuringAsync(stockRef),
+    boundWithin: measuringAsync(notBoundWithin),
+    until: (): number | undefined => undefined,
+  }),
+}) satisfies Entry<
+  typeof XRPL_STOCK,
+  MppCredential,
+  Omit<XrplChannelRef, "fromLedger">,
+  XrplReader,
+  MppForms & {
+    choice: never;
+    unsigned: never;
+    landed: Pick<XrplChannelRef, "fromLedger">;
+    network: never;
+    query: XrplQuery<XrplChannelRef>;
     answer: XrplStatus;
   }
 >;

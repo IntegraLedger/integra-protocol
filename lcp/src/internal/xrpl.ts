@@ -1,16 +1,15 @@
 /**
- * XRP Ledger rail pieces: the signed Payment blob, its `InvoiceID` carrying the ATR hash in each scheme's form, the
- * transaction hash computed from the blob, and settlement read by that hash through a bounded reader. Blobs are
+ * XRP Ledger rail pieces: the signed blob, its `InvoiceID` or memo carrying the ATR hash in each scheme's form, the
+ * transaction hash computed from the blob, the payer's instrument and signed body, and the reader's types. Blobs are
  * decoded with ripple-binary-codec, loaded when first needed; without it those functions refuse `xrpl/peer-missing`.
  * The public names are re-exported by `../xrpl.ts`.
  */
-import { hash, toLcpString, toRawBytes, type AtrHash } from "../core.js";
+import { canonicalJson, fromLcpString, hash, toLcpString, toRawBytes, type AtrHash } from "../core.js";
 import { isObject } from "../fields.js";
-import type { MppChallenge } from "../mpp-challenge.js";
+import { challengeSnapshot, type MppChallenge } from "../mpp-challenge.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
 import type { PaymentRequired, PaymentRequirements } from "../x402.js";
-import { XRPL } from "./data/xrpl.js";
-import { decide, type Facts, type Ledger, type RecoverInput, type Seen, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./read.js";
+import type { Ledger, RecoverInput, StatusAnswer, StatusQuery, UnreadableReason } from "./read.js";
 
 /** CAIP-2: `xrpl:` and the chain's NetworkID, 0 to 4294967295. */
 export type XrplNetwork = `xrpl:${number}`;
@@ -24,64 +23,136 @@ export interface XrplTxJson {
   [field: string]: unknown;
 }
 
+/** The ledger an `account_info` or `ledger_entry` call names: the latest validated one, or the current one. */
+export type XrplLedgerName = "validated" | "current";
+
+/** What `server_info` states: the ledgers the server holds and serves, and the network it serves. */
+export interface XrplServer {
+  /** `validated_ledger.seq`: the index of the latest validated ledger. */
+  readonly validated: number;
+  /** The index of the latest ledger the server serves at the read, validated or not, to which a search reads. */
+  readonly latest: number;
+  /** `complete_ledgers`, as the server writes it: `"empty"`, or ranges `a-b` and single indexes joined by commas. */
+  readonly completeLedgers: string;
+  /** `network_id`, where the server states one. */
+  readonly networkId?: number;
+}
+
+/** A transaction as the server answers it: its signed blob and what its metadata shows. */
+export interface XrplLanded {
+  /** The transaction's hash, 64 hex digits, as the server names it. */
+  readonly hash: string;
+  /** Whether the ledger that holds it is validated. */
+  readonly validated: boolean;
+  /** The index of the ledger that holds it; absent where the server names none. */
+  readonly ledgerIndex?: number;
+  /** `meta.TransactionResult`. */
+  readonly result: string;
+  /** The signed transaction, hex (`tx_blob`); an inner `Batch` transaction's own serialization. */
+  readonly blob: string;
+  /** `meta.delivered_amount` where the metadata gives one: drops, or an issued or MPT amount. */
+  readonly delivered?: XrplAmount;
+  /** The ids of the `PayChannel` entries the metadata creates. */
+  readonly createdChannels?: readonly string[];
+  /** The ids of the `PayChannel` entries the metadata deletes. */
+  readonly deletedChannels?: readonly string[];
+  /** For an inner `Batch` transaction, the hash of the `Batch` that holds it (`meta.ParentBatchID`). */
+  readonly parent?: string;
+}
+
+/** An amount as rippled writes it: drops of XRP, an issued currency's value, or an MPT's. */
+export type XrplAmount =
+  | string
+  | { readonly currency: string; readonly issuer: string; readonly value: string }
+  | { readonly mpt_issuance_id: string; readonly value: string };
+
+/** One page of `account_tx`, forward, in binary form: the transactions, the ledgers it covered, and its marker. */
+export interface XrplPage {
+  readonly transactions: readonly XrplLanded[];
+  /** `ledger_index_min` and `ledger_index_max` as the server answers them: the ledgers the page's search covered. */
+  readonly min: number;
+  readonly max: number;
+  /** `marker`, where more of the range is left to read. */
+  readonly marker?: unknown;
+}
+
+/** A `PayChannel` ledger entry. */
+export interface XrplChannelEntry {
+  readonly account: string;
+  readonly destination: string;
+  readonly amount: string;
+}
+
 /**
- * Bounded, read-only calls against one network's endpoint. Every failure rejects, for example with `ReaderError` from
- * `@integraledger/lcp/evm`; any rejection reads as unreadable.
+ * Bounded, read-only calls against one network's server. Every failure rejects, for example with `ReaderError` from
+ * `@integraledger/lcp/evm`; any rejection reads as unreadable. A call that names a ledger answers with the index of the
+ * ledger it read.
  */
 export interface XrplReader {
   readonly network: XrplNetwork;
-  /** `tx` by hash, with `min_ledger` and `max_ledger` when a range is given. */
+  /** `server_info`. */
+  server(): Promise<XrplServer>;
+  /** `tx` by hash, with `min_ledger` and `max_ledger` where a range is given: the transaction, or not found. */
   tx(hash: string, range: { min: number; max: number } | null): Promise<XrplLanded | { notFound: true; searchedAll: boolean }>;
-  /** `tx` with `binary: true`: the signed blob, for credentials that name only a hash. */
-  txBlob(hash: string): Promise<string | null>;
-  /** `ledger` `validated` → `ledger_index`. */
-  validatedLedger(): Promise<number>;
-}
-
-export interface XrplLanded {
-  validated: boolean;
-  /** `meta.TransactionResult`. */
-  result: string;
-  ledgerIndex?: number;
-  transactionType: string;
-  invoiceId?: string;
-  /** The `PayChannel` `DeletedNode`s of the transaction's `meta`. */
-  deletedChannels?: readonly string[];
+  /** `account_tx` for `account`, forward, binary, over the range, resuming at `marker`: one page. */
+  accountTx(account: string, range: { min: number; max: number }, marker?: unknown): Promise<XrplPage>;
+  /** `account_info` at the ledger named: the account's `Sequence`, or no such account (`actNotFound`). */
+  accountInfo(
+    account: string,
+    ledger: XrplLedgerName,
+  ): Promise<{ sequence: number; ledgerIndex: number } | { notFound: true; ledgerIndex: number }>;
+  /** `ledger_entry` of the account's `Ticket` at the ledger named: whether it is present. */
+  ticket(account: string, ticketSequence: number, ledger: XrplLedgerName): Promise<{ present: boolean; ledgerIndex: number }>;
+  /** `ledger_entry` of a `PayChannel` at the ledger named, or no such entry (`entryNotFound`). */
+  channel(id: string, ledger: XrplLedgerName): Promise<XrplChannelEntry | { notFound: true; ledgerIndex: number }>;
 }
 
 /**
- * The read keys `reference` returns, with `fromLedger`, the ledger index the transaction search starts from, and the
- * option's payee, which `reference` takes from the option the payment answers.
+ * The payer's instrument and the message it signed, read from a presented blob: the signed `Account`, its `Sequence`
+ * or, where `Sequence` is 0, its `TicketSequence`, its `LastLedgerSequence` or null, and the signed body, the blob's
+ * fields but `TxnSignature`, `SigningPubKey` and `Signers`, in the codec's canonical encoding, hex.
+ */
+export interface XrplSigned {
+  readonly account: string;
+  readonly sequence: number;
+  readonly ticket?: number;
+  readonly lastLedgerSequence: number | null;
+  readonly body: string;
+}
+
+/**
+ * The read keys `reference` returns: the network; the presented transaction's hash, a way to look and never the
+ * identity; H; the option's payee, which `reference` takes from the option the payment answers; and, where the
+ * payment presents its blob, the payer's instrument and signed body. `fromLedger`, the ledger index the search starts
+ * from, the issue ledger, is the caller's.
  */
 export interface XrplRef {
   network: XrplNetwork;
   transaction: string;
-  expect: string;
-  lastLedgerSequence: number | null;
-  fromLedger: number;
+  h: AtrHash;
   payee: string;
+  signed?: XrplSigned;
+  fromLedger: number;
 }
 
-/** The XRP Ledger's one mark: a transaction in a validated ledger, which is final. */
+/**
+ * The XRP Ledger's one mark, `validated`: a state of a transaction its servers tell apart, the default and the final
+ * mark, and the only finality a query names.
+ */
 export type XrplMark = "validated";
 
-/** An XRPL read, as the profile `read-status` answers it. The position is a ledger index. */
-export type XrplStatus = StatusAnswer<number, XrplMark>;
+/**
+ * What a read reached for a transaction it names: `validated`, the mark, or `current`, a ledger the server serves above
+ * the latest validated one, up to the latest ledger the search for H reads on to. `current` is no mark a query names:
+ * an act or a lapse read there is `pending`, `below-mark`.
+ */
+export type XrplReached = XrplMark | "current";
+
+/** An XRPL read, as the profile `read-status` answers it. The position is a ledger index, and so is the search's. */
+export type XrplStatus = StatusAnswer<number, XrplReached>;
 
 /** What an XRPL status read takes with the reference and the reader. */
 export type XrplQuery<Ref> = StatusQuery<Ref, number, XrplMark>;
-
-/**
- * What a read by transaction hash found, before `xrplFacts` and `decide` answer it: settled in a validated ledger; not
- * found, or found in no validated ledger; expired past `LastLedgerSequence`; failed with a `tec` result that claimed the
- * fee; a validated success that is not the instrument, or not a close; or unreadable with its reason.
- */
-export type XrplRead =
-  | { state: "settled"; ledgerIndex: number }
-  | { state: "pending"; why: "not-found" | "not-validated" }
-  | { state: "failed"; why: "expired" | "not-this-instrument" | "not-a-close" }
-  | { state: "failed"; why: "claimed-fee"; ledgerIndex?: number }
-  | { state: "unreadable"; reason: UnreadableReason };
 
 /**
  * The reason a rejected read gives: a `ReaderError` of kind `too-large` is `too-large`, one of kind `malformed`
@@ -93,64 +164,30 @@ export function rejectedAs(e: unknown): UnreadableReason {
   return kind === "too-large" ? "too-large" : kind === "malformed" ? "unparseable" : "transport";
 }
 
-/** The ledger of the XRPL pairing `id`: its coverage, its one mark, and ledger indexes in their order. */
-export function xrplLedger(id: keyof typeof XRPL): Ledger<number, XrplMark> {
-  return { coverage: XRPL[id].coverage, final: "validated", markOrder: () => 0, positionOrder: (a, b) => a - b };
+/**
+ * The ledger of an XRPL pairing at `coverage`: its one mark, `validated`, the final, above what a read reaches in a
+ * ledger not yet validated, and ledger indexes in their order.
+ */
+export function xrplLedger(coverage: Ledger<number, XrplReached>["coverage"]): Ledger<number, XrplReached> {
+  const rank = (m: XrplReached): number => (m === "validated" ? 1 : 0);
+  return { coverage, final: "validated", markOrder: (a, b) => rank(a) - rank(b), positionOrder: (a, b) => a - b };
 }
 
-/** A query that is an object of a known act at the mark `validated`. */
+/**
+ * Whether a credential's echoed challenge is `option`, the challenge the caller gives: each of MPP's challenge members
+ * equal, `request` and `opaque` as the strings echoed, since a server's id check takes the echo verbatim. A payment that
+ * echoes another challenge answers that challenge, whose payee the read's party tests would not take.
+ */
+export function echoesOption(echoed: unknown, option: unknown): boolean {
+  const a = canonicalJson(challengeSnapshot(echoed) as never);
+  return typeof a === "string" && a === canonicalJson(challengeSnapshot(option) as never);
+}
+
+/** A query that is an object of a known act at the XRP Ledger's one mark, `validated`. */
 export function isXrplQuery(query: unknown): query is XrplQuery<never> {
   if (!isObject(query)) return false;
   const q = query as { act?: unknown; finality?: unknown };
   return (q.act === "payment" || q.act === "agreement") && q.finality === "validated";
-}
-
-/**
- * What a read observed, in the profile's terms. A transaction settled is the payer's own act in a validated ledger at
- * its ledger index. A `tec` result is the payer's own transaction, failed, consuming its sequence, and that read is the
- * read of the value. A validated success that is not the instrument is the value consumed by another transaction. An
- * expiry is the value read unconsumed with its validity passed. A close the read cannot show, a lookup that finds
- * nothing, and a transaction in no validated ledger yet see nothing: no search is read whole, and no read shows its
- * history.
- */
-export function xrplFacts(read: XrplRead, transaction: string, ledger: Ledger<number, XrplMark>): Facts<number, XrplMark> {
-  const unsearched = { search: { whole: false }, history: false } as const;
-  const own = (result: Seen<number, XrplMark>["result"], position?: number): Seen<number, XrplMark> => ({
-    transaction,
-    ...(position === undefined ? {} : { position }),
-    mark: "validated",
-    result,
-    consumed: true,
-    carries: true,
-    party: "payer",
-    kind: "same",
-    account: "payee",
-  });
-  switch (read.state) {
-    case "unreadable":
-      return { unreadable: read.reason, seen: [], ...unsearched };
-    case "settled":
-      return { seen: [own("succeeded", read.ledgerIndex)], ...unsearched };
-    case "pending":
-      return read.why === "not-found"
-        ? { seen: [], search: { whole: ledger.coverage === "none" }, history: false }
-        : { seen: [], ...unsearched };
-    case "failed":
-      switch (read.why) {
-        case "claimed-fee":
-          return {
-            seen: [own("failed", read.ledgerIndex)],
-            value: { consumed: true, lapsed: false, mark: "validated" },
-            ...unsearched,
-          };
-        case "not-this-instrument":
-          return { seen: [], value: { consumed: true, lapsed: false, mark: "validated" }, ...unsearched };
-        case "expired":
-          return { seen: [], value: { consumed: false, lapsed: true, mark: "validated" }, ...unsearched };
-        case "not-a-close":
-          return { seen: [], ...unsearched };
-      }
-  }
 }
 
 /** What the wallet signs, and how its signed blob completes the payment. */
@@ -176,7 +213,15 @@ export interface XrplPaymentPayload {
   extensions?: PaymentRequired["extensions"];
 }
 
-export const MAX_BLOB_HEX = 4096;
+/**
+ * The largest signed blob lcp decodes, in bytes: lcp's own bound, read by every XRPL pairing. It holds a Payment or a
+ * PaymentChannelCreate signed by the 32 signers a signer list admits at most (rippled `3c72fb54`,
+ * `include/xrpl/protocol/STTx.h:49`), with the paths a stock client finds and memos of rippled's 1,024 bytes
+ * (`src/libxrpl/protocol/STTx.cpp:697`); rippled's own bound on a transaction, 1 MB (`include/xrpl/protocol/Protocol.h:38`),
+ * is no payment's.
+ */
+export const XRPL_MAX_BLOB_BYTES = 16_384;
+const MAX_BLOB_HEX = 2 * XRPL_MAX_BLOB_BYTES;
 /**
  * The deepest level a field of a transaction sits at, rippled's limit: its deserializer refuses a field whose depth is
  * above 10 (rippled 3.4.1, `src/libxrpl/protocol/STVar.cpp` L104-108, the `STVar` constructor that reads a
@@ -295,7 +340,7 @@ export function mppInvoiceId(h: AtrHash): string {
 }
 
 /**
- * Decodes a signed blob of at most 4096 hex characters (2048 bytes), and computes its transaction hash as the ledger
+ * Decodes a signed blob of at most `XRPL_MAX_BLOB_BYTES` bytes, and computes its transaction hash as the ledger
  * does: SHA-512Half over `54584E00` and the blob, in upper case. Before the codec decodes it, a single pass over its
  * fields refuses a blob with a field deeper than `XRPL_MAX_DEPTH`, or with an end marker in an object or array it does
  * not close, as rippled refuses either. The blob must be the canonical serialization of what it decodes to: the
@@ -365,8 +410,8 @@ const presented = new WeakMap<object, { hex: unknown; decoded: Promise<Decoded |
 
 /**
  * The signed blob a presented payment holds, decoded once per holding object: a later call with the same object and
- * the same blob gives the first call's result. A blob that carries `Signers` is refused `xrpl/multisigned`: the payer
- * signs with a single key, so the transaction hash computed from the blob is the one that can land.
+ * the same blob gives the first call's result. A multisigned blob is admitted: the read finds the payment by its
+ * instrument, so another quorum's copy, under another hash, is the same payment.
  */
 export async function decodePresented(holder: object, hex: unknown): Promise<Decoded | Refusal> {
   let seen = presented.get(holder);
@@ -374,111 +419,125 @@ export async function decodePresented(holder: object, hex: unknown): Promise<Dec
     seen = { hex, decoded: decodeBlob(hex as string) };
     presented.set(holder, seen);
   }
-  const d = await seen.decoded;
-  if (isRefusal(d)) return d;
-  return "Signers" in d.tx ? refusal("xrpl/multisigned") : d;
+  return seen.decoded;
 }
 
+const UNSIGNED = ["TxnSignature", "SigningPubKey", "Signers"];
+
 /**
- * Reads a transaction by its hash, looked up in upper case, within `fromLedger` to `LastLedgerSequence` where the ref
- * names one: settled when a validated ledger holds it with `tesSUCCESS` and `instrument` holds for it, else failed
- * `not-this-instrument`; a `tec` result is failed `claimed-fee`; past `LastLedgerSequence` with the whole range searched
- * it expired. A ref that is not one `reference` writes (a network, `transaction` or, where `expect` is asked for,
- * `expect` of another form), and a reader that is not an object or names no XRPL network, are `unparseable`, and a
- * reader for another network `chain-mismatch`, each with nothing read. A rejected read is unreadable by `rejectedAs`;
- * an answer of another shape, a validated ledger index that is not an integer, and a validated result neither
- * `tesSUCCESS` nor `tec` are `unparseable`. At most two calls.
+ * The signed body of a decoded transaction: its fields but `TxnSignature`, `SigningPubKey` and `Signers`, encoded by
+ * the codec, hex in upper case. One message signed with another key, or by another quorum, has this body and another
+ * hash. Undefined where the codec cannot encode it.
  */
-export async function readXrplTx(
-  ref: Omit<XrplRef, "expect" | "payee"> & { expect?: string },
-  reader: XrplReader,
-  instrument: (r: XrplLanded) => boolean,
-  expects: boolean,
-): Promise<XrplRead> {
-  if (!isObject(ref) || !isXrplNetwork(ref.network)) return { state: "unreadable", reason: "unparseable" };
-  if (expects && (typeof ref.expect !== "string" || !HASH256.test(ref.expect))) return { state: "unreadable", reason: "unparseable" };
-  if (typeof ref.transaction !== "string" || !HASH256.test(ref.transaction)) return { state: "unreadable", reason: "unparseable" };
-  if (!isObject(reader) || !isXrplNetwork(reader.network)) return { state: "unreadable", reason: "unparseable" };
-  if (reader.network !== ref.network) return { state: "unreadable", reason: "chain-mismatch" };
-  const range = ref.lastLedgerSequence === null ? null : { min: ref.fromLedger, max: ref.lastLedgerSequence };
-  let r: Awaited<ReturnType<XrplReader["tx"]>>;
+export async function signedBodyOf(tx: XrplTxJson): Promise<string | undefined> {
+  const loaded = await loadCodec();
+  if (loaded === undefined) return undefined;
+  const body: { [k: string]: unknown } = {};
+  for (const [k, v] of Object.entries(tx)) if (!UNSIGNED.includes(k)) body[k] = v;
   try {
-    r = await reader.tx(ref.transaction.toUpperCase(), range);
-  } catch (e) {
-    return { state: "unreadable", reason: rejectedAs(e) };
+    return loaded.c.encode(body as Parameters<Codec["encode"]>[0]).toUpperCase();
+  } catch {
+    return undefined;
   }
-  if (typeof r !== "object" || r === null) return { state: "unreadable", reason: "unparseable" };
-  if ("notFound" in r) {
-    if (r.searchedAll !== true || ref.lastLedgerSequence === null) return { state: "pending", why: "not-found" };
-    let validated: number;
+}
+
+const U32 = (n: unknown): n is number => Number.isInteger(n) && (n as number) >= 0 && (n as number) <= 0xffffffff;
+
+/**
+ * The payer's instrument and signed body of a decoded transaction (`XrplSigned`): its `Account`, its `Sequence`, and,
+ * where `Sequence` is 0, its `TicketSequence`. Undefined where the account, the sequence or the ticket is not of its
+ * form, or the body does not encode.
+ */
+export async function signedOf(tx: XrplTxJson): Promise<XrplSigned | undefined> {
+  const sequence = tx["Sequence"];
+  const ticket = tx["TicketSequence"];
+  if (typeof tx.Account !== "string" || !U32(sequence)) return undefined;
+  if (sequence === 0 && !U32(ticket)) return undefined;
+  const body = await signedBodyOf(tx);
+  if (body === undefined) return undefined;
+  const lls = tx.LastLedgerSequence;
+  return {
+    account: tx.Account,
+    sequence,
+    ...(sequence === 0 ? { ticket: ticket as number } : {}),
+    lastLedgerSequence: U32(lls) ? lls : null,
+    body,
+  };
+}
+
+const MAX_MEMOS = 8;
+const UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
+
+/**
+ * The hash of a transaction's one LCP memo: among at most 8 memos, exactly one whose `MemoData` is UTF-8 parsing as an
+ * LCP string. More than 8 memos, or more than one such, is `xrpl/memo-count`; none is `xrpl/no-memo`.
+ */
+export function lcpMemoOf(tx: XrplTxJson): AtrHash | Refusal {
+  const memos = Array.isArray(tx.Memos) ? (tx.Memos as unknown[]) : [];
+  if (memos.length > MAX_MEMOS) return refusal("xrpl/memo-count");
+  const found: AtrHash[] = [];
+  for (const m of memos) {
+    const data = isObject(m) && isObject(m["Memo"]) ? (m["Memo"] as { [k: string]: unknown })["MemoData"] : undefined;
+    if (typeof data !== "string" || !HEX.test(data)) continue;
+    let text: string;
     try {
-      validated = await reader.validatedLedger();
-    } catch (e) {
-      return { state: "unreadable", reason: rejectedAs(e) };
+      text = UTF8.decode(fromHex(data));
+    } catch {
+      continue;
     }
-    if (!Number.isSafeInteger(validated)) return { state: "unreadable", reason: "unparseable" };
-    return validated > ref.lastLedgerSequence ? { state: "failed", why: "expired" } : { state: "pending", why: "not-found" };
+    const h = fromLcpString(text);
+    if (h !== null) found.push(h);
   }
-  if (r.validated !== true) return { state: "pending", why: "not-validated" };
-  if (r.result === "tesSUCCESS") {
-    if (!instrument(r)) return { state: "failed", why: "not-this-instrument" };
-    if (!Number.isSafeInteger(r.ledgerIndex)) return { state: "unreadable", reason: "unparseable" };
-    return { state: "settled", ledgerIndex: r.ledgerIndex! };
-  }
-  if (typeof r.result === "string" && r.result.startsWith("tec")) {
-    return Number.isSafeInteger(r.ledgerIndex)
-      ? { state: "failed", why: "claimed-fee", ledgerIndex: r.ledgerIndex! }
-      : { state: "failed", why: "claimed-fee" };
-  }
-  return { state: "unreadable", reason: "unparseable" };
-}
-
-const CHARGE_LEDGER = xrplLedger("x402/exact/xrpl");
-
-/**
- * Reads a payment by the hash computed from its signed blob, as the profile `read-status` answers it: the Payment a
- * validated ledger holds with `tesSUCCESS` and the `InvoiceID` expected (in either case) is `settled` at its ledger
- * index. A `tec` result, a validated success of another type or invoice, an expiry past `LastLedgerSequence`, a lookup
- * that finds nothing and a transaction in no validated ledger yet are `pending`, `search-incomplete`, since this read
- * is no search for H; a ledger index at or before the query's `after` is `failed`, `before-position`. A ref, reader or
- * query of the wrong form is `unreadable`, `unparseable`, and a reader for another network `chain-mismatch`, each with
- * nothing read. At most two calls.
- */
-export async function xrplStatus(ref: XrplRef, reader: XrplReader, query: XrplQuery<XrplRef>): Promise<XrplStatus> {
-  if (!isXrplQuery(query)) return { state: "unreadable", reason: "unparseable", foreign: [] };
-  const read = await readXrplTx(ref, reader, (r) => r.transactionType === "Payment" && sameInvoice(r.invoiceId, ref.expect), true);
-  return decide(xrplFacts(read, upperOf(ref), CHARGE_LEDGER), query, CHARGE_LEDGER);
-}
-
-/** The ref's transaction in upper case, as the read looks it up; empty for a ref of another form, which reads nothing. */
-export function upperOf(ref: unknown): string {
-  const t = isObject(ref) ? (ref as { transaction?: unknown }).transaction : undefined;
-  return typeof t === "string" ? t.toUpperCase() : "";
+  if (found.length === 0) return refusal("xrpl/no-memo");
+  if (found.length > 1) return refusal("xrpl/memo-count");
+  return found[0]!;
 }
 
 /**
- * Zero-party: the validated `tesSUCCESS` Payment's `InvoiceID`, as a candidate hash, read by `tx`, the transaction's
- * hash; `option`, the challenge the ATR's binding slot holds, must be an object, and no member of it is read. An input
- * or option that is not an object, and a `tx` that is not 64 hex digits, are `xrpl/wrong-reader`, with nothing read;
- * the transaction is looked up in upper case, as `xrplStatus` looks it up. One call.
+ * A transaction the server answers by `tx`, read for `recover`: validated with `tesSUCCESS`, its blob decoding to the
+ * transaction the hash names. `xrpl/not-found`, `xrpl/not-validated` and `xrpl/not-success` where it is not; a blob
+ * that does not decode or whose hash is not the one asked is `xrpl/unreadable`, an answer out of the reader's form, and
+ * a codec that cannot be loaded `xrpl/peer-missing`. An input or option that is not an object, a reader for another
+ * network, and a `tx` that is not 64 hex digits, are `xrpl/wrong-reader`, with nothing read. One call.
  */
-export async function xrplInvoiceOf(
-  input: RecoverInput<XrplNetwork, PaymentRequirements | MppChallenge>,
+export async function landedFor(
+  input: RecoverInput<XrplNetwork, unknown>,
   reader: XrplReader,
-): Promise<AtrHash | Refusal> {
+): Promise<{ tx: XrplTxJson; hash: string } | Refusal> {
   if (!isObject(input) || !isObject(input.option)) return refusal("xrpl/wrong-reader");
   if (!isObject(reader) || reader.network !== input.network) return refusal("xrpl/wrong-reader");
   if (typeof input.tx !== "string" || !HASH256.test(input.tx)) return refusal("xrpl/wrong-reader");
+  const transaction = input.tx.toUpperCase();
   let r: Awaited<ReturnType<XrplReader["tx"]>>;
   try {
-    r = await reader.tx(input.tx.toUpperCase(), null);
+    r = await reader.tx(transaction, null);
   } catch {
     return refusal("xrpl/unreadable");
   }
   if (typeof r !== "object" || r === null) return refusal("xrpl/unreadable");
   if ("notFound" in r) return refusal("xrpl/not-found");
   if (r.validated !== true) return refusal("xrpl/not-validated");
-  if (r.result !== "tesSUCCESS" || r.transactionType !== "Payment") return refusal("xrpl/not-success");
-  if (typeof r.invoiceId !== "string" || !HASH256.test(r.invoiceId)) return refusal("xrpl/no-invoice-id");
-  return `0x${r.invoiceId.toLowerCase()}`;
+  if (r.result !== "tesSUCCESS") return refusal("xrpl/not-success");
+  const decoded = await decodeBlob(r.blob);
+  if (isRefusal(decoded)) return decoded.code === "xrpl/peer-missing" ? decoded : refusal("xrpl/unreadable");
+  if (decoded.hash !== transaction) return refusal("xrpl/unreadable");
+  return decoded;
+}
+
+/**
+ * Zero-party: the `InvoiceID` of a validated `tesSUCCESS` Payment, as a candidate hash, read by `tx`, the
+ * transaction's hash (`landedFor`, with its codes); `option`, the challenge the ATR's binding slot holds, must be an
+ * object, and no member of it is read. Another type is `xrpl/not-payment`, and a Payment with no `InvoiceID`
+ * `xrpl/no-invoice-id`. One call.
+ */
+export async function xrplInvoiceOf(
+  input: RecoverInput<XrplNetwork, PaymentRequirements | MppChallenge>,
+  reader: XrplReader,
+): Promise<AtrHash | Refusal> {
+  const landed = await landedFor(input, reader);
+  if (isRefusal(landed)) return landed;
+  if (landed.tx.TransactionType !== "Payment") return refusal("xrpl/not-payment");
+  const id = landed.tx.InvoiceID;
+  if (typeof id !== "string" || !HASH256.test(id)) return refusal("xrpl/no-invoice-id");
+  return `0x${id.toLowerCase()}`;
 }

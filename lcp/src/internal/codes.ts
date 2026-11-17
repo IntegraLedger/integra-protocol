@@ -495,8 +495,6 @@ export const REFUSAL_CODES: ReadonlySet<string> = new Set([
   "xrpl/carrier-occupied",
   "xrpl/currency-not-xrp",
   "xrpl/memo-count",
-  "xrpl/memos-not-carried",
-  "xrpl/multisigned",
   "xrpl/network-malformed",
   "xrpl/network-mismatch",
   "xrpl/network-missing",

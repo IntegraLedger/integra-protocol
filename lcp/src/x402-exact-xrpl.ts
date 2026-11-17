@@ -1,9 +1,9 @@
 /**
  * The `x402/exact/xrpl` pairing: the ATR hash's LCP string placed as the option's `extra.invoiceId`, whose SHA-256 the
- * payer signs with a single key as the Payment's `InvoiceID`, read back from the signed blob, and settlement read by
- * the blob's hash.
+ * payer signs as the Payment's `InvoiceID`, read back from the signed blob, single-signed or multisigned, and
+ * settlement read by the payer's instrument, its `Account` with the signed `Sequence` or ticket.
  */
-import { fromLcpString, toLcpString, type AtrHash } from "./core.js";
+import { canonicalJson, fromLcpString, toLcpString, type AtrHash } from "./core.js";
 import {
   acceptedBy,
   advertiseFor,
@@ -27,8 +27,8 @@ import {
   networkId,
   networkIdHeld,
   sameInvoice,
+  signedOf,
   x402InvoiceId,
-  xrplStatus,
   type XrplNetwork,
   type XrplPaymentPayload,
   type XrplReader,
@@ -38,6 +38,7 @@ import {
   type XrplQuery,
   type XrplStatus,
 } from "./internal/xrpl.js";
+import { xrplStatus } from "./internal/xrpl-read.js";
 import { accountIdOf } from "./internal/xrpl-session.js";
 import { isObject, normalHash } from "./fields.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -50,6 +51,7 @@ import {
 import { XRPL } from "./internal/data/xrpl.js";
 import { x402Payee } from "./internal/payee.js";
 import type { Entry } from "./internal/registry.js";
+import type { Act } from "./internal/read.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 const ID = "x402/exact/xrpl" as const;
@@ -249,36 +251,44 @@ async function presentedOf(presented: unknown) {
 }
 
 /**
- * The hash whose LCP string's SHA-256 is the signed `InvoiceID`. A multi-signed blob is refused `xrpl/multisigned`:
- * the payer signs with a single key. The signature is not verified here; the facilitator validates it, and any change
- * to a single-signed blob invalidates it.
+ * The hash whose LCP string's SHA-256 is the signed `InvoiceID`. A multisigned blob is admitted: the read finds the
+ * payment by its instrument. The signature is not verified here; the facilitator validates it, and any change to a
+ * signed blob invalidates it. The act changes nothing: the single-use value is the payer's sequence or ticket, never H.
  */
-async function bound(presented: unknown): Promise<AtrHash | Refusal> {
+async function bound(presented: unknown, _given?: { act: Act; h: AtrHash }): Promise<AtrHash | Refusal> {
   const p = await presentedOf(presented);
   return isRefusal(p) ? p : p.h;
 }
 
 /**
- * The read keys for finding this payment later, all from the single-signed blob, and the payee of `option`, the option
- * the payment answers (`x402Payee`).
+ * The read keys of a payment: from its signed blob, the hash, H and the payer's instrument and signed body
+ * (`signedOf`); and the payee of `option`, the option the payment answers (`x402Payee`). The presented `accepted` must
+ * be `option`, compared as canonical JSON without `extra.invoiceId`, which the seller writes after the option is
+ * issued; another is `x402/accepted-not-option`. A blob whose sequence, ticket or body does not read is
+ * `xrpl/blob-malformed`.
  */
-async function reference(presented: unknown, option: PaymentRequirements): Promise<Omit<XrplRef, "fromLedger"> | Refusal> {
+async function reference(
+  presented: unknown,
+  option: PaymentRequirements,
+  _given?: { act: Act; h: AtrHash },
+): Promise<Omit<XrplRef, "fromLedger"> | Refusal> {
   const p = await presentedOf(presented);
   if (isRefusal(p)) return p;
   const payee = x402Payee(option);
   if (isRefusal(payee)) return payee;
-  const lls = p.blob.tx.LastLedgerSequence;
-  return {
-    network: p.accepted.network as XrplRef["network"],
-    transaction: p.blob.hash,
-    expect: p.blob.tx.InvoiceID!.toUpperCase(),
-    lastLedgerSequence: Number.isInteger(lls) ? lls! : null,
-    payee,
-  };
+  const issued = unplaced(option);
+  const accepted = unplaced(p.accepted);
+  if (isRefusal(issued) || isRefusal(accepted)) return refusal("x402/option-malformed");
+  const a = canonicalJson(accepted);
+  if (isRefusal(a) || a !== canonicalJson(issued)) return refusal("x402/accepted-not-option");
+  const signed = await signedOf(p.blob.tx);
+  if (signed === undefined) return refusal("xrpl/blob-malformed");
+  return { network: p.accepted.network as XrplRef["network"], transaction: p.blob.hash, h: p.h, payee, signed };
 }
 
 const pattern: LcpPattern = Object.freeze({
   pattern: "id-reuse",
+  profile: ID,
   onChain: true,
   zeroPartyRecoverable: false,
   forwardIndexable: false,
@@ -286,7 +296,7 @@ const pattern: LcpPattern = Object.freeze({
 
 /**
  * `x402/exact/xrpl`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator submits the
- * signed `Payment` blob; `status` reads it by the blob's hash.
+ * signed `Payment` blob; `status` reads it by the payer's instrument (`xrplStatus`).
  */
 export const exactXrpl = Object.freeze({
   id: ID,

@@ -99,16 +99,55 @@ export function xrplNetworkOf(details: Obj): XrplNetwork | Refusal {
   return XRPL_NETWORKS[n]!;
 }
 
-/** True for an XRPL `currency`: `"XRP"`, an issued currency `{currency, issuer}`, or an MPT `{mpt_issuance_id}`. */
-export function isXrplCurrency(v: unknown): boolean {
-  if (v === "XRP") return true;
-  if (!isObj(v)) return false;
+/** An XRPL asset as a charge request's `currency` names it: XRP, an issued currency, or an MPT. */
+export type XrplCurrency = "XRP" | { readonly currency: string; readonly issuer: string } | { readonly mpt_issuance_id: string };
+
+/** An issued currency `{currency, issuer}` or an MPT `{mpt_issuance_id}`, each part held to its form, exactly those members. */
+function issuedOrMpt(v: unknown): XrplCurrency | undefined {
+  if (!isObj(v)) return undefined;
   const keys = Object.keys(v).sort().join(",");
   if (keys === "currency,issuer") {
-    return typeof v["currency"] === "string" && XRPL_CURRENCY.test(v["currency"]) && v["currency"] !== "XRP" &&
-      typeof v["issuer"] === "string" && XRPL_ADDRESS.test(v["issuer"]);
+    const c = v["currency"];
+    const issuer = v["issuer"];
+    return typeof c === "string" && XRPL_CURRENCY.test(c) && c !== "XRP" && typeof issuer === "string" && XRPL_ADDRESS.test(issuer)
+      ? { currency: c, issuer }
+      : undefined;
   }
-  return keys === "mpt_issuance_id" && typeof v["mpt_issuance_id"] === "string" && XRPL_MPT.test(v["mpt_issuance_id"]);
+  const id = v["mpt_issuance_id"];
+  return keys === "mpt_issuance_id" && typeof id === "string" && XRPL_MPT.test(id) ? { mpt_issuance_id: id } : undefined;
+}
+
+/**
+ * A charge request's `currency`, a string as MPP's XRPL schema has it (`xrpl-mpp-sdk` 0.1.0-beta.4,
+ * `dist/chunk-L6LVAN2P.js:17-90`, `currency: z.string()`), in the forms its `parseCurrency` reads
+ * (`dist/chunk-JQG7ATQA.js:170-183`): `"XRP"`; a JSON text of an issued currency `{currency, issuer}` or an MPT
+ * `{mpt_issuance_id}`; or `CUR:issuer`, one colon. Each part is held to its form. Undefined for any other value, an
+ * object among them, which the stock schema refuses.
+ */
+export function xrplCurrencyOf(v: unknown): XrplCurrency | undefined {
+  if (typeof v !== "string") return undefined;
+  if (v === "XRP") return "XRP";
+  if (v.startsWith("{")) {
+    try {
+      return issuedOrMpt(JSON.parse(v));
+    } catch {
+      return undefined;
+    }
+  }
+  const parts = v.split(":");
+  return parts.length === 2 ? issuedOrMpt({ currency: parts[0], issuer: parts[1] }) : undefined;
+}
+
+/**
+ * A charge request's `methodDetails.memos`, as MPP's XRPL schema has it (`dist/chunk-L6LVAN2P.js:17-90`): absent, or an
+ * array of objects whose only members are the optional strings `type`, `format` and `data`.
+ */
+export function isXrplMemos(v: unknown): boolean {
+  if (v === undefined) return true;
+  if (!Array.isArray(v)) return false;
+  return v.every(
+    (m) => isObj(m) && Object.keys(m).every((k) => (k === "type" || k === "format" || k === "data") && typeof m[k] === "string"),
+  );
 }
 
 export function isXrplAddress(v: unknown): v is string {
@@ -156,21 +195,22 @@ export function solanaChargePairings(r: Obj, d: Obj): readonly MppPairingId[] | 
 }
 
 /**
- * `charge` on `xrpl`: `methodDetails.network` present, `recipient` a classic address, `currency` XRP, an issued
- * currency or an MPT, `amount` a positive decimal (whole drops for XRP), and the optional `invoiceId` 64 hex digits and
- * tags uint32. `methodDetails.memos` is absent: `build` writes no memo but the LCP one (`xrpl/memos-not-carried`).
+ * `charge` on `xrpl`: `methodDetails.network` present, `recipient` a classic address, `currency` a string naming XRP,
+ * an issued currency or an MPT (`xrplCurrencyOf`), `amount` a positive decimal (whole drops for XRP), the optional
+ * `invoiceId` 64 hex digits, tags uint32, and `memos` as the stock schema has them (`isXrplMemos`), which `build` writes.
  */
 export function xrplChargePairings(r: Obj, d: Obj): readonly MppPairingId[] | Refusal {
   const network = xrplNetworkOf(d);
   if (typeof network !== "string") return network;
   const amount = r["amount"];
+  const currency = xrplCurrencyOf(r["currency"]);
   if (
     !isXrplAddress(r["recipient"]) ||
-    !isXrplCurrency(r["currency"]) ||
+    currency === undefined ||
     typeof amount !== "string" ||
     !XRPL_AMOUNT.test(amount) ||
     /^[0.]+$/.test(amount) ||
-    (r["currency"] === "XRP" && !isU64Positive(amount))
+    (currency === "XRP" && !isU64Positive(amount))
   ) {
     return refusal("mpp/request-malformed");
   }
@@ -178,7 +218,7 @@ export function xrplChargePairings(r: Obj, d: Obj): readonly MppPairingId[] | Re
   for (const k of ["destinationTag", "sourceTag"]) {
     if (d[k] !== undefined && !isUint32(d[k])) return refusal("mpp/request-malformed");
   }
-  if (d["memos"] !== undefined) return refusal("xrpl/memos-not-carried");
+  if (!isXrplMemos(d["memos"])) return refusal("mpp/request-malformed");
   return ["mpp/charge/xrpl"];
 }
 
@@ -313,7 +353,8 @@ export function solanaSessionPairings(r: Obj, _d: Obj): readonly MppPairingId[] 
 /**
  * `session` on `xrpl`: `channelId` absent or `""`; `network` named; `currency` absent or `"XRP"`; a classic recipient
  * whose checksum holds, as the channel id `build` derives reads it; `amount` a u64 in drops, written in decimal with no
- * sign, point or leading zero.
+ * sign, point or leading zero. It names both XRPL sessions, which no member of the challenge tells apart: the in-band
+ * opening lcp's client writes, and the stock client's session, which opens its channel out of band.
  */
 export function xrplSessionPairings(r: Obj, d: Obj): readonly MppPairingId[] | Refusal {
   const channel = r["channelId"] ?? d["channelId"];
@@ -324,7 +365,7 @@ export function xrplSessionPairings(r: Obj, d: Obj): readonly MppPairingId[] | R
   if (!isXrplAddress(r["recipient"]) || accountIdOf(r["recipient"]) === null || !isDrops(r["amount"])) {
     return refusal("mpp/request-malformed");
   }
-  return ["mpp/session/xrpl"];
+  return ["mpp/session/xrpl", "mpp/session/xrpl/stock"];
 }
 
 // ── session on hedera ──────────────────────────────────────────────────────────────────────────────────────────

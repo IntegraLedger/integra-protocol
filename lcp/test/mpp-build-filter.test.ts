@@ -119,9 +119,10 @@ const CASES: Case[] = rowsOf<Case>(
     ["splits adding up to amount", "mpp/charge/evm/permit2", (c) => withRequest(c, (r) => (details(r)["splits"] = [{ recipient: r["recipient"]!, amount: r["amount"]! }])), "mpp/input-malformed"],
     ["amount 0 with permit2 alone listed", "mpp/charge/evm/permit2", (c) => withRequest(c, (r) => ((r["amount"] = "0"), (details(r)["credentialTypes"] = ["permit2"]))), "mpp/input-malformed"],
     ["amount 0 with authorization listed too", "mpp/charge/evm/permit2", (c) => withRequest(c, (r) => (r["amount"] = "0")), "mpp/not-this-pairing", "mpp/charge/evm/authorization"],
-    // The XRP Ledger charge's build writes only the LCP memo; the session's derives the channel id from the recipient's
-    // AccountID, a classic address whose double-SHA-256 checksum holds.
-    ["methodDetails.memos", "mpp/charge/xrpl", (c) => withRequest(c, (r) => (details(r)["memos"] = [{ Memo: { MemoData: "6C6370" } }])), "xrpl/memos-not-carried"],
+    // The XRP Ledger charge's build writes the memos the stock schema has (type, format, data), not rippled's {Memo}
+    // form; the session's derives the channel id from the recipient's AccountID, a classic address whose double-SHA-256
+    // checksum holds.
+    ["methodDetails.memos in rippled's form", "mpp/charge/xrpl", (c) => withRequest(c, (r) => (details(r)["memos"] = [{ Memo: { MemoData: "6C6370" } }])), "mpp/request-malformed"],
     ["a recipient whose checksum fails", "mpp/session/xrpl", (c) => withRequest(c, (r) => (r["recipient"] = (r["recipient"] as string).slice(0, -1) + ((r["recipient"] as string).endsWith("r") ? "p" : "r"))), "mpp/request-malformed"],
     // Tempo's key authorization: `expiry` and each limit's `period` are uint64 seconds.
     ["periodCount 10^16 - 1 weeks", "mpp/subscription/tempo", (c) => withRequest(c, (r) => ((r["periodCount"] = "9999999999999999"), (r["periodUnit"] = "week"))), "mpp/request-malformed"],

@@ -41,7 +41,7 @@ type Pairing = {
 const MPP = rowsOf(
   BINDINGS.filter((b) => b.id.startsWith("mpp/")) as unknown as Pairing[],
   "BINDINGS, the MPP pairings",
-  { exact: 25 },
+  { exact: 26 },
 );
 
 const isObj = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
@@ -66,7 +66,7 @@ function credentials(v: unknown, at: string, out: [string, MppCredential][]): [s
 const CREDENTIALS = rowsOf(
   FILES.flatMap((f) => credentials(vector(f), "", []).map(([at, c]) => ({ file: f, at, credential: c }))),
   "every credential the MPP vector files hold",
-  { exact: 19 },
+  { exact: 20 },
 );
 
 const decoded = (c: MppChallenge): Record<string, Json> => JSON.parse(Buffer.from(c.request, "base64url").toString("utf8"));
@@ -182,6 +182,7 @@ const NO_SIGNED_PLACE = [
   "mpp/subscription/stripe",
   "mpp/charge/evm/transaction",
   "mpp/charge/evm/hash",
+  "mpp/session/xrpl/stock",
   "mpp/session/solana/stock",
   "mpp/session/hedera/stock",
 ];

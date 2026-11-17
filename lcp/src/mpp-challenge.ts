@@ -166,6 +166,7 @@ export type MppPairingId =
   | "mpp/charge/xrpl"
   | "mpp/charge/nearintents"
   | "mpp/session/xrpl"
+  | "mpp/session/xrpl/stock"
   | "mpp/session/hedera/stock"
   | "mpp/charge/card"
   | "mpp/charge/stripe"

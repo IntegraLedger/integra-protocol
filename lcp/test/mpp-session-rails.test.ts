@@ -17,12 +17,14 @@ import {
   issuedDigest,
   pairingsOf,
   sessionXrpl,
+  sessionXrplStock,
   type MppChallenge,
   type MppCredential,
   type SessionWithin,
 } from "../src/mpp.js";
 import { decodeSvmTx, openOf, sessionProof, solanaVoucher, type SvmReader } from "../src/svm.js";
-import { decodeBlob, xrplChannelId, xrplClaim, type XrplLanded, type XrplReader } from "../src/xrpl.js";
+import { decodeBlob, xrplChannelId, xrplClaim, type XrplReader } from "../src/xrpl.js";
+import { landed as landedFixture, xrplReader } from "./fixtures/xrpl-reader.js";
 import { counting } from "./fixtures/counting-reader.js";
 import { resigned } from "./fixtures/xrpl-resign.js";
 import { rowsOf } from "./rows.js";
@@ -42,7 +44,7 @@ describe("SS1: the opening challenges", () => {
     const pairings = { xrpl: sessionXrpl } as const;
     for (const m of ["xrpl"] as const) {
       const row = V.SS1[m];
-      expect(pairingsOf(row.challenge)).toEqual([`mpp/session/${m}`]);
+      expect(pairingsOf(row.challenge)).toEqual([`mpp/session/${m}`, `mpp/session/${m}/stock`]);
       expect(pairings[m].advertise([row.challenge], H, V.fixed.link, row.challenge, 0)).toEqual([row.placed]);
       expect(await issuedDigest(row.challenge)).toBe(row.expectIssuedDigest);
       expect(await issuedDigest(row.placed)).toBe(row.expectIssuedDigest);
@@ -60,7 +62,7 @@ describe("SS1: the opening challenges", () => {
   it("a challenge without expires names its pairing", () => {
     for (const m of ["xrpl"] as const) {
       const { expires: _expires, ...unexpiring } = V.SS1[m].challenge as MppChallenge;
-      expect(pairingsOf(unexpiring)).toEqual([`mpp/session/${m}`]);
+      expect(pairingsOf(unexpiring)).toEqual([`mpp/session/${m}`, `mpp/session/${m}/stock`]);
       expect(pairingsOf({ ...V.SS1[m].challenge, expires: "tomorrow" })).toEqual(refused("mpp/expires-required"));
     }
   });
@@ -179,12 +181,14 @@ describe("mpp/session/xrpl", () => {
   const unreadable = (reason: string) => ({ state: "unreadable", reason, foreign: [] });
   /** What recover takes for the transaction `tx`: xrpl:1 and the challenge the opening answers. */
   const recoverOf = (tx: unknown) => ({ network: "xrpl:1" as const, tx: tx as string, option: C_X });
-  const reader = (landed: XrplLanded | { notFound: true; searchedAll: boolean }, blob: string | null = null): XrplReader => ({
-    network: "xrpl:1",
-    tx: async () => landed,
-    txBlob: async () => blob,
-    validatedLedger: async () => 1000,
-  });
+  /** A reader whose `tx` answers the old row's landed facts with `blob`, or not found. */
+  const reader = (l: { validated: boolean; result: string; ledgerIndex?: number; deletedChannels?: string[] } | { notFound: true; searchedAll: boolean }, blob: string | null = null): XrplReader =>
+    xrplReader({
+      tx: async () =>
+        "notFound" in l || blob === null
+          ? { notFound: true, searchedAll: true }
+          : landedFixture(blob, { validated: l.validated, result: l.result, ...(l.ledgerIndex === undefined ? {} : { ledgerIndex: l.ledgerIndex }), ...(l.deletedChannels === undefined ? {} : { deletedChannels: l.deletedChannels }) }),
+    });
 
   // XS1's id is computed by hand from the XRPL specification: SHA-512Half of the PayChannel space key 0x0078, the two
   // AccountIDs and the sequence as a big-endian UInt32 (xrpl.org, "PayChannel ID Format"; rippled Indexes.cpp L437-441
@@ -267,18 +271,19 @@ describe("mpp/session/xrpl", () => {
     expect(V.XS2.blob.length / 2).toBe(V.XS2.expectLength);
     expect(await sessionXrpl.bound(open(V.XS2.blob))).toBe(V.XS2.expectBound);
     const ref = await sessionXrpl.reference(open(V.XS2.blob), C_X);
-    expect(ref).toEqual({
+    expect(ref).toMatchObject({
       network: "xrpl:1",
       transaction: V.XS2.expectHash,
-      lastLedgerSequence: V.XS2.lastLedgerSequence,
+      h: V.XS2.expectBound,
       payee: V.XS2.expectTxJson.Destination,
+      signed: { account: V.XS2.account, lastLedgerSequence: V.XS2.lastLedgerSequence },
     });
     expect(roundTrip(ref)).toEqual(ref);
     expect(await sessionXrpl.channel.ref(open(V.XS2.blob))).toEqual({ network: "xrpl:1", channel: V.XS2.expectChannel });
     expect(sessionXrpl.channel.until(open(V.XS2.blob))).toBeUndefined();
     const withCancel = encodeXrpl({ ...(decodeXrpl(V.XS2.blob) as object), CancelAfter: V.XS2.cancelAfter });
     expect(sessionXrpl.channel.until(open(withCancel))).toBe(V.XS2.expectUntil);
-    expect(await sessionXrpl.recover(recoverOf(V.XS2.expectHash), reader(V.XS4.rows[0].landed, V.XS2.blob))).toBe(H);
+    expect(await sessionXrpl.recover(recoverOf(V.XS2.expectHash), reader(V.XS4.opened, V.XS2.blob))).toBe(H);
   });
 
   // until reads the channel's end from the opening as channel.ref holds it (as bound holds it): an opening whose echoed
@@ -301,65 +306,6 @@ describe("mpp/session/xrpl", () => {
     expect(sessionXrpl.channel.until({ ...withCancel, payload: { ...withCancel.payload, action: "topUp" } })).toBeUndefined();
   });
 
-  // XS4's rows are the file's landed shapes and their status; a tec result is a final failure that claimed the fee
-  // (xrpl.org, "tec Codes"), and only a validated ledger's result is final (xrpl.org, "Finality of Results").
-  it("XS4: recover gives XS2's memo only for the opening status reads settled, and reads its blob only then", async () => {
-    const ref = await sessionXrpl.reference(open(V.XS2.blob), C_X);
-    if ("refused" in ref) throw new Error(ref.code);
-    const counted = (landed: XrplLanded) => {
-      const calls = { n: 0 };
-      const r = reader(landed, V.XS2.blob);
-      const each: XrplReader = {
-        ...r,
-        tx: async (h, range) => (calls.n++, r.tx(h, range)),
-        txBlob: async (h) => (calls.n++, r.txBlob(h)),
-      };
-      return { calls, r: each };
-    };
-    const recoverWhen: Record<string, string> = { tecNO_DST: "xrpl/not-success", "type Payment": "xrpl/not-channel-create" };
-    for (const row of rowsOf(V.XS4.rows, "mpp-session-hedera-solana-xrpl.json XS4.rows")) {
-      const { calls, r } = counted(row.landed);
-      const status = await sessionXrpl.status({ ...ref, fromLedger: 900 }, r, row.query);
-      expect(status, row.case).toEqual(row.expect);
-      calls.n = 0;
-      const recovered = await sessionXrpl.recover(recoverOf(ref.transaction), r);
-      expect(recovered, row.case).toEqual(row.expect.state === "settled" ? V.XS2.expectBound : refused(recoverWhen[row.case]!));
-      expect(calls.n, row.case).toBe(row.expect.state === "settled" ? 2 : 1);
-    }
-    const unvalidated = { ...V.XS4.rows[0].landed, validated: false };
-    const incomplete = { state: "pending", reason: "search-incomplete", foreign: [] };
-    expect(await sessionXrpl.status({ ...ref, fromLedger: 900 }, reader(unvalidated, V.XS2.blob), VALIDATED)).toEqual(incomplete);
-    expect(await sessionXrpl.recover(recoverOf(ref.transaction), reader(unvalidated, V.XS2.blob))).toEqual(refused("xrpl/not-validated"));
-    expect(await sessionXrpl.recover(recoverOf(ref.transaction), reader({ notFound: true, searchedAll: true }, V.XS2.blob))).toEqual(
-      refused("xrpl/not-found"),
-    );
-    const failing: XrplReader = { ...reader(V.XS4.rows[0].landed, V.XS2.blob), tx: async () => { throw new ReaderError("transport"); } };
-    expect(await sessionXrpl.recover(recoverOf(ref.transaction), failing)).toEqual(refused("xrpl/unreadable"));
-  });
-
-  // A transaction's identifying hash is 64 hex digits (xrpl.org, Basic Data Types, "Hashes"), hex digits name the
-  // same bytes in either case, and decodeBlob writes the hash in upper case. This reader holds XS2's opening and its
-  // blob under the vector file's XS2 hash, which is in upper case, and no other key, so recover settles on the
-  // transaction status settles on.
-  it("XS4: recover looks the opening up in upper case, as status does, and reads nothing for a malformed transaction", async () => {
-    const ref = { network: "xrpl:1" as const, transaction: V.XS2.expectHash as string, lastLedgerSequence: V.XS2.lastLedgerSequence as number };
-    const opened = V.XS4.rows[0];
-    const holding: XrplReader = {
-      network: "xrpl:1",
-      tx: async (hash) => (hash === V.XS2.expectHash ? opened.landed : { notFound: true, searchedAll: true }),
-      txBlob: async (hash) => (hash === V.XS2.expectHash ? V.XS2.blob : null),
-      validatedLedger: async () => V.XS2.lastLedgerSequence + 1,
-    };
-    const lower = ref.transaction.toLowerCase();
-    expect(await sessionXrpl.status({ ...ref, fromLedger: 900, transaction: lower, payee: V.XS2.expectTxJson.Destination }, holding, VALIDATED)).toEqual(opened.expect);
-    expect(await sessionXrpl.recover(recoverOf(lower), holding)).toBe(V.XS2.expectBound);
-    for (const transaction of [undefined, 7, `0x${ref.transaction}`, ref.transaction.slice(2)]) {
-      const { reader: r, calls } = counting(holding);
-      expect([transaction, await sessionXrpl.recover(recoverOf(transaction), r)]).toEqual([transaction, refused("xrpl/wrong-reader")]);
-      expect(calls).toEqual([]);
-    }
-  });
-
   // A transaction's identifying hash is SHA-512Half of the prefix 54584E00 ("TXN\0") and its signed binary (xrpl.org,
   // "Transaction Common Fields": hash; "Basic Data Types": Hashes), computed here with node:crypto; the `tx` method with
   // `binary: true` answers the signed blob of the transaction it names (xrpl.org, "tx"). A blob that does not decode,
@@ -370,7 +316,7 @@ describe("mpp/session/xrpl", () => {
     const txHash = (blob: string) =>
       createHash("sha512").update(Buffer.from(`54584E00${blob}`, "hex")).digest().subarray(0, 32).toString("hex").toUpperCase();
     expect(txHash(V.XS2.blob)).toBe(V.XS2.expectHash);
-    const opened = V.XS4.rows[0].landed;
+    const opened = V.XS4.opened;
     const ref = recoverOf(V.XS2.expectHash);
     const unreadable = refused("xrpl/unreadable");
     // XS2's blob one byte short does not decode.
@@ -382,7 +328,7 @@ describe("mpp/session/xrpl", () => {
     // The charge file's V3 blob is a Payment under its own hash, which the validated answer names a PaymentChannelCreate.
     expect(txHash(C.V3.blob)).toBe(C.V3.expectReference.transaction);
     expect(await sessionXrpl.recover({ ...ref, tx: C.V3.expectReference.transaction }, reader(opened, C.V3.blob))).toEqual(
-      unreadable,
+      refused("xrpl/not-channel-create"),
     );
   });
 
@@ -485,100 +431,96 @@ describe("mpp/session/xrpl", () => {
     expect(hex(u.request.claim.bytes).toUpperCase().endsWith("FFFFFFFFFFFFFFFF")).toBe(true);
   });
 
-  it("XS4: the opening's status and a reported close", async () => {
-    const ref = await sessionXrpl.reference(open(V.XS2.blob), C_X);
-    if ("refused" in ref) throw new Error(ref.code);
-    for (const row of rowsOf(V.XS4.rows, "mpp-session-hedera-solana-xrpl.json XS4.rows")) {
-      expect(await sessionXrpl.status({ ...ref, fromLedger: 900 }, reader(row.landed), row.query), row.case).toEqual(row.expect);
-    }
-    const close = sessionXrpl.closeRef(C_X, V.XS2.expectChannel.toLowerCase());
-    if ("refused" in close) throw new Error(close.code);
-    expect(close.payee).toBe(V.XS2.expectTxJson.Destination);
-    const closeHash: string = V.XS4.closeTransaction;
-    for (const row of rowsOf(V.XS4.closeRows, "mpp-session-hedera-solana-xrpl.json XS4.closeRows")) {
-      expect(await sessionXrpl.status({ ...close, transaction: closeHash }, reader(row.landed), row.query), row.case).toEqual(row.expect);
-    }
-    const failing: XrplReader = { ...reader({ notFound: true, searchedAll: false }), tx: async () => { throw new ReaderError("transport"); } };
-    expect(await sessionXrpl.status({ ...close, transaction: closeHash }, failing, VALIDATED)).toEqual(unreadable("transport"));
-    // An opening transaction that is not 64 hex digits (xrpl.org, Basic Data Types, "Hashes") cannot name the
-    // opening: the ref is not one reference writes, so the read is unreadable, unparseable, never expired, even from a
-    // reader that answers any other hash as not found with the whole range searched and LastLedgerSequence passed; the
-    // lookup asks for the hash in the upper case decodeBlob writes.
-    const opened = V.XS4.rows[0];
-    const holding: XrplReader = {
-      ...reader({ notFound: true, searchedAll: true }),
-      tx: async (hash) => (hash === ref.transaction ? opened.landed : { notFound: true, searchedAll: true }),
-      validatedLedger: async () => V.XS2.lastLedgerSequence + 1,
-    };
-    for (const transaction of [undefined, `0x${ref.transaction}`, ref.transaction.slice(2)]) {
-      const { reader: r, calls } = counting(holding);
-      const malformed = { ...ref, fromLedger: 900, transaction } as typeof ref & { fromLedger: number };
-      expect([transaction, await sessionXrpl.status(malformed, r, VALIDATED)]).toEqual([transaction, unreadable("unparseable")]);
-      expect(calls).toEqual([]);
-    }
-    expect(await sessionXrpl.status({ ...ref, fromLedger: 900, transaction: ref.transaction.toLowerCase() }, holding, VALIDATED)).toEqual(
-      opened.expect,
-    );
-    // A channel that is not 64 hex digits cannot name the close, so the read is unreadable, unparseable, never
-    // failed, with nothing read; hex digits read the same in either case.
-    const closed = V.XS4.closeRows[0];
-    for (const channel of [`0x${close.channel}`, undefined, close.channel.slice(2)]) {
-      const { reader: r, calls } = counting(reader(closed.landed));
-      const malformed = { ...close, channel, transaction: closeHash } as typeof close & { transaction: string };
-      expect(await sessionXrpl.status(malformed, r, VALIDATED)).toEqual(unreadable("unparseable"));
-      expect(calls).toEqual([]);
-    }
-    const lower = { ...close, channel: close.channel.toLowerCase(), transaction: closeHash };
-    expect(await sessionXrpl.status(lower, reader(closed.landed), VALIDATED)).toEqual(closed.expect);
-    // The close's transaction, a Hash256 like the opening's, is read by the same rule: one that is not 64 hex digits
-    // cannot name the close, so the read is unreadable with nothing read, and the lookup asks for the hash in upper
-    // case, from a reader that holds the close under its upper-case hash alone.
-    const holdingClose: XrplReader = {
-      ...reader(closed.landed),
-      tx: async (hash) => (hash === closeHash ? closed.landed : { notFound: true, searchedAll: false }),
-    };
-    for (const transaction of [undefined, `0x${closeHash}`, closeHash.slice(2)]) {
-      const { reader: r, calls } = counting(holdingClose);
-      const malformed = { ...close, transaction } as typeof close & { transaction: string };
-      expect([transaction, await sessionXrpl.status(malformed, r, VALIDATED)]).toEqual([transaction, unreadable("unparseable")]);
-      expect(calls).toEqual([]);
-    }
-    expect(await sessionXrpl.status({ ...close, transaction: closeHash.toLowerCase() }, holdingClose, VALIDATED)).toEqual(closed.expect);
-  });
-
-  // The opening and the close each read a ledger index: given that index as the position to come after, the transaction
-  // is at the position given, failed before-position (read-status.md rule 16).
-  it("XS4: an opening or a close at the position the query gives is before-position", async () => {
-    const ref = await sessionXrpl.reference(open(V.XS2.blob), C_X);
-    if ("refused" in ref) throw new Error(ref.code);
-    const [opened] = V.XS4.rows;
-    expect(await sessionXrpl.status({ ...ref, fromLedger: 900 }, reader(opened.landed), { ...VALIDATED, after: 990 })).toEqual({
-      ...opened.expect,
-      state: "failed",
-      reason: "before-position",
-    });
-    expect(await sessionXrpl.status({ ...ref, fromLedger: 900 }, reader(opened.landed), { ...VALIDATED, after: 989 })).toEqual(opened.expect);
-    const close = sessionXrpl.closeRef(C_X, V.XS2.expectChannel);
-    if ("refused" in close) throw new Error(close.code);
-    const [closed] = V.XS4.closeRows;
-    const named = { ...close, transaction: V.XS4.closeTransaction as string };
-    expect(await sessionXrpl.status(named, reader(closed.landed), { ...VALIDATED, after: 995 })).toEqual({
-      ...closed.expect,
-      state: "failed",
-      reason: "before-position",
-    });
-  });
-
-  it("XS5: a multi-signed opening is refused by bound, reference and the channel ref", async () => {
+  it("XS5: a multisigned opening is admitted by bound, reference and the channel ref", async () => {
     const d = await decodeBlob(V.XS5.blob);
     if ("refused" in d) throw new Error(d.code);
     expect(d.hash).toBe(V.XS5.hash);
     expect((d.tx["Signers"] as unknown[]).length).toBe(3);
     expect(d.tx.Memos).toEqual((decodeXrpl(V.XS2.blob) as { Memos: unknown }).Memos);
     const presented = open(V.XS5.blob);
-    expect(await sessionXrpl.bound(presented)).toEqual(refused(V.XS5.expect));
-    expect(await sessionXrpl.reference(presented, C_X)).toEqual(refused(V.XS5.expect));
-    expect(await sessionXrpl.channel.ref(presented)).toEqual(refused(V.XS5.expect));
+    expect(V.XS5.expect).toBe("admitted");
+    expect(await sessionXrpl.bound(presented)).toBe(V.XS2.expectBound);
+    const ref = await sessionXrpl.reference(presented, C_X);
+    if ("refused" in ref) throw new Error(ref.code);
+    expect([ref.transaction, ref.signed?.sequence]).toEqual([V.XS5.hash, d.tx["Sequence"]]);
+    expect(await sessionXrpl.channel.ref(presented)).toEqual({ network: "xrpl:1", channel: V.XS2.expectChannel });
+  });
+
+  it("both XRPL sessions' reference refuses a credential whose echoed challenge is not the challenge it is given", async () => {
+    const other = { ...C_X, realm: "other.seller.example" };
+    expect(await sessionXrpl.reference(open(V.XS2.blob), other)).toEqual(refused("mpp/challenge-not-option"));
+    const voucher = V.XS6.presented as MppCredential;
+    expect(await sessionXrplStock.reference(voucher, { ...voucher.challenge, realm: "other.seller.example" })).toEqual(
+      refused("mpp/challenge-not-option"),
+    );
+  });
+
+  it("XS6: a stock client's voucher binds nothing, names its channel and its source's payer, and an open is refused", async () => {
+    const presented = V.XS6.presented as MppCredential;
+    expect(await sessionXrplStock.bound(presented)).toEqual(refused(V.XS6.expectBound));
+    expect(await sessionXrplStock.reference(presented, presented.challenge)).toEqual(V.XS6.expectRef);
+    const open = { ...presented, payload: { ...presented.payload, action: "open" } } as MppCredential;
+    expect(await sessionXrplStock.bound(open)).toEqual(refused(V.XS6.expectOpen));
+    const { source: _source, ...unsourced } = presented as MppCredential & { source: string };
+    expect(await sessionXrplStock.reference(unsourced as MppCredential, presented.challenge)).toEqual(refused(V.XS6.expectNoSource));
+  });
+
+  // XS4's closeRows: the close named by closeTransaction, read by `tx` through sessionXrpl's status with closeRef's ref.
+  it("XS4: the close's read, by the channel its metadata deletes", async () => {
+    const ref = { ...(sessionXrpl.closeRef(C_X, V.XS2.expectChannel) as object), transaction: V.XS4.closeTransaction };
+    type CloseRow = { case: string; landed: Record<string, unknown> | null; query: Record<string, unknown>; expect: unknown };
+    for (const row of rowsOf<CloseRow>(V.XS4.closeRows, "XS4 closeRows", { exact: 5 })) {
+      const r = xrplReader({
+        tx: async (h) =>
+          row.landed !== null && h === V.XS4.closeTransaction
+            ? ({ hash: h, blob: "", ...row.landed } as never)
+            : { notFound: true, searchedAll: true },
+      });
+      expect(await sessionXrpl.status(ref as never, r, row.query as never), row.case).toStrictEqual(row.expect);
+    }
+  });
+
+  // XS7: the in-band opening's read, held by the search's gate. The reader answers the payer's account alone.
+  it("XS7: the in-band opening that lapsed is pending, search-incomplete, while the search proves no absence", async () => {
+    const ref = await sessionXrpl.reference(open(V.XS2.blob), C_X);
+    if ("refused" in ref) throw new Error(ref.code);
+    const payer = V.XS2.account as string;
+    const at = (l: string) => (l === "validated" ? V.XS7.ledger : V.XS7.ledger + 1);
+    const r = xrplReader({
+      server: async () => ({ validated: V.XS7.ledger, latest: V.XS7.ledger + 1, completeLedgers: `1-${V.XS7.ledger + 1}` }),
+      accountInfo: async (a, l) => (a === payer ? { sequence: V.XS7.accountSequence, ledgerIndex: at(l) } : { notFound: true, ledgerIndex: at(l) }),
+    });
+    expect(await sessionXrpl.status({ ...ref, fromLedger: 900 } as never, r, { act: "payment", finality: "validated" })).toStrictEqual(V.XS7.expect);
+  });
+
+  // XS8: the stock session's channel, read through sessionXrplStock's status from the reference of XS6's voucher naming
+  // the row's channel. Only the row's opener answers account_tx, so a read of another account's finds nothing.
+  it("XS8: the stock session's channel, read by its create in the account_tx of the channel's Account", async () => {
+    type Row = { case: string; channel: string; entry: Record<string, string> | null; opener: string; creates: { blob: string; ledgerIndex: number }[]; complete?: string; expect: unknown };
+    const voucher = V.XS6.presented as MppCredential;
+    const blobOf = (name: string): string => (name === "XS2" ? V.XS2.blob : V.XS8.blobs[name]);
+    const hashOf = (blob: string) =>
+      createHash("sha512").update(Buffer.from(`54584E00${blob}`, "hex")).digest().subarray(0, 32).toString("hex").toUpperCase();
+    for (const row of rowsOf<Row>(V.XS8.rows, "XS8 rows", { exact: 8 })) {
+      const presented = { ...voucher, payload: { ...voucher.payload, channelId: row.channel } } as MppCredential;
+      const ref = await sessionXrplStock.reference(presented, voucher.challenge);
+      if ("refused" in ref) throw new Error(ref.code);
+      const creates = row.creates.map((c) => ({
+        hash: hashOf(blobOf(c.blob)),
+        validated: true,
+        ledgerIndex: c.ledgerIndex,
+        result: "tesSUCCESS",
+        blob: blobOf(c.blob),
+        createdChannels: [row.channel],
+      }));
+      const r = xrplReader({
+        ...(row.complete === undefined ? {} : { server: async () => ({ validated: 1000, latest: 1001, completeLedgers: row.complete! }) }),
+        accountTx: async (a, range) => ({ transactions: a === row.opener ? creates : [], min: range.min, max: range.max }),
+        channel: async (id) => (row.entry !== null && id === row.channel ? (row.entry as never) : { notFound: true, ledgerIndex: 1000 }),
+      });
+      const answer = await sessionXrplStock.status({ ...ref, fromLedger: 950 }, r, { act: "payment", finality: "validated", after: 950 });
+      expect(answer, row.case).toStrictEqual(row.expect);
+    }
   });
 
   it("plant 3: an opening whose memo carries another hash, or no memo, is refused, never H", async () => {
@@ -666,7 +608,9 @@ describe("mpp-session-hedera-solana-xrpl.json agreedRefusals: every row runs", (
   };
   // Each input a row changes is accepted as given, so each refusal below is the change's.
   it("the inputs the rows change, as given, are accepted", async () => {
-    for (const m of ["xrpl"] as const) expect(pairingsOf(requestOf(m, () => undefined))).toEqual([`mpp/session/${m}`]);
+    for (const m of ["xrpl"] as const) {
+      expect(pairingsOf(requestOf(m, () => undefined))).toEqual([`mpp/session/${m}`, `mpp/session/${m}/stock`]);
+    }
     expect(await sessionXrpl.bound(xrplOpen(withMemos(8)))).toBe(H);
     expect(xrplChannelId(V.XS1.account, V.XS1.destination, V.XS1.sequence)).toBe(V.XS1.expect);
     expect(solanaVoucher(V.SV2.channel, 100n)).toBeInstanceOf(Uint8Array);

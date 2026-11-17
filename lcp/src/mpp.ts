@@ -63,7 +63,7 @@ import { chargeUsdcEvm, chargeUsdcGateway, chargeUsdcSolana, chargeUsdcStacks } 
 import { evmSessionResume, sessionEvm, sessionNetwork, sessionTempo, subscriptionTempo } from "./mpp-session.js";
 import { solanaNetworkOf, xrplNetworkOf } from "./mpp-rail-checks.js";
 import { chargeLightning, sessionLightning } from "./lightning.js";
-import { railSessionResume, sessionXrpl } from "./mpp-session-rails.js";
+import { railSessionResume, sessionXrpl, sessionXrplStock } from "./mpp-session-rails.js";
 import { hederaSessionResume, sessionHederaStock } from "./hedera-session.js";
 import { chargeSolana, chargeSolanaUnsponsored } from "./mpp-solana.js";
 import { subscriptionSolana } from "./mpp-subscription-solana.js";
@@ -132,6 +132,7 @@ export { sessionSolanaMemo, sessionSolanaStock, type SolanaSessionChoice, type S
 export { chargeXrpl, type XrplChargeChoice, type XrplChargeUnsigned } from "./mpp-xrpl.js";
 export {
   sessionXrpl,
+  sessionXrplStock,
   type RailSessionUnsigned,
   type SolanaTablesCredential,
 } from "./mpp-session-rails.js";
@@ -966,6 +967,7 @@ export const MPP_BINDINGS = Object.freeze([
   chargeXrpl,
   chargeNearIntents,
   sessionXrpl,
+  sessionXrplStock,
   sessionHederaStock,
   chargeCard,
   chargeStripe,

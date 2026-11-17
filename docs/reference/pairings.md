@@ -7,7 +7,7 @@ description: Every pairing @integraledger/lcp implements, generated from its reg
 
 This page is generated from the package by `node scripts/docs-reference.mjs`, and CI checks that it matches.
 
-`BINDINGS` holds 68 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and `confirmed`, and these members of its `pattern` record: the binding pattern, where it names one, whether the binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, `forwardIndexable` included.
+`BINDINGS` holds 69 pairings on 7 surfaces (`ack`, `acp`, `ap2`, `card`, `mpp`, `ucp`, `x402`). Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and `confirmed`, and these members of its `pattern` record: the binding pattern, where it names one, whether the binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, `forwardIndexable` included.
 
 ## `ack`
 
@@ -58,7 +58,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `mpp/charge/usdc/gateway` | `chargeUsdcGateway` from `@integraledger/lcp/mpp` | `none` | no | `id-reuse` | yes | no |  |
 | `mpp/charge/usdc/solana` | `chargeUsdcSolana` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/usdc/solana`](../../lcp/profiles/mpp-charge-usdc-solana.md) |
 | `mpp/charge/usdc/stacks` | `chargeUsdcStacks` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/usdc/stacks`](../../lcp/profiles/mpp-charge-usdc-stacks.md) |
-| `mpp/charge/xrpl` | `chargeXrpl` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes |  |
+| `mpp/charge/xrpl` | `chargeXrpl` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/xrpl`](../../lcp/profiles/mpp-charge-xrpl.md) |
 | `mpp/session/evm` | `sessionEvm` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/evm-tempo`](../../lcp/profiles/mpp-session-evm-tempo.md) |
 | `mpp/session/hedera/stock` | `sessionHederaStock` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | yes | no | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
 | `mpp/session/lightning` | `sessionLightning` from `@integraledger/lcp/lightning` | `none` | no | `native-field` | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
@@ -66,6 +66,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `mpp/session/solana/stock` | `sessionSolanaStock` from `@integraledger/lcp/mpp` | `none` | no | `native-field` | no | no | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
 | `mpp/session/tempo` | `sessionTempo` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/evm-tempo`](../../lcp/profiles/mpp-session-evm-tempo.md) |
 | `mpp/session/xrpl` | `sessionXrpl` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
+| `mpp/session/xrpl/stock` | `sessionXrplStock` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | yes | no | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
 | `mpp/subscription/solana` | `subscriptionSolana` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/subscription/solana`](../../lcp/profiles/mpp-subscription-solana.md) |
 | `mpp/subscription/stripe` | `subscriptionStripe` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no | [`mpp/subscription/stripe`](../../lcp/profiles/mpp-subscription-stripe.md) |
 | `mpp/subscription/tempo` | `subscriptionTempo` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes |  |
@@ -108,7 +109,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `x402/exact/sui` | `exactSui` from `@integraledger/lcp/sui` | `full` | no | `native-field` | yes | yes | [`x402/exact/sui`](../../lcp/profiles/x402-exact-sui.md) |
 | `x402/exact/tron/lcp-trc20-memo` | `exactTronMemo` from `@integraledger/lcp/tron` | `full` | no | `native-field` | yes | yes | [`x402/exact/tron/lcp-trc20-memo`](../../lcp/profiles/x402-exact-tron-lcp-trc20-memo.md) |
 | `x402/exact/tvm` | `exactTvm` from `@integraledger/lcp/tvm` | `full` | no | `native-field` | yes | yes |  |
-| `x402/exact/xrpl` | `exactXrpl` from `@integraledger/lcp/x402-exact-xrpl` | `full` | no | `id-reuse` | yes | no |  |
+| `x402/exact/xrpl` | `exactXrpl` from `@integraledger/lcp/x402-exact-xrpl` | `full` | no | `id-reuse` | yes | no | [`x402/exact/xrpl`](../../lcp/profiles/x402-exact-xrpl.md) |
 | `x402/upto/eip155/permit2` | `uptoPermit2` from `@integraledger/lcp/x402` | `full` | no | `native-field` | yes | yes | [`x402/upto/eip155/permit2`](../../lcp/profiles/x402-upto-eip155-permit2.md) |
 | `x402/upto/solana` | `uptoSvm` from `@integraledger/lcp/x402-upto-solana` | `full` | no | `native-field` | yes | yes | [`x402/upto/solana`](../../lcp/profiles/x402-upto-solana.md) |
 
@@ -218,7 +219,7 @@ The payer signed a Stacks transaction whose origin is the payer and which carrie
 
 ### `mpp/charge/xrpl`
 
-The payer signed, with a single key, an XRPL Payment whose InvoiceID is this ATR's hash, and the Payment is in a validated ledger with tesSUCCESS. This does not show that amount, destination, asset or timing match the ATR's content.
+The payer signed an XRPL Payment whose InvoiceID is this ATR's hash, and it is in a validated ledger with tesSUCCESS: it paid the amount meta.delivered_amount states to the account its Destination names. This does not show that amount, destination, asset or timing match the ATR's content.
 
 ### `mpp/session/evm`
 
@@ -246,7 +247,11 @@ The ATR's hash is in the MPP session challenge this channel opened under: its id
 
 ### `mpp/session/xrpl`
 
-The payer signed, with a single key, an XRPL PaymentChannelCreate whose one LCP memo carries this ATR's hash, and it is in a validated ledger with tesSUCCESS. The memo is in the public transaction. Vouchers in this channel sign the channel id and an amount, not the hash. This does not show that amount, deposit, destination, settle delay or timing match the ATR's content.
+The payer signed an XRPL PaymentChannelCreate whose one LCP memo carries this ATR's hash, and it is in a validated ledger with tesSUCCESS: it deposited the create's Amount into a channel whose beneficiary is the account its Destination names. The memo is in the public transaction. Vouchers in this channel sign the channel id and an amount, not the hash. This does not show that amount, deposit, destination, settle delay or timing match the ATR's content.
+
+### `mpp/session/xrpl/stock`
+
+Before this session, an account signed an agreement transaction carrying this ATR's hash on the session's XRPL network. The channel's create is in a validated ledger with tesSUCCESS: the account the voucher's source names deposited the create's Amount into the channel the voucher names, whose beneficiary is the account its Destination names, after the ledger the agreement was recorded at. The create does not carry the hash, and this does not show that the account that signed the agreement is the one that opened the channel unless the record compares the two. Vouchers sign the channel id and an amount, not the hash. This does not show that amount, deposit, destination, settle delay or timing match the ATR's content.
 
 ### `mpp/subscription/solana`
 
@@ -378,7 +383,7 @@ The payer's W5 wallet signed a request whose one Jetton transfer carries this AT
 
 ### `x402/exact/xrpl`
 
-The payer signed, with a single key, an XRPL Payment whose InvoiceID is the SHA-256 of this ATR's hash in LCP string form, and the Payment is in a validated ledger with tesSUCCESS. The hash can be confirmed from the ATR's bytes but not recovered from the ledger alone. This does not show that amount, destination, asset or timing match the ATR's content.
+The payer signed an XRPL Payment whose InvoiceID is the SHA-256 of this ATR's hash in LCP string form, and it is in a validated ledger with tesSUCCESS: it paid the amount meta.delivered_amount states to the account its Destination names. The hash can be confirmed from the ATR's bytes but not recovered from the ledger alone. This does not show that amount, destination, asset or timing match the ATR's content.
 
 ### `x402/upto/eip155/permit2`
 

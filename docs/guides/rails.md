@@ -457,6 +457,7 @@ mpp/charge/usdc/gateway
 mpp/session/hedera/stock
 mpp/session/lightning
 mpp/session/solana/stock
+mpp/session/xrpl/stock
 mpp/subscription/stripe
 x402/batch-settlement/cloudflare
 x402/exact/aptos

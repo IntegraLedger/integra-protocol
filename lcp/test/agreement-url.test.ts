@@ -19,6 +19,7 @@ import {
   evmHash,
   evmTransaction,
   pairingsOf,
+  sessionXrplStock,
   sessionSolanaStock,
   subscriptionStripe,
   type MppChallenge,
@@ -191,6 +192,8 @@ const subscriptionChallenge = issuedMpp("stripe", "subscription", CS.M2.request)
 /** MPP's placement: the carrier set to H's LCP string, the request re-encoded, then the id and opaque. */
 const carried = (c: MppChallenge, request: Json) => byHand({ ...c, request: encode(request) }, MC.fixed.H, MC.fixed.link);
 
+const xrplSession: MppChallenge = load("mpp-session-hedera-solana-xrpl.json").SS1.xrpl.challenge;
+
 const MPP_CASES: Case[] = [
   mppCase("mpp/charge/evm/transaction", evmTransaction, MC.fixed.H, MC.fixed.link, evmChallenge, byHand(evmChallenge, MC.fixed.H, MC.fixed.link)),
   mppCase("mpp/charge/evm/hash", evmHash, MC.fixed.H, MC.fixed.link, evmChallenge, byHand(evmChallenge, MC.fixed.H, MC.fixed.link)),
@@ -203,6 +206,7 @@ const MPP_CASES: Case[] = [
   mppCase("mpp/charge/usdc/gateway", chargeUsdcGateway, GW.fixed.H, GW.fixed.link, gatewayChallenge, byHand(gatewayChallenge, GW.fixed.H, GW.fixed.link)),
   mppCase("mpp/session/hedera/stock", sessionHederaStock, HSS.fixed.H, HSS.fixed.link, HSS.SS1.hedera.challenge, HSS.SS1.hedera.placed),
   mppCase("mpp/subscription/stripe", subscriptionStripe, MC.fixed.H, MC.fixed.link, subscriptionChallenge, carried(subscriptionChallenge, stripeDetails(CS.M2.request))),
+  mppCase("mpp/session/xrpl/stock", sessionXrplStock, MC.fixed.H, MC.fixed.link, xrplSession, byHand(xrplSession, MC.fixed.H, MC.fixed.link)),
 ];
 
 // ── The other surfaces.

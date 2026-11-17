@@ -33,6 +33,7 @@ import { FETCHED as HEDERA_FETCHED } from "../src/hedera.js";
 import { FETCHED as ROOT_FETCHED } from "../src/index.js";
 import type { SvmLanded, SvmReader } from "../src/svm.js";
 import type { XrplReader } from "../src/xrpl.js";
+import { landed, xrplReader } from "./fixtures/xrpl-reader.js";
 import { REFUSAL_CODES } from "../src/internal/codes.js";
 import { C_E, C_T, H, V, b64u, challenge, fromB64u, link, load, realm } from "./mpp-fixtures.js";
 import { READS_TO_REPEAT } from "./refusal-classes.js";
@@ -344,13 +345,8 @@ describe("problem", () => {
   });
 
   const xrplPush = pushed(XR, XR.refusals[0].payload);
-  const xrpl = (tx: XrplReader["tx"], network: XrplReader["network"] = "xrpl:1"): XrplReader => ({
-    network,
-    tx,
-    txBlob: async () => XR.V3.blob,
-    validatedLedger: async () => 1000,
-  });
-  const xrplLanded = (validated: boolean, result: string) => async () => ({ validated, result, ledgerIndex: 990, transactionType: "Payment" });
+  const xrpl = (tx: XrplReader["tx"], network: XrplReader["network"] = "xrpl:1"): XrplReader => xrplReader({ network, tx });
+  const xrplLanded = (validated: boolean, result: string) => async () => landed(XR.V3.blob, { validated, result });
 
   const arms: [string, () => Promise<unknown>, string, { status: number; type: string }][] = [
     ["mpp/charge/solana: no transaction at confirmed", () => chargeSolana.fetchPresented(solanaPush, solana(async () => ({ notFound: true as const, slot: null }))), "svm/not-found", internal],

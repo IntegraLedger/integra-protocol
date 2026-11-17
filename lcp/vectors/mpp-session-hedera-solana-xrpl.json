@@ -1,5 +1,5 @@
 {
- "about": "Vectors for mpp/session/hedera/stock, mpp/session/solana and mpp/session/xrpl. Where a value is shortened, the row holds its prefix and suffix. HS4's receipts are live testnet reads from testnet.hashio.io (eth_getTransactionReceipt) at 2026-09-25T09:02Z. The placed challenges are computed with Python 3 json and base64url. XS4's rows read XS2's opening, and its closeRows a close named by closeTransaction; each expected answer is the one the profile read-status (read-status.md) gives for its fixture, read at the mark validated for the act payment: a tec result, a validated success of another type and a validated transaction that deleted no such channel are pending, search-incomplete, since this read is no search for H (rules 23 and 24).",
+ "about": "Vectors for mpp/session/hedera/stock, mpp/session/solana and mpp/session/xrpl. Where a value is shortened, the row holds its prefix and suffix. HS4's receipts are live testnet reads from testnet.hashio.io (eth_getTransactionReceipt) at 2026-09-25T09:02Z. The placed challenges are computed with Python 3 json and base64url. XS4's opened is XS2's opening as the server answers it, which recover reads, and its closeRows a close named by closeTransaction; XS7 reads XS2's opening, and XS8 the stock session's channel. Each expected answer of XS4, XS7 and XS8 is the one the profile read-status (read-status.md) and the session profile's XRPL clause give the row's ledger, read at the mark validated for the act payment.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "H2": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -322,7 +322,7 @@
   "expectProofSignatureSuffix": "b0490e"
  },
  "SV4": {
-  "case": "a landed success with a top-level CHNL instruction, data 04, accounts [payee, channel, sysvar] → settled; data 02 → failed not-a-close",
+  "case": "a landed success with a top-level CHNL instruction, data 04, accounts [payee, channel, sysvar] \u2192 settled; data 02 \u2192 failed not-a-close",
   "tableClose": {
    "case": "A settleAndSeal close (data 04, accounts [payee, channel, sysvar]) as @solana/kit 8.4.0 writes it with the channel from an address lookup table (fixtures/svm-lookup-table.ts tableClose: compressTransactionMessageUsingAddressLookupTables with table 4QwSwNriKPrz8DLW4ju5uxC2TN5cksJx6tPUPj7DGLAW holding [channel], whose address is the one kit's documentation of that function uses), behind one zero signature slot. draft-solana-session-00 L2082-2097 at tempoxyz/mpp-specs 08e7dd87: a close bundled with a distribute of many recipients may be a version-0 transaction with an address lookup table. Each row is the landed transaction's loadedAddresses, as getTransaction lists the addresses its lookup tables loaded (writable, then read-only), and status's answer at finalized",
    "wireBase64": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQACAxzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABp6H7pOsrCQmT99Lf1iuJ4rhyB3pjn9fXR6jpn2PUFa4Gp9UXGSxcUSGMyUw9SvF/WNruCJuh/UTj29mKAAAAAMldvbubObW/csV2sS8SIzwf73L/gYSI9zg00vGC2JbrAQEDAAMCAQQBMrT7p/g2fICURynDZTjaqXSPN7hONppH7ZxdJJOr6ysBAAA=",
@@ -523,73 +523,20 @@
   "expect": "434C4D007FEED84DE7A40383F2CE4FCFC272CDB1816F255374F9110A75C6133CF776F1670000000000000064"
  },
  "XS4": {
+  "opened": {
+   "validated": true,
+   "result": "tesSUCCESS",
+   "ledgerIndex": 990,
+   "transactionType": "PaymentChannelCreate"
+  },
   "closeTransaction": "ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB",
-  "rows": [
-   {
-    "case": "validated tesSUCCESS PaymentChannelCreate at 990",
-    "landed": {
-     "validated": true,
-     "result": "tesSUCCESS",
-     "ledgerIndex": 990,
-     "transactionType": "PaymentChannelCreate"
-    },
-    "query": {
-     "act": "payment",
-     "finality": "validated"
-    },
-    "expect": {
-     "state": "settled",
-     "transaction": "CB1E7FE59E4265EEAA5E71C2A9BBC18D7E3213299A82349B92331DE485662746",
-     "position": 990,
-     "finality": "validated",
-     "foreign": []
-    }
-   },
-   {
-    "case": "tecNO_DST",
-    "landed": {
-     "validated": true,
-     "result": "tecNO_DST",
-     "ledgerIndex": 990,
-     "transactionType": "PaymentChannelCreate"
-    },
-    "query": {
-     "act": "payment",
-     "finality": "validated"
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "type Payment",
-    "landed": {
-     "validated": true,
-     "result": "tesSUCCESS",
-     "ledgerIndex": 990,
-     "transactionType": "Payment"
-    },
-    "query": {
-     "act": "payment",
-     "finality": "validated"
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   }
-  ],
   "closeRows": [
    {
-    "case": "validated with deletedChannels [channel]",
+    "case": "the close, validated at ledger 995 with tesSUCCESS, its metadata deleting the channel: settled at its ledger",
     "landed": {
      "validated": true,
      "result": "tesSUCCESS",
      "ledgerIndex": 995,
-     "transactionType": "PaymentChannelClaim",
      "deletedChannels": [
       "7FEED84DE7A40383F2CE4FCFC272CDB1816F255374F9110A75C6133CF776F167"
      ]
@@ -603,18 +550,78 @@
      "transaction": "ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB",
      "position": 995,
      "finality": "validated",
+     "presented": "yes",
      "foreign": []
     }
    },
    {
-    "case": "validated without it",
+    "case": "a validated transaction whose metadata deletes no such channel: not the close, pending, search-incomplete",
     "landed": {
      "validated": true,
      "result": "tesSUCCESS",
      "ledgerIndex": 995,
-     "transactionType": "PaymentChannelClaim",
      "deletedChannels": []
     },
+    "query": {
+     "act": "payment",
+     "finality": "validated"
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the close in a ledger the server has not validated: read at current, no mark, pending, below-mark",
+    "landed": {
+     "validated": false,
+     "result": "tesSUCCESS",
+     "ledgerIndex": 995,
+     "deletedChannels": [
+      "7FEED84DE7A40383F2CE4FCFC272CDB1816F255374F9110A75C6133CF776F167"
+     ]
+    },
+    "query": {
+     "act": "payment",
+     "finality": "validated"
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "below-mark",
+     "transaction": "ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB",
+     "position": 995,
+     "finality": "current",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the close at ledger 940, at or before the position 950 the query gives: failed, before-position",
+    "landed": {
+     "validated": true,
+     "result": "tesSUCCESS",
+     "ledgerIndex": 940,
+     "deletedChannels": [
+      "7FEED84DE7A40383F2CE4FCFC272CDB1816F255374F9110A75C6133CF776F167"
+     ]
+    },
+    "query": {
+     "act": "payment",
+     "finality": "validated",
+     "after": 950
+    },
+    "expect": {
+     "state": "failed",
+     "reason": "before-position",
+     "transaction": "ABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABABAB",
+     "position": 940,
+     "finality": "validated",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a transaction the server does not find: pending, search-incomplete",
+    "landed": null,
     "query": {
      "act": "payment",
      "finality": "validated"
@@ -628,10 +635,40 @@
   ]
  },
  "XS5": {
-  "case": "XS2's opening multi-signed: SigningPubKey empty, Fee 48, Signers from Ed25519 entropy 03x16, 04x16 and 05x16 (rPPdduC9MRTrXZP1J7MQyEKKEYiFigWZ6Q, rfPaNmieF15VqV752Q8qAc6ugtkKhWsA2R, rH9ESAdrFfDAZtCZGa7JiwNJfKnC6CmGFQ), with xrpl-py 4.1.0 on Python 3.12.3 (transaction.sign with multisign=True, then transaction.multisign); the hash is xrpl-py's get_hash. bound, reference and the channel ref refuse it: the payer signs the opening with a single key, and xrpl.org's Transaction Malleability page says a signature the quorum does not need can be removed by anyone, giving a different hash.",
+  "case": "XS2's opening multi-signed: SigningPubKey empty, Fee 48, Signers from Ed25519 entropy 03x16, 04x16 and 05x16 (rPPdduC9MRTrXZP1J7MQyEKKEYiFigWZ6Q, rfPaNmieF15VqV752Q8qAc6ugtkKhWsA2R, rH9ESAdrFfDAZtCZGa7JiwNJfKnC6CmGFQ), with xrpl-py 4.1.0 on Python 3.12.3 (transaction.sign with multisign=True, then transaction.multisign); the hash is xrpl-py's get_hash. bound, reference and the channel ref admit it: a multisigned payment is served on every pairing, the read being by the instrument, so another quorum's copy, which xrpl.org's Transaction Malleability page says anyone can make by removing a signature the quorum does not need, is the same payment under another hash.",
   "blob": "12000D22000000002400000007201B000003E8202700000E106140000000000F42406840000000000000307121ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F9730081144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65AF3E0107321ED7B9E49FF65B0E2A2834771A03982C68FE301AE13AD8FE3C7D37D718DED4BE41474400695048892D840193877929A876E2FFDF34E55497DFB5C0E0C32C0BAB1E854C2305997C15A07802E39C13F45C3A28ABD8CEECF2C89E9A647F33B2BD2AFD1A40C811445FE4723604B77DB91D959DD0551CA67E0BFCB85E1E0107321EDFA9399032E645C9205C7F75E649460422D22CCECA22862A63D7C9498C465BC6C7440540D5BB42DE9933E6D53C2C2B85F55A8A57FFD4B83562CD2F63DBEB38699AB92C7AA0CD53A543E459E9C46D54AF5CCFEEA753BA0D830B8C0DBFE787E28D9390D8114B1116674226780351A13D02B77003362A11D6774E1E0107321EDC1410EC4922A21B6F3CA7F376AD88074293F0F94119EB211FE83E75C7C7AC643744092D68D2884335F2BB593189B14E40A8C838F6E45583FEA31151A7A2FE9F394D39D004A322B7EDAD2835E0CBC971E235F71B049756FDF8AC848930D46053946098114F59A8039C40BF1A6ADF7CEC4374C6449CBD0F114E1F1F9EA7D4D6C63703A7368613235363A307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164E1F1",
   "hash": "08EC35C2B63029E0BC3BF485EBE62D96D2DFDF3DE917EECAE95906E7F8DC3E97",
-  "expect": "xrpl/multisigned"
+  "expect": "admitted"
+ },
+ "XS6": {
+  "case": "A stock client's voucher on mpp/session/xrpl/stock, as xrpl-mpp-sdk 0.1.0-beta.4 writes it (dist/chunk-SWN4C442.js:131-140): the challenge it answers, payload {action, channelId, amount, signature} and source did:pkh:xrpl:{network}:{address}, the network the challenge's methodDetails.network name; here B6's challenge, XS2's channel and payer, and a constructed signature, which lcp does not read. bound gives expectBound: nothing the payer signs carries H at coverage none. reference gives expectRef: the channel the voucher names, the payer its source names and the challenge's recipient. The same credential with action open is expectOpen, before anything is submitted; without source, expectNoSource.",
+  "presented": {
+   "challenge": {
+    "realm": "api.seller.example",
+    "method": "xrpl",
+    "intent": "session",
+    "request": "eyJhbW91bnQiOiIxMDAiLCJjaGFubmVsSWQiOiIiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJ0ZXN0bmV0In0sInJlY2lwaWVudCI6InJwamZBZUUzRGVlSFBGbk4yUGdHRlc1WXhuWkZBanJFeU4ifQ",
+    "expires": "2026-09-21T14:14:20Z",
+    "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+    "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+   },
+   "payload": {
+    "action": "voucher",
+    "channelId": "7FEED84DE7A40383F2CE4FCFC272CDB1816F255374F9110A75C6133CF776F167",
+    "amount": "100",
+    "signature": "33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333"
+   },
+   "source": "did:pkh:xrpl:testnet:r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC"
+  },
+  "expectBound": "mpp/no-signed-place",
+  "expectRef": {
+   "network": "xrpl:1",
+   "channel": "7FEED84DE7A40383F2CE4FCFC272CDB1816F255374F9110A75C6133CF776F167",
+   "payer": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+   "payee": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN"
+  },
+  "expectOpen": "mpp/session-action",
+  "expectNoSource": "mpp/source-required"
  },
  "plants": {
   "hedera": {
@@ -800,6 +837,32 @@
    },
    {
     "name": "B2",
+    "pairing": "mpp/session/xrpl/stock",
+    "plant": true,
+    "input": {
+     "doc": [
+      {
+       "realm": "api.seller.example",
+       "method": "xrpl",
+       "intent": "session",
+       "request": "eyJhbW91bnQiOiIxMDAiLCJjaGFubmVsSWQiOiIiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJ0ZXN0bmV0In0sInJlY2lwaWVudCI6InJwamZBZUUzRGVlSFBGbk4yUGdHRlc1WXhuWkZBanJFeU4ifQ",
+       "expires": "2026-09-21T14:14:20Z",
+       "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+       "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+      }
+     ],
+     "servesHex": "616264",
+     "signer": "counting"
+    },
+    "advertised": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "servedHash": "0xa52d159f262b2c6ddb724a61840befc36eb30c88877a4030b65cbe86298449c9",
+    "expect": {
+     "decline": "hash-mismatch",
+     "signCalls": 0
+    }
+   },
+   {
+    "name": "B2",
     "pairing": "mpp/session/hedera/stock",
     "plant": true,
     "input": {
@@ -826,6 +889,7 @@
    }
   ],
   "noSignedPayment": {
+   "mpp/session/xrpl/stock": "its vouchers sign the channel id and an amount, and its opening, which the stock client submits out of band and never presents, carries no H: nothing the buyer signs has a place for H",
    "mpp/session/hedera/stock": "its opening, which the stock client sends itself with a random salt, carries no H, and its vouchers sign the channel id and an amount: nothing the buyer signs has a place for H"
   }
  },
@@ -1761,6 +1825,233 @@
     "expect": {
      "state": "unreadable",
      "reason": "transport",
+     "foreign": []
+    }
+   }
+  ]
+ },
+ "XS7": {
+  "case": "the search's gate on the in-band opening: XS2's opening presented and never landed, the validated ledger 1010 past its LastLedgerSequence 1000, the payer's Sequence 7 at both ledgers, the opening read from ledger 900 on a constructed server holding ledgers 1 to 1011 (test/fixtures/xrpl-reader.ts), account_tx and account_info answering for the payer's account alone: instrument-unused were the search shown; until a run shows that account_tx lists every transaction of the payer's account, pending, search-incomplete, the search's position the ledger after the last it read",
+  "ledger": 1010,
+  "accountSequence": 7,
+  "expect": {
+   "state": "pending",
+   "reason": "search-incomplete",
+   "search": 1012,
+   "foreign": []
+  }
+ },
+ "XS8": {
+  "about": "The read of mpp/session/xrpl/stock's channel (the session profile's XRPL clause), each row on a constructed server holding ledgers 1 to 1001, 1000 validated, unless complete says otherwise (test/fixtures/xrpl-reader.ts): reference of XS6's voucher, its channelId the row's channel, plus fromLedger 950, read for the act payment at the mark validated after the position 950. ledger_entry answers the row's PayChannel at the validated ledger, or entryNotFound where the row names none; account_tx answers the row's creates for the row's opener alone, each validated with tesSUCCESS at its ledger, its metadata creating the row's channel, any other account's account_tx being empty. XS2's opening is the payer's create of XS2's channel; byOther, XS2's fields without the memo with Account rPPdduC9MRTrXZP1J7MQyEKKEYiFigWZ6Q (Ed25519 entropy 03x16) and Sequence 5, signed by that key; elsewhere, XS2's fields without the memo paying rfPaNmieF15VqV752Q8qAc6ugtkKhWsA2R, signed by the payer; each channel id by the PayChannel ID format, as XS1 computes it; blobs made with ripple-binary-codec 2.11.0 and @noble/curves' Ed25519.",
+  "blobs": {
+   "byOther": "12000D22000000002400000005201B000003E8202700000E106140000000000F424068400000000000000C7121ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97321EDC1410EC4922A21B6F3CA7F376AD88074293F0F94119EB211FE83E75C7C7AC64374401E424A29E4A8AFAF098A23A2021BD4E0336FFC8B2E67B7EF32D4269E9B8EEB1A167FC46052BAFEF568CAAA6495F21CC34D83DACDE11B5F3081A3636CF07DBA0C8114F59A8039C40BF1A6ADF7CEC4374C6449CBD0F114831412EF6422DC22833EF13442F83E89FB113C01A65A",
+   "elsewhere": "12000D22000000002400000007201B000003E8202700000E106140000000000F424068400000000000000C7121ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F97440F5C932118D03DBA86CD77FE956BE05359F1BA41E5EC13F1CCA0B6B51A3A5A933EB2D5EB28742A65071A73944ACB45EA955B8FFDDE99CC0D6EB96300D17A0600D81144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831445FE4723604B77DB91D959DD0551CA67E0BFCB85"
+  },
+  "rows": [
+   {
+    "case": "the payer's create after the position, the channel shown: settled on the create, presented yes, the create's Account being the payer the voucher's source names",
+    "channel": "7FEED84DE7A40383F2CE4FCFC272CDB1816F255374F9110A75C6133CF776F167",
+    "entry": {
+     "account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "destination": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "amount": "1000000"
+    },
+    "opener": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+    "creates": [
+     {
+      "blob": "XS2",
+      "ledgerIndex": 990
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "transaction": "CB1E7FE59E4265EEAA5E71C2A9BBC18D7E3213299A82349B92331DE485662746",
+     "position": 990,
+     "finality": "validated",
+     "moved": [
+      {
+       "asset": "XRP",
+       "amount": "1000000",
+       "to": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+       "transaction": "CB1E7FE59E4265EEAA5E71C2A9BBC18D7E3213299A82349B92331DE485662746"
+      }
+     ],
+     "signer": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "presented": "yes",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a channel since closed, the validated ledger not showing it: the read finds its create in the named payer's account_tx and settles on it",
+    "channel": "7FEED84DE7A40383F2CE4FCFC272CDB1816F255374F9110A75C6133CF776F167",
+    "entry": null,
+    "opener": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+    "creates": [
+     {
+      "blob": "XS2",
+      "ledgerIndex": 990
+     }
+    ],
+    "expect": {
+     "state": "settled",
+     "transaction": "CB1E7FE59E4265EEAA5E71C2A9BBC18D7E3213299A82349B92331DE485662746",
+     "position": 990,
+     "finality": "validated",
+     "moved": [
+      {
+       "asset": "XRP",
+       "amount": "1000000",
+       "to": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+       "transaction": "CB1E7FE59E4265EEAA5E71C2A9BBC18D7E3213299A82349B92331DE485662746"
+      }
+     ],
+     "signer": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "presented": "yes",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a channel another account opened, rPPdduC9MRTrXZP1J7MQyEKKEYiFigWZ6Q, to the payee: its create is found in the account_tx of the channel's Account, not the payer's, and took the channel: failed, instrument-consumed, named with its signer",
+    "channel": "C57F6A9FCA5CE1DC66BD82720C01CCC86D5C0A9183427C9915E0BAD44D8B8BEC",
+    "entry": {
+     "account": "rPPdduC9MRTrXZP1J7MQyEKKEYiFigWZ6Q",
+     "destination": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "amount": "1000000"
+    },
+    "opener": "rPPdduC9MRTrXZP1J7MQyEKKEYiFigWZ6Q",
+    "creates": [
+     {
+      "blob": "byOther",
+      "ledgerIndex": 990
+     }
+    ],
+    "expect": {
+     "state": "failed",
+     "reason": "instrument-consumed",
+     "transaction": "889FBCFC845CFC0A24FCB183B67C7E02D45E9AA167FB521A0C50F4FBB7AA083B",
+     "position": 990,
+     "finality": "validated",
+     "moved": [
+      {
+       "asset": "XRP",
+       "amount": "1000000",
+       "to": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+       "transaction": "889FBCFC845CFC0A24FCB183B67C7E02D45E9AA167FB521A0C50F4FBB7AA083B"
+      }
+     ],
+     "signer": "rPPdduC9MRTrXZP1J7MQyEKKEYiFigWZ6Q",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a channel the payer opened to another account: its create pays no deposit to the option's payee: failed, instrument-consumed",
+    "channel": "DAAEBEEC4FACD8818D7A5EAA6035E198F942E871035F4B76C9728555DB7951FE",
+    "entry": {
+     "account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "destination": "rfPaNmieF15VqV752Q8qAc6ugtkKhWsA2R",
+     "amount": "1000000"
+    },
+    "opener": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+    "creates": [
+     {
+      "blob": "elsewhere",
+      "ledgerIndex": 990
+     }
+    ],
+    "expect": {
+     "state": "failed",
+     "reason": "instrument-consumed",
+     "transaction": "80F830EEB82F840CF31F59BBBD1648350C0497239B6EDE5111B64251AAAC011F",
+     "position": 990,
+     "finality": "validated",
+     "moved": [
+      {
+       "asset": "XRP",
+       "amount": "1000000",
+       "to": "rfPaNmieF15VqV752Q8qAc6ugtkKhWsA2R",
+       "transaction": "80F830EEB82F840CF31F59BBBD1648350C0497239B6EDE5111B64251AAAC011F"
+      }
+     ],
+     "signer": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a channel the ledger shows whose create the payer's account_tx, read whole from the position, does not hold: created at or before the position, failed, before-position, once a run shows that account_tx lists every transaction of the account; until then pending, search-incomplete, the search's position held where it began",
+    "channel": "7FEED84DE7A40383F2CE4FCFC272CDB1816F255374F9110A75C6133CF776F167",
+    "entry": {
+     "account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "destination": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "amount": "1000000"
+    },
+    "opener": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+    "creates": [],
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": 950,
+     "foreign": []
+    }
+   },
+   {
+    "case": "the same on a server whose complete_ledgers, 980-1001, does not hold the range from the position: unreadable, history-gap, never absence",
+    "channel": "7FEED84DE7A40383F2CE4FCFC272CDB1816F255374F9110A75C6133CF776F167",
+    "entry": {
+     "account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "destination": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "amount": "1000000"
+    },
+    "opener": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+    "creates": [],
+    "complete": "980-1001",
+    "expect": {
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the payer's create found at ledger 950, at the position: failed, before-position, as a create found always answers",
+    "channel": "7FEED84DE7A40383F2CE4FCFC272CDB1816F255374F9110A75C6133CF776F167",
+    "entry": {
+     "account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "destination": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "amount": "1000000"
+    },
+    "opener": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+    "creates": [
+     {
+      "blob": "XS2",
+      "ledgerIndex": 950
+     }
+    ],
+    "expect": {
+     "state": "failed",
+     "reason": "before-position",
+     "transaction": "CB1E7FE59E4265EEAA5E71C2A9BBC18D7E3213299A82349B92331DE485662746",
+     "position": 950,
+     "finality": "validated",
+     "moved": [
+      {
+       "asset": "XRP",
+       "amount": "1000000",
+       "to": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+       "transaction": "CB1E7FE59E4265EEAA5E71C2A9BBC18D7E3213299A82349B92331DE485662746"
+      }
+     ],
+     "signer": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a channel the validated ledger does not show, no create in the payer's account_tx read whole: pending, not-found",
+    "channel": "7FEED84DE7A40383F2CE4FCFC272CDB1816F255374F9110A75C6133CF776F167",
+    "entry": null,
+    "opener": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+    "creates": [],
+    "expect": {
+     "state": "pending",
+     "reason": "not-found",
      "foreign": []
     }
    }

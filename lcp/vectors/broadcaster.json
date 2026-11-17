@@ -222,6 +222,11 @@
       "source": "draft-xrpl-session-00 at tempoxyz/mpp-specs 08e7dd87: the open: \"The server broadcasts it\"; the close: \"Redemption itself is the server's to perform\""
     },
     {
+      "pairing": "mpp/session/xrpl/stock",
+      "broadcaster": "payee",
+      "source": "xrpl-mpp-sdk 0.1.0-beta.4 dist/channel/server/index.js:686-697: the stock server submits the close's PaymentChannelClaim from the recipient's wallet and redeems the vouchers; the stock client's openChannel submits the PaymentChannelCreate itself, out of band, no credential of the pairing (dist/chunk-SWN4C442.js:158-220), and its vouchers name the channel (:122-140)"
+    },
+    {
       "pairing": "mpp/session/hedera/stock",
       "broadcaster": null,
       "source": "draft-hedera-session-00 at tempoxyz/mpp-specs 08e7dd87: the client sends the open and a topUp itself and names each by txHash; the server redeems vouchers and sends the close"
@@ -950,6 +955,54 @@
       },
       "expect": "payee",
       "source": "draft-lightning-session-00 at tempoxyz/mpp-specs 08e7dd87: the server \"Pays any unspent balance to the return invoice.\""
+    },
+    {
+      "case": "mpp/session/xrpl/stock: a voucher, a stock client's (the session file's XS6)",
+      "pairing": "mpp/session/xrpl/stock",
+      "presented": {
+        "challenge": {
+          "realm": "api.seller.example",
+          "method": "xrpl",
+          "intent": "session",
+          "request": "eyJhbW91bnQiOiIxMDAiLCJjaGFubmVsSWQiOiIiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJ0ZXN0bmV0In0sInJlY2lwaWVudCI6InJwamZBZUUzRGVlSFBGbk4yUGdHRlc1WXhuWkZBanJFeU4ifQ",
+          "expires": "2026-09-21T14:14:20Z",
+          "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+          "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+        },
+        "payload": {
+          "action": "voucher",
+          "channelId": "7FEED84DE7A40383F2CE4FCFC272CDB1816F255374F9110A75C6133CF776F167",
+          "amount": "100",
+          "signature": "33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333"
+        },
+        "source": "did:pkh:xrpl:testnet:r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC"
+      },
+      "expect": "payee",
+      "source": "xrpl-mpp-sdk 0.1.0-beta.4 dist/channel/server/index.js:686-697: the stock server submits the close's PaymentChannelClaim from the recipient's wallet, and redeems the vouchers it takes; the stock client writes the voucher (dist/chunk-SWN4C442.js:131-140)"
+    },
+    {
+      "case": "mpp/session/xrpl/stock: a close, the same credential with action close",
+      "pairing": "mpp/session/xrpl/stock",
+      "presented": {
+        "challenge": {
+          "realm": "api.seller.example",
+          "method": "xrpl",
+          "intent": "session",
+          "request": "eyJhbW91bnQiOiIxMDAiLCJjaGFubmVsSWQiOiIiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJ0ZXN0bmV0In0sInJlY2lwaWVudCI6InJwamZBZUUzRGVlSFBGbk4yUGdHRlc1WXhuWkZBanJFeU4ifQ",
+          "expires": "2026-09-21T14:14:20Z",
+          "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+          "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+        },
+        "payload": {
+          "action": "close",
+          "channelId": "7FEED84DE7A40383F2CE4FCFC272CDB1816F255374F9110A75C6133CF776F167",
+          "amount": "100",
+          "signature": "33333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333333"
+        },
+        "source": "did:pkh:xrpl:testnet:r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC"
+      },
+      "expect": "payee",
+      "source": "xrpl-mpp-sdk 0.1.0-beta.4 dist/channel/server/index.js:686-697: the stock server submits the close's PaymentChannelClaim from the recipient's wallet, and redeems the vouchers it takes; the stock client writes the voucher (dist/chunk-SWN4C442.js:131-140)"
     },
     {
       "case": "mpp/charge/evm/transaction: a transaction credential under its challenge as `place` places it, so bound reaches mpp/no-signed-place",

@@ -340,18 +340,20 @@ describe("mpp-charge-xrpl.json completeBlob: complete reads the blob as bound re
   const b2 = buyer("mpp-charge-xrpl.json", "mpp/charge/xrpl", "B2")!;
   const i = b2.input.inputs!;
   const choice = { challenge: placed, account: accountOf(b2), fee: i.fee!, sequence: i.sequence!, lastLedgerSequence: i.lastLedgerSequence! };
-  const credentialOf = (blob: string) => ({ challenge: placed, payload: { type: "transaction", blob } });
+  const SOURCE: string = load("mpp-charge-xrpl.json").completeBlob.source;
+  const credentialOf = (blob: string) => ({ challenge: placed, payload: { type: "transaction", blob }, source: SOURCE });
   /** B6's transaction re-encoded with a TxnSignature of as many bytes of 0x11 as bring the blob to `bytes` bytes. */
   const padded = (bytes: number): string => {
     const tx = decodeXrpl(buyer("mpp-charge-xrpl.json", "mpp/charge/xrpl", "B6")!.input.presented!.payload["blob"] as string);
     const at = (n: number) => encodeXrpl({ ...tx, TxnSignature: "11".repeat(n) });
-    const blob = at(bytes - (at(1000).length / 2 - 1000));
+    // The signature's length prefix takes three bytes from 12,481 bytes on, so the rest is measured near `bytes`.
+    const blob = at(bytes - (at(bytes).length / 2 - bytes));
     expect(blob.length / 2).toBe(bytes);
     return blob;
   };
 
-  it("the credential measures 65,535 with a blob of 32,400 bytes and 65,537 with one of 32,401", () => {
-    expect([sizeOf(credentialOf("00".repeat(32_400))), sizeOf(credentialOf("00".repeat(32_401)))]).toEqual([65_535, 65_537]);
+  it("the credential, its source included, measures 65,535 with a blob of 32,367 bytes and 65,537 with one of 32,368", () => {
+    expect([sizeOf(credentialOf("00".repeat(32_367))), sizeOf(credentialOf("00".repeat(32_368)))]).toEqual([65_535, 65_537]);
   });
   for (const row of ROWS_BLOB) {
     it(row.case, async () => {
@@ -417,13 +419,13 @@ describe("mpp-challenge.json completeOrder: a complete checks the credential in 
         return swapped("mpp/subscription/tempo", challenge, "signature", toHex(signed));
       },
     },
-    "a blob of 2,049 bytes": {
+    "a blob of 16,385 bytes": {
       complete: async (challenge) => {
         const i = xrplB2.input.inputs!;
         const choice = { challenge, account: accountOf(xrplB2), fee: i.fee!, sequence: i.sequence!, lastLedgerSequence: i.lastLedgerSequence! };
-        return built(await chargeXrpl.build(choice, xrplB2.advertised)).complete("00".repeat(2049));
+        return built(await chargeXrpl.build(choice, xrplB2.advertised)).complete("00".repeat(16385));
       },
-      credential: (challenge) => swapped("mpp/charge/xrpl", challenge, "blob", "00".repeat(2049)),
+      credential: (challenge) => swapped("mpp/charge/xrpl", challenge, "blob", "00".repeat(16385)),
     },
     "an EIP-1559 transaction for chain 1": {
       complete: async (challenge) =>

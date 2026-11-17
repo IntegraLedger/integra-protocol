@@ -8,7 +8,8 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { chargeXrpl, sessionXrpl, type MppChallenge, type MppCredential, type SessionWithin } from "../src/mpp.js";
 import { exactXrpl } from "../src/x402-exact-xrpl.js";
-import { decodeBlob, type XrplLanded, type XrplReader } from "../src/xrpl.js";
+import { decodeBlob, type XrplReader } from "../src/xrpl.js";
+import { landed, xrplReader } from "./fixtures/xrpl-reader.js";
 import { rowsOf } from "./rows.js";
 
 const load = (n: string) => JSON.parse(readFileSync(new URL(`../vectors/${n}`, import.meta.url), "utf8"));
@@ -61,7 +62,7 @@ describe("x402/exact/xrpl: bound and reference", () => {
   it("XC10: x402-exact-xrpl.json V2's H, and the reference by XC10's hash", async () => {
     const r = row("XC10");
     expect(await exactXrpl.bound(paid(r.blob))).toBe(X.V2.expectBound);
-    expect(await exactXrpl.reference(paid(r.blob), X.V2.accepted)).toEqual({ ...X.V2.expectReference, transaction: r.hash });
+    expect(await exactXrpl.reference(paid(r.blob), X.V2.accepted)).toMatchObject({ network: X.V2.expectReference.network, h: X.V2.expectReference.h, payee: X.V2.expectReference.payee, transaction: r.hash });
   });
 
   it("XC11: refused", async () => {
@@ -95,7 +96,7 @@ describe("mpp/charge/xrpl: bound and reference", () => {
   it("XC12: mpp-charge-xrpl.json V3's H, and the reference by XC12's hash", async () => {
     const r = row("XC12");
     expect(await chargeXrpl.bound(presented(r.blob))).toBe(M.V3.expectBound);
-    expect(await chargeXrpl.reference(presented(r.blob), challenge)).toEqual({ ...M.V3.expectReference, transaction: r.hash });
+    expect(await chargeXrpl.reference(presented(r.blob), challenge)).toMatchObject({ network: M.V3.expectReference.network, h: M.V3.expectReference.h, payee: M.V3.expectReference.payee, transaction: r.hash });
   });
 
   it("XC13: refused", async () => {
@@ -109,13 +110,8 @@ describe("mpp/session/xrpl: bound, reference, channel.ref, recover, build's comp
   const challenge = S.SS1.xrpl.placed as MppChallenge & { id: string };
   const H = S.fixed.H;
   const open = (transaction: string): MppCredential => ({ challenge, payload: { action: "open", transaction, amount: "100", signature: "00" } });
-  const landed: XrplLanded = S.XS4.rows[0].landed;
-  const reader = (r: Row): XrplReader => ({
-    network: "xrpl:1",
-    tx: async (hash) => (hash === r.hash ? landed : { notFound: true, searchedAll: true }),
-    txBlob: async (hash) => (hash === r.hash ? r.blob : null),
-    validatedLedger: async () => 1000,
-  });
+  const reader = (r: Row): XrplReader =>
+    xrplReader({ tx: async (hash) => (hash === r.hash ? landed(r.blob) : { notFound: true, searchedAll: true }) });
   const choice = {
     challenge,
     from: S.XS2.account,
@@ -133,13 +129,13 @@ describe("mpp/session/xrpl: bound, reference, channel.ref, recover, build's comp
 
   it("XC14: XS2's H and channel, the reference by XC14's hash, and the credential", async () => {
     const r = row("XC14");
-    expect(landed).toMatchObject({ validated: true, result: "tesSUCCESS", transactionType: "PaymentChannelCreate" });
     expect(await sessionXrpl.bound(open(r.blob))).toBe(S.XS2.expectBound);
-    expect(await sessionXrpl.reference(open(r.blob), challenge)).toEqual({
+    expect(await sessionXrpl.reference(open(r.blob), challenge)).toMatchObject({
       network: "xrpl:1",
       transaction: r.hash,
-      lastLedgerSequence: S.XS2.lastLedgerSequence,
+      h: S.XS2.expectBound,
       payee: S.XS2.expectTxJson.Destination,
+      signed: { account: S.XS2.account, lastLedgerSequence: S.XS2.lastLedgerSequence },
     });
     expect(await sessionXrpl.channel.ref(open(r.blob))).toEqual({ network: "xrpl:1", channel: S.XS2.expectChannel });
     expect(await sessionXrpl.recover({ network: "xrpl:1", tx: r.hash, option: challenge }, reader(r))).toBe(S.XS2.expectBound);

@@ -43,9 +43,9 @@ Import each entry point by its subpath. Every entry point is ESM with its own ty
 | [`@integraledger/lcp/x402-batch-settlement`](#integraledgerlcpx402-batch-settlement) | x402 `batch-settlement`: one ATR per channel. On EVM the ATR hash is the channel configuration's `salt`, which the channel id commits to and every signature signs; on Solana it is the opening transaction's seller Memo instruction (`extra.memo`), beside x402's receiver-authorizer binding memo; on Cloudflare it rides the echoed `extensions.legalContext` of each request, with no channel. |
 | [`@integraledger/lcp/x402-exact-solana`](#integraledgerlcpx402-exact-solana) | The `x402/exact/solana` pairing: the ATR hash placed as the option's `extra.memo` in LCP string form, written by the payer as the transaction's one Memo instruction, read back from the signed message, and read from the settlement. |
 | [`@integraledger/lcp/x402-exact-stellar`](#integraledgerlcpx402-exact-stellar) | The `x402-exact-stellar` entry point: the `Broadcaster` type, which every pairing's `broadcaster` answers. |
-| [`@integraledger/lcp/x402-exact-xrpl`](#integraledgerlcpx402-exact-xrpl) | The `x402/exact/xrpl` pairing: the ATR hash's LCP string placed as the option's `extra.invoiceId`, whose SHA-256 the payer signs with a single key as the Payment's `InvoiceID`, read back from the signed blob, and settlement read by the blob's hash. |
+| [`@integraledger/lcp/x402-exact-xrpl`](#integraledgerlcpx402-exact-xrpl) | The `x402/exact/xrpl` pairing: the ATR hash's LCP string placed as the option's `extra.invoiceId`, whose SHA-256 the payer signs as the Payment's `InvoiceID`, read back from the signed blob, single-signed or multisigned, and settlement read by the payer's instrument, its `Account` with the signed `Sequence` or ticket. |
 | [`@integraledger/lcp/x402-upto-solana`](#integraledgerlcpx402-upto-solana) | The `x402/upto/solana` pairing: the ATR hash placed as the option's `extra.memo` in LCP string form, written by the payer as the one Memo instruction of the transaction that opens a one-request payment channel escrowing the signed maximum; read back from that transaction, and settlement read from the opening. |
-| [`@integraledger/lcp/xrpl`](#integraledgerlcpxrpl) | XRP Ledger rail pieces: the signed Payment blob, its `InvoiceID` carrying the ATR hash in each scheme's form, the transaction hash computed from the blob, settlement read by that hash through a bounded reader, and the payment channel's id, claim and opening read. |
+| [`@integraledger/lcp/xrpl`](#integraledgerlcpxrpl) | XRP Ledger rail pieces: the signed blob, its `InvoiceID` or memo carrying the ATR hash in each scheme's form, the transaction hash computed from the blob, the reads of a payment, an opening, a channel and a close through a bounded reader, and the payment channel's id and claim. |
 
 ## `@integraledger/lcp`
 
@@ -269,9 +269,9 @@ The `mpp` entry point: MPP's challenge pieces and its pairings. The charge pairi
 import { attributionMemo, CARRIER, challengeBound, … } from "@integraledger/lcp/mpp";
 ```
 
-**Pairings:** `mpp/charge/card`, `mpp/charge/evm/authorization`, `mpp/charge/evm/hash`, `mpp/charge/evm/permit2`, `mpp/charge/evm/transaction`, `mpp/charge/nearintents`, `mpp/charge/solana`, `mpp/charge/solana/unsponsored`, `mpp/charge/stripe`, `mpp/charge/usdc/evm`, `mpp/charge/usdc/gateway`, `mpp/charge/usdc/solana`, `mpp/charge/usdc/stacks`, `mpp/charge/xrpl`, `mpp/session/evm`, `mpp/session/hedera/stock`, `mpp/session/solana/memo`, `mpp/session/solana/stock`, `mpp/session/tempo`, `mpp/session/xrpl`, `mpp/subscription/solana`, `mpp/subscription/stripe`, `mpp/subscription/tempo`.
+**Pairings:** `mpp/charge/card`, `mpp/charge/evm/authorization`, `mpp/charge/evm/hash`, `mpp/charge/evm/permit2`, `mpp/charge/evm/transaction`, `mpp/charge/nearintents`, `mpp/charge/solana`, `mpp/charge/solana/unsponsored`, `mpp/charge/stripe`, `mpp/charge/usdc/evm`, `mpp/charge/usdc/gateway`, `mpp/charge/usdc/solana`, `mpp/charge/usdc/stacks`, `mpp/charge/xrpl`, `mpp/session/evm`, `mpp/session/hedera/stock`, `mpp/session/solana/memo`, `mpp/session/solana/stock`, `mpp/session/tempo`, `mpp/session/xrpl`, `mpp/session/xrpl/stock`, `mpp/subscription/solana`, `mpp/subscription/stripe`, `mpp/subscription/tempo`.
 
-**Values (52):** `attributionMemo`, `CARRIER`, `challengeBound`, `challengeH`, `challengeHash`, `challengeId`, `chargeCard`, `chargeNearIntents`, `chargeSolana`, `chargeSolanaUnsponsored`, `chargeStripe`, `chargeUsdcEvm`, `chargeUsdcGateway`, `chargeUsdcSolana`, `chargeUsdcStacks`, `chargeXrpl`, `checkAttribution`, `evmAuthorization`, `evmChannelId`, `evmHash`, `evmPermit2`, `evmTransaction`, `FETCHED`, `hederaStockStatus`, `issuedDigest`, `keySearch`, `LEGAL_CONTEXT_METADATA_KEY`, `MPP_BINDINGS`, `network`, `pairingsOf`, `pairingsOfPlaced`, `parseChallenges`, `place`, `problem`, `read`, `sessionEvm`, `sessionHederaStock`, `sessionResume`, `sessionSolanaMemo`, `sessionSolanaStock`, `sessionStatus`, `sessionTempo`, `sessionXrpl`, `subscriptionSolana`, `subscriptionStripe`, `subscriptionTempo`, `tie`, `toX402`, `transferPresent`, `usdcGatewaySalt`, `usdcNonce`, `usdcRequestHash`.
+**Values (53):** `attributionMemo`, `CARRIER`, `challengeBound`, `challengeH`, `challengeHash`, `challengeId`, `chargeCard`, `chargeNearIntents`, `chargeSolana`, `chargeSolanaUnsponsored`, `chargeStripe`, `chargeUsdcEvm`, `chargeUsdcGateway`, `chargeUsdcSolana`, `chargeUsdcStacks`, `chargeXrpl`, `checkAttribution`, `evmAuthorization`, `evmChannelId`, `evmHash`, `evmPermit2`, `evmTransaction`, `FETCHED`, `hederaStockStatus`, `issuedDigest`, `keySearch`, `LEGAL_CONTEXT_METADATA_KEY`, `MPP_BINDINGS`, `network`, `pairingsOf`, `pairingsOfPlaced`, `parseChallenges`, `place`, `problem`, `read`, `sessionEvm`, `sessionHederaStock`, `sessionResume`, `sessionSolanaMemo`, `sessionSolanaStock`, `sessionStatus`, `sessionTempo`, `sessionXrpl`, `sessionXrplStock`, `subscriptionSolana`, `subscriptionStripe`, `subscriptionTempo`, `tie`, `toX402`, `transferPresent`, `usdcGatewaySalt`, `usdcNonce`, `usdcRequestHash`.
 
 **Types (31):** `Broadcaster`, `GatewayPreimage`, `GatewaySaltInput`, `HederaStockReader`, `HederaStockRef`, `HederaStockStatus`, `LandedCredential`, `MppChallenge`, `MppChoice`, `MppCredential`, `MppMethod`, `MppPairingId`, `MppUnsigned`, `RailSessionUnsigned`, `ReceiveTypedData`, `SessionChoice`, `SessionRef`, `SessionStatus`, `SessionUnsigned`, `SessionWithin`, `SolanaSessionChoice`, `SolanaSessionUnsigned`, `SolanaTablesCredential`, `StripeSubscriptionReceipt`, `TokenDomain`, `UsdcUnsigned`, `VoucherTypedData`, `WithinSigningRequest`, `X402Mapped`, `XrplChargeChoice`, `XrplChargeUnsigned`.
 
@@ -475,7 +475,7 @@ import type { Broadcaster } from "@integraledger/lcp/x402-exact-stellar";
 
 ## `@integraledger/lcp/x402-exact-xrpl`
 
-The `x402/exact/xrpl` pairing: the ATR hash's LCP string placed as the option's `extra.invoiceId`, whose SHA-256 the payer signs with a single key as the Payment's `InvoiceID`, read back from the signed blob, and settlement read by the blob's hash.
+The `x402/exact/xrpl` pairing: the ATR hash's LCP string placed as the option's `extra.invoiceId`, whose SHA-256 the payer signs as the Payment's `InvoiceID`, read back from the signed blob, single-signed or multisigned, and settlement read by the payer's instrument, its `Account` with the signed `Sequence` or ticket.
 
 ```ts no-check
 import { exactXrpl } from "@integraledger/lcp/x402-exact-xrpl";
@@ -503,13 +503,13 @@ import { uptoSvm } from "@integraledger/lcp/x402-upto-solana";
 
 ## `@integraledger/lcp/xrpl`
 
-XRP Ledger rail pieces: the signed Payment blob, its `InvoiceID` carrying the ATR hash in each scheme's form, the transaction hash computed from the blob, settlement read by that hash through a bounded reader, and the payment channel's id, claim and opening read.
+XRP Ledger rail pieces: the signed blob, its `InvoiceID` or memo carrying the ATR hash in each scheme's form, the transaction hash computed from the blob, the reads of a payment, an opening, a channel and a close through a bounded reader, and the payment channel's id and claim.
 
 ```ts no-check
 import { decodeBlob, mppInvoiceId, x402InvoiceId, … } from "@integraledger/lcp/xrpl";
 ```
 
-**Values (8):** `decodeBlob`, `mppInvoiceId`, `x402InvoiceId`, `XRPL_MAX_DEPTH`, `xrplChannelId`, `xrplClaim`, `xrplOpenStatus`, `xrplStatus`.
+**Values (12):** `decodeBlob`, `mppInvoiceId`, `x402InvoiceId`, `XRPL_MAX_BLOB_BYTES`, `XRPL_MAX_DEPTH`, `XRPL_MAX_PAGES`, `xrplChannelId`, `xrplChannelStatus`, `xrplChargeStatus`, `xrplClaim`, `xrplOpenStatus`, `xrplStatus`.
 
-**Types (9):** `XrplCloseRef`, `XrplCloseStatus`, `XrplLanded`, `XrplNetwork`, `XrplReader`, `XrplRef`, `XrplStatus`, `XrplTxJson`, `XrplUnsigned`.
+**Types (18):** `XrplAmount`, `XrplChannelEntry`, `XrplChannelRef`, `XrplCloseRef`, `XrplCloseStatus`, `XrplLanded`, `XrplLedgerName`, `XrplMark`, `XrplNetwork`, `XrplPage`, `XrplReached`, `XrplReader`, `XrplRef`, `XrplServer`, `XrplSigned`, `XrplStatus`, `XrplTxJson`, `XrplUnsigned`.
 

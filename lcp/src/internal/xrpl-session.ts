@@ -1,25 +1,22 @@
 /**
  * MPP XRPL session pieces: the payment channel's id, the claim bytes a voucher signs, the `CancelAfter` of a signed
- * `PaymentChannelCreate` blob, and the reads of an opening and of a reported close. The public names are re-exported
+ * `PaymentChannelCreate` blob, and the read of a reported close. The public names are re-exported
  * by `../xrpl.ts`.
  */
 import { sha256, sha512 } from "@noble/hashes/sha2.js";
 import { isObject } from "../fields.js";
 import { refusal, type Refusal } from "../refusal.js";
-import { decide } from "./read.js";
+import { decide, type Facts, type UnreadableReason } from "./read.js";
 import {
   isXrplNetwork,
   isXrplQuery,
-  readXrplTx,
   rejectedAs,
-  upperOf,
-  xrplFacts,
   xrplLedger,
+  type XrplLanded,
+  type XrplReached,
   type XrplNetwork,
   type XrplQuery,
-  type XrplRead,
   type XrplReader,
-  type XrplRef,
   type XrplStatus,
 } from "./xrpl.js";
 
@@ -28,7 +25,7 @@ export type XrplCloseRef = { phase: "close"; network: XrplNetwork; channel: stri
 /** A reported close's read, as the profile `read-status` answers it: the answer `XrplStatus` names. */
 export type XrplCloseStatus = XrplStatus;
 
-const SESSION_LEDGER = xrplLedger("mpp/session/xrpl");
+const CLOSE_LEDGER = xrplLedger("none");
 
 const PAY_CHANNEL_SPACE = Uint8Array.of(0x00, 0x78);
 const CLAIM_PREFIX = Uint8Array.of(0x43, 0x4c, 0x4d, 0x00);
@@ -140,66 +137,61 @@ export function cancelAfterOf(blobHex: string): number | undefined {
 }
 
 /**
- * Reads an opening by the hash computed from its signed blob, as the profile `read-status` answers it: the
- * `PaymentChannelCreate` a validated ledger holds with `tesSUCCESS` is `settled` at its ledger index. A `tec` result,
- * a validated success of another type, an expiry past `LastLedgerSequence`, a lookup that finds nothing and a
- * transaction in no validated ledger yet are `pending`, `search-incomplete`, since this read is no search for H; a
- * ledger index at or before the query's `after` is `failed`, `before-position`. A ref, reader or query of the wrong
- * form is `unreadable`, `unparseable`, and a reader for another network `chain-mismatch`, each with nothing read; the
- * transaction is looked up in upper case. At most two calls.
- */
-export async function xrplOpenStatus(
-  ref: Omit<XrplRef, "expect">,
-  reader: XrplReader,
-  query: XrplQuery<Omit<XrplRef, "expect">>,
-): Promise<XrplStatus> {
-  if (!isXrplQuery(query)) return { state: "unreadable", reason: "unparseable", foreign: [] };
-  const read = await readXrplTx(ref, reader, (r) => r.transactionType === "PaymentChannelCreate", false);
-  return decide(xrplFacts(read, upperOf(ref), SESSION_LEDGER), query, SESSION_LEDGER);
-}
-
-/**
- * Reads a reported close: validated with the channel among the transaction's deleted `PayChannel` entries is settled;
- * validated without it shows no close; otherwise nothing is found. A ref whose channel or transaction is not 64 hex
- * digits, or whose network is not an XRPL network, and a reader that is not an object or names no XRPL network, are
- * `unparseable`, and a reader for another network `chain-mismatch`, each with nothing read; the transaction is looked
- * up in upper case. A rejected read is unreadable by `rejectedAs`; an answer of another shape, and a validated ledger
- * index that is not an integer, are `unparseable`. One call.
- */
-async function readClose(ref: XrplCloseRef, reader: XrplReader): Promise<XrplRead> {
-  if (!isObject(ref) || !isXrplNetwork(ref.network)) return { state: "unreadable", reason: "unparseable" };
-  if (typeof ref.channel !== "string" || !HASH256.test(ref.channel)) return { state: "unreadable", reason: "unparseable" };
-  if (typeof ref.transaction !== "string" || !HASH256.test(ref.transaction)) return { state: "unreadable", reason: "unparseable" };
-  if (!isObject(reader) || !isXrplNetwork(reader.network)) return { state: "unreadable", reason: "unparseable" };
-  if (reader.network !== ref.network) return { state: "unreadable", reason: "chain-mismatch" };
-  let r: Awaited<ReturnType<XrplReader["tx"]>>;
-  try {
-    r = await reader.tx(ref.transaction.toUpperCase(), null);
-  } catch (e) {
-    return { state: "unreadable", reason: rejectedAs(e) };
-  }
-  if (typeof r !== "object" || r === null) return { state: "unreadable", reason: "unparseable" };
-  if ("notFound" in r) return { state: "pending", why: "not-found" };
-  if (r.validated !== true) return { state: "pending", why: "not-validated" };
-  const deleted = Array.isArray(r.deletedChannels) ? r.deletedChannels : [];
-  if (!deleted.some((c) => typeof c === "string" && c.toUpperCase() === ref.channel.toUpperCase())) {
-    return { state: "failed", why: "not-a-close" };
-  }
-  if (!Number.isSafeInteger(r.ledgerIndex)) return { state: "unreadable", reason: "unparseable" };
-  return { state: "settled", ledgerIndex: r.ledgerIndex! };
-}
-
-/**
- * A reported close's read, as the profile `read-status` answers it: the close is `settled` at its ledger index; a
- * validated transaction that deleted no such channel, a lookup that finds nothing and a transaction in no validated
- * ledger yet are `pending`, `search-incomplete`; a ledger index at or before the query's `after` is `failed`,
- * `before-position`; and a ref, reader or query of the wrong form is `unreadable`, as `readClose` gives it. One call.
+ * A reported close's read, as the profile `read-status` answers it: the transaction the ref names, read by `tx`, is the
+ * close where its metadata deletes the channel, `settled` at its ledger index at the mark it was read at
+ * (`current` in a ledger not yet validated, which is no mark), `pending`, `below-mark` under `validated`; a transaction that
+ * deleted no such channel, and one not found, are `pending`, `search-incomplete`; a ledger index at or before the
+ * query's `after` is `failed`, `before-position`. A ref whose channel or transaction is not 64 hex digits, or whose
+ * network is not an XRPL network, a query of another form, and a reader that is not an object or names no XRPL
+ * network, are `unparseable`, and a reader for another network `chain-mismatch`, each with nothing read; the
+ * transaction is looked up in upper case. A rejected read is unreadable by `rejectedAs`; an answer of another shape is
+ * `unparseable`. One call.
  */
 export async function xrplCloseStatus(
   ref: XrplCloseRef,
   reader: XrplReader,
   query: XrplQuery<XrplCloseRef>,
 ): Promise<XrplCloseStatus> {
-  if (!isXrplQuery(query)) return { state: "unreadable", reason: "unparseable", foreign: [] };
-  return decide(xrplFacts(await readClose(ref, reader), upperOf(ref), SESSION_LEDGER), query, SESSION_LEDGER);
+  const unreadable = (reason: UnreadableReason): XrplStatus => ({
+    state: "unreadable",
+    reason,
+    foreign: [],
+  });
+  if (!isXrplQuery(query) || !isObject(ref) || !isXrplNetwork(ref.network)) return unreadable("unparseable");
+  if (typeof ref.channel !== "string" || !HASH256.test(ref.channel)) return unreadable("unparseable");
+  if (typeof ref.transaction !== "string" || !HASH256.test(ref.transaction)) return unreadable("unparseable");
+  if (!isObject(reader) || !isXrplNetwork(reader.network)) return unreadable("unparseable");
+  if (reader.network !== ref.network) return unreadable("chain-mismatch");
+  const transaction = ref.transaction.toUpperCase();
+  let r: Awaited<ReturnType<XrplReader["tx"]>>;
+  try {
+    r = await reader.tx(transaction, null);
+  } catch (e) {
+    return unreadable(rejectedAs(e));
+  }
+  if (!isObject(r)) return unreadable("unparseable");
+  const facts: Facts<number, XrplReached> = { seen: [], search: { whole: false }, history: false };
+  if (!("notFound" in r)) {
+    const l = r as XrplLanded;
+    if (typeof l.validated !== "boolean" || (l.ledgerIndex !== undefined && !Number.isSafeInteger(l.ledgerIndex))) {
+      return unreadable("unparseable");
+    }
+    const deleted = Array.isArray(l.deletedChannels) ? l.deletedChannels : [];
+    if (l.result === "tesSUCCESS" && deleted.some((c) => typeof c === "string" && c.toUpperCase() === ref.channel.toUpperCase())) {
+      const seen = {
+        transaction,
+        ...(l.ledgerIndex === undefined ? {} : { position: l.ledgerIndex }),
+        mark: (l.validated ? "validated" : "current") as XrplReached,
+        result: "succeeded" as const,
+        consumed: true,
+        carries: false,
+        party: "payer" as const,
+        kind: "same" as const,
+        account: "payee" as const,
+        presented: "yes" as const,
+      };
+      return decide({ ...facts, seen: [seen] }, query, CLOSE_LEDGER);
+    }
+  }
+  return decide(facts, query, CLOSE_LEDGER);
 }

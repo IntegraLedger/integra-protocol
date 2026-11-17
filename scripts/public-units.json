@@ -287,7 +287,7 @@
     {
       "unit": "MPP sessions and subscriptions",
       "exports": {
-        "./mpp": ["sessionHederaStock", "hederaStockStatus", "HederaStockReader", "HederaStockRef", "HederaStockStatus", "RailSessionUnsigned", "SessionChoice", "SessionRef", "SessionStatus", "SessionUnsigned", "SessionWithin", "VoucherTypedData", "WithinSigningRequest", "StripeSubscriptionReceipt", "evmChannelId", "keySearch", "sessionEvm", "sessionResume", "sessionStatus", "sessionTempo", "sessionXrpl", "sessionSolanaMemo", "sessionSolanaStock", "SolanaSessionChoice", "SolanaSessionUnsigned", "subscriptionSolana", "subscriptionStripe", "subscriptionTempo"]
+        "./mpp": ["sessionHederaStock", "hederaStockStatus", "HederaStockReader", "HederaStockRef", "HederaStockStatus", "RailSessionUnsigned", "SessionChoice", "SessionRef", "SessionStatus", "SessionUnsigned", "SessionWithin", "VoucherTypedData", "WithinSigningRequest", "StripeSubscriptionReceipt", "evmChannelId", "keySearch", "sessionEvm", "sessionResume", "sessionStatus", "sessionTempo", "sessionXrpl", "sessionXrplStock", "sessionSolanaMemo", "sessionSolanaStock", "SolanaSessionChoice", "SolanaSessionUnsigned", "subscriptionSolana", "subscriptionStripe", "subscriptionTempo"]
       },
       "use": "Any server tells a channel's opening from a later credential and holds a later credential to its channel; a buyer's client builds a later payment within its channel; any holder of a subscription's ATR finds a collection made under the key the payer authorised over H.",
       "fixedBy": "The MPP session and subscription drafts; mpp-session-evm-tempo.md; mpp-session-hedera-solana-xrpl.md; mpp-subscription-solana.md."
@@ -336,7 +336,7 @@
     {
       "unit": "XRP Ledger",
       "exports": {
-        "./xrpl": ["XRPL_MAX_DEPTH", "XrplCloseRef", "XrplCloseStatus", "XrplLanded", "XrplNetwork", "XrplReader", "XrplRef", "XrplStatus", "XrplTxJson", "XrplUnsigned", "decodeBlob", "mppInvoiceId", "x402InvoiceId", "xrplChannelId", "xrplClaim", "xrplOpenStatus", "xrplStatus"],
+        "./xrpl": ["XRPL_MAX_BLOB_BYTES", "XRPL_MAX_DEPTH", "XRPL_MAX_PAGES", "XrplAmount", "XrplChannelEntry", "XrplChannelRef", "XrplCloseRef", "XrplCloseStatus", "XrplLanded", "XrplLedgerName", "XrplMark", "XrplNetwork", "XrplPage", "XrplReached", "XrplReader", "XrplRef", "XrplServer", "XrplSigned", "XrplStatus", "XrplTxJson", "XrplUnsigned", "decodeBlob", "mppInvoiceId", "x402InvoiceId", "xrplChannelId", "xrplChannelStatus", "xrplChargeStatus", "xrplClaim", "xrplOpenStatus", "xrplStatus"],
         "./x402-exact-xrpl": ["exactXrpl"]
       },
       "use": "Any XRPL buyer's client signs a Payment whose InvoiceID carries H, any server checks the signed blob, and anyone reads the payment, or a payment channel's opening, claim and close, back.",
