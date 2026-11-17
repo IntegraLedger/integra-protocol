@@ -1,6 +1,6 @@
 /**
- * The reads of the x402 pairings on eip155 chains, as the profile `read-status` and each pairing's own profile state
- * them: the single-use value read at the final mark and at the latest head, the search for the payer's acts carrying H
+ * The reads of the x402 pairings on eip155 chains, and of the MPP EIP-3009 charges (`evm-eip3009.ts`), as the profile
+ * `read-status` and each pairing's own profile state them: the single-use value read at the final mark and at the latest head, the search for the payer's acts carrying H
  * from the position the caller gives to the latest head, and each transaction met, classified from what landed against
  * the reference's payer and the option's payee. `decide` composes the answer; each pairing's `status` is `statusOf` over
  * its read.
@@ -67,7 +67,8 @@ export type SeenEvm = Seen<bigint, EvmMark> & { readonly signed?: Signed };
 
 /** The single-use value of the act asked about, and the other act's under the same H where the pairing has one. */
 export interface Values {
-  readonly h: AtrHash;
+  /** H, where the reference holds it. */
+  readonly h?: AtrHash;
   readonly act: Act;
   /** The value the act asked about consumes: H, the agreement's own value, or a value the pairing derives. */
   readonly v: Hex;
@@ -110,6 +111,8 @@ export interface ReadSpec<R> {
   readonly check: (ref: unknown) => ref is R;
   /** The value the payment consumes, where it is not H itself. */
   readonly paymentValue?: (ref: R) => Hex;
+  /** `false` where the reference holds no H, the value being `paymentValue`'s alone. */
+  readonly holdsH?: false;
   /** Whether the value is consumed in the state after `block`; absent where the read holds no single-use value. */
   readonly value?: (ref: R, v: Hex, reader: EvmReader, block: bigint) => Promise<boolean | { readonly unreadable: UnreadableReason }>;
   /** The signed bound: lapsed at a block whose time is at or past `at` (`inclusive`), or past it. */
@@ -142,19 +145,23 @@ export interface ReadSpec<R> {
   readonly payer: (ref: R) => Hex;
 }
 
-/** The reference every x402 eip155 read takes: the network, the option's payee, H, and a named transaction as a hint. */
-export interface X402EvmRefBase {
+/** The reference every read over `statusOf` takes: the network, the option's payee, and a named transaction as a hint. */
+export interface EvmReadRefBase {
   readonly network: `eip155:${string}`;
   readonly payee: string;
-  readonly h: AtrHash;
   /** A transaction a settler or the caller named, read beside the search; never needed. */
   readonly transaction?: Hex;
 }
 
+/** The reference every x402 eip155 read takes: `EvmReadRefBase` and H. */
+export interface X402EvmRefBase extends EvmReadRefBase {
+  readonly h: AtrHash;
+}
+
 const QUERY_UNPARSEABLE: StatusAnswer<bigint, EvmMark> = Object.freeze({ state: "unreadable", reason: "unparseable", foreign: [] });
 
-/** The `status` of an x402 eip155 pairing over its read. */
-export function statusOf<R extends X402EvmRefBase>(
+/** The `status` of a pairing over its read. */
+export function statusOf<R extends EvmReadRefBase>(
   spec: ReadSpec<R>,
 ): (ref: R, reader: EvmReader, query: EvmQuery<unknown>) => Promise<StatusAnswer<bigint, EvmMark>> {
   return async (ref, reader, query) => {
@@ -176,8 +183,12 @@ function presentation(presented: Signed | undefined, signed: Signed | undefined)
 }
 
 /** The values of the act asked about: on a pairing whose agreement has its own value, the agreement's for `agreement`. */
-async function valuesOf<R>(spec: ReadSpec<R>, ref: R & X402EvmRefBase, act: Act): Promise<Values | undefined> {
-  const h = normalHash(ref.h);
+async function valuesOf<R extends EvmReadRefBase>(spec: ReadSpec<R>, ref: R, act: Act): Promise<Values | undefined> {
+  if (spec.holdsH === false) {
+    const v = spec.paymentValue === undefined ? null : normalHash(spec.paymentValue(ref));
+    return v === null ? undefined : { act, v };
+  }
+  const h = normalHash((ref as { h?: unknown }).h);
   if (h === null) return undefined;
   if (spec.agreementValue) {
     const d = await agreementValue(h);
@@ -187,7 +198,7 @@ async function valuesOf<R>(spec: ReadSpec<R>, ref: R & X402EvmRefBase, act: Act)
 }
 
 /** What the read observed, for `decide`, or the reason it established nothing. */
-async function factsOf<R extends X402EvmRefBase>(
+async function factsOf<R extends EvmReadRefBase>(
   spec: ReadSpec<R>,
   ref: R,
   reader: EvmReader,

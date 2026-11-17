@@ -1,14 +1,14 @@
 /**
  * The reads of the MPP charges on EVM chains, as the profile `read-status` and the `mpp-charge` profile state them, and
  * of the EVM session's opening (`mpp/session/evm`, the profile `mpp/session/evm-tempo`). The EIP-3009 charges
- * (`mpp/charge/evm/authorization`, `mpp/charge/usdc/evm`) and the Permit2 charge read the single-use value at the final
- * mark and at the latest head, and search for the payer's acts carrying the nonce the challenge derives (on Permit2,
- * the nonce or the challenge's witness word), from the position the caller gives to the latest head, in pages of at most 10,000 blocks; each transaction met is classified
- * from what landed against the reference's payer and the option's payee. The session's opening is read alike, by its
- * funding, its search being no search for H. The `transaction` and `hash` charges, at coverage `none`, read the
- * transaction the credential names. `decide` composes every answer.
+ * (`mpp/charge/evm/authorization`, `mpp/charge/usdc/evm`) make the EIP-3009 read of `evm-eip3009.ts` over `statusOf`.
+ * The Permit2 charge reads the single-use value at the final mark and at the latest head, and searches for the payer's
+ * acts carrying the nonce or the challenge's witness word, from the position the caller gives to the latest head, in
+ * pages of at most 10,000 blocks; each transaction met is classified from what landed against the reference's payer and
+ * the option's payee. The session's opening is read alike, by its funding, its search being no search for H. The
+ * `transaction` and `hash` charges, at coverage `none`, read the transaction the credential names. `decide` composes
+ * every answer.
  */
-import { secp256k1 } from "@noble/curves/secp256k1.js";
 import {
   addressOfWord,
   addressWord,
@@ -16,7 +16,6 @@ import {
   bytesOf,
   concat,
   hexOf,
-  keccak,
   keccakHex,
   uintOf,
   uintWord,
@@ -29,7 +28,6 @@ import {
   AUTHORIZATION_USED_TOPIC,
   NONCE_BITMAP_SELECTOR,
   TRANSFER_TOPIC,
-  TRANSFER_WITH_AUTHORIZATION_TYPEHASH,
   evmLedger,
   isEvmQuery,
   isLog,
@@ -44,6 +42,8 @@ import {
 } from "./evm.js";
 import type { EvmLogEntry, EvmSearchReader } from "./evm-search.js";
 import { decide, type Facts, type Moved, type Seen, type StatusAnswer, type UnreadableReason } from "./read.js";
+import { EIP3009_PRESENTED, eip3009CallsIn, eip3009Spec } from "./evm-eip3009.js";
+import { statusOf } from "./evm-x402.js";
 import { issuedDigest, isChallengeShape, type MppChallenge } from "../mpp-challenge.js";
 import { isRefusal, refusal, type Refusal } from "../refusal.js";
 
@@ -51,16 +51,6 @@ import { isRefusal, refusal, type Refusal } from "../refusal.js";
 export const AUTHORIZATION_CANCELED_TOPIC = keccakHex("AuthorizationCanceled(address,bytes32)");
 /** keccak256("UnorderedNonceInvalidation(address,uint256,uint256)"), Permit2's cancellation of a word of nonces. */
 export const UNORDERED_NONCE_INVALIDATION_TOPIC = keccakHex("UnorderedNonceInvalidation(address,uint256,uint256)");
-/** keccak256 of EIP-3009's `ReceiveWithAuthorization` type. */
-const RECEIVE_WITH_AUTHORIZATION_TYPEHASH = keccakHex(
-  "ReceiveWithAuthorization(address from,address to,uint256 value,uint256 validAfter,uint256 validBefore,bytes32 nonce)",
-);
-const EIP712_DOMAIN_TYPEHASH = keccakHex(
-  "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)",
-);
-/** `name()` and `version()`, read from a contract other than the asset to verify an authorization in its domain. */
-const NAME_SELECTOR = "0x06fdde03";
-const VERSION_SELECTOR = "0x54fd4d50";
 
 /** The blocks one page of a search reads at most; a page the endpoint refuses is halved. */
 export const SEARCH_PAGE_BLOCKS = 10_000n;
@@ -537,8 +527,6 @@ export interface MppEip3009Ref extends ChargeRefBase {
   readonly presented: Signed;
 }
 
-const PRESENTED_3009 = ["token", "from", "to", "value", "nonce"] as const;
-
 function isSigned(s: unknown, names: readonly string[]): s is Signed {
   return isObject(s) && Object.values(s).every((v) => typeof v === "string") && names.every((n) => typeof s[n] === "string");
 }
@@ -550,274 +538,32 @@ function isEip3009Ref(r: unknown): r is MppEip3009Ref {
     isAddress(a["at"]) &&
     normalHash(a["nonce"]) !== null &&
     uint256Of(a["deadline"]) !== undefined &&
-    isSigned(r["presented"], PRESENTED_3009) &&
+    isSigned(r["presented"], EIP3009_PRESENTED) &&
     typeof r["network"] === "string" &&
     /^eip155:[1-9][0-9]*$/.test(r["network"])
   );
 }
 
-/** The calls through which a token consumes an EIP-3009 authorization, in their `v, r, s` and `bytes` forms. */
-export const EIP3009_SELECTORS: readonly Hex[] = Object.freeze([
-  "0xe3ee160e", // transferWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)
-  "0xcf092995", // transferWithAuthorization(address,address,uint256,uint256,uint256,bytes32,bytes)
-  "0xef55bec6", // receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,uint8,bytes32,bytes32)
-  "0x88b7ab63", // receiveWithAuthorization(address,address,uint256,uint256,uint256,bytes32,bytes)
-] as Hex[]);
-
-/** An EIP-3009 call decoded from a transaction's input: its signed words and its signature, where it is 65 bytes. */
-interface Eip3009Call {
-  readonly receive: boolean;
-  readonly from: Hex;
-  readonly to: Hex;
-  readonly value: bigint;
-  readonly validAfter: bigint;
-  readonly validBefore: bigint;
-  readonly nonce: Hex;
-  /** `r`, `s` and `v` as the call carries them; absent for a `bytes` signature that is not 65 bytes. */
-  readonly sig?: { readonly r: Uint8Array; readonly s: Uint8Array; readonly v: number };
-}
-
-function eip3009CallsIn(input: Uint8Array): Eip3009Call[] {
-  const out: Eip3009Call[] = [];
-  for (const c of callsIn(input, EIP3009_SELECTORS)) {
-    const w = [0, 1, 2, 3, 4, 5].map((i) => wordAt(c.args, i));
-    if (w.some((x) => x === undefined)) continue;
-    const from = addressOfWord(w[0]!);
-    const to = addressOfWord(w[1]!);
-    if (from === undefined || to === undefined) continue;
-    const receive = c.selector === "0xef55bec6" || c.selector === "0x88b7ab63";
-    const packed = c.selector === "0xcf092995" || c.selector === "0x88b7ab63";
-    let sig: Eip3009Call["sig"];
-    if (!packed) {
-      const v = wordAt(c.args, 6);
-      const r = wordAt(c.args, 7);
-      const s = wordAt(c.args, 8);
-      if (v !== undefined && r !== undefined && s !== undefined && uintOf(v) < 256n) sig = { r, s, v: Number(uintOf(v)) };
-    } else {
-      const off = wordAt(c.args, 6);
-      const o = off === undefined ? undefined : uintOf(off);
-      const len = o === undefined || o > BigInt(c.args.length) ? undefined : wordAt(c.args.subarray(Number(o)), 0);
-      if (o !== undefined && len !== undefined && uintOf(len) === 65n && Number(o) + 32 + 65 <= c.args.length) {
-        const b = c.args.subarray(Number(o) + 32, Number(o) + 97);
-        sig = { r: b.subarray(0, 32), s: b.subarray(32, 64), v: b[64]! };
-      }
-    }
-    out.push({
-      receive,
-      from,
-      to,
-      value: uintOf(w[2]!),
-      validAfter: uintOf(w[3]!),
-      validBefore: uintOf(w[4]!),
-      nonce: wordHex(w[5]!),
-      ...(sig === undefined ? {} : { sig }),
-    });
-  }
-  return out;
-}
-
-/** An ABI-encoded `string` return, or undefined where the answer is not one. */
-function abiString(answer: unknown): Uint8Array | undefined {
-  const b = bytesOf(answer, 4096);
-  if (b === undefined || b.length < 64) return undefined;
-  const off = uintOf(b.subarray(0, 32));
-  if (off > BigInt(b.length - 32)) return undefined;
-  const len = uintOf(b.subarray(Number(off), Number(off) + 32));
-  const start = Number(off) + 32;
-  if (len > BigInt(b.length - start)) return undefined;
-  return b.subarray(start, start + Number(len));
-}
-
 /**
- * Whether `call`'s signature recovers to its `from` over the authorization in the EIP-712 domain of `contract`, its
- * name and version read from it at `block`, the network's chain id and the contract as the verifying contract: `true`,
- * `false`, or `undecodable` where the signature is not 65 bytes with a low `s` or the contract's name or version cannot
- * be read.
+ * The `status` of an MPP EIP-3009 charge, the EIP-3009 read `x402/exact/eip155/eip3009` makes (`eip3009Spec`), its
+ * nonce the challenge's digest the reference holds: the value, `authorizationState(payer, nonce)` on the challenge's
+ * `currency`, at the `finalized` block and at the latest block, lapsed where a head's time is at or past `validBefore`;
+ * the search `[AuthorizationUsed, payer, nonce]` on every contract and `[AuthorizationCanceled, null, nonce]` on
+ * `currency`; where the value reads used at the position given and no transaction read took it, `currency`'s use or
+ * cancellation of the payer's nonce in the first block it reads used at; `presented` on `settled`, from the token's two
+ * paired logs.
  */
-async function verifies(
-  call: Eip3009Call,
-  contract: Hex,
-  chainId: bigint,
-  block: bigint,
-  reader: MppEvmReader,
-): Promise<boolean | "undecodable"> {
-  if (call.sig === undefined) return "undecodable";
-  let name: Uint8Array | undefined;
-  let version: Uint8Array | undefined;
-  try {
-    name = abiString(await reader.call(contract, NAME_SELECTOR, block));
-    version = abiString(await reader.call(contract, VERSION_SELECTOR, block));
-  } catch {
-    return "undecodable";
-  }
-  if (name === undefined || version === undefined) return "undecodable";
-  const domain = keccak(
-    concat([bytesOf(EIP712_DOMAIN_TYPEHASH)!, keccak(name), keccak(version), uintWord(chainId), addressWord(contract)]),
-  );
-  const struct = keccak(
-    concat([
-      bytesOf(call.receive ? RECEIVE_WITH_AUTHORIZATION_TYPEHASH : TRANSFER_WITH_AUTHORIZATION_TYPEHASH)!,
-      addressWord(call.from),
-      addressWord(call.to),
-      uintWord(call.value),
-      uintWord(call.validAfter),
-      uintWord(call.validBefore),
-      bytes32Word(call.nonce),
-    ]),
-  );
-  const digest = keccak(concat([new Uint8Array([0x19, 0x01]), domain, struct]));
-  const v = call.sig.v;
-  const parity = v === 27 || v === 28 ? v - 27 : v === 0 || v === 1 ? v : -1;
-  if (parity < 0) return "undecodable";
-  try {
-    const s = secp256k1.Signature.fromBytes(concat([call.sig.r, call.sig.s]), "compact");
-    if (s.hasHighS()) return "undecodable";
-    const key = s.addRecoveryBit(parity).recoverPublicKey(digest).toBytes(false).subarray(1);
-    return same(hexOf(keccak(key).subarray(12)), call.from);
-  } catch {
-    return "undecodable";
-  }
-}
-
-/**
- * The acts a transaction holds under EIP-3009 that carry the reference's nonce. Each `AuthorizationUsed` of that nonce,
- * on the asset, or on another contract where the payer's signature over the authorization the transaction carries
- * verifies in that contract's domain (one whose signature does not verify counts for nothing; one the read cannot
- * decode or verify holds the search); paired with its `Transfer` by that contract's two logs where the transaction holds
- * one use and at most one transfer of that authorizer there, and otherwise by the one call that consumed it, decoded
- * at any byte offset of the input, uses that decode alike taking their transfers one each in log order. Each of the
- * asset's `AuthorizationCanceled` over the nonce. In a reverted transaction, each call that would have consumed it.
- */
-async function eip3009Classify(ref: MppEip3009Ref, view: TxView, reader: MppEvmReader): Promise<Classified> {
-  const nonce = lower(ref.authorization.nonce) as Hex;
-  const asset = ref.authorization.at;
-  const { receipt } = view;
-  const acts: Act[] = [];
-  const input = async (): Promise<Uint8Array | null | { unreadable: UnreadableReason }> => {
-    const tx = await view.tx();
-    if (tx === null || "unreadable" in tx) return tx;
-    return bytesOf(tx.input) ?? { unreadable: "unparseable" };
-  };
-  if (receipt.status === 0) {
-    const bytes = await input();
-    if (bytes === null) return { seen: [] };
-    if ("unreadable" in bytes) return bytes;
-    for (const c of eip3009CallsIn(bytes)) {
-      if (!same(c.nonce, nonce)) continue;
-      acts.push({
-        result: "failed",
-        consumed: false,
-        carries: true,
-        party: partyOf(c.from, ref.payer, ref.payee),
-        kind: "same",
-        account: same(c.to, ref.payee) ? "payee" : "other",
-        signer: c.from,
-      });
-    }
-    return { seen: acts };
-  }
-  const logs = receipt.logs;
-  const transfers = transfersIn(logs);
-  const usesAll = logs.filter((l) => l.topics.length === 3 && same(l.topics[0], AUTHORIZATION_USED_TOPIC));
-  const uses = usesAll.filter((l) => same(l.topics[2], nonce));
-  const taken = new Set<number>();
-  const chainId = BigInt(ref.network.slice("eip155:".length));
-  for (const l of uses) {
-    const contract = lower(l.address) as Hex;
-    const authorizer = topicAddress(l.topics[1]);
-    if (authorizer === undefined || !isAddress(contract)) return { undecodable: true };
-    const mine = usesAll.filter((u) => same(u.address, contract) && same(topicAddress(u.topics[1]), authorizer));
-    const from = transfers.filter((t) => same(t.token, contract) && same(t.from, authorizer));
-    const onAsset = same(contract, asset);
-    let call: Eip3009Call | undefined;
-    if (!onAsset || mine.length !== 1 || from.length > 1) {
-      const bytes = await input();
-      if (bytes === null) return { undecodable: true };
-      if ("unreadable" in bytes) return bytes;
-      const calls = eip3009CallsIn(bytes).filter((c) => same(c.from, authorizer) && same(c.nonce, nonce));
-      if (calls.length !== 1) return { undecodable: true };
-      call = calls[0]!;
-    }
-    if (!onAsset) {
-      const ok = await verifies(call!, contract, chainId, receipt.blockNumber, reader);
-      if (ok === "undecodable") return { undecodable: true };
-      if (!ok) continue;
-    }
-    let transfer: TransferAt | undefined;
-    if (mine.length === 1 && from.length <= 1) transfer = from[0];
-    else {
-      transfer = from.find((t) => !taken.has(t.log) && same(t.to, call!.to) && t.value === call!.value);
-      if (transfer === undefined) return { undecodable: true };
-    }
-    if (transfer !== undefined) taken.add(transfer.log);
-    acts.push({
-      result: "succeeded",
-      consumed: onAsset && same(authorizer, ref.payer),
-      carries: true,
-      party: partyOf(authorizer, ref.payer, ref.payee),
-      kind: "same",
-      account: transfer === undefined ? "none" : same(transfer.to, ref.payee) ? "payee" : "other",
-      moved: transfer === undefined ? [] : [movedOf(transfer, view.hash)],
-      signer: authorizer,
-      ...(transfer === undefined
-        ? {}
-        : { signed: { token: contract, from: authorizer, to: transfer.to, value: transfer.value.toString(), nonce } }),
-    });
-  }
-  for (const l of logs) {
-    if (l.topics.length !== 3 || !same(l.topics[0], AUTHORIZATION_CANCELED_TOPIC) || !same(l.address, asset)) continue;
-    if (!same(l.topics[2], nonce)) continue;
-    const authorizer = topicAddress(l.topics[1]);
-    acts.push({
-      result: "succeeded",
-      consumed: same(authorizer, ref.payer),
-      carries: true,
-      party: partyOf(authorizer, ref.payer, ref.payee),
-      kind: "other",
-      account: "none",
-      moved: [],
-      ...(authorizer === undefined ? {} : { signer: authorizer }),
-    });
-  }
-  return { seen: acts };
-}
-
-/** `[AuthorizationUsed, payer, nonce]` on every contract and `[AuthorizationCanceled, null, nonce]` on the token. */
-function eip3009Filters(ref: MppEip3009Ref): Filter[] {
-  return [
-    { topics: [AUTHORIZATION_USED_TOPIC, addressTopic(ref.payer), lower(ref.authorization.nonce) as Hex] },
-    { address: ref.authorization.at, topics: [AUTHORIZATION_CANCELED_TOPIC, null, lower(ref.authorization.nonce) as Hex] },
-  ];
-}
-
-const EIP3009_SPEC: ChargeSpec<MppEip3009Ref> = {
-  check: isEip3009Ref,
-  value: async (ref, reader, block) => {
-    const data = hexOf(
-      concat([bytesOf(AUTHORIZATION_STATE_SELECTOR)!, addressWord(ref.payer), bytes32Word(ref.authorization.nonce)]),
-    );
-    const w = await callWord(reader, ref.authorization.at, data, block);
-    if (!(w instanceof Uint8Array)) return w;
-    const v = uintOf(w);
-    return v <= 1n ? v === 1n : { unreadable: "unparseable" };
-  },
-  deadline: (ref) => ({ at: BigInt(ref.authorization.deadline), inclusive: true }),
-  filters: eip3009Filters,
-  // The nonce's use or cancellation is indexed by the authorizer and the nonce: the search's own logs find it.
-  consumers: eip3009Filters,
-  classify: eip3009Classify,
-  presented: (ref) => (isObject(ref) && isSigned(ref["presented"], PRESENTED_3009) ? ref["presented"] : undefined),
-};
-
-/**
- * The `status` of an MPP EIP-3009 charge: the value, `authorizationState(payer, nonce)` on the challenge's `currency`,
- * at the `finalized` block and at the latest block, lapsed where a head's time is at or past `validBefore`; the search
- * `[AuthorizationUsed, payer, nonce]` on every contract and `[AuthorizationCanceled, null, nonce]` on `currency`; each
- * transaction met classified as `eip3009Classify` states; where the value reads used at the position given and no
- * transaction read took it, the same logs read in the first block it reads used at (`consumerBelow`); `presented` on
- * `settled`, from the token's two paired logs.
- */
-export const mppEip3009Status = chargeStatus(EIP3009_SPEC);
+export const mppEip3009Status = statusOf(
+  eip3009Spec<MppEip3009Ref>({
+    coverage: "full",
+    agreementValue: false,
+    check: isEip3009Ref,
+    nonce: (ref) => ref.authorization.nonce,
+    token: (ref) => ref.authorization.at,
+    payer: (ref) => ref.payer,
+    validBefore: (ref) => BigInt(ref.authorization.deadline),
+  }),
+);
 
 // ── Permit2: `mpp/charge/evm/permit2`.
 

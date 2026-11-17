@@ -182,7 +182,7 @@ function faultOf(c: ReadCase): LedgerSpec["fault"] {
     case "too-large":
       return { method: "block", error: new ReaderError("too-large") };
     case undefined:
-      return c.facts.history ? undefined : { method: "logs", error: Object.assign(new Error("history pruned"), { kind: "history" }) };
+      return c.facts.history ? undefined : { method: "logs", error: new ReaderError("history") };
     default:
       return undefined;
   }

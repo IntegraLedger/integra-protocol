@@ -1,8 +1,9 @@
 // The MPP EVM charges' reads and references, beyond the read kit's cases: a reference given another challenge than
-// the one the credential echoes, a use of the nonce on another contract whose signature does not verify there, and
+// the one the credential echoes, a use of the nonce on another contract whose signature does not verify in the domain
+// that contract publishes, and
 // Arc's system log beside a USDC transfer in the named transaction.
 import { describe, expect, it } from "vitest";
-import { addressWord, concat, hexOf, keccakHex, uintWord, type Hex } from "../src/evm-abi.js";
+import { addressWord, concat, hexOf, keccak, keccakHex, uintWord, type Hex } from "../src/evm-abi.js";
 import { AUTHORIZATION_USED_TOPIC, TRANSFER_TOPIC } from "../src/evm.js";
 import { evmAuthorization, evmHash, place, type MppChallenge, type MppCredential } from "../src/mpp.js";
 import { SYSTEM_TRANSFER_EMITTER } from "../src/internal/mpp-evm-read.js";
@@ -51,6 +52,19 @@ describe("mpp/charge/evm/authorization's status, a use on another contract", () 
   const forged = hexOf(
     concat([new Uint8Array([0xe3, 0xee, 0x16, 0x0e]), addressWord(PAYER), addressWord(PAYEE), uintWord(5n), uintWord(0n), uintWord(10n ** 12n), uintWord(BigInt(NONCE)), uintWord(27n), uintWord(1n), uintWord(1n)]),
   );
+  // The four-member EIP-712 domain separator of OTHER under the name and version "A", which it publishes by
+  // `DOMAIN_SEPARATOR()` as FiatTokenV2_2 does.
+  const separator = hexOf(
+    keccak(
+      concat([
+        keccak("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+        keccak("A"),
+        keccak("A"),
+        uintWord(84532n),
+        addressWord(OTHER),
+      ]),
+    ),
+  );
   const read = (input: Hex) =>
     evmAuthorization.status(
       ref,
@@ -61,12 +75,14 @@ describe("mpp/charge/evm/authorization's status, a use on another contract", () 
         call: (_to, data) =>
           data === "0x06fdde03" || data === "0x54fd4d50"
             ? hexOf(concat([uintWord(32n), uintWord(1n), uintWord(0x41n << 248n)]))
-            : word(0n),
+            : data === "0x3644e515"
+              ? separator
+              : word(0n),
       }),
       { act: "payment", finality: "finalized" },
     );
 
-  it("counts for nothing where its signature does not verify in that contract's domain", async () => {
+  it("counts for nothing where its signature does not verify in the domain that contract publishes", async () => {
     expect(await read(forged)).toEqual({ state: "pending", reason: "instrument-live", foreign: [] });
   });
 
