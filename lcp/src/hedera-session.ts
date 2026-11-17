@@ -64,7 +64,7 @@ export interface HederaStockRef {
 }
 
 /**
- * The reader of a stock session: the network's JSON-RPC relay, and two reads of its mirror. Every failure rejects.
+ * The reader of a stock session: the network's JSON-RPC relay, and three reads of its mirror. Every failure rejects.
  */
 export interface HederaStockReader {
   readonly network: HederaNetwork;
@@ -77,6 +77,12 @@ export interface HederaStockReader {
    * on the mirror's 404.
    */
   account(address: Hex): Promise<string | null>;
+  /**
+   * `GET /api/v1/contracts/results/{transactionIdOrHash}` of the mirror for the transaction hash: the answer's `result`,
+   * the transaction's result as the network records it, `CONTRACT_REVERT_EXECUTED` for a revert executed in the EVM;
+   * null on the mirror's 404.
+   */
+  contractResult(tx: Hex): Promise<string | null>;
   /**
    * The number of the oldest block the mirror holds, from which the relay answers, `number` of
    * `GET /api/v1/blocks?order=asc&limit=1`, or `archival` where the endpoint is declared archival.
@@ -304,19 +310,25 @@ async function namesPayee(address: Hex, recipient: Hex, reader: HederaStockReade
 /**
  * The read of a stock opening, as the profile `read-status` answers it at coverage `none` (the profile
  * `mpp/session/hedera-solana-xrpl`): the transaction the credential names, by its receipt through the relay, at its one
- * mark, `finalized`, every block the relay serves being final. A revert is the act's own failed result,
- * `transaction-failed`, where its sender signed the escrow's `open` to the challenge's recipient, as
+ * mark, `finalized`, every block the relay serves being final. A revert took the sender nonce it signed only where it
+ * was executed in the EVM, the mirror's contract result for the hash being `CONTRACT_REVERT_EXECUTED`, one that failed
+ * the node's validations before the EVM leaving the nonce as it was (HIP-844, *Rationale*). Such a revert is the act's
+ * own failed result, `transaction-failed`, where its sender signed the escrow's `open` to the challenge's recipient, as
  * `eth_getTransactionByHash` gives the call; an `open` to another account consumed the opening's nonce,
- * `instrument-consumed`, and so does a revert of any other call. A receipt that succeeded holding exactly one `ChannelOpened` from the escrow naming the channel,
- * whose members give the channel id it names, is the opening: its signer is the account id the mirror resolves its
- * payer to, or the payer's address where the mirror resolves none, an address of no account; it is the payee's own
- * act where that account is the one the challenge's `recipient` resolves to; and it names the payee's account where
- * its `payee` is the `recipient` or resolves to the same account. What moved is the deposit, by the transaction and
- * the log's place among the receipt's logs. Any other receipt that succeeded consumed the opening's transaction and is
- * no opening of the channel. No receipt is `not-found` where the mirror holds the blocks after the position the
- * caller gives, or is archival, and `history-gap` otherwise. The read reads no nonce state and makes no search, the
- * named transaction's receipt being all it reads of the opening's sender nonce; it reads the payer against no account:
- * the caller compares the signer with the account that signed the agreement.
+ * `instrument-consumed`, and so does a revert of any other call. Any other failed result, or none on the mirror, shows
+ * no nonce taken, `INSUFFICIENT_GAS` coming both before and in the EVM (HIP-844, *Backward Compatibility*), and the
+ * same signed bytes can still land under the same hash: with the value unread and the lookup not ended, it is
+ * `pending`, `search-incomplete`, never `failed`. A receipt that succeeded holding exactly one `ChannelOpened` from the
+ * escrow naming the channel, whose members give the channel id it names, is the opening: its signer is the account id
+ * the mirror resolves its payer to, or the payer's address where the mirror resolves none, an address of no account; it
+ * is the payee's own act where that account is the one the challenge's `recipient` resolves to; and it names the
+ * payee's account where its `payee` is the `recipient` or resolves to the same account. What moved is the deposit, by
+ * the transaction and the log's place among the receipt's logs. Any other receipt that succeeded consumed the opening's
+ * transaction and is no opening of the channel. No receipt is `not-found` where the mirror holds the blocks after the
+ * position the caller gives, or is archival, and `history-gap` otherwise. The read reads no nonce state and makes no
+ * search, the named transaction's receipt, and for a revert its contract result, being all it reads of the opening's
+ * sender nonce; it reads the payer against no account: the caller compares the signer with the account that signed the
+ * agreement.
  */
 export async function hederaStockStatus(
   ref: HederaStockRef,
@@ -348,16 +360,22 @@ export async function hederaStockStatus(
   if (receipt.logs.length > MAX_LOGS) return unreadable("too-large");
   const row = { transaction: tx, position: receipt.blockNumber, mark: "finalized" as const, consumed: true, carries: false };
   let seen: Seen<bigint, "finalized">;
+  // A revert executed in the EVM took the sender nonce; any other failed result shows none taken (HIP-844).
+  let executed = true;
   if (receipt.status === 0) {
     // The revert is the act's own failed result where the sender signed the escrow's `open`, the payer's by rule, the
     // named transaction being the act at coverage none, its sender not read; the account it names is the `payee` that
     // call signs, since a revert moved nothing.
+    let result: string | null;
     let signed: { to: Hex | null; input: Hex } | null;
     try {
+      result = await reader.contractResult(tx);
       signed = await reader.transaction(tx);
     } catch {
       return unreadable("transport");
     }
+    if (result !== null && typeof result !== "string") return unreadable("unparseable");
+    executed = result === "CONTRACT_REVERT_EXECUTED";
     const input = isObject(signed) ? bytesOf(signed.input) : undefined;
     const open =
       isObject(signed) && typeof signed.to === "string" && sameBytes(signed.to.toLowerCase(), ref.escrow.toLowerCase()) &&
@@ -372,7 +390,7 @@ export async function hederaStockStatus(
         return unreadable("transport");
       }
     }
-    seen = { ...row, result: "failed", party: "payer", kind: open === undefined ? "other" : "same", account };
+    seen = { ...row, result: "failed", consumed: executed, party: "payer", kind: open === undefined ? "other" : "same", account };
   } else {
     const opened = channelOpened(receipt.logs, ref.escrow.toLowerCase() as Hex, ref.channel.toLowerCase() as Hex);
     const members = opened.length === 1 ? openedMembers(opened[0]!.log, ref.escrow.toLowerCase() as Hex, ref.network) : undefined;
@@ -404,13 +422,17 @@ export async function hederaStockStatus(
       };
     }
   }
-  const facts: Facts<bigint, "finalized", bigint> = {
-    seen: [seen],
-    // The opening's own transaction is included: it consumed the opening's account nonce, the act's one value read.
-    value: { consumed: true, lapsed: false, mark: "finalized", head: { consumed: true } },
-    search: { whole: true },
-    history: true,
-  };
+  // The opening's own transaction is included and, where it succeeded or was executed in the EVM, consumed the
+  // opening's account nonce, the act's one value read. A failed result not shown executed there leaves the value unread
+  // and the lookup not ended, since the same signed bytes can still land under the same hash.
+  const facts: Facts<bigint, "finalized", bigint> = executed
+    ? {
+        seen: [seen],
+        value: { consumed: true, lapsed: false, mark: "finalized", head: { consumed: true } },
+        search: { whole: true },
+        history: true,
+      }
+    : { seen: [seen], search: { whole: false }, history: true };
   return decide(facts, query, LEDGER);
 }
 

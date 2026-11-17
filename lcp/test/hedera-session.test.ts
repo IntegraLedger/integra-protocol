@@ -23,11 +23,14 @@ interface Row {
     receipt: (Omit<EvmReceipt, "blockNumber"> & { blockNumber: string }) | null | "reader-error";
     transaction?: { to: string | null; input: string } | null;
   };
-  mirror: { accounts: Record<string, string>; oldestBlock: string };
+  mirror: { accounts: Record<string, string>; contractResult?: { result: string } | null; oldestBlock: string };
   expect: unknown;
 }
 
-/** A reader answering a row: the relay's receipt, the mirror's accounts by address and its oldest block. */
+/**
+ * A reader answering a row: the relay's receipt, the mirror's accounts by address, the `result` of its contract result
+ * for the hash (null for its 404; a row that gives none fails its read), and its oldest block.
+ */
 function readerOf(row: Row, network = "hedera:testnet"): HederaStockReader {
   return {
     network: network as HederaStockReader["network"],
@@ -38,6 +41,11 @@ function readerOf(row: Row, network = "hedera:testnet"): HederaStockReader {
     },
     transaction: async () => (row.relay.transaction ?? null) as never,
     account: async (address) => row.mirror.accounts[address.toLowerCase()] ?? null,
+    contractResult: async () => {
+      const c = row.mirror.contractResult;
+      if (c === undefined) throw new Error("the row gives no contract result");
+      return c === null ? null : c.result;
+    },
     oldestBlock: async () => (row.mirror.oldestBlock === "archival" ? "archival" : BigInt(row.mirror.oldestBlock)),
   };
 }

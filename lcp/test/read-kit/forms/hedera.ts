@@ -2,7 +2,7 @@
 // Mirror Node REST interface's OpenAPI description 0.163.1, and run through the pairing's own `status`. A case's
 // positions are consensus timestamps that many seconds after 1700000000, its one final mark the mirror's `consensus`,
 // and its transactions Hedera transaction ids; the answer is put back in the case's terms. The stock session's cases
-// are made on the network's JSON-RPC relay and its mirror's account read, from HS7's rows of
+// are made on the network's JSON-RPC relay and its mirror's account and contract-result reads, from HS7's rows of
 // mpp-session-hedera-solana-xrpl.json, its positions block numbers. The cases that cannot arise on these pairings are
 // listed with the reason each profile states (x402-exact-hedera.md, rule 17; the session's in
 // mpp-session-hedera-solana-xrpl.md, clause 1).
@@ -268,10 +268,15 @@ async function executorRun(c: ReadCase, act: Act): Promise<CaseAnswer> {
 /**
  * The session's rows of mpp-session-hedera-solana-xrpl.json, HS7: the opening that settles (HS3's `ChannelOpened` behind
  * the token's `Transfer`, constructed, marked so there), the revert whose sender signed the escrow's `open` (HS2's
- * calldata), and the recipient another address resolving to another account.
+ * calldata) with the mirror's contract result, and the recipient another address resolving to another account.
  */
 const S = JSON.parse(readFileSync(new URL("../../../vectors/mpp-session-hedera-solana-xrpl.json", import.meta.url), "utf8"));
-type HsRow = { case: string; reference: HederaStockRef; relay: { receipt: { logs: EvmLog[] } | null; transaction?: { to: string | null; input: string } }; mirror: { accounts: Record<string, string> } };
+type HsRow = {
+  case: string;
+  reference: HederaStockRef;
+  relay: { receipt: { logs: EvmLog[] } | null; transaction?: { to: string | null; input: string } };
+  mirror: { accounts: Record<string, string>; contractResult?: { result: string } | null };
+};
 const hs = (opens: string): HsRow => {
   const found = (S.HS7.rows as HsRow[]).filter((r) => r.case.startsWith(opens));
   if (found.length !== 1) throw new Error(`HS7 has ${found.length} rows beginning "${opens}"`);
@@ -280,6 +285,7 @@ const hs = (opens: string): HsRow => {
 const OPENED = hs("the opening's receipt holds one ChannelOpened");
 const REVERTED = hs("the opening reverted, its sender having signed");
 const ELSEWHERE_PAYEE = hs("the opening reverted, the open it signed naming");
+const FAILED = hs("the opening failed, its sender having signed");
 /** The relay's block numbers: a case's position 10 is HS7's block 40845556. */
 const BLOCK = 40845546n;
 
@@ -297,6 +303,7 @@ function sessionRead(c: ReadCase, act: Act): { ref: HederaStockRef; reader: Hede
   let ref: HederaStockRef = { ...OPENED.reference };
   let receipt: EvmReceipt | null | "throw" | "unparseable" = null;
   let signed: { to: string | null; input: string } | null = null;
+  let result: string | null = null;
   if (f.unreadable === "transport") receipt = "throw";
   else if (f.unreadable === "unparseable") receipt = "unparseable";
   else if (f.unreadable === "history-gap") throw new Cannot("the read answers history-gap from its own reads alone");
@@ -320,6 +327,9 @@ function sessionRead(c: ReadCase, act: Act): { ref: HederaStockRef; reader: Hede
     if (s.result === "failed") {
       receipt = { status: 0, blockNumber: block, logs: [] };
       signed = s.kind === "same" ? REVERTED.relay.transaction! : { to: ref.payee, input: "0x" };
+      // A revert that consumed the value was executed in the EVM; one that did not failed with a status that comes
+      // before it as well (HS7's rows, HIP-844).
+      result = s.consumed ? REVERTED.mirror.contractResult!.result : FAILED.mirror.contractResult!.result;
     } else {
       const logs = OPENED.relay.receipt!.logs;
       const deposit = s.moved?.[0];
@@ -342,6 +352,7 @@ function sessionRead(c: ReadCase, act: Act): { ref: HederaStockRef; reader: Hede
     },
     transaction: async () => signed as never,
     account: async (address) => accounts[address.toLowerCase()] ?? null,
+    contractResult: async () => result,
     // No position given: the mirror holds the blocks only where the endpoint is declared archival.
     oldestBlock: async () => (f.history ? "archival" : (after ?? BLOCK) + 2n),
   };
@@ -386,6 +397,8 @@ const GATE =
   "while the search proves no absence, three facts it rests on not yet shown by a run, the cases at coverage full that answer instrument-unused, instrument-consumed or transaction-failed answer search-incomplete, which the pairing's vectors hold (x402-exact-hedera.md, rules 13 and 17)";
 const SESSION =
   "the session's read takes the opening by the hash its credential names, reads no nonce state, makes no search and states no lapse (mpp-session-hedera-solana-xrpl.md, clause 1)";
+const SESSION_SEARCH =
+  "the one case at coverage none that answers search-incomplete is a search's item it could not decode, and the session's read makes no search, decoding nothing but the receipt and the contract result of the hash its credential names (mpp-session-hedera-solana-xrpl.md, clause 1)";
 const EXECUTOR =
   "the transfer-executor's read takes the transaction the facilitator names by its id, read as the charge reads its own, and makes no search (x402-exact-hedera.md, rules 15 and 17)";
 
@@ -487,7 +500,7 @@ export const forms: readonly DeclaredForm[] = [
       ...answering("below-mark", BELOW),
       ...answering("instrument-live", SESSION),
       ...answering("instrument-unused", SESSION),
-      ...answering("search-incomplete", SESSION),
+      ...answering("search-incomplete", SESSION_SEARCH),
     ],
   ),
 ];

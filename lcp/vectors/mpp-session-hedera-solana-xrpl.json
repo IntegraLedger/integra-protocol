@@ -890,8 +890,8 @@
   }
  },
  "HS7": {
-  "case": "status of mpp/session/hedera/stock, the stock client's opening read by its transaction hash through the relay, its payer and payee resolved through the mirror (mpp-session-hedera-solana-xrpl.md, rule 7)",
-  "about": "Each row gives the reference, the relay's eth_getTransactionReceipt answer (null for none) and, for a revert, its eth_getTransactionByHash answer and the mirror's answers: accounts, the account id GET /api/v1/accounts/{address} names for each address (absent for its 404), and oldestBlock, the number of its oldest block or archival. HS4's receipt is the live testnet read the file names; every other receipt is constructed, marked so here: HS3's ChannelOpened log, whose channel id HS1 computes with eth-abi and eth-utils, behind the token's Transfer to the escrow, in block 40845556. The account ids are constructed. Positions are block numbers, in decimal. Each expected answer was written by hand from read-status.md and mpp-session-hedera-solana-xrpl.md, clause 1; the asked act is payment at finalized.",
+  "case": "status of mpp/session/hedera/stock, the stock client's opening read by its transaction hash through the relay, its payer and payee resolved through the mirror (mpp-session-hedera-solana-xrpl.md, clause 1)",
+  "about": "Each row gives the reference, the relay's eth_getTransactionReceipt answer (null for none) and, for a revert, its eth_getTransactionByHash answer and the mirror's answers: accounts, the account id GET /api/v1/accounts/{address} names for each address (absent for its 404); for a revert, contractResult, the answer of GET /api/v1/contracts/results/{transactionIdOrHash} for the hash, in the ContractResultDetails shape of the Mirror Node REST interface's OpenAPI description (hiero-ledger/hiero-mirror-node 77f437d8, rest/api/v1/openapi.yml:674-699 and :2603-2623: result, status, and nonce, the wrapped transaction's own), constructed, null for its 404; and oldestBlock, the number of its oldest block or archival. Only a transaction executed in the EVM takes the sender nonce it signed, one that failed the node's validations before the EVM leaving it as it was (HIP-844, hiero-ledger/hiero-improvement-proposals 0c4f195b, HIP/hip-844.md:27-29), and INSUFFICIENT_GAS comes both before and in the EVM (:69): a revert is read as executed in the EVM only where result is CONTRACT_REVERT_EXECUTED. HS4's receipt is the live testnet read the file names; every other receipt is constructed, marked so here: HS3's ChannelOpened log, whose channel id HS1 computes with eth-abi and eth-utils, behind the token's Transfer to the escrow, in block 40845556. The account ids are constructed. Positions are block numbers, in decimal. Each expected answer was written by hand from read-status.md and mpp-session-hedera-solana-xrpl.md, clause 1; the asked act is payment at finalized.",
   "rows": [
    {
     "case": "the opening's receipt holds one ChannelOpened from the escrow naming the channel, its payer resolving to 0.0.5005 and its payee the challenge's recipient: settled, the deposit what moved, by the log's place among the receipt's logs",
@@ -1261,7 +1261,7 @@
     }
    },
    {
-    "case": "the opening reverted, its sender having signed the escrow's open to the challenge's recipient (HS2's open calldata, eth-abi's encoding): the act's own failed result, transaction-failed",
+    "case": "the opening reverted, its sender having signed the escrow's open to the challenge's recipient (HS2's open calldata, eth-abi's encoding), executed in the EVM, the mirror's contract result CONTRACT_REVERT_EXECUTED: the act's own failed result, transaction-failed",
     "reference": {
      "network": "hedera:testnet",
      "transaction": "0x2222222222222222222222222222222222222222222222222222222222222222",
@@ -1285,6 +1285,13 @@
       "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266": "0.0.5005",
       "0x742d35cc6634c0532925a3b844bc9e7595f8fe00": "0.0.6006"
      },
+     "contractResult": {
+      "hash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+      "block_number": 40845556,
+      "result": "CONTRACT_REVERT_EXECUTED",
+      "status": "0x0",
+      "nonce": 0
+     },
      "oldestBlock": "archival"
     },
     "expect": {
@@ -1297,7 +1304,7 @@
     }
    },
    {
-    "case": "the opening reverted, the open it signed naming HS2's recipient where the challenge names another account: instrument-consumed",
+    "case": "the opening reverted, the open it signed naming HS2's recipient where the challenge names another account, executed in the EVM, the mirror's contract result CONTRACT_REVERT_EXECUTED: instrument-consumed",
     "reference": {
      "network": "hedera:testnet",
      "transaction": "0x2222222222222222222222222222222222222222222222222222222222222222",
@@ -1322,6 +1329,13 @@
       "0x742d35cc6634c0532925a3b844bc9e7595f8fe00": "0.0.6006",
       "0x00000000000000000000000000000000000017cf": "0.0.6095"
      },
+     "contractResult": {
+      "hash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+      "block_number": 40845556,
+      "result": "CONTRACT_REVERT_EXECUTED",
+      "status": "0x0",
+      "nonce": 0
+     },
      "oldestBlock": "archival"
     },
     "expect": {
@@ -1330,6 +1344,164 @@
      "transaction": "0x2222222222222222222222222222222222222222222222222222222222222222",
      "position": "40845556",
      "finality": "finalized",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the opening failed, its sender having signed the escrow's open to the challenge's recipient, the mirror's contract result INSUFFICIENT_GAS, which comes both before and in the EVM: no nonce shown taken, the same signed bytes able to land later, pending, search-incomplete, never transaction-failed",
+    "reference": {
+     "network": "hedera:testnet",
+     "transaction": "0x2222222222222222222222222222222222222222222222222222222222222222",
+     "escrow": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
+     "channel": "0x39ab481e648491b740d74c3da0bb2ad9ffbf38fdde55be65b1e38678c24ba815",
+     "payee": "0x742d35cc6634c0532925a3b844bc9e7595f8fe00"
+    },
+    "relay": {
+     "receipt": {
+      "status": 0,
+      "blockNumber": "40845556",
+      "logs": []
+     },
+     "transaction": {
+      "to": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
+      "input": "0xc79ea485000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe0000000000000000000000000000000000000000000000000000000000000015490000000000000000000000000000000000000000000000000000000000989680ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000000000"
+     }
+    },
+    "mirror": {
+     "accounts": {
+      "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266": "0.0.5005",
+      "0x742d35cc6634c0532925a3b844bc9e7595f8fe00": "0.0.6006"
+     },
+     "contractResult": {
+      "hash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+      "block_number": 40845556,
+      "result": "INSUFFICIENT_GAS",
+      "status": "0x0",
+      "nonce": 0
+     },
+     "oldestBlock": "archival"
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the opening failed, the open it signed naming HS2's recipient where the challenge names another account, the mirror's contract result INSUFFICIENT_GAS: no nonce shown taken, pending, search-incomplete, never instrument-consumed",
+    "reference": {
+     "network": "hedera:testnet",
+     "transaction": "0x2222222222222222222222222222222222222222222222222222222222222222",
+     "escrow": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
+     "channel": "0x39ab481e648491b740d74c3da0bb2ad9ffbf38fdde55be65b1e38678c24ba815",
+     "payee": "0x00000000000000000000000000000000000017cf"
+    },
+    "relay": {
+     "receipt": {
+      "status": 0,
+      "blockNumber": "40845556",
+      "logs": []
+     },
+     "transaction": {
+      "to": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
+      "input": "0xc79ea485000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe0000000000000000000000000000000000000000000000000000000000000015490000000000000000000000000000000000000000000000000000000000989680ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000000000"
+     }
+    },
+    "mirror": {
+     "accounts": {
+      "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266": "0.0.5005",
+      "0x742d35cc6634c0532925a3b844bc9e7595f8fe00": "0.0.6006",
+      "0x00000000000000000000000000000000000017cf": "0.0.6095"
+     },
+     "contractResult": {
+      "hash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+      "block_number": 40845556,
+      "result": "INSUFFICIENT_GAS",
+      "status": "0x0",
+      "nonce": 0
+     },
+     "oldestBlock": "archival"
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the opening failed, the mirror holding no contract result for the hash (its 404): not shown executed in the EVM, pending, search-incomplete",
+    "reference": {
+     "network": "hedera:testnet",
+     "transaction": "0x2222222222222222222222222222222222222222222222222222222222222222",
+     "escrow": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
+     "channel": "0x39ab481e648491b740d74c3da0bb2ad9ffbf38fdde55be65b1e38678c24ba815",
+     "payee": "0x742d35cc6634c0532925a3b844bc9e7595f8fe00"
+    },
+    "relay": {
+     "receipt": {
+      "status": 0,
+      "blockNumber": "40845556",
+      "logs": []
+     },
+     "transaction": {
+      "to": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
+      "input": "0xc79ea485000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe0000000000000000000000000000000000000000000000000000000000000015490000000000000000000000000000000000000000000000000000000000989680ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000000000"
+     }
+    },
+    "mirror": {
+     "accounts": {
+      "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266": "0.0.5005",
+      "0x742d35cc6634c0532925a3b844bc9e7595f8fe00": "0.0.6006"
+     },
+     "contractResult": null,
+     "oldestBlock": "archival"
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the opening failed in the block the agreement settled at, the mirror's contract result INSUFFICIENT_GAS: no nonce shown taken, pending, search-incomplete, never before-position",
+    "reference": {
+     "network": "hedera:testnet",
+     "transaction": "0x2222222222222222222222222222222222222222222222222222222222222222",
+     "escrow": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
+     "channel": "0x39ab481e648491b740d74c3da0bb2ad9ffbf38fdde55be65b1e38678c24ba815",
+     "payee": "0x742d35cc6634c0532925a3b844bc9e7595f8fe00"
+    },
+    "query": {
+     "after": "40845556"
+    },
+    "relay": {
+     "receipt": {
+      "status": 0,
+      "blockNumber": "40845556",
+      "logs": []
+     },
+     "transaction": {
+      "to": "0x8aaf6690c2a6397d595f97e224fc19759de6fdae",
+      "input": "0xc79ea485000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe0000000000000000000000000000000000000000000000000000000000000015490000000000000000000000000000000000000000000000000000000000989680ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000000000"
+     }
+    },
+    "mirror": {
+     "accounts": {
+      "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266": "0.0.5005",
+      "0x742d35cc6634c0532925a3b844bc9e7595f8fe00": "0.0.6006"
+     },
+     "contractResult": {
+      "hash": "0x2222222222222222222222222222222222222222222222222222222222222222",
+      "block_number": 40845556,
+      "result": "INSUFFICIENT_GAS",
+      "status": "0x0",
+      "nonce": 0
+     },
+     "oldestBlock": "archival"
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
      "foreign": []
     }
    },
