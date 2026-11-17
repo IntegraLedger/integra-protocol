@@ -47,6 +47,7 @@ const SIGNED_AGAINST_THE_OPTION: Readonly<Record<string, Readonly<Record<string,
     "svm/channel-id-mismatch": "the opening's channel is the one the option's extra.feePayer derives",
   },
   "x402/exact/solana": { "svm/carrier-mismatch": "the transaction's memo is the option's extra.memo" },
+  "x402/exact/starknet": { "starknet/caller-not-fee-payer": "the signed Caller is the option's extra.feePayer" },
   "x402/exact/tvm": { "tvm/carrier-mismatch": "the forward payload is the option's extra.forwardPayload" },
   "x402/exact/xrpl": {
     "xrpl/carrier-not-lcp": "H is the option's extra.invoiceId, which the signed InvoiceID carries",
@@ -133,10 +134,10 @@ function presentedOptions(where: string, o: PaymentRequirements): [string, Payme
  * offer; those under one it offers, for a payment its `bound` binds under its own option; and of those, the bindings,
  * the refusals, and the bindings whose `reference` gives read keys.
  */
-const PRESENTED = 29391;
-const NOT_OFFERED = 784562;
-const OFFERED_OWN_BINDS = 1263;
-const OFFERED_COUNTS = [1132, 131, 1054];
+const PRESENTED = 29434;
+const NOT_OFFERED = 785678;
+const OFFERED_OWN_BINDS = 1266;
+const OFFERED_COUNTS = [1134, 132, 1056];
 
 const PRESENTATIONS = rowsOf(
   PAYMENTS.flatMap(([where, p]) =>

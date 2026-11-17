@@ -401,9 +401,9 @@
     {
       "unit": "Casper",
       "exports": {
-        "./casper": ["CASPER_DOMAIN_TYPEHASH", "CasperAddress", "CasperCall", "CasperNetwork", "CasperReader", "CasperRef", "CasperStatus", "CasperUnsigned", "Cep3009TypedData", "PackageHash", "casperIdDigest", "casperRecover", "casperStatus", "cep3009TypedData", "exactCasper"]
+        "./casper": ["CASPER_DOMAIN_TYPEHASH", "CASPER_MAX_NAME_LENGTH", "CASPER_MAX_PAGE_CALLS", "CASPER_MAX_PAGES", "CASPER_MAX_PROBES", "CASPER_MAX_PUBLIC_KEY_HEX", "CASPER_MAX_SIGNATURE_HEX", "CasperAddress", "CasperAuthorization", "CasperBlockCall", "CasperBlockPage", "CasperCall", "CasperCursor", "CasperHead", "CasperNetwork", "CasperReader", "CasperRef", "CasperStatus", "CasperUnsigned", "Cep3009TypedData", "PackageHash", "casperIdDigest", "casperRecover", "casperStatus", "cep3009TypedData", "exactCasper"]
       },
-      "use": "Any Casper buyer's client builds the CEP-3009 authorization whose nonce is H, any server checks it, and anyone reads H back from the executed call.",
+      "use": "Any Casper buyer's client builds the CEP-3009 authorization whose nonce is H, or its agreement value, any server checks it, anyone reads the payment back through a node by the token's record of the nonce, with lcp's bounds on that read, and anyone reads the carried value back from the executed call.",
       "fixedBy": "x402-exact-casper.md; CEP-3009."
     },
     {
@@ -441,9 +441,9 @@
     {
       "unit": "Starknet",
       "exports": {
-        "./starknet": ["ANY_CALLER", "EVENT_TRANSFER", "FELT_P", "Felt", "Field", "MASK_250", "OutsideExecutionTypedData", "SELECTOR_EXECUTE_FROM_OUTSIDE_V2", "SELECTOR_TRANSFER", "StarknetEvent", "StarknetInvocation", "StarknetNetwork", "StarknetReader", "StarknetReceipt", "StarknetRef", "StarknetStatus", "StarknetUnsigned", "chainIdFelt", "exactStarknet", "outsideExecution", "snNonce", "starknetIdDigest", "starknetLandedNonce", "starknetStatus"]
+        "./starknet": ["ANY_CALLER", "EVENT_TRANSFER", "FELT_P", "Felt", "Field", "MASK_250", "OutsideExecutionTypedData", "SELECTOR_EXECUTE_FROM_OUTSIDE_V2", "SELECTOR_TRANSFER", "STARKNET_MAX_CANDIDATES", "STARKNET_MAX_CONTINUATION", "STARKNET_MAX_EVENTS", "STARKNET_MAX_EVENT_PAGES", "STARKNET_MAX_SIGNATURE_FELTS", "STARKNET_MAX_TRACE_DEPTH", "STARKNET_MAX_TRACE_INVOCATIONS", "STARKNET_MAX_TYPED_DATA_BYTES", "StarknetCall", "StarknetCursor", "StarknetEmittedEvent", "StarknetEvent", "StarknetEventPage", "StarknetEventQuery", "StarknetHead", "StarknetInvocation", "StarknetMark", "StarknetNetwork", "StarknetOutsideExecution", "StarknetReader", "StarknetReceipt", "StarknetRef", "StarknetStatus", "StarknetUnsigned", "chainIdFelt", "exactStarknet", "outsideExecution", "snNonce", "starknetIdDigest", "starknetLandedNonce", "starknetRecover", "starknetStatus"]
       },
-      "use": "Any Starknet buyer's client builds the SNIP-12 outside execution whose nonce carries H's low 250 bits, any server checks it, and a holder of the ATR confirms H against the landed nonce.",
+      "use": "Any Starknet buyer's client builds the SNIP-12 outside execution whose nonce carries H's low 250 bits, or its agreement value's, any server checks it, anyone reads the payment back through a node by the payer's nonce and the asset's Transfer events, with lcp's bounds on that read, and a holder of the ATR confirms H's low bits against the landed nonce.",
       "fixedBy": "x402-exact-starknet.md; SNIP-9; SNIP-12."
     },
     {

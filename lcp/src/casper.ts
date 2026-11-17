@@ -2,11 +2,12 @@
  * CEP-3009 on Casper and the `x402/exact/casper` pairing: the ATR hash as the authorization's 32-byte `nonce`,
  * written by the buyer's signer, read back from what the payer signed, and read from the executed call's arguments.
  */
-import { fromRawBytes, hash, hashEquals, type AtrHash } from "./core.js";
+import { fromRawBytes, hash, type AtrHash } from "./core.js";
 import type { Field, Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, UINT256_LIMIT, uint256Of } from "./fields.js";
 import type { CasperAuthorization, CasperPaymentPayload } from "./internal/casper.js";
-import { acceptedBy, advertiseFor, chosen, filterOf, isAmount, isTimeoutSeconds, paymentWith, readFor, x402Broadcaster, type X402Read, type X402Forms } from "./internal/x402.js";
+export type { CasperAuthorization } from "./internal/casper.js";
+import { acceptedBy, advertiseFor, chosen, filterOf, isAmount, isTimeoutSeconds, legalContextOf, paymentWith, readFor, sameJson, x402Broadcaster, type X402Read, type X402Forms } from "./internal/x402.js";
 import { decimalBelow, U64_LIMIT } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
@@ -17,7 +18,19 @@ import {
 } from "./x402.js";
 import { CASPER } from "./internal/data/casper.js";
 import { x402Payee } from "./internal/payee.js";
-import { decide, type Facts, type RecoverInput, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./internal/read.js";
+import { agreementValue } from "./internal/core.js";
+import {
+  decide,
+  type Act,
+  type Facts,
+  type RecoverInput,
+  type Seen,
+  type StatusAnswer,
+  type StatusQuery,
+  type Undecoded,
+  type UnreadableReason,
+} from "./internal/read.js";
+import { bigintOrder, isQuery, ledgerOf } from "./internal/read-ledger.js";
 import type { Entry } from "./internal/registry.js";
 import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
@@ -54,35 +67,93 @@ export interface CasperCall {
   error: string | null;
   packageHash: PackageHash | null;
   entryPoint: string | null;
-  args: { from?: CasperAddress; to?: CasperAddress; value?: bigint; nonce?: Uint8Array };
+  /**
+   * The call's arguments as the token takes them: `from` is the authorization's `from`, or on `cancel_authorization`
+   * the authorizer whose nonce it cancels; `validAfter` and `validBefore` where the reader shows them.
+   */
+  args: {
+    from?: CasperAddress;
+    to?: CasperAddress;
+    value?: bigint;
+    validAfter?: bigint;
+    validBefore?: bigint;
+    nonce?: Uint8Array;
+  };
+}
+
+/** A call among a block's transactions, with the hash of the transaction that made it, 64 hex digits. */
+export interface CasperBlockCall extends CasperCall {
+  transaction: string;
+}
+
+/** One page of a block's executed transactions, in the block's order: `next` starts the next page, null at its end. */
+export interface CasperBlockPage {
+  calls: readonly CasperBlockCall[];
+  next: number | null;
+}
+
+/** The newest block a node has executed, every block being final: its height and its own timestamp in Unix milliseconds. */
+export interface CasperHead {
+  height: bigint;
+  timestamp: bigint;
 }
 
 /**
- * Bounded, read-only calls against one network's node. Every failure rejects, for example with `ReaderError` from
- * `@integraledger/lcp/evm`; any rejection reads as unreadable.
+ * Bounded, read-only calls against one network's node or its sidecar. Every failure rejects, for example with
+ * `ReaderError` from `@integraledger/lcp/evm`; any rejection reads as unreadable.
  */
 export interface CasperReader {
   readonly network: CasperNetwork;
   /** `info_get_transaction`, as a `Version1` transaction and then as a `Deploy`; null when the node knows neither. */
   transaction(hash: string): Promise<CasperCall | null>;
+  /** The newest block the node has executed. */
+  head(): Promise<CasperHead>;
+  /** The lowest block height whose state the node serves, its `available_block_range.low`. */
+  lowest(): Promise<bigint>;
+  /**
+   * The item of `(from, nonce)` in `asset`'s `used_nonces` dictionary, read with `state_get_dictionary_item` at the
+   * state root of the block at `height`: true where it is set, false where the node answers in the form it documents
+   * for a missing item, and null where the node does not serve that block's state.
+   */
+  nonceUsed(asset: PackageHash, from: CasperAddress, nonce: Uint8Array, height: bigint): Promise<boolean | null>;
+  /** The page of the executed transactions of the block at `height` that starts at `start`; null where the node does not serve the block. */
+  blockCalls(height: bigint, start: number): Promise<CasperBlockPage | null>;
 }
 
-/** The read keys `reference` returns. */
+/**
+ * The read keys `reference` returns: the network, the token package, the authorization's `from`, the signed nonce (H on
+ * a payment, the agreement's value on an agreement), `settleBy`, which is `validBefore` up to
+ * `Number.MAX_SAFE_INTEGER`, the payee, the `payTo` of the option the payment answers, and the authorization as
+ * presented, for `presented`. Addresses and hashes are lowercase.
+ */
 export interface CasperRef {
   network: CasperNetwork;
-  transaction?: string;
   asset: PackageHash;
-  idDigest: Hex;
+  from: CasperAddress;
+  nonce: AtrHash;
   settleBy: number;
-  /** The option's `payTo`. */
   payee: string;
+  presented: CasperAuthorization;
+}
+
+/**
+ * The search's position: a height at which the item was read unset, above which the block that set it lies; or that
+ * block, the start of the next page of its transactions to read, and the transaction that set the item where an
+ * earlier page held it.
+ */
+export interface CasperCursor {
+  readonly unset?: bigint;
+  readonly block?: bigint;
+  readonly next?: number;
+  readonly found?: string;
 }
 
 /**
  * The answer of `casperStatus`: positions are block heights, and the one mark is `finalized`, since the node serves
- * only executed transactions of final blocks.
+ * only executed transactions of final blocks; the search's position is a `CasperCursor`; `presented` on `settled`
+ * compares the executed call with the authorization as presented.
  */
-export type CasperStatus = StatusAnswer<bigint, "finalized", bigint>;
+export type CasperStatus = StatusAnswer<bigint, "finalized", CasperCursor>;
 
 interface CasperChoice {
   required: PaymentRequired;
@@ -103,10 +174,37 @@ const PACKAGE = /^[0-9a-fA-F]{64}$/;
 const ADDRESS = /^0[01][0-9a-fA-F]{64}$/;
 const NONCE = /^(0x)?[0-9a-fA-F]{64}$/;
 const TAGGED = /^0[12](?:[0-9a-fA-F]{2})+$/;
-const MAX_NAME = 64;
-const MAX_PUBLIC_KEY_HEX = 68;
-const MAX_SIGNATURE_HEX = 132;
+/**
+ * The longest token `name` or `version` lcp reads from a Casper option, in characters. CEP-3009 fixes no length; lcp
+ * bounds what it hashes into the domain.
+ */
+export const CASPER_MAX_NAME_LENGTH = 64;
+/** The longest tagged public key lcp reads, in hex digits: a one-byte tag and a 33-byte secp256k1 key. */
+export const CASPER_MAX_PUBLIC_KEY_HEX = 68;
+/** The longest tagged signature lcp reads, in hex digits: a one-byte tag and a 65-byte signature. */
+export const CASPER_MAX_SIGNATURE_HEX = 132;
+/**
+ * The most reads of the nonce's item one `status` call makes to find the block that set it: a bisection of 64-bit
+ * block heights ends within 64. A search cut short returns its position, from which the next call resumes.
+ */
+export const CASPER_MAX_PROBES = 64;
+/**
+ * The most pages of a block's transactions one `status` call reads. A block's size is the chain's; a search cut short
+ * returns its position, from which the next call resumes.
+ */
+export const CASPER_MAX_PAGES = 8;
+/**
+ * The most calls lcp reads on one page of a block's transactions, the reader's page being its own choice. A page that
+ * gives more is beyond the read's bound, `unreadable`, `too-large`.
+ */
+export const CASPER_MAX_PAGE_CALLS = 1024;
+const MAX_NAME = CASPER_MAX_NAME_LENGTH;
+const MAX_PUBLIC_KEY_HEX = CASPER_MAX_PUBLIC_KEY_HEX;
+const MAX_SIGNATURE_HEX = CASPER_MAX_SIGNATURE_HEX;
 const CALLS = new Set(["transfer_with_authorization", "receive_with_authorization"]);
+const CANCEL = "cancel_authorization";
+const FINAL = "finalized" as const;
+const MARKS = [FINAL] as const;
 
 /** The CEP-3009 typed data for `TransferWithAuthorization`, with `validAfter` 0 and the hash as the nonce. */
 export function cep3009TypedData(a: {
@@ -171,118 +269,315 @@ export async function casperIdDigest(from: CasperAddress, to: CasperAddress, val
   return hash(packed);
 }
 
-/** What the read of the named transaction observed, before the profile's rules choose the answer. */
-type CasperRead =
-  | { state: "settled"; blockHeight: bigint }
-  | { state: "pending"; why: "not-found" | "not-executed" }
-  | { state: "failed"; why: "reverted"; blockHeight: bigint | null }
-  | { state: "failed"; why: "not-this-instrument" }
-  | { state: "unreadable"; why: UnreadableReason };
+/**
+ * The reference `status` reads with: the read keys, and H, which the caller adds, from which the other act's value comes;
+ * the authorization as presented where the caller has it, without which the read compares nothing with it.
+ */
+type CasperRefRead = Omit<CasperRef, "presented"> & { presented?: CasperAuthorization; h: AtrHash };
 
-type CasperRefRead = CasperRef & { transaction: string; h: AtrHash };
+/** A reference as the read takes it, its addresses and hashes lowercase, and the two values under H. */
+interface Keys {
+  readonly network: CasperNetwork;
+  readonly asset: PackageHash;
+  readonly from: CasperAddress;
+  readonly payee: string;
+  readonly nonce: AtrHash;
+  /** H's other value: the agreement's value where the act's nonce is H, and H where it is the agreement's value. */
+  readonly other: AtrHash;
+  readonly validBefore: bigint;
+  readonly presented?: CasperAuthorization;
+}
+
+/** The ledger: one mark, and block heights in their order. */
+const LEDGER = ledgerOf<bigint, typeof FINAL>(CASPER[ID].coverage, MARKS, bigintOrder);
 
 /**
- * The reason of a rejected read: a `ReaderError` by its kind (`too-large`, `malformed` as `unparseable`, `timeout` and
- * `transport` as `transport`), and any other rejection `transport`.
+ * The read keys of a reference for the act asked about, or undefined where one is malformed: the network, the asset
+ * package, `from` and the payee, the signed nonce and H, the nonce being the value that act carries (H on a payment, the
+ * agreement's value on an agreement), and the lapse: the `validBefore` of the authorization as presented, or
+ * `settleBy`, a safe integer, where the reference holds none.
  */
+async function keysOf(ref: unknown, act: Act): Promise<Keys | undefined> {
+  if (!isObject(ref)) return undefined;
+  const { network, asset, from, payee, presented, settleBy } = ref;
+  if (typeof network !== "string" || !NETWORK.test(network)) return undefined;
+  if (typeof asset !== "string" || !PACKAGE.test(asset) || !isAddress(from)) return undefined;
+  if (typeof payee !== "string" || payee.length === 0) return undefined;
+  const nonce = normalHash(ref["nonce"]);
+  const h = normalHash(ref["h"]);
+  if (nonce === null || h === null) return undefined;
+  const agreement = await agreementValue(h);
+  if (nonce !== (act === "agreement" ? agreement : h)) return undefined;
+  let validBefore: bigint | undefined;
+  if (presented === undefined) {
+    if (!Number.isSafeInteger(settleBy) || (settleBy as number) < 0) return undefined;
+    validBefore = BigInt(settleBy as number);
+  } else {
+    if (!isObject(presented) || !isAddress(presented["from"]) || !isAddress(presented["to"])) return undefined;
+    if (uint256Of(presented["value"]) === undefined || decimalBelow(presented["validAfter"], U64_LIMIT) === undefined) return undefined;
+    const n = presented["nonce"];
+    if (typeof n !== "string" || normalHash(n.startsWith("0x") ? n : `0x${n}`) === null) return undefined;
+    validBefore = decimalBelow(presented["validBefore"], U64_LIMIT);
+  }
+  if (validBefore === undefined) return undefined;
+  return {
+    network: network as CasperNetwork,
+    asset: asset.toLowerCase(),
+    from: from.toLowerCase(),
+    payee: payee.toLowerCase(),
+    nonce,
+    other: nonce === h ? agreement : h,
+    validBefore,
+    ...(presented === undefined ? {} : { presented: presented as unknown as CasperAuthorization }),
+  };
+}
+
+function isCursor(c: unknown): c is CasperCursor {
+  if (!isObject(c)) return false;
+  const { unset, block, next, found } = c;
+  if (unset !== undefined && (typeof unset !== "bigint" || unset < 0n)) return false;
+  if (block === undefined) return next === undefined && found === undefined && unset !== undefined;
+  if (typeof block !== "bigint" || block < 0n) return false;
+  if (!Number.isSafeInteger(next) || (next as number) < 0) return false;
+  return found === undefined || (typeof found === "string" && PACKAGE.test(found));
+}
+
+/** A read that cannot go on: the reason, its facts holding nothing. */
+class Stop {
+  constructor(readonly reason: UnreadableReason) {}
+}
+
+/** The reason of a rejected read: a `ReaderError` by its kind, and any other rejection `transport`. */
 function rejected(e: unknown): UnreadableReason {
+  if (e instanceof Stop) return e.reason;
   const kind = isObject(e) && e["name"] === "ReaderError" ? e["kind"] : undefined;
   return kind === "too-large" ? "too-large" : kind === "malformed" ? "unparseable" : "transport";
 }
 
 /**
- * Reads the named transaction. Settled, at the height of its block, when it executed without error as a call to
- * `ref.asset`'s `transfer_with_authorization` or `receive_with_authorization` whose `nonce` argument is `h` and whose
- * `from`, `to` and `value` hash to `ref.idDigest`; any other executed call is no act of the payer's that carries H. A
- * ref whose `h` or `idDigest` is not `0x` and 64 hex digits, or whose `asset` is not a package hash of 64 hex digits, is
- * `unparseable`, with nothing read, and a reader for another network `chain-mismatch`; hashes compare in either case.
- * `ref.asset` names the token package whose call carries the payment, which identifies the instrument; nothing is
- * compared with the ATR's content.
+ * The read of the nonce (profile rules 13 to 18): the item at the newest executed block; unset, the facts of a value
+ * unconsumed, lapsed where that block's own timestamp is at or past `validBefore`, with the height read as the search's
+ * position where it lapsed or the caller gave a position; set, the block that set it, found by bisecting heights above the position given (below it
+ * where the item is already set there, from the lowest height the node serves), and its transactions read in order, a
+ * page at a time, a call there that carries either of H's values and that the read cannot decode holding the search at
+ * its page. The newest executed block is final, so the value's read there is both the final mark's and the latest
+ * head's. The read of the item is no search for H, each token package keeping its own nonces, so the search is never
+ * whole and no `failed` but `before-position` follows from it.
  */
-async function readCasper(ref: CasperRefRead, reader: CasperReader): Promise<CasperRead> {
-  const unparseable = { state: "unreadable", why: "unparseable" } as const;
-  if (!isObject(ref)) return unparseable;
-  const asset: unknown = ref.asset;
-  if (normalHash(ref.h) === null || normalHash(ref.idDigest) === null || typeof asset !== "string" || !PACKAGE.test(asset)) {
-    return unparseable;
+async function readCasper(
+  k: Keys,
+  reader: CasperReader,
+  query: StatusQuery<CasperRefRead, bigint, typeof FINAL, CasperCursor>,
+): Promise<Facts<bigint, typeof FINAL, CasperCursor>> {
+  const nonce = hexBytes(k.nonce.slice(2));
+  const usedAt = async (height: bigint): Promise<boolean> => {
+    const u = await reader.nonceUsed(k.asset, k.from, nonce, height);
+    if (u === null) throw new Stop("history-gap");
+    if (typeof u !== "boolean") throw new Stop("unparseable");
+    return u;
+  };
+  const head = await reader.head();
+  if (!isObject(head) || typeof head.height !== "bigint" || typeof head.timestamp !== "bigint") throw new Stop("unparseable");
+  const lapsed = head.timestamp >= k.validBefore * 1000n;
+  if (!(await usedAt(head.height))) {
+    const value = { consumed: false, lapsed, mark: FINAL, head: { consumed: false } } as const;
+    const held = lapsed || query.search !== undefined;
+    return { seen: [], value, search: { whole: false, ...(held ? { at: { unset: head.height } } : {}) }, history: true };
   }
-  if (!isObject(reader) || reader.network !== ref.network) return { state: "unreadable", why: "chain-mismatch" };
-  let call: CasperCall | null;
-  try {
-    call = await reader.transaction(ref.transaction);
-  } catch (e) {
-    return { state: "unreadable", why: rejected(e) };
+  const value = { consumed: true, lapsed, mark: FINAL, head: { consumed: true } } as const;
+  const cursor = query.search;
+  let block: bigint;
+  let start = 0;
+  let found: string | undefined;
+  if (cursor?.block !== undefined) {
+    block = cursor.block;
+    start = cursor.next ?? 0;
+    found = cursor.found;
+  } else {
+    let lo: bigint | undefined = cursor?.unset;
+    let hi = head.height;
+    if (query.after !== undefined) {
+      if (await usedAt(query.after)) {
+        hi = query.after;
+        lo = undefined;
+      } else if (lo === undefined || lo < query.after) lo = query.after;
+    }
+    if (lo === undefined) {
+      const lowest = await reader.lowest();
+      if (typeof lowest !== "bigint") throw new Stop("unparseable");
+      if (await usedAt(lowest)) throw new Stop("history-gap");
+      lo = lowest;
+    }
+    let low: bigint = lo;
+    for (let probes = 0; hi - low > 1n; probes++) {
+      if (probes === CASPER_MAX_PROBES) {
+        return { seen: [], value, search: { whole: false, at: { unset: low } }, history: true };
+      }
+      const mid: bigint = low + (hi - low) / 2n;
+      if (await usedAt(mid)) hi = mid;
+      else low = mid;
+    }
+    block = hi;
   }
-  if (call === null) return { state: "pending", why: "not-found" };
-  if (!isCall(call)) return unparseable;
-  if (!call.executed) return { state: "pending", why: "not-executed" };
-  if (call.error !== null) return { state: "failed", why: "reverted", blockHeight: call.blockHeight };
-  if (call.blockHeight === null) return unparseable;
-  const nonce = authorizationNonce(call, ref.asset);
-  if (nonce === null || !hashEquals(nonce, ref.h)) return { state: "failed", why: "not-this-instrument" };
-  const { from, to, value } = call.args;
-  if (from === undefined || to === undefined || value === undefined) {
-    return { state: "failed", why: "not-this-instrument" };
+  const seen: Seen<bigint, typeof FINAL>[] = [];
+  const undecoded: Undecoded<CasperCursor>[] = [];
+  const position = (next: number): CasperCursor => ({ unset: block - 1n, block, next, ...(found === undefined ? {} : { found }) });
+  const take = (tx: string, c: unknown, next: number): void => {
+    const s = isCall(c) ? seenOf(k, query, tx, c, block) : "undecoded";
+    if (s === undefined) return;
+    if (s === "undecoded") {
+      undecoded.push({ transaction: tx.toLowerCase(), at: position(next) });
+      return;
+    }
+    seen.push(s);
+    if (s.consumed) found = s.transaction;
+  };
+  if (found !== undefined) {
+    const c = await reader.transaction(found);
+    // The position names a transaction the node read before and no longer knows: it does not hold that history.
+    if (c === null) throw new Stop("history-gap");
+    take(found, c, start);
   }
-  const digest = await casperIdDigest(from, to, value);
-  if (isRefusal(digest) || !hashEquals(digest, ref.idDigest)) return { state: "failed", why: "not-this-instrument" };
-  return { state: "settled", blockHeight: call.blockHeight };
+  let at = start;
+  for (let pages = 0; ; pages++) {
+    if (pages === CASPER_MAX_PAGES) {
+      return { seen, value, search: { whole: false, at: position(at) }, undecoded, history: true };
+    }
+    const page = await reader.blockCalls(block, at);
+    if (page === null) throw new Stop("history-gap");
+    if (!isObject(page) || !Array.isArray(page.calls) || !(page.next === null || Number.isSafeInteger(page.next))) {
+      throw new Stop("unparseable");
+    }
+    if (page.calls.length > CASPER_MAX_PAGE_CALLS) throw new Stop("too-large");
+    for (const c of page.calls as readonly unknown[]) {
+      const tx = isObject(c) ? c["transaction"] : undefined;
+      if (typeof tx !== "string" || !PACKAGE.test(tx)) throw new Stop("unparseable");
+      if (tx.toLowerCase() === found) continue;
+      take(tx, c, at);
+    }
+    if (page.next === null) break;
+    if (page.next <= at) throw new Stop("unparseable");
+    at = page.next;
+  }
+  return { seen, value, search: { whole: false }, undecoded, history: true };
 }
 
 /**
- * The facts of a read of the named transaction: the payer's executed authorization call is the act; a reverted call is
- * a failed act that leaves the nonce unset (CEP-3009 sets `used_nonces` only on success); a call not yet executed, or
- * one that is not the payer's authorization carrying H, is no act. The read has no means to read the nonce.
+ * A CEP-3009 call of the located block as the read's facts name it, on whatever package it calls, or undefined where it
+ * carries neither of H's values: its signer, `from`, against the reference's `from` and the payee; `same` where it is a
+ * transfer on the asset package under the act's own nonce, which alone can set the item the read reads, and `other`
+ * where it is a cancellation, carries H's other value or calls another package, whose package is recorded as observed
+ * and never a reason to pass it over; the account its `to` names on a transfer, named by its transaction and the
+ * transaction's own call, its entry point, with `presented` against the authorization as presented; and consumed only
+ * where it executed with no error under `(from, nonce)` of the reference on the asset package, the item the read reads.
+ * A CEP-3009 call whose package or 32-byte nonce the reader does not show, or one carrying either value whose `from`,
+ * or a transfer's `to` or `value`, it does not show, is an item the search could not decode, which holds it there.
  */
-function factsOfCasper(read: CasperRead, ref: CasperRefRead): Facts<bigint, "finalized", bigint> {
-  const none = { seen: [], search: { whole: false }, history: false } as const;
-  const own = (result: "succeeded" | "failed", blockHeight: bigint | null) =>
-    ({
-      transaction: ref.transaction,
-      ...(blockHeight === null ? {} : { position: blockHeight }),
-      mark: "finalized",
-      result,
-      consumed: result === "succeeded",
-      carries: true,
-      party: "payer",
-      kind: "same",
-      account: "payee",
-    }) as const;
-  switch (read.state) {
-    case "unreadable":
-      return { ...none, unreadable: read.why };
-    case "settled":
-      return { ...none, seen: [own("succeeded", read.blockHeight)] };
-    case "pending":
-      return none;
-    case "failed":
-      return read.why === "reverted" ? { ...none, seen: [own("failed", read.blockHeight)] } : none;
-  }
+function seenOf(
+  k: Keys,
+  query: StatusQuery<CasperRefRead, bigint, typeof FINAL, CasperCursor>,
+  tx: string,
+  c: CasperCall,
+  block: bigint,
+): Seen<bigint, typeof FINAL> | "undecoded" | undefined {
+  if (!c.executed) return undefined;
+  const cancel = c.entryPoint === CANCEL;
+  if (!cancel && (c.entryPoint === null || !CALLS.has(c.entryPoint))) return undefined;
+  const n = c.args.nonce instanceof Uint8Array && c.args.nonce.length === 32 ? fromRawBytes(c.args.nonce) : undefined;
+  if (n === undefined || c.packageHash === null) return "undecoded";
+  if (n !== k.nonce && n !== k.other) return undefined;
+  const pkg = c.packageHash.toLowerCase();
+  const onAsset = pkg === k.asset;
+  const from = c.args.from?.toLowerCase();
+  const { to, value } = c.args;
+  if (from === undefined || (!cancel && (to === undefined || value === undefined))) return "undecoded";
+  const transaction = tx.toLowerCase();
+  const succeeded = c.error === null;
+  const given = (query.others ?? []).some((o) =>
+    "ref" in o
+      ? isObject(o.ref) && o.ref.from?.toLowerCase() === from && normalHash(o.ref.nonce) === n
+      : typeof o.transaction === "string" && o.transaction.toLowerCase() === transaction,
+  );
+  return {
+    transaction,
+    position: block,
+    mark: FINAL,
+    result: succeeded ? "succeeded" : "failed",
+    consumed: succeeded && onAsset && n === k.nonce && from === k.from,
+    carries: true,
+    party: from === k.payee ? "payee" : from === k.from ? "payer" : "other",
+    kind: !cancel && onAsset && n === k.nonce ? "same" : "other",
+    account: cancel ? "none" : to!.toLowerCase() === k.payee ? "payee" : "other",
+    ...(given ? { given: true } : {}),
+    ...(cancel
+      ? {}
+      : {
+          // A failed result moved nothing; the account it names is the `to` the payer signed.
+          moved: succeeded ? [{ asset: pkg, amount: value!.toString(), to: to!.toLowerCase(), transaction, place: c.entryPoint! }] : [],
+          ...(k.presented === undefined ? {} : { presented: presentedOf(c, k.presented) }),
+        }),
+    signer: from,
+  };
 }
 
 /**
- * The read of the payment by the transaction the facilitator named, as the profile `read-status` answers it: the
- * payer's executed authorization call settles at `finalized`; a reverted call, a call not yet executed, another call
- * and a transaction the node does not know answer `pending`, `search-incomplete`, since the read has no search for H.
- * On the act `agreement`, `ref.h` is the agreement's own value, the nonce the payer signed.
+ * Whether the act is the payment presented: the executed call's package, `from`, `to`, `value`, `validAfter`,
+ * `validBefore` and nonce against the authorization as presented, `unshown` where the reader shows one of them not; a
+ * `receive_with_authorization` is another signed message than the `TransferWithAuthorization` lcp builds, so `no`.
+ */
+function presentedOf(c: CasperCall, p: CasperAuthorization): "yes" | "no" | "unshown" {
+  const { from, to, value, validAfter, validBefore, nonce } = c.args;
+  if (from === undefined || to === undefined || value === undefined || validAfter === undefined || validBefore === undefined) {
+    return "unshown";
+  }
+  const same =
+    c.entryPoint === "transfer_with_authorization" &&
+    from.toLowerCase() === p.from.toLowerCase() &&
+    to.toLowerCase() === p.to.toLowerCase() &&
+    value === BigInt(p.value) &&
+    validAfter === BigInt(p.validAfter) &&
+    validBefore === BigInt(p.validBefore) &&
+    nonce instanceof Uint8Array &&
+    fromRawBytes(nonce) === normalHash(p.nonce.startsWith("0x") ? p.nonce : `0x${p.nonce}`);
+  return same ? "yes" : "no";
+}
+
+/**
+ * The read of the act the query asks about, as the profile `read-status` answers it through the profile
+ * `x402/exact/casper`'s rules 12 to 22: the nonce's item, the block that set it and its transactions. A query, a
+ * reference or a search position that is not one is `unreadable`, `unparseable`, with nothing read, and a reader for
+ * another network `chain-mismatch`; a read the node does not serve is `history-gap`. On `settled` the answer states
+ * `presented` where the reference holds the authorization as presented, and none where it does not.
  */
 export async function casperStatus(
   ref: CasperRefRead,
   reader: CasperReader,
-  query: StatusQuery<CasperRefRead, bigint, "finalized", bigint>,
+  query: StatusQuery<CasperRefRead, bigint, typeof FINAL, CasperCursor>,
 ): Promise<CasperStatus> {
-  return decide(factsOfCasper(await readCasper(ref, reader), ref), query, {
-    coverage: CASPER[ID].coverage,
-    final: "finalized",
-    markOrder: () => 0,
-    positionOrder: (a, b) => (a < b ? -1 : a > b ? 1 : 0),
-  });
+  if (!isQuery(query, MARKS, (p) => typeof p === "bigint") || (query.search !== undefined && !isCursor(query.search))) {
+    return { state: "unreadable", reason: "unparseable", foreign: [] };
+  }
+  const k = await keysOf(ref, query.act);
+  if (k === undefined) return { state: "unreadable", reason: "unparseable", foreign: [] };
+  if (!isObject(reader) || reader.network !== k.network) return { state: "unreadable", reason: "chain-mismatch", foreign: [] };
+  // A transaction is compared in its lowercase spelling, as the read names it.
+  const others = query.others?.map((o) => ("transaction" in o && typeof o.transaction === "string" ? { transaction: o.transaction.toLowerCase() } : o));
+  const q = { ...query, ...(others === undefined ? {} : { others }) };
+  let read: Facts<bigint, typeof FINAL, CasperCursor>;
+  try {
+    read = await readCasper(k, reader, q);
+  } catch (e) {
+    return { state: "unreadable", reason: rejected(e), foreign: [] };
+  }
+  return decide(read, q, LEDGER);
 }
 
 /**
- * The hash from a settlement transaction alone: the `nonce` argument of the executed authorization call on the token
- * package the option names, `option.asset`. An input whose `tx` is not 64 hex digits, or whose option names no package
- * hash of 64 hex digits as its `asset`, is `casper/wrong-reader`, with nothing read.
+ * The value a settlement transaction carries in H's place, from the transaction alone (profile rule 23): the `nonce`
+ * argument of the executed authorization call on the token package the option names, `option.asset`, which is H on a
+ * payment and the agreement's value on an agreement, which a holder of the ATR compares with `agreementValue` of its
+ * own H. An input whose `tx` is not 64 hex digits, or whose option names no package hash of 64 hex digits as its
+ * `asset`, is `casper/wrong-reader`, with nothing read.
  */
 export async function casperRecover(
   input: RecoverInput<CasperNetwork, PaymentRequirements | MppChallenge>,
@@ -329,7 +624,10 @@ function isCall(c: unknown): c is CasperCall {
   );
 }
 
-/** The pairing's filter: an `exact` option on a `casper:` network that `build` can turn into typed data. */
+/**
+ * The pairing's filter: an `exact` option on a `casper:` network that `build` can turn into typed data, its amount a
+ * canonical decimal uint256, `"0"` among them, the agreement's floor being zero by the token.
+ */
 function casperOption(o: unknown): o is PaymentRequirements {
   if (!isObject(o)) return false;
   const extra = o["extra"];
@@ -340,7 +638,7 @@ function casperOption(o: unknown): o is PaymentRequirements {
     typeof o["asset"] === "string" &&
     PACKAGE.test(o["asset"]) &&
     isAddress(o["payTo"]) &&
-    isAmount(o["amount"]) &&
+    (isAmount(o["amount"]) || o["amount"] === "0") &&
     uint256Of(o["amount"]) !== undefined &&
     isObject(extra) &&
     isName(extra["name"]) &&
@@ -355,11 +653,14 @@ const advertise = advertiseFor(filter);
 const read: (doc: PaymentRequired) => X402Read | Refusal = readFor(filter);
 
 /**
- * The CEP-3009 authorization the payer signs for the chosen option, with the hash as its nonce. H is checked first,
- * then the form of the choice's `from` and `now`, then its document and option.
+ * The CEP-3009 authorization the payer signs for the chosen option, with H as its nonce, or for the act `agreement` the
+ * agreement's value (profile rule 4). H is checked first, then the act, then the form of the choice's `from` and `now`,
+ * then its document and option.
  */
-async function build(c: CasperChoice, h: AtrHash): Promise<CasperUnsigned | Refusal> {
-  if (normalHash(h) === null) return refusal("casper/payload-malformed");
+async function build(c: CasperChoice, h: AtrHash, act?: Act): Promise<CasperUnsigned | Refusal> {
+  const nh = normalHash(h);
+  if (nh === null) return refusal("casper/payload-malformed");
+  if (act !== undefined && act !== "payment" && act !== "agreement") return refusal("casper/payload-malformed");
   if (!isObject(c)) return refusal("x402/not-v2");
   const { required, accepted, from, now } = c;
   if (!isAddress(from)) return refusal("casper/address-malformed");
@@ -376,7 +677,7 @@ async function build(c: CasperChoice, h: AtrHash): Promise<CasperUnsigned | Refu
     to: accepted.payTo,
     value: accepted.amount,
     validBefore,
-    nonce: h,
+    nonce: act === "agreement" ? await agreementValue(nh) : nh,
   });
   if (isRefusal(typedData)) return typedData;
   const authorization: CasperAuthorization = {
@@ -400,39 +701,78 @@ async function build(c: CasperChoice, h: AtrHash): Promise<CasperUnsigned | Refu
 }
 
 /**
- * The hash inside what the payer signed: the authorization's nonce, lowercase. The signature is not verified here;
- * the token contract verifies it, and that the key is the payer's, when it executes the transfer.
+ * The nonce the payer signed, lowercase: with nothing given, H as a payment carries it. Given the act and H, the value
+ * that act carries in H's place (H, or the agreement's value for the act `agreement`), and H where the nonce is it;
+ * otherwise `casper/nonce-not-bound`. A given H that is not a 32-byte hash, or an act that is not one, is
+ * `casper/payload-malformed`.
  */
-async function bound(presented: unknown): Promise<AtrHash | Refusal> {
-  const p = paymentOf(presented);
-  if (isRefusal(p)) return p;
+async function signedNonce(p: CasperPaymentPayload, given?: { readonly act: Act; readonly h: AtrHash }): Promise<AtrHash | Refusal> {
   const n = p.payload.authorization.nonce;
-  return normalHash(n.startsWith("0x") ? n : `0x${n}`)!;
+  const nonce = normalHash(n.startsWith("0x") ? n : `0x${n}`)!;
+  if (given === undefined) return nonce;
+  const h = isObject(given) ? normalHash(given.h) : null;
+  if (h === null || (given.act !== "payment" && given.act !== "agreement")) return refusal("casper/payload-malformed");
+  const carried = given.act === "agreement" ? await agreementValue(h) : h;
+  return nonce === carried ? h : refusal("casper/nonce-not-bound");
 }
 
 /**
- * The read keys for finding this payment later: network, token package, the transfer's digest and `settleBy`, which
- * is `validBefore` up to `Number.MAX_SAFE_INTEGER` and that value for a later one; and the payee, the `payTo` of the
- * option the payment answers. `validBefore` is a decimal below 2^64, CEP-3009's `valid_before` being a u64 whose
- * largest value never expires; `value` is a decimal uint256.
+ * H as the payment carries it in the authorization's nonce, or, given the act and H, H where the nonce is the value
+ * that act carries (profile rules 3 and 4). The signature is not verified here; the token contract verifies it, and that
+ * the key is the payer's, when it executes the transfer.
  */
-async function reference(presented: unknown, option: PaymentRequirements): Promise<CasperRef | Refusal> {
+async function bound(presented: unknown, given?: { readonly act: Act; readonly h: AtrHash }): Promise<AtrHash | Refusal> {
+  const p = paymentOf(presented);
+  return isRefusal(p) ? p : signedNonce(p, given);
+}
+
+/**
+ * The read keys for finding this payment (profile rule 11): the network, the token package, `from`, the signed nonce
+ * (given the act and H, checked as `bound` checks it; with nothing given, the act `payment`, whose nonce is H, so where
+ * the payment echoes a legal context that decodes, its H must be the nonce, else `casper/nonce-not-bound`), `settleBy`,
+ * which is `validBefore` up to
+ * `Number.MAX_SAFE_INTEGER` and that value for a later one, the payee, the `payTo` of the option the payment answers,
+ * and the authorization as presented. A presented `accepted` that is not that option is `x402/accepted-not-option`.
+ * `validAfter` and `validBefore` are decimals below 2^64, CEP-3009's `valid_before` being a u64 whose largest value
+ * never expires; `value` is a decimal uint256.
+ */
+async function reference(
+  presented: unknown,
+  option: PaymentRequirements,
+  given?: { readonly act: Act; readonly h: AtrHash },
+): Promise<CasperRef | Refusal> {
   const p = paymentOf(presented);
   if (isRefusal(p)) return p;
-  const a = p.payload.authorization;
-  const value = uint256Of(a.value);
-  const validBefore = decimalBelow(a.validBefore, U64_LIMIT);
-  if (value === undefined || validBefore === undefined) return refusal("casper/payload-malformed");
-  const idDigest = await casperIdDigest(a.from, a.to, value);
-  if (isRefusal(idDigest)) return refusal("casper/payload-malformed");
   const payee = x402Payee(option);
   if (isRefusal(payee)) return payee;
+  if (!sameJson(p.accepted, option)) return refusal("x402/accepted-not-option");
+  const a = p.payload.authorization;
+  const value = uint256Of(a.value);
+  const validAfter = decimalBelow(a.validAfter, U64_LIMIT);
+  const validBefore = decimalBelow(a.validBefore, U64_LIMIT);
+  if (value === undefined || validAfter === undefined || validBefore === undefined || !isAddress(a.from) || !isAddress(a.to)) {
+    return refusal("casper/payload-malformed");
+  }
+  const nonce = await signedNonce(p, given);
+  if (isRefusal(nonce)) return nonce;
+  const signed = normalHash(a.nonce.startsWith("0x") ? a.nonce : `0x${a.nonce}`)!;
+  const echoed = given === undefined ? legalContextOf(p.extensions) : undefined;
+  if (echoed !== undefined && !isRefusal(echoed) && normalHash(echoed.h) !== signed) return refusal("casper/nonce-not-bound");
   return {
     network: p.accepted.network as CasperNetwork,
     asset: p.accepted.asset.toLowerCase(),
-    idDigest,
+    from: a.from.toLowerCase(),
+    nonce: signed,
     settleBy: Math.min(Number(validBefore), Number.MAX_SAFE_INTEGER),
     payee,
+    presented: {
+      from: a.from.toLowerCase(),
+      to: a.to.toLowerCase(),
+      value: value.toString(),
+      validAfter: validAfter.toString(),
+      validBefore: validBefore.toString(),
+      nonce: signed,
+    },
   };
 }
 
@@ -495,8 +835,9 @@ const pattern: LcpPattern = deepFreeze({
 });
 
 /**
- * `x402/exact/casper`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator submits the
- * call that executes the payer's signed authorization; `status` reads the executed call.
+ * `x402/exact/casper`. The payee broadcasts (`broadcaster` answers `"payee"`): the settler submits the call that
+ * executes the payer's signed authorization; `status` reads the nonce's item, the block that set it and its
+ * transactions.
  */
 export const exactCasper = Object.freeze({
   id: ID,
@@ -525,9 +866,9 @@ export const exactCasper = Object.freeze({
   X402Forms & {
     choice: CasperChoice;
     unsigned: CasperUnsigned;
-    landed: { transaction: string; h: AtrHash };
+    landed: { h: AtrHash };
     network: CasperNetwork;
-    query: StatusQuery<CasperRefRead, bigint, "finalized", bigint>;
+    query: StatusQuery<CasperRefRead, bigint, "finalized", CasperCursor>;
     answer: CasperStatus;
   }
 >;

@@ -9,6 +9,8 @@
 //   claimed"), and both scheme texts name "a zero-price route" (scheme_batch_settlement_svm.md, "Monotonic amount"), so
 //   those two pairings' `read` offers "0" and refuses the other five; the EVM pairing's opening `build` refuses it
 //   (below);
+// - a pairing whose payment can be an agreement with a floor of zero offers "0", as the agreement's floor admits it:
+//   `x402/exact/casper`, whose floor is zero by the token (x402-exact-casper.md, rule 24);
 // - Sui `exact` takes "0" as an agreement's floor where a sponsor or the buyer pays gas (lcp/profiles/x402-exact-sui.md,
 //   rule 16), so its `read` offers "0" on those paths and refuses the other five;
 // - TON `exact` takes "0" as an agreement's floor: its scheme asks the transfer to equal the amount with no floor, and the
@@ -36,8 +38,17 @@ const OUTSIDE: readonly [string, unknown][] = [
   ["10000", 10000],
 ];
 
-/** The pairings whose scheme or profile takes a zero price, so their `read` offers an option whose amount is "0". */
-const ZERO_PRICE = ["x402/batch-settlement/eip155", "x402/batch-settlement/solana", "x402/exact/sui", "x402/exact/tvm"];
+/**
+ * The pairings whose scheme or profile takes a zero price, and those whose agreement's floor is zero, so their `read`
+ * offers an option whose amount is "0".
+ */
+const ZERO_PRICE = [
+  "x402/batch-settlement/eip155",
+  "x402/batch-settlement/solana",
+  "x402/exact/casper",
+  "x402/exact/sui",
+  "x402/exact/tvm",
+];
 
 const withAmount = (o: PaymentRequirements, amount: unknown): PaymentRequirements => ({ ...o, amount }) as PaymentRequirements;
 const offered = (b: X402Pairing, accepts: PaymentRequirements[]): unknown => {
@@ -57,7 +68,7 @@ const ROWS = rowsOf(
 );
 
 describe("every x402 pairing's read offers an option's amount only as the canonical decimal of a positive integer", () => {
-  it("each of the 26 x402 pairings offers an option from the vector files set to \"10\"", () => {
+  it("each of the 27 x402 pairings offers an option from the vector files set to \"10\"", () => {
     expect(ROWS.filter((r) => r.option === undefined).map((r) => r.pairing.id)).toEqual([]);
   });
 
@@ -73,13 +84,13 @@ describe("every x402 pairing's read offers an option's amount only as the canoni
     expect(offered(pairing, all)).toEqual(zero ? [withAmount(option!, "0"), option] : [option]);
   });
 
-  it("27 options set to \"10\" are offered, 158 set outside are not, and 4 set to \"0\" on a zero-price scheme are", () => {
+  it("27 options set to \"10\" are offered, 157 set outside are not, and 5 set to \"0\" on a zero-price scheme or a zero floor are", () => {
     const answers = ROWS.flatMap(({ pairing, option }) => [
       [pairing.id, '"10"', offered(pairing, [option!])],
       ...OUTSIDE.map(([what, amount]) => [pairing.id, what, offered(pairing, [withAmount(option!, amount)])]),
     ]);
     const refused = rowsOf(answers, "each pairing's read of its option at each amount", {
-      exact: 158,
+      exact: 157,
       keep: ["the options its read does not offer", ([, , a]) => isRefusal(a)],
       leave: ["the options its read offers", ([, , a]) => !isRefusal(a)],
     });

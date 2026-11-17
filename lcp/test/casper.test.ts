@@ -16,7 +16,16 @@ import { ReaderError } from "../src/evm.js";
 import { counting } from "./fixtures/counting-reader.js";
 import { rowsOf } from "./rows.js";
 import { LEGAL_CONTEXT_SCHEMA, type PaymentRequired, type PaymentRequirements } from "../src/x402.js";
-import { CASPER_DOMAIN_TYPEHASH, exactCasper, type CasperCall, type CasperReader, type CasperUnsigned } from "../src/casper.js";
+import {
+  CASPER_DOMAIN_TYPEHASH,
+  CASPER_MAX_PAGE_CALLS,
+  exactCasper,
+  type CasperBlockCall,
+  type CasperBlockPage,
+  type CasperReader,
+  type CasperUnsigned,
+} from "../src/casper.js";
+import { agreementValue } from "../src/core.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-casper.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
@@ -36,36 +45,88 @@ function completed(u: CasperUnsigned) {
   return p;
 }
 
-type FixtureCall = null | "reader-error" | {
-  executed: boolean; blockHeight: string | null; error: string | null; packageHash: string | null;
-  entryPoint: string | null; args: { from?: string; to?: string; value?: string; nonce?: string };
+type FixtureCall = {
+  transaction: string; executed: boolean; blockHeight: string | null; error: string | null; packageHash: string | null;
+  entryPoint: string | null;
+  args: { from?: string; to?: string; value?: string; validAfter?: string; validBefore?: string; nonce?: string };
 };
-function readerFor(c: FixtureCall, network: string = V.C4.reader.network): CasperReader {
+type FixtureNode = {
+  network: string; head: { height: string; timestamp: string }; lowest: string; setFrom: string | null;
+  pages: FixtureCall[][]; fail?: boolean;
+};
+type Query = { act: "payment" | "agreement"; finality: "finalized"; after?: string; search?: Record<string, string | number>; others?: unknown[] };
+
+function callOf(c: FixtureCall): CasperBlockCall {
+  const a = c.args;
   return {
-    network: network as CasperReader["network"],
-    async transaction(): Promise<CasperCall | null> {
-      if (c === "reader-error") throw new ReaderError("transport");
-      if (c === null) return null;
-      return {
-        ...c,
-        blockHeight: c.blockHeight === null ? null : BigInt(c.blockHeight),
-        args: {
-          ...(c.args.from !== undefined ? { from: c.args.from } : {}),
-          ...(c.args.to !== undefined ? { to: c.args.to } : {}),
-          ...(c.args.value !== undefined ? { value: BigInt(c.args.value) } : {}),
-          ...(c.args.nonce !== undefined ? { nonce: fromHex(c.args.nonce) } : {}),
-        },
-      };
+    ...c,
+    blockHeight: c.blockHeight === null ? null : BigInt(c.blockHeight),
+    args: {
+      ...(a.from !== undefined ? { from: a.from } : {}),
+      ...(a.to !== undefined ? { to: a.to } : {}),
+      ...(a.value !== undefined ? { value: BigInt(a.value) } : {}),
+      ...(a.validAfter !== undefined ? { validAfter: BigInt(a.validAfter) } : {}),
+      ...(a.validBefore !== undefined ? { validBefore: BigInt(a.validBefore) } : {}),
+      ...(a.nonce !== undefined ? { nonce: fromHex(a.nonce) } : {}),
     },
   };
 }
-/** The query of the act payment at the one mark. */
-const PAYMENT = { act: "payment", finality: "finalized" } as const;
-/** A vector row's query, its position a bigint. */
-const queryOf = (q?: { act: "payment" | "agreement"; finality: "finalized"; after?: string }) =>
-  q === undefined ? PAYMENT : { act: q.act, finality: q.finality, ...(q.after === undefined ? {} : { after: BigInt(q.after) }) };
-/** recover's input for the named transaction, under the vector's option. */
-const recoverInput = { network: V.C4.ref.network, tx: V.C4.transaction, option: O };
+
+/**
+ * A constructed node (C4's about): the item of the reference's `(from, nonce)` on its asset set from `setFrom`, unset
+ * below it and for every other item; null below `lowest` and above the head; the block `setFrom`'s pages.
+ */
+function nodeReader(n: FixtureNode, ref: { asset: string; from: string; nonce: string }, network: string = n.network): CasperReader {
+  const fail = async (): Promise<void> => {
+    if (n.fail === true) throw new ReaderError("transport");
+  };
+  const head = BigInt(n.head.height);
+  const lowest = BigInt(n.lowest);
+  const calls = n.pages.flat();
+  return {
+    network: network as CasperReader["network"],
+    async transaction(hash) {
+      await fail();
+      const c = calls.find((x) => x.transaction === hash.toLowerCase());
+      return c === undefined ? null : callOf(c);
+    },
+    async head() {
+      await fail();
+      return { height: head, timestamp: BigInt(n.head.timestamp) };
+    },
+    async lowest() {
+      await fail();
+      return lowest;
+    },
+    async nonceUsed(asset, from, nonce, height) {
+      await fail();
+      if (height < lowest || height > head) return null;
+      const item = asset === ref.asset.toLowerCase() && from === ref.from.toLowerCase() && Buffer.from(nonce).toString("hex") === ref.nonce.slice(2);
+      return item && n.setFrom !== null && height >= BigInt(n.setFrom);
+    },
+    async blockCalls(height, start): Promise<CasperBlockPage | null> {
+      await fail();
+      if (height < lowest || height > head) return null;
+      if (n.setFrom === null || height !== BigInt(n.setFrom)) return { calls: [], next: null };
+      const page = n.pages[start] ?? [];
+      return { calls: page.map(callOf), next: start + 1 < n.pages.length ? start + 1 : null };
+    },
+  };
+}
+/** A vector row's query, its positions bigints. */
+const queryOf = (q: Query) => ({
+  ...q,
+  ...(q.after === undefined ? {} : { after: BigInt(q.after) }),
+  ...(q.search === undefined
+    ? {}
+    : {
+        search: Object.fromEntries(
+          Object.entries(q.search).map(([k, v]) => [k, k === "unset" || k === "block" ? BigInt(v as string) : v]),
+        ),
+      }),
+});
+/** recover's input for a transaction, under the vector's option. */
+const recoverInput = { network: V.C4.ref.network, tx: "ab".repeat(32), option: O };
 const plain = (v: unknown) => JSON.parse(JSON.stringify(v, (_, x) => (typeof x === "bigint" ? x.toString() : x)));
 
 function mutate(base: unknown, changes: Record<string, unknown>): unknown {
@@ -136,10 +197,12 @@ describe("x402/exact/casper", () => {
     );
   });
 
-  it("C3: reference", async () => {
+  it("C3: reference names the read keys, the payee and the authorization as presented", async () => {
     const payment = completed(await unsigned());
     expect(await exactCasper.reference(payment, O)).toEqual(V.C3.expect);
     expect(await exactCasper.reference(payment, {} as PaymentRequirements)).toEqual({ refused: true, code: "x402/option-malformed" });
+    const other = { ...O, ...V.C3.acceptedNotOption.optionMutate };
+    expect(await exactCasper.reference(payment, other)).toEqual(V.C3.acceptedNotOption.expect);
   });
 
   describe("C3: settleBy for a validBefore past Number.MAX_SAFE_INTEGER", () => {
@@ -166,52 +229,114 @@ describe("x402/exact/casper", () => {
       const u = await exactCasper.build({ required: required(o), accepted: o, from: V.fixed.from, now: V.fixed.now }, H);
       const payment = completed(u as CasperUnsigned);
       expect(BigInt(payment.payload.authorization.validBefore)).toBe(BigInt(V.fixed.now) + BigInt(Number.MAX_SAFE_INTEGER));
-      expect(await exactCasper.reference(payment, O)).toEqual({ ...V.C3.expect, settleBy: Number.MAX_SAFE_INTEGER });
+      const validBefore = payment.payload.authorization.validBefore;
+      expect(await exactCasper.reference(payment, o)).toEqual({
+        ...V.C3.expect,
+        settleBy: Number.MAX_SAFE_INTEGER,
+        presented: { ...V.C3.expect.presented, validBefore },
+      });
     });
   });
 
-  describe("C4: status and recover", () => {
+  describe("C4: status over a constructed node", () => {
     for (const row of rowsOf(V.C4.rows, "x402-exact-casper.json C4.rows")) {
       it(row.case, async () => {
-        const reader = readerFor(row.call);
-        expect(plain(await exactCasper.status(V.C4.ref, reader, queryOf(row.query)))).toEqual(row.expectStatus);
-        const recovered = await exactCasper.recover(recoverInput, reader);
-        expect(recovered).toEqual(row.expectRecover);
+        const reader = nodeReader(row.node, V.C4.ref);
+        expect(plain(await exactCasper.status(V.C4.ref, reader, queryOf(row.query) as never))).toEqual(row.expectStatus);
       });
     }
     it("a reader for another network", async () => {
-      const reader = readerFor(V.C4.rows[0].call, V.C4.wrongReader.network);
-      expect(await exactCasper.status(V.C4.ref, reader, PAYMENT)).toEqual(V.C4.wrongReader.expectStatus);
-      expect(await exactCasper.recover(recoverInput, reader)).toEqual(V.C4.wrongReader.expectRecover);
+      const row = V.C4.rows[0];
+      const reader = nodeReader(row.node, V.C4.ref, V.C4.wrongReader.network);
+      expect(await exactCasper.status(V.C4.ref, reader, queryOf(row.query) as never)).toEqual(V.C4.wrongReader.expectStatus);
     });
-    // A missing or malformed ref field cannot name the landed call, so the read is unreadable, never failed
-    // (docs/guides/rails.md, "Reading settlement"); a hash in either case is the same 32 bytes.
-    it("a ref whose h, idDigest or asset is malformed is unreadable unparseable, with nothing read", async () => {
+    // `presented` is stated only where the read compared the act with what was presented (profile rule 20); without
+    // the authorization as presented, the lapse is the reference's settleBy.
+    it("a reference without the authorization as presented is settled with no presented, and lapses at its settleBy", async () => {
+      const row = V.C4.rows.find((r: { expectStatus: { state: string; presented?: string } }) => r.expectStatus.presented === "yes");
+      const { presented: _, ...bare } = V.C4.ref;
+      const { presented: __, ...want } = row.expectStatus;
+      expect(plain(await exactCasper.status(bare, nodeReader(row.node, V.C4.ref), queryOf(row.query) as never))).toEqual(want);
+      const unset = V.C4.rows.find((r: { node: { setFrom: string | null }; expectStatus: { reason?: string } }) => r.node.setFrom === null && r.expectStatus.reason === "instrument-live");
+      const at = BigInt(unset.node.head.timestamp) / 1000n;
+      for (const [settleBy, reason] of [[Number(at), "search-incomplete"], [Number(at) + 1, "instrument-live"]] as const) {
+        const answer = plain(await exactCasper.status({ ...bare, settleBy }, nodeReader(unset.node, V.C4.ref), queryOf(unset.query) as never));
+        expect([settleBy, answer.reason]).toEqual([settleBy, reason]);
+      }
+    });
+
+    it("a reference, a query or a search position that is not one is unreadable unparseable, with nothing read", async () => {
       const ref = V.C4.ref;
-      const landed = V.C4.rows[0];
-      const malformed = [
-        { h: undefined }, { h: "0x12" }, { h: `0X${ref.h.slice(2)}` }, { h: ref.h.slice(2) },
-        { idDigest: undefined }, { idDigest: ref.idDigest.slice(2) }, { idDigest: `0x${ref.idDigest.slice(4)}` },
-        { asset: undefined }, { asset: `0x${ref.asset}` }, { asset: ref.asset.slice(2) },
+      const row = V.C4.rows[0];
+      const q = queryOf(row.query);
+      const unparseable = { state: "unreadable", reason: "unparseable", foreign: [] };
+      const refs = [
+        { ...ref, h: undefined }, { ...ref, h: "0x12" }, { ...ref, nonce: `0x${"00".repeat(32)}` }, { ...ref, from: "0x12" },
+        { ...ref, asset: `0x${ref.asset}` }, { ...ref, payee: "" }, { ...ref, presented: 7 },
+        { ...ref, presented: { ...ref.presented, validBefore: "18446744073709551616" } },
+        { ...ref, presented: undefined, settleBy: 1.5 }, { ...ref, presented: undefined, settleBy: undefined },
       ];
-      for (const change of malformed) {
-        const { reader, calls } = counting(readerFor(landed.call));
-        expect(await exactCasper.status({ ...ref, ...change }, reader, PAYMENT)).toEqual({ state: "unreadable", reason: "unparseable", foreign: [] });
+      for (const r of refs) {
+        const { reader, calls } = counting(nodeReader(row.node, ref));
+        expect(await exactCasper.status(r, reader, q as never)).toEqual(unparseable);
+        expect(calls).toEqual([]);
+      }
+      for (const query of [{ ...q, finality: "final" }, { ...q, search: { block: 4242n } }, { ...q, search: { unset: 5 } }, { ...q, after: "4000" }]) {
+        const { reader, calls } = counting(nodeReader(row.node, ref));
+        expect(await exactCasper.status(ref, reader, query as never)).toEqual(unparseable);
         expect(calls).toEqual([]);
       }
       const upper = (s: string) => `0x${s.slice(2).toUpperCase()}`;
-      for (const change of [{ h: upper(ref.h) }, { idDigest: upper(ref.idDigest) }, { asset: ref.asset.toUpperCase() }]) {
-        expect(plain(await exactCasper.status({ ...ref, ...change }, readerFor(landed.call), PAYMENT))).toEqual(landed.expectStatus);
+      for (const r of [{ ...ref, h: upper(ref.h) }, { ...ref, nonce: upper(ref.nonce) }, { ...ref, asset: ref.asset.toUpperCase() }]) {
+        expect(plain(await exactCasper.status(r, nodeReader(row.node, ref), q as never))).toEqual(row.expectStatus);
       }
+    });
+  });
+
+  describe("C4: a reference that is not one", () => {
+    for (const row of rowsOf(V.C4.refRows, "x402-exact-casper.json C4.refRows")) {
+      it(row.case, async () => {
+        const ref = { ...V.C4.ref, presented: { ...V.C4.ref.presented, ...row.presented } };
+        const { reader, calls } = counting(nodeReader(V.C4.rows[0].node, V.C4.ref));
+        expect(plain(await exactCasper.status(ref, reader, queryOf(V.C4.rows[0].query) as never))).toEqual(row.expectStatus);
+        expect(calls).toEqual([]);
+      });
+    }
+  });
+
+  // lcp's bound on the calls of one page: a page that gives more is beyond the read's bound, too-large.
+  it(`C4: a page of more than CASPER_MAX_PAGE_CALLS (${CASPER_MAX_PAGE_CALLS}) calls is too-large`, async () => {
+    const row = V.C4.rows[0];
+    const filler = { ...row.node.pages[0][0], transaction: "99".repeat(32), args: { ...row.node.pages[0][0].args, nonce: "11".repeat(32) } };
+    const at = (n: number) => ({ ...row.node, pages: [[...Array(n).fill(filler), row.node.pages[0][0]]] });
+    expect(plain(await exactCasper.status(V.C4.ref, nodeReader(at(CASPER_MAX_PAGE_CALLS - 1), V.C4.ref), queryOf(row.query) as never))).toEqual(row.expectStatus);
+    expect(await exactCasper.status(V.C4.ref, nodeReader(at(CASPER_MAX_PAGE_CALLS), V.C4.ref), queryOf(row.query) as never)).toEqual({
+      state: "unreadable",
+      reason: "too-large",
+      foreign: [],
+    });
+  });
+
+  describe("C4: recover", () => {
+    for (const row of rowsOf(V.C4.recover, "x402-exact-casper.json C4.recover")) {
+      it(row.case, async () => {
+        const node = { ...V.C4.rows[0].node, pages: row.call === null ? [] : [[row.call]] };
+        expect(await exactCasper.recover(recoverInput, nodeReader(node, V.C4.ref))).toEqual(row.expect);
+      });
+    }
+    it("a reader for another network, or a reader that fails", async () => {
+      const node = V.C4.rows[0].node;
+      expect(await exactCasper.recover(recoverInput, nodeReader(node, V.C4.ref, "casper:casper"))).toEqual({ refused: true, code: "casper/wrong-reader" });
+      expect(await exactCasper.recover(recoverInput, nodeReader({ ...node, fail: true }, V.C4.ref))).toEqual({ refused: true, code: "casper/unreadable" });
     });
     // A contract package hash is 32 bytes (casper-types' PackageHash), which the option writes as 64 hex digits.
     // recover reads the authorization call on the option's package, so an option naming no package hash is one the
     // rail cannot read: casper/wrong-reader, with nothing read, as for a tx that is not 64 hex digits
     // (docs/reference/refusals.md). A hash in either case is the same 32 bytes.
     it("recover refuses an option whose asset is not a package hash as casper/wrong-reader, with nothing read", async () => {
-      const landed = V.C4.rows[0];
+      const node = V.C4.rows[0].node;
       for (const asset of [undefined, null, 7, `0x${O.asset}`, O.asset.slice(2), `hash-${O.asset}`]) {
-        const { reader, calls } = counting(readerFor(landed.call));
+        const { reader, calls } = counting(nodeReader(node, V.C4.ref));
         const input = { ...recoverInput, option: { ...O, asset } };
         expect([asset, await exactCasper.recover(input as never, reader)]).toEqual([
           asset,
@@ -220,17 +345,65 @@ describe("x402/exact/casper", () => {
         expect([asset, calls]).toEqual([asset, []]);
       }
       for (const input of [{ ...recoverInput, option: null }, { ...recoverInput, tx: "0x12" }, null]) {
-        const { reader, calls } = counting(readerFor(landed.call));
+        const { reader, calls } = counting(nodeReader(node, V.C4.ref));
         expect(await exactCasper.recover(input as never, reader)).toEqual({ refused: true, code: "casper/wrong-reader" });
         expect(calls).toEqual([]);
       }
       const upper = { ...recoverInput, option: { ...O, asset: O.asset.toUpperCase() } };
-      expect(await exactCasper.recover(upper, readerFor(landed.call))).toEqual(landed.expectRecover);
+      expect(await exactCasper.recover(upper, nodeReader(node, V.C4.ref))).toEqual(V.C4.recover[0].expect);
     });
   });
 
-  it("plant: an authorization call on another package is never the settlement", async () => {
-    expect(await exactCasper.status(V.C4.ref, readerFor(V.plant.call), PAYMENT)).toEqual(V.plant.expectStatus);
+  describe("C5: the act agreement", () => {
+    const agreed = async () => {
+      const u = await exactCasper.build({ required: required(), accepted: O, from: V.fixed.from, now: V.fixed.now }, H, "agreement");
+      if ("refused" in u) throw new Error(u.code);
+      return u;
+    };
+    it("build signs the agreement's value as the nonce, its digest the toolkit's", async () => {
+      expect(await agreementValue(H)).toBe(V.C5.agreementValue);
+      const { request } = await agreed();
+      const td = request.typedData;
+      expect(td.message.nonce).toBe(V.C5.expectMessageNonce);
+      const types = { TransferWithAuthorization: td.types.TransferWithAuthorization };
+      const message = { ...td.message, nonce: `0x${td.message.nonce}` };
+      expect(toHex(hashStruct("TransferWithAuthorization", types, message))).toBe(V.C5.expectStructHash);
+      const digest = hashTypedData(td.domain, types, td.primaryType, message, { domainTypes: CASPER_DOMAIN_TYPES });
+      expect(toHex(digest)).toBe(V.C5.expectDigest);
+      const payment = completed(await unsigned());
+      expect(completed(await agreed()).payload.authorization).toEqual({ ...payment.payload.authorization, nonce: V.C5.expectMessageNonce });
+    });
+    for (const row of rowsOf(V.C5.bound, "x402-exact-casper.json C5.bound")) {
+      it(`bound: ${row.case}`, async () => {
+        const p = completed(row.payload === "agreement" ? await agreed() : await unsigned());
+        expect(await exactCasper.bound(p, row.given)).toEqual(row.expect);
+      });
+    }
+    it("reference, given the act agreement and H, names the agreement's value; given the payment's, refuses", async () => {
+      const p = completed(await agreed());
+      expect(await exactCasper.reference(p, O, { act: "agreement", h: H })).toEqual(V.C5.reference);
+      expect(await exactCasper.reference(p, O, { act: "payment", h: H })).toEqual({ refused: true, code: "casper/nonce-not-bound" });
+    });
+    it(`reference: ${V.C5.referenceEchoed.case}`, async () => {
+      const doc = exactCasper.advertise(required(), H, V.fixed.link, O) as PaymentRequired;
+      const echoed = async (act: "payment" | "agreement") => {
+        const u = await exactCasper.build({ required: doc, accepted: O, from: V.fixed.from, now: V.fixed.now }, H, act);
+        if ("refused" in u) throw new Error(u.code);
+        return completed(u);
+      };
+      expect(await exactCasper.reference(await echoed("payment"), O)).toEqual(V.C5.referenceEchoed.payment);
+      expect(await exactCasper.reference(await echoed("agreement"), O)).toEqual(V.C5.referenceEchoed.agreement);
+    });
+    it(V.C5.status.case, async () => {
+      const ref = { ...V.C5.reference, h: H };
+      const reader = nodeReader(V.C5.status.node, ref);
+      expect(plain(await exactCasper.status(ref, reader, queryOf(V.C5.status.query) as never))).toEqual(V.C5.status.expectStatus);
+    });
+  });
+
+  it(`plant: ${V.plant.case}`, async () => {
+    const reader = nodeReader(V.plant.node, V.C4.ref);
+    expect(plain(await exactCasper.status(V.C4.ref, reader, queryOf(V.C4.rows[0].query) as never))).toEqual(V.plant.expectStatus);
   });
 
   describe("refusal codes left to the implementation", () => {

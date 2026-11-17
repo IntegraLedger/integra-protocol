@@ -95,8 +95,9 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
     "amount-below-floor",
   ],
   casper: [
-    "address-malformed", "amount-malformed", "key-tag-mismatch", "network-malformed", "no-authorization-call",
-    "option-malformed", "payload-malformed", "reverted", "signature-malformed", "wrong-reader",
+    "address-malformed", "amount-malformed", "key-tag-mismatch", "network-malformed",
+    "no-authorization-call", "nonce-not-bound", "option-malformed", "payload-malformed", "reverted", "signature-malformed",
+    "wrong-reader",
   ],
   ccd: [
     "address-malformed", "memo-not-cbor-text", "memo-not-lcp", "no-carrier", "no-memo", "not-v1", "operation-count",
@@ -154,8 +155,9 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
   ],
   stacks: ["chain-mismatch", "no-memo", "not-success", "wrong-reader"],
   starknet: [
-    "ambiguous", "caller-forbidden", "felt-malformed", "network-malformed", "no-legal-context", "no-transfer",
-    "nonce-not-bound", "option-malformed", "reverted", "signature-malformed", "typed-data-malformed", "wrong-reader",
+    "ambiguous", "caller-forbidden", "caller-not-fee-payer", "felt-malformed", "network-malformed",
+    "no-legal-context", "no-transfer", "nonce-not-bound", "option-malformed", "reverted", "selector-not-transfer",
+    "signature-malformed", "typed-data-malformed", "wrong-reader",
   ],
   stellar: [
     "event-malformed", "network-malformed", "no-address-auth", "not-one-transfer", "option-malformed", "peer-missing",

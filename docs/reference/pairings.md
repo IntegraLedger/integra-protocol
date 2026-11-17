@@ -88,7 +88,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `x402/exact/aptos` | `exactAptos` from `@integraledger/lcp/aptos` | `none` | no | `http-advisory` | no | no |  |
 | `x402/exact/cardano` | `exactCardano` from `@integraledger/lcp/cardano` | `full` | no | `native-field` | yes | yes | [`x402/exact/cardano`](../../lcp/profiles/x402-exact-cardano.md) |
 | `x402/exact/cardano/lock` | `exactCardanoLock` from `@integraledger/lcp/cardano` | `full` | no | `native-field` | yes | yes | [`x402/exact/cardano`](../../lcp/profiles/x402-exact-cardano.md) |
-| `x402/exact/casper` | `exactCasper` from `@integraledger/lcp/casper` | `full` | yes | `native-field` | yes | yes | [`x402/exact/casper`](../../lcp/profiles/x402-exact-casper.md) |
+| `x402/exact/casper` | `exactCasper` from `@integraledger/lcp/casper` | `full` | no | `native-field` | yes | yes | [`x402/exact/casper`](../../lcp/profiles/x402-exact-casper.md) |
 | `x402/exact/ccd` | `exactCcd` from `@integraledger/lcp/ccd` | `full` | no | `native-field` | yes | yes | [`x402/exact/ccd`](../../lcp/profiles/x402-exact-ccd.md) |
 | `x402/exact/eip155/eip3009` | `exactEip3009` from `@integraledger/lcp/x402` | `full` | no | `native-field` | yes | yes | [`x402/exact/eip155/eip3009`](../../lcp/profiles/x402-exact-eip155-eip3009.md) |
 | `x402/exact/eip155/erc7710` | `exactErc7710` from `@integraledger/lcp/x402` | `none` | no | `http-advisory` | no | no |  |
@@ -99,7 +99,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `x402/exact/near` | `exactNear` from `@integraledger/lcp/near` | `full` | no | `native-field` | yes | yes | [`x402/exact/near/memo`](../../lcp/profiles/x402-exact-near-memo.md) |
 | `x402/exact/polkadot/lcp-assets-remark` | `exactPolkadotRemark` from `@integraledger/lcp/polkadot` | `full` | no | `native-field` | yes | yes | [`x402/exact/polkadot/lcp-assets-remark`](../../lcp/profiles/x402-exact-polkadot-lcp-assets-remark.md) |
 | `x402/exact/solana` | `exactSvm` from `@integraledger/lcp/x402-exact-solana` | `full` | no | `native-field` | yes | yes |  |
-| `x402/exact/starknet` | `exactStarknet` from `@integraledger/lcp/starknet` | `full` | yes |  | yes | no | [`x402/exact/starknet`](../../lcp/profiles/x402-exact-starknet.md) |
+| `x402/exact/starknet` | `exactStarknet` from `@integraledger/lcp/starknet` | `full` | no |  | yes | no | [`x402/exact/starknet`](../../lcp/profiles/x402-exact-starknet.md) |
 | `x402/exact/sui` | `exactSui` from `@integraledger/lcp/sui` | `full` | no | `native-field` | yes | yes | [`x402/exact/sui`](../../lcp/profiles/x402-exact-sui.md) |
 | `x402/exact/tron/lcp-trc20-memo` | `exactTronMemo` from `@integraledger/lcp/tron` | `full` | no | `native-field` | yes | yes | [`x402/exact/tron/lcp-trc20-memo`](../../lcp/profiles/x402-exact-tron-lcp-trc20-memo.md) |
 | `x402/exact/tvm` | `exactTvm` from `@integraledger/lcp/tvm` | `full` | no | `native-field` | yes | yes |  |
@@ -293,7 +293,7 @@ The payer, the payment credential that holds the input the payment names, signed
 
 ### `x402/exact/casper`
 
-The payer signed a CEP-3009 transfer authorization whose nonce is this ATR's hash. The token contract verified that signature, and that the signing key is the payer's, when it executed the transfer, and the hash is on chain as the nonce argument of that call. This does not show that amount, payee, asset or timing match the ATR's content.
+The payer's own signed CEP-3009 authorization carries this ATR's hash as its nonce (on an agreement, the agreement's value of it), which the token contract verified with the payer's key when it executed the call. It paid the account its `to` names the amount its `value` states, zero included: on a payment, the option's `payTo`. This does not show that the amount, the asset or the timing match the ATR's content.
 
 ### `x402/exact/ccd`
 
@@ -337,7 +337,7 @@ The payer signed a Solana transaction whose one Memo instruction carries this AT
 
 ### `x402/exact/starknet`
 
-The payer signed, as SNIP-12 typed data, a SNIP-9 outside execution whose nonce is the low 250 bits of this ATR's hash. The payer's account contract verified that signature when it executed the transfer call, and the nonce is in the settlement transaction's calldata. A holder of the ATR can confirm the hash from the nonce; the chain alone does not reveal all of it, and no event indexes it. This does not show that amount, payee, asset or timing match the ATR's content.
+The payer's own signed SNIP-9 outside execution carries the low 250 bits of this ATR's hash as its nonce (on an agreement, of the agreement's value of it), which the payer's account verified when it executed it. It paid the account each `Transfer` from the payer, or a transfer call of zero, names the amount it states, zero included: on a payment, the option's `payTo` among them; where the read observed no transfer, the payer signed it. A holder of the ATR confirms the hash's low 250 bits from the nonce; the chain holds no more of it. This does not show that the amount, the asset or the timing match the ATR's content.
 
 ### `x402/exact/sui`
 

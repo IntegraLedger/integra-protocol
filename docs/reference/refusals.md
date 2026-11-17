@@ -13,7 +13,7 @@ The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
 A link is an absolute URL, on this page, when the WHATWG URL Standard's basic URL parser reads it with no base, as the
 package's own copy of that parser reads it ([The link](../concepts/atr-hash.md#the-link)), on every runtime alike.
-This page lists all 497 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
+This page lists all 500 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
 
@@ -44,11 +44,11 @@ of the rail that may answer differently later, with nothing the caller must chan
 | [`avm`](#avm) | 13 | Algorand (`@integraledger/lcp/avm`). |
 | [`aptos`](#aptos) | 6 | Aptos (`@integraledger/lcp/aptos`). |
 | [`cardano`](#cardano) | 15 | Cardano (`@integraledger/lcp/cardano`). |
-| [`casper`](#casper) | 13 | Casper (`@integraledger/lcp/casper`). |
+| [`casper`](#casper) | 14 | Casper (`@integraledger/lcp/casper`). |
 | [`ccd`](#ccd) | 17 | Concordium (`@integraledger/lcp/ccd`). |
 | [`near`](#near) | 16 | NEAR (`@integraledger/lcp/near`, and `chargeNearIntents` in `@integraledger/lcp/mpp`). |
 | [`polkadot`](#polkadot) | 17 | Polkadot Asset Hub (`@integraledger/lcp/polkadot`). |
-| [`starknet`](#starknet) | 15 | Starknet (`@integraledger/lcp/starknet`). |
+| [`starknet`](#starknet) | 17 | Starknet (`@integraledger/lcp/starknet`). |
 | [`sui`](#sui) | 12 | Sui (`@integraledger/lcp/sui`). |
 | [`tron`](#tron) | 15 | Tron (`@integraledger/lcp/tron`). |
 | [`tvm`](#tvm) | 16 | TON (`@integraledger/lcp/tvm`). |
@@ -102,7 +102,7 @@ x402 documents, the request commitment, and the checks every x402 pairing shares
 
 | Code | Meaning |
 |---|---|
-| `x402/accepted-not-option` | A pairing's `reference` is given a payment whose `accepted` is not the option it is given, compared by RFC 8785 form (on Cardano, a CIP-34 alias and its canonical network being one; on `x402/exact/tvm`, with the forward payload dropped from both, as `unplaced` drops it). |
+| `x402/accepted-not-option` | A pairing's `reference` is given a payment whose `accepted` is not the option it is given, compared by RFC 8785 form (on Cardano, a CIP-34 alias and its canonical network being one; on `x402/exact/tvm`, with the forward payload dropped from both, as `unplaced` drops it): the payment answers another option, whose payee the read would not test. The one code every x402 family answers with. |
 | `x402/channel-id-mismatch` | The EVM batch pairing finds that the voucher's `channelId` is not the id computed from the payment's channel config, or `buildWithin` is given a channel config whose `salt` is not H. |
 | `x402/channel-kind-unknown` | The batch pairing's `channel.kind` cannot classify the payment as an opening, a payment within the channel, or a close (an unknown payload `type`, or an SVM deposit whose channel instruction is neither `open` nor `top_up`); its `channel.ref` refuses such a payment with this code, as it refuses every payment `channel.kind` refuses with `channel.kind`'s code. |
 | `x402/delegation-empty` | At the ERC-7710 salt level, the payment's permission context decodes to no delegations. |
@@ -554,10 +554,11 @@ Casper (`@integraledger/lcp/casper`).
 | `casper/key-tag-mismatch` | The public key and signature given to the Casper `complete` carry different algorithm tags. |
 | `casper/network-malformed` | A Casper network given to `cep3009TypedData` is not a Casper CAIP-2 name, or its argument is not an object. |
 | `casper/no-authorization-call` | The executed Casper transaction holds no authorization call on the asset carrying a nonce. |
+| `casper/nonce-not-bound` | Given the act and H, the presented Casper authorization's nonce is not the value that act carries: H for a payment, its agreement value for an agreement. |
 | `casper/not-executed` | **Read to repeat.** The Casper transaction the reference names has not executed. |
 | `casper/not-found` | **Read to repeat.** The Casper reader found no transaction for the reference. |
 | `casper/option-malformed` | A Casper asset is not a contract package hash, the token name or version is not a valid name, `validBefore` is out of range, or the `now` given to `build` is not a non-negative safe integer. |
-| `casper/payload-malformed` | The presented Casper payment carries a `refused` member, or is not x402 version 2, or its payload is not a string CEP-3009 authorization (hex nonce), a tagged public key and signature; or, for `reference`, its value is not a decimal uint256, its `validBefore` not a decimal below 2^64, or its `from` or `to` not a Casper address; or H given to `cep3009TypedData` or `build` is not a valid ATR hash. |
+| `casper/payload-malformed` | The presented Casper payment carries a `refused` member, or is not x402 version 2, or its payload is not a string CEP-3009 authorization (hex nonce), a tagged public key and signature; or, for `reference`, its value is not a decimal uint256, its `validAfter` or `validBefore` not a decimal below 2^64, or its `from` or `to` not a Casper address; or H given to `cep3009TypedData`, `build`, `bound` or `reference` is not a valid ATR hash, or the act given is not `payment` or `agreement`. |
 | `casper/reverted` | The Casper transaction executed with an error. |
 | `casper/signature-malformed` | The public key or signature given to the Casper `complete` is not tagged hex of the allowed length. |
 | `casper/unreadable` | **Read to repeat.** The Casper reader threw or returned a call that is not well formed. |
@@ -640,21 +641,23 @@ Starknet (`@integraledger/lcp/starknet`).
 
 | Code | Meaning |
 |---|---|
-| `starknet/ambiguous` | The Starknet transaction `starknetLandedNonce` reads, accepted on L2 or L1, holds matching transfers with more than one nonce. |
+| `starknet/ambiguous` | The Starknet transaction `starknetLandedNonce` or `recover` reads, accepted on L2 or L1, holds matching transfers with more than one nonce. |
 | `starknet/caller-forbidden` | The Starknet option's fee payer is zero or the any-caller value, or the paying account is the fee payer itself. |
+| `starknet/caller-not-fee-payer` | The presented Starknet outside execution's `Caller` is not the option's `extra.feePayer`. |
 | `starknet/felt-malformed` | A Starknet fee payer, asset, `payTo`, nonce, payer account or `from` is not a valid felt. |
 | `starknet/network-malformed` | A Starknet network is not one of the Starknet networks this package supports, or the argument to `outsideExecution` is not an object. |
 | `starknet/no-legal-context` | The Starknet payment echoes no decodable `extensions.legalContext.info`. |
-| `starknet/no-transfer` | The Starknet transaction `starknetLandedNonce` reads, accepted on L2 or L1, holds no `transfer` call on the asset with this payment's identity below an `execute_from_outside_v2`, within 16 levels and 512 invocations. |
-| `starknet/nonce-not-bound` | The Starknet signed `Nonce` is not the low 250 bits of the echoed hash. |
-| `starknet/not-final` | **Read to repeat.** The Starknet transaction `starknetLandedNonce` reads is `PRE_CONFIRMED` and reverted or holds no single matching transfer: a read to repeat, since a pre-confirmed block can change. |
+| `starknet/no-transfer` | The Starknet transaction `starknetLandedNonce` reads, accepted on L2 or L1, holds no `transfer` call on the asset with this payment's identity below an `execute_from_outside_v2`, within 16 levels and 512 invocations; or, for `recover`, no `execute_from_outside_v2` whose calls reach a `transfer` on the option's asset. |
+| `starknet/nonce-not-bound` | The Starknet signed `Nonce` is not the low 250 bits of the echoed hash, or, given the act and H, of the value that act carries: H for a payment, its agreement value for an agreement. |
+| `starknet/not-final` | **Read to repeat.** The Starknet transaction `starknetLandedNonce` or `recover` reads is `PRE_CONFIRMED` and reverted or holds no single matching transfer: a read to repeat, since a pre-confirmed block can change. |
 | `starknet/not-found` | **Read to repeat.** The Starknet reader found no receipt for the transaction the reference names. |
 | `starknet/option-malformed` | A Starknet option has no `extra` object, or its amount is not the canonical decimal string of a positive u256 or its timeout is not a positive safe integer, or the buyer's choice given to `build` is not an object or has an invalid `now`, or an amount or deadline given to a typed-data helper is out of range. |
-| `starknet/reverted` | The Starknet transaction `starknetLandedNonce` reads, accepted on L2 or L1, reverted. |
+| `starknet/reverted` | The Starknet transaction `starknetLandedNonce` or `recover` reads, accepted on L2 or L1, reverted. |
+| `starknet/selector-not-transfer` | A call of the presented Starknet outside execution has a `Selector` other than `transfer`'s. |
 | `starknet/signature-malformed` | The signature given to the Starknet `complete` is not 1 to the allowed number of valid felts. |
-| `starknet/typed-data-malformed` | The presented Starknet `outsideExecution.typedData` is not an `OutsideExecution` under domain `Account.execute_from_outside` version 2 revision 1 on the option's chain with a felt `Nonce`, or exceeds 16 KiB as JSON or nests more than 64 levels; or, for `reference`, its `Calls` is not exactly one call whose `Calldata` is three felts (recipient, amount low and amount high, each half below 2^128), or its `Execute Before` is not a decimal. `reference` does not read the call's `Selector` or `To`. |
-| `starknet/unreadable` | **Read to repeat.** The Starknet reader threw, or returned a receipt or events that are not well formed, or a trace that is missing or holds an invocation that is not well formed. |
-| `starknet/wrong-reader` | The Starknet reader answers for a different network than the reference names, or the reference given to `starknetLandedNonce` has a `transaction` or `asset` that is not a felt or an `idDigest` that is not a 32-byte hash. |
+| `starknet/typed-data-malformed` | The presented Starknet `outsideExecution.typedData` is not an `OutsideExecution` under domain `Account.execute_from_outside` version 2 revision 1 on the option's chain with a felt `Nonce` and `Caller` and a `Calls` array of one or more calls each with a felt `Selector`, or exceeds 16 KiB as JSON or nests more than 64 levels; or, for `reference`, a call's `To` or `Calldata` is not felts, or its `Execute After` or `Execute Before` is not a decimal or a felt below 2^64, `Execute Before` also a safe integer. |
+| `starknet/unreadable` | **Read to repeat.** The Starknet reader `starknetLandedNonce` or `recover` reads through threw, or returned a receipt or events that are not well formed, or a trace that is missing or holds an invocation that is not well formed. |
+| `starknet/wrong-reader` | The Starknet reader answers for a different network than the reference or the `recover` input names, or the reference given to `starknetLandedNonce` has a `transaction` or `asset` that is not a felt or an `idDigest` that is not a 32-byte hash, or the `recover` input's `tx` or option's `asset` is not a felt. |
 
 ## sui
 

@@ -8,7 +8,8 @@
 // `GetBlockItemStatus`, `info_get_transaction`); a Solana signature is base58 of 64 bytes (Solana's
 // `getTransaction`); a Hedera transaction id is the Mirror Node form `shard.realm.num-seconds-nanos`; a Sui digest is
 // base58 of 32 bytes, an Algorand id 52 base32 characters and a Polkadot transaction a `<block hash>-<index>`
-// timepoint; a NEAR or TON id the package reads as a non-empty string.
+// timepoint; a Starknet transaction hash a felt (`starknet_getTransactionReceipt`); a NEAR or TON id the package reads as
+// a non-empty string.
 import { describe, expect, it } from "vitest";
 import { BINDINGS } from "../src/index.js";
 import { readReceiptAtMark } from "../src/receipt.js";
@@ -21,6 +22,8 @@ const NOT_HASH = [undefined, 5, HASH.slice(2), HASH.slice(0, 64), `${HASH}00`];
 const NOT_HEX64 = [undefined, 5, HASH, "ab".repeat(31), "zz".repeat(32)];
 const NOT_SIGNATURE = [undefined, 5, "x", "11111111111111111111111111111111", "0".repeat(88)];
 const NOT_STRING = [undefined, 5, ""];
+/** Not a felt: `0x` and 1 to 64 hex digits below the STARK prime 2^251 + 17·2^192 + 1. */
+const NOT_FELT = [undefined, 5, "4c2f9a1b", "0x", "0x800000000000011000000000000000000000000000000000000000000000001"];
 
 // [pairing, the ref without its id, the id's member, the malformed ids, the code]
 const ROWS: readonly [id: string, ref: Record<string, unknown>, member: string, ids: readonly unknown[], code: string][] = [
@@ -49,6 +52,7 @@ const ROWS: readonly [id: string, ref: Record<string, unknown>, member: string, 
   ["mpp/charge/xrpl", { network: "xrpl:1" }, "transaction", [undefined, 5, HASH], "xrpl/wrong-reader"],
   ["mpp/session/xrpl", { network: "xrpl:1" }, "transaction", [undefined, 5, HASH], "xrpl/wrong-reader"],
   ["x402/exact/sui", { network: "sui:testnet" }, "digest", [undefined, 5, "x"], "sui/wrong-reader"],
+  ["x402/exact/starknet", { network: "starknet:SN_SEPOLIA", option: { asset: "0x512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343" } }, "tx", NOT_FELT, "starknet/wrong-reader"],
   ["x402/exact/algorand", { network: "algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDexi9/cOUJOiI=", option: {} }, "tx", [undefined, 5, "x"], "avm/wrong-reader"],
   ["x402/exact/polkadot/lcp-assets-remark", { network: "polkadot:68d56f15f85d3136970ec16946040bc1" }, "transaction", [undefined, 5, "x", `${HASH}`], "polkadot/wrong-reader"],
 ];

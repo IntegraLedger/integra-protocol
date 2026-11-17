@@ -31,7 +31,7 @@ Import each entry point by its subpath. Every entry point is ESM with its own ty
 | [`@integraledger/lcp/near`](#integraledgerlcpnear) | NEAR: the pairing `x402/exact/near`. The payer signs a NEP-366 delegate action for one NEP-141 `ft_transfer` whose `memo` argument is the ATR hash's LCP string; a facilitator's relayer submits it. The read finds the payer's act by the payer's access key, through a bounded reader, and searches every access key of the payer's account for H. |
 | [`@integraledger/lcp/polkadot`](#integraledgerlcppolkadot) | Polkadot Asset Hub: the profile pairing `x402/exact/polkadot/lcp-assets-remark`, in which the payer signs one extrinsic whose call is `utility.batch_all([assets.transfer_keep_alive, system.remark_with_event])` with the ATR hash's LCP string as the remark; the settlement is read by the signer's account nonce through polkadot-rest-api. SCALE is encoded and decoded here for these shapes only. |
 | [`@integraledger/lcp/stacks`](#integraledgerlcpstacks) | Stacks rail pieces: the transaction id, the reader a read goes through, the read of a payment by its origin and the nonce the origin signed with the search for H over the origin's nonces, and the zero-party recovery of the ATR hash from a mined transaction. The profile `mpp/charge/usdc/stacks` states the read. |
-| [`@integraledger/lcp/starknet`](#integraledgerlcpstarknet) | Starknet: the pairing `x402/exact/starknet`. The payer signs a SNIP-12 `OutsideExecution` (SNIP-9 v2) authorizing one token `transfer`; its `Nonce` is the ATR hash's low 250 bits. Settlement is read from the executed call's trace through a bounded reader. The chain holds 250 of the hash's bits, so a holder of the ATR confirms the hash from it but nothing recovers the hash. |
+| [`@integraledger/lcp/starknet`](#integraledgerlcpstarknet) | Starknet: the pairing `x402/exact/starknet`. The payer signs a SNIP-12 `OutsideExecution` (SNIP-9 v2) authorizing one token `transfer`; its `Nonce` is the ATR hash's low 250 bits, or on an agreement the agreement value's. The read is of that nonce on the payer's account, as state, and of the asset's `Transfer` events, receipts and traces, through a bounded reader. The chain holds 250 of the hash's bits, so a holder of the ATR confirms the hash from it but nothing recovers the hash. |
 | [`@integraledger/lcp/stellar`](#integraledgerlcpstellar) | Stellar rail pieces: the payer-signed Soroban `transfer`, its muxed `to` whose 8-byte id is the ATR hash's first 8 bytes, the digest of the signed authorization entry, and settlement read through a bounded reader. |
 | [`@integraledger/lcp/sui`](#integraledgerlcpsui) | Sui, and the `x402/exact/sui` pairing: the ATR hash as the one `Pure` input of the payer's programmable transaction that no command uses. The payer's signature covers it, the rail executes the transaction unchanged, and the hash stays on chain in the transaction's input list. Settlement is read by the transaction digest, which the signed bytes fix before any money moves. BCS decoding uses @mysten/sui, loaded once when this module is, and decoding a transaction's bytes is the one step that needs it: without it a function refuses `sui/peer-missing` only when it reaches that step, after the checks that need no peer, `build` gives the request it gives with it, and `status` reads as it does with it, pending `unreadable` only there. A digest is base58, read and written with the package's own dependency @scure/base, so it is checked without the peer. |
 | [`@integraledger/lcp/svm`](#integraledgerlcpsvm) | Solana rail pieces: the wire transaction, its one Memo instruction carrying the ATR hash in LCP string form, the digest of the message the payer signed, settlement read through a bounded reader, and the payment-channels program's pieces: its instructions and PDAs, the voucher, the session proof, and the channel's status read. |
@@ -174,14 +174,14 @@ import { auxiliaryData, CARDANO_MAX_TX_BYTES, CARDANO_SEARCH_BOUND, … } from "
 CEP-3009 on Casper and the `x402/exact/casper` pairing: the ATR hash as the authorization's 32-byte `nonce`, written by the buyer's signer, read back from what the payer signed, and read from the executed call's arguments.
 
 ```ts no-check
-import { CASPER_DOMAIN_TYPEHASH, casperIdDigest, casperRecover, … } from "@integraledger/lcp/casper";
+import { CASPER_DOMAIN_TYPEHASH, CASPER_MAX_NAME_LENGTH, CASPER_MAX_PAGE_CALLS, … } from "@integraledger/lcp/casper";
 ```
 
 **Pairings:** `x402/exact/casper`.
 
-**Values (6):** `CASPER_DOMAIN_TYPEHASH`, `casperIdDigest`, `casperRecover`, `casperStatus`, `cep3009TypedData`, `exactCasper`.
+**Values (12):** `CASPER_DOMAIN_TYPEHASH`, `CASPER_MAX_NAME_LENGTH`, `CASPER_MAX_PAGE_CALLS`, `CASPER_MAX_PAGES`, `CASPER_MAX_PROBES`, `CASPER_MAX_PUBLIC_KEY_HEX`, `CASPER_MAX_SIGNATURE_HEX`, `casperIdDigest`, `casperRecover`, `casperStatus`, `cep3009TypedData`, `exactCasper`.
 
-**Types (10):** `Broadcaster`, `CasperAddress`, `CasperCall`, `CasperNetwork`, `CasperReader`, `CasperRef`, `CasperStatus`, `CasperUnsigned`, `Cep3009TypedData`, `PackageHash`.
+**Types (15):** `Broadcaster`, `CasperAddress`, `CasperAuthorization`, `CasperBlockCall`, `CasperBlockPage`, `CasperCall`, `CasperCursor`, `CasperHead`, `CasperNetwork`, `CasperReader`, `CasperRef`, `CasperStatus`, `CasperUnsigned`, `Cep3009TypedData`, `PackageHash`.
 
 ## `@integraledger/lcp/ccd`
 
@@ -317,7 +317,7 @@ import { MAX_SEARCH_NONCES, MAX_STACKS_TX_BYTES, stacksRecover, … } from "@int
 
 ## `@integraledger/lcp/starknet`
 
-Starknet: the pairing `x402/exact/starknet`. The payer signs a SNIP-12 `OutsideExecution` (SNIP-9 v2) authorizing one token `transfer`; its `Nonce` is the ATR hash's low 250 bits. Settlement is read from the executed call's trace through a bounded reader. The chain holds 250 of the hash's bits, so a holder of the ATR confirms the hash from it but nothing recovers the hash.
+Starknet: the pairing `x402/exact/starknet`. The payer signs a SNIP-12 `OutsideExecution` (SNIP-9 v2) authorizing one token `transfer`; its `Nonce` is the ATR hash's low 250 bits, or on an agreement the agreement value's. The read is of that nonce on the payer's account, as state, and of the asset's `Transfer` events, receipts and traces, through a bounded reader. The chain holds 250 of the hash's bits, so a holder of the ATR confirms the hash from it but nothing recovers the hash.
 
 ```ts no-check
 import { ANY_CALLER, chainIdFelt, EVENT_TRANSFER, … } from "@integraledger/lcp/starknet";
@@ -325,9 +325,9 @@ import { ANY_CALLER, chainIdFelt, EVENT_TRANSFER, … } from "@integraledger/lcp
 
 **Pairings:** `x402/exact/starknet`.
 
-**Values (13):** `ANY_CALLER`, `chainIdFelt`, `EVENT_TRANSFER`, `exactStarknet`, `FELT_P`, `MASK_250`, `outsideExecution`, `SELECTOR_EXECUTE_FROM_OUTSIDE_V2`, `SELECTOR_TRANSFER`, `snNonce`, `starknetIdDigest`, `starknetLandedNonce`, `starknetStatus`.
+**Values (22):** `ANY_CALLER`, `chainIdFelt`, `EVENT_TRANSFER`, `exactStarknet`, `FELT_P`, `MASK_250`, `outsideExecution`, `SELECTOR_EXECUTE_FROM_OUTSIDE_V2`, `SELECTOR_TRANSFER`, `snNonce`, `STARKNET_MAX_CANDIDATES`, `STARKNET_MAX_CONTINUATION`, `STARKNET_MAX_EVENT_PAGES`, `STARKNET_MAX_EVENTS`, `STARKNET_MAX_SIGNATURE_FELTS`, `STARKNET_MAX_TRACE_DEPTH`, `STARKNET_MAX_TRACE_INVOCATIONS`, `STARKNET_MAX_TYPED_DATA_BYTES`, `starknetIdDigest`, `starknetLandedNonce`, `starknetRecover`, `starknetStatus`.
 
-**Types (12):** `Broadcaster`, `Felt`, `Field`, `OutsideExecutionTypedData`, `StarknetEvent`, `StarknetInvocation`, `StarknetNetwork`, `StarknetReader`, `StarknetReceipt`, `StarknetRef`, `StarknetStatus`, `StarknetUnsigned`.
+**Types (20):** `Broadcaster`, `Felt`, `Field`, `OutsideExecutionTypedData`, `StarknetCall`, `StarknetCursor`, `StarknetEmittedEvent`, `StarknetEvent`, `StarknetEventPage`, `StarknetEventQuery`, `StarknetHead`, `StarknetInvocation`, `StarknetMark`, `StarknetNetwork`, `StarknetOutsideExecution`, `StarknetReader`, `StarknetReceipt`, `StarknetRef`, `StarknetStatus`, `StarknetUnsigned`.
 
 ## `@integraledger/lcp/stellar`
 
