@@ -164,7 +164,7 @@
  },
  "V5": {
   "case": "status for V2's reference, through a mirror whose answers each row gives, and recover from the transaction id",
-  "about": "Each row's mirror answers are constructed, in the shape of the Mirror Node REST interface's OpenAPI description 0.163.1 (Transaction, TransactionsResponse, Block) and of a recorded testnet answer of GET /api/v1/transactions/{id}, for 0.0.3229-1791145265-469000038 (2026-10-04), in which the whole charged fee is credited to 0.0.802 and no row names its node: latest is the end of its newest block, oldest the start of its oldest block, byId the transactions of GET /api/v1/transactions/{id} (null for its 404), pages the answers of the account search in order ('refused' for a page the mirror refuses). Each expected answer was written by hand from read-status.md and x402-exact-hedera.md, rules 11 to 14; the search is never read whole until a run shows its three facts (rule 13), so every answer that waits on it is pending, search-incomplete, at the search's position. Each transfer of what moved is named by the transaction id and its place, the asset and the credited account (rule 14).",
+  "about": "Each row's mirror answers but the last are constructed, in the shape of the Mirror Node REST interface's OpenAPI description 0.163.1 (Transaction, TransactionsResponse, Block) and of a recorded testnet answer of GET /api/v1/transactions/{id}, for 0.0.3229-1791145265-469000038 (2026-10-04), in which the whole charged fee is credited to 0.0.802 and no row names its node: latest is the end of its newest block, oldest the start of its oldest block, byId the transactions of GET /api/v1/transactions/{id} (null for its 404), pages the answers of the account search in order ('refused' for a page the mirror refuses). Each expected answer was written by hand from read-status.md and x402-exact-hedera.md, rules 11 to 14; the search is never read whole until a run shows its three facts (rule 13), so every answer that waits on it is pending, search-incomplete, at the search's position. Each transfer of what moved is named by the transaction id and its place, the asset and the credited account (rule 14). The last row's are recorded, not constructed: byId is the transactions of the Hedera testnet Mirror Node's answer (REST API 0.166.2) of GET https://testnet.mirrornode.hedera.com/api/v1/transactions/0.0.11505931-1794955079-000000000, read 2026-11-17T22:41:37Z, unchanged, and latest is timestamp.to of its GET https://testnet.mirrornode.hedera.com/api/v1/blocks?order=desc&limit=1, read 2026-11-17T22:42:10Z; its reference is the one this pairing's reference returns for the payment presented under that id.",
   "reference": {
    "network": "hedera:testnet",
    "transactionId": "0.0.1235-1700000000-000000000",
@@ -2109,6 +2109,121 @@
     "expect": {
      "state": "unreadable",
      "reason": "transport",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the testnet mirror's recorded answer for a token transfer that assessed no custom fee, which carries no assessed_custom_fees member (an optional member of the mirror's TransactionDetail), asked about on the act agreement: settled, presented yes",
+    "reference": {
+     "network": "hedera:testnet",
+     "transactionId": "0.0.11505931-1794955079-000000000",
+     "validStart": "1794955079.000000000",
+     "validDuration": 120,
+     "expectMemo": "lcp:sha256:0x83656044f4c81bf17e839a41e3bd5cb85b7d0dadd9986931bc23b551694ea197",
+     "payer": "0.0.11505932",
+     "payee": "0.0.11505933",
+     "presented": {
+      "nodes": [
+       "0.0.3"
+      ],
+      "maxFee": "100000000",
+      "transfer": {
+       "hbar": [],
+       "tokens": [
+        {
+         "token": "0.0.429274",
+         "rows": [
+          {
+           "account": "0.0.11505932",
+           "amount": "-1",
+           "isApproval": false
+          },
+          {
+           "account": "0.0.11505933",
+           "amount": "1",
+           "isApproval": false
+          }
+         ]
+        }
+       ]
+      }
+     }
+    },
+    "query": {
+     "act": "agreement",
+     "finality": "consensus"
+    },
+    "mirror": {
+     "latest": "1794955327.260590104",
+     "byId": [
+      {
+       "batch_key": null,
+       "bytes": null,
+       "charged_tx_fee": 1936254,
+       "consensus_timestamp": "1794955091.907114063",
+       "entity_id": null,
+       "high_volume": false,
+       "high_volume_pricing_multiplier": 0,
+       "max_fee": "100000000",
+       "max_custom_fees": [],
+       "memo_base64": "bGNwOnNoYTI1NjoweDgzNjU2MDQ0ZjRjODFiZjE3ZTgzOWE0MWUzYmQ1Y2I4NWI3ZDBkYWRkOTk4NjkzMWJjMjNiNTUxNjk0ZWExOTc=",
+       "name": "CRYPTOTRANSFER",
+       "nft_transfers": [],
+       "node": "0.0.3",
+       "nonce": 0,
+       "parent_consensus_timestamp": null,
+       "result": "SUCCESS",
+       "scheduled": false,
+       "staking_reward_transfers": [],
+       "token_transfers": [
+        {
+         "token_id": "0.0.429274",
+         "account": "0.0.11505932",
+         "amount": -1,
+         "is_approval": false
+        },
+        {
+         "token_id": "0.0.429274",
+         "account": "0.0.11505933",
+         "amount": 1,
+         "is_approval": false
+        }
+       ],
+       "transaction_hash": "wj/Z1HUXWZqnfHP6cR26Dwh2F/Svr5tic3C0WF1XL9WIjVXrhbYajuWy0xS677lP",
+       "transaction_id": "0.0.11505931-1794955079-000000000",
+       "transfers": [
+        {
+         "account": "0.0.802",
+         "amount": 1936254,
+         "is_approval": false
+        },
+        {
+         "account": "0.0.11505931",
+         "amount": -1936254,
+         "is_approval": false
+        }
+       ],
+       "valid_duration_seconds": "120",
+       "valid_start_timestamp": "1794955079.000000000"
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0.0.11505931-1794955079-000000000",
+     "position": "1794955091.907114063",
+     "finality": "consensus",
+     "moved": [
+      {
+       "asset": "0.0.429274",
+       "amount": "1",
+       "to": "0.0.11505933",
+       "transaction": "0.0.11505931-1794955079-000000000",
+       "place": "0.0.429274/0.0.11505933"
+      }
+     ],
+     "signer": "0.0.11505932",
+     "presented": "yes",
      "foreign": []
     }
    }

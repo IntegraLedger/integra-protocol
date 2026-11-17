@@ -687,7 +687,9 @@ async function latestOf(reader: HederaReader): Promise<string | UnreadableReason
  * the node, any the presented list names, and the transfer rows: each HBAR row read with its staking reward taken out
  * and the fee added back, the rows of the node and of the fee accounts and the rows that net to zero set aside, and the
  * token rows. `unshown` where the entry lacks a member, the body itself lists the node or a fee account, or the entry
- * assessed a custom fee.
+ * assessed a custom fee. An entry with no `assessed_custom_fees`, a member the mirror's `TransactionDetail` makes
+ * optional and leaves out where no custom fee is assessed, assessed none, as one with `[]`; a member that is not an
+ * array is not shown.
  */
 function presentedOf(e: MirrorEntry, ref: HederaRef): "yes" | "no" | "unshown" {
   const p = ref.presented;
@@ -697,7 +699,7 @@ function presentedOf(e: MirrorEntry, ref: HederaRef): "yes" | "no" | "unshown" {
     typeof e.valid_duration_seconds !== "string" ||
     typeof e.max_fee !== "string" ||
     typeof e.node !== "string" ||
-    (e.assessed_custom_fees === undefined ? (e.token_transfers ?? []).length > 0 : !Array.isArray(e.assessed_custom_fees))
+    (e.assessed_custom_fees !== undefined && !Array.isArray(e.assessed_custom_fees))
   ) {
     return "unshown";
   }
