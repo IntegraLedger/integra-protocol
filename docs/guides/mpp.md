@@ -44,11 +44,11 @@ object of its members, as `mppx` releases before 0.6.4 write it, is read by thos
 
 ## Placing and reading
 
-`place(doc, h, link, option, position, agreementUrl?)` is the seller's placement over a list of challenges: the
+`place(doc, h, link, option, position, act?, agreementUrl?)` is the seller's placement over a list of challenges: the
 challenge whose bound members equal `option` gets the id derived from H at `position` and an `opaque` holding the
-seller's own map plus the LCP members. The seller gives each challenge of a sale its own position, 0 to 31, its charge
-challenges and its agreement challenges together, since an agreement challenge is sent in a response of its own; a
-Tempo `subscription` challenge takes `null`. A position that another challenge of the list already carries is
+seller's own map plus the LCP members. `act` is `"payment"`, the default, or `"agreement"`. The seller gives each
+challenge of a sale its own position, 0 to 31, its charge challenges and its agreement challenges together, since an
+agreement challenge is sent in a response of its own; a Tempo `subscription` challenge takes `null`. A position that another challenge of the list already carries is
 `mpp/position-taken`. `place`, and so each pairing's `advertise`, which takes the same arguments, refuses a list holding
 a challenge that carries a `refused` member as `mpp/challenge-malformed`.
 `read(doc)` is the buyer's reading: the challenges whose `opaque` carries an LCP hash and an `https` link and whose id
@@ -190,8 +190,9 @@ request in its RFC 8785 form. So no pairing binds a payment presented under a ch
 it. Of a challenge the filter takes, each function reads only the request members its own read keys or derivation use,
 such as the network or chain, the currency, the recipient, the escrow, the member that carries H, and `expires` where it
 is the payment's deadline; on the Lightning charge and session, the read keys name the network of the invoice's
-currency. The EVM `transaction` and `hash` charges' `bound` then refuses (`mpp/no-signed-place`), and a `fetchPresented`
-given a signed transaction returns it as given.
+currency. The EVM `transaction` and `hash` charges' `bound` then refuses a credential of another type
+(`mpp/credential-type`) and every other (`mpp/no-signed-place`), and a `fetchPresented` given a signed transaction
+returns it as given.
 
 The `complete` of each `build` that makes a credential measures it as `bound` measures every credential, its echoed
 challenge included, and refuses one over the credential size bound, 64 KiB, with `mpp/credential-malformed`, the code
@@ -228,10 +229,10 @@ A resource server makes two checks a stock MPP server does not make, and makes t
    challenge's id and `opaque` name it and the id is, whole, `recorded`, the id the server recorded when it issued that
    challenge (else `mpp/id-not-ours`); and `issuedDigest` of the echoed challenge equals the digest the server recorded
    for H: from the ATR's binding slot (`tie`), or, for an agreement challenge, which no slot holds, the digest it
-   recorded for its agreement option. `place(doc, h, link, option, position, agreementUrl, "agreement")` composes an
-   agreement challenge only where it states `expires` (else `mpp/expires-required`); composed anew once that `expires`
-   has passed, in the position of the one it replaces, it keeps that challenge's id, and a credential of the replaced
-   challenge is refused at `issuedDigest`.
+   recorded for its agreement option. `place(doc, h, link, option, position, "agreement", agreementUrl)`, and each
+   pairing's `advertise` given the same arguments, composes an agreement challenge only where it states `expires` (else
+   `mpp/expires-required`); composed anew once that `expires` has passed, in the position of the one it replaces, it
+   keeps that challenge's id, and a credential of the replaced challenge is refused at `issuedDigest`.
 2. **The payment carries H.** The pairing's `bound`, which checks how the credential carries H, or its link, and never
    what the payment pays. For a credential whose payer already broadcast the payment, `fetchPresented` reads the landed
    transaction first, and `bound` refuses `<rail>/read-first` until then. Where the payer signs nothing that carries H

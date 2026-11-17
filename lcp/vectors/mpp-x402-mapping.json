@@ -636,6 +636,39 @@
    }
   },
   {
+   "case": "a challenge with no expires that still offers transaction",
+   "credential": {
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "evm",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgwMzZDYkQ1Mzg0MmM1NDI2NjM0ZTc5Mjk1NDFlQzIzMThmM2RDRjdlIiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjo4NDUzMiwiY3JlZGVudGlhbFR5cGVzIjpbImF1dGhvcml6YXRpb24iLCJ0cmFuc2FjdGlvbiJdLCJwZXJtaXQyQWRkcmVzcyI6IjB4MDAwMDAwMDAwMDIyRDQ3MzAzMEYxMTZkREVFOUY2QjQzYUM3OEJBMyJ9LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifQ",
+     "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+     "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
+    },
+    "source": "did:pkh:eip155:84532:0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+    "payload": {
+     "type": "authorization",
+     "from": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+     "to": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+     "value": "10000",
+     "validAfter": "0",
+     "validBefore": "1790000060",
+     "nonce": "0xa4da723d91b17c5dedd76267a68bd5d5794f139a560dedf618762e5e369232c3",
+     "signature": "0xa6d5f9c8f66283f30e77d617986011379996634810d79821b84206c1fd56dbde2512742058b2235268d68d4c731b378473c23560ccde37a83d2fad7d8aa95ce11c"
+    }
+   },
+   "token": {
+    "name": "USDC",
+    "version": "2"
+   },
+   "issued": 1789999760,
+   "expect": {
+    "refused": true,
+    "code": "mpp/expires-required"
+   }
+  },
+  {
    "case": "issued not an integer second",
    "credential": {
     "challenge": {

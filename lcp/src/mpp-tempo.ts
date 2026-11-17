@@ -36,7 +36,7 @@ import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import { decodeTempoTx, expiringNonceHash, RECEIVE_POLICY_GUARD, TRANSFER_WITH_MEMO_SELECTOR, TRANSFER_WITH_MEMO_TOPIC } from "./tempo.js";
 import { EIP155_TEMPO_MPP } from "./internal/data/eip155-tempo-mpp.js";
 import { ReaderError, rejected, TRANSFER_TOPIC, type EvmMark, type EvmQuery } from "./internal/evm.js";
-import { decide, type Facts, type Moved, type Seen, type StatusAnswer, type Undecoded, type UnreadableReason } from "./internal/read.js";
+import { decide, type Act, type Facts, type Moved, type Seen, type StatusAnswer, type Undecoded, type UnreadableReason } from "./internal/read.js";
 import type { Entry } from "./internal/registry.js";
 import { deepFreeze } from "./mpp-challenge.js";
 import type { LcpPattern } from "./x402.js";
@@ -300,6 +300,7 @@ function advertiseAs(pairing: SplitId) {
     link: string,
     offer: MppChallenge,
     position: number | null,
+    act?: Act,
     agreementUrl?: string,
   ): MppChallenge[] | Refusal => {
     const pairings = pairingsOf(offer);
@@ -311,7 +312,7 @@ function advertiseAs(pairing: SplitId) {
     if (pairing === PULL && !(Array.isArray(modes) && modes.length === 1 && modes[0] === "pull")) {
       return refusal("mpp/modes-not-pull");
     }
-    return placeSplit(doc, h, link, offer, position, agreementUrl);
+    return placeSplit(doc, h, link, offer, position, act, agreementUrl);
   };
 }
 

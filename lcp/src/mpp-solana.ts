@@ -63,7 +63,7 @@ import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 import { SOLANA as SOLANA_DATA } from "./internal/data/solana.js";
 import { mppPayee } from "./internal/payee.js";
-import type { RecoverInput } from "./internal/read.js";
+import type { Act, RecoverInput } from "./internal/read.js";
 import type { Entry } from "./internal/registry.js";
 
 const ID = "mpp/charge/solana" as const;
@@ -464,6 +464,7 @@ function advertise(
   link: string,
   offer: MppChallenge,
   position: number | null,
+  act?: Act,
   agreementUrl?: string,
 ): MppChallenge[] | Refusal {
   if (normalHash(h) === null) return refusal("mpp/challenge-malformed");
@@ -474,6 +475,7 @@ function advertise(
     link,
     offer,
     position,
+    act,
     (issued) => (issued === undefined || issued === memo ? memo : spec.occupied()),
     agreementUrl,
   );
@@ -508,8 +510,15 @@ function pullPairing<Id extends ChargeId>(spec: SolanaCharge<Id>) {
     claims: true as boolean,
     unplaced,
     tie,
-    advertise: (doc: readonly MppChallenge[], h: AtrHash, link: string, offer: MppChallenge, position: number | null, agreementUrl?: string) =>
-      advertise(spec, doc, h, link, offer, position, agreementUrl),
+    advertise: (
+      doc: readonly MppChallenge[],
+      h: AtrHash,
+      link: string,
+      offer: MppChallenge,
+      position: number | null,
+      act?: Act,
+      agreementUrl?: string,
+    ) => advertise(spec, doc, h, link, offer, position, act, agreementUrl),
     read,
     build: (choice: SolanaChargeChoice, h: AtrHash) => build(spec, choice, h),
     bound: (input: unknown) => bound(spec, input),

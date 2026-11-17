@@ -148,7 +148,7 @@ export interface Family {
   readonly placedIn: unknown;
   /** The offer `advertise` places H on: the x402 option, the MPP challenge, or the protocol's own option. */
   readonly offer: unknown;
-  /** The arguments `advertise` takes after `offer`: on MPP the challenge's position, then the agreement URL. */
+  /** The arguments `advertise` takes after `offer`: on MPP the challenge's position, the act, then the agreement URL. */
   readonly rest: readonly unknown[];
   /** What `advertise` gives. */
   readonly advertised: unknown;

@@ -23,7 +23,7 @@ type RefusalRow = { case: string; pairing: string; presented: unknown; expectRef
 
 const PAIRINGS = rowsOf<PairingRow>(V.pairings, "broadcaster.json pairings", { exact: 72 });
 const KINDS = rowsOf<KindRow>(V.kinds, "broadcaster.json kinds", { exact: 36 });
-const REFUSALS = rowsOf<RefusalRow>(V.refusals, "broadcaster.json refusals", { exact: 25 });
+const REFUSALS = rowsOf<RefusalRow>(V.refusals, "broadcaster.json refusals", { exact: 27 });
 const MULTI = PAIRINGS.filter((r) => r.broadcaster === null).map((r) => r.pairing);
 const answerOf = (id: string): Broadcaster | null => PAIRINGS.find((r) => r.pairing === id)!.broadcaster;
 
@@ -287,9 +287,8 @@ const NOT_OPENING_CODES = new Set([
 
 /**
  * The refusal `broadcaster` gives a payment whose type, action or members are changed, or undefined where it answers.
- * An MPP charge: `bound`'s code where `bound` refuses its type. The EVM `transaction` and `hash` charges, whose `bound`
- * binds nothing: `bound`'s code for a type other than the two their pairings name. A session or a batch-settlement
- * channel, by its `channel.kind`, called here:
+ * An MPP charge: `bound`'s code where `bound` refuses its type. A session or a batch-settlement channel, by its
+ * `channel.kind`, called here:
  * - `channel.kind` refuses its action or type: `bound`'s code;
  * - `channel.kind` refuses it for anything else, and `bound` refuses it as not an opening, so does not read it:
  *   `channel.kind`'s code; where `bound` reads it (a deposit), its faults beyond the gate do not change the answer;
@@ -319,9 +318,6 @@ async function expected(b: Binding, m: unknown): Promise<string | undefined> {
     return asOpening === "mpp/credential-type" ? code : undefined;
   }
   if (!b.id.startsWith("mpp/")) return undefined;
-  if (b.id === "mpp/charge/evm/transaction" || b.id === "mpp/charge/evm/hash") {
-    return p["type"] !== "transaction" && p["type"] !== "hash" ? code : undefined;
-  }
   return code !== undefined && TYPE_CODES.has(code) ? code : undefined;
 }
 

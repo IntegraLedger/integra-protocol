@@ -83,13 +83,13 @@ It is pure: it takes no reader and loads no peer. The pairings whose `bound` bin
 `card/seller-reference`) answer for whatever is presented.
 
 A pairing that reads a payload `type` or a session `action` refuses one it does not take with `bound`'s code:
-`mpp/credential-type` on most MPP charges, `near/not-hash-credential` on `mpp/charge/nearintents`, and
-`mpp/no-signed-place` on `mpp/charge/evm/transaction` and `mpp/charge/evm/hash`, whose `bound` binds nothing. A session
-takes the actions its `channel.kind` takes, and refuses any other with the code its `bound` gives a credential that is
-not an opening; an opening of a type its `bound` does not take gets `bound`'s code too. The EVM and Solana
-batch-settlement channels refuse a payload `type` their `channel.kind` does not take with `x402/not-an-opening`, and the
-EVM channel refuses a refund whose `amount` is not a positive decimal below 2^128 with `x402/payload-malformed`, as
-`channel.kind` does. Both read the payload alone, so which option `accepted` is does not change the answer.
+`mpp/credential-type` on most MPP charges, `mpp/charge/evm/transaction` and `mpp/charge/evm/hash` among them, whose
+`bound` gives every credential of a type they take `mpp/no-signed-place`, and `near/not-hash-credential` on
+`mpp/charge/nearintents`. A session takes the actions its `channel.kind` takes, and refuses any other with the code its
+`bound` gives a credential that is not an opening; an opening of a type its `bound` does not take gets `bound`'s code
+too. The EVM and Solana batch-settlement channels refuse a payload `type` their `channel.kind` does not take with
+`x402/not-an-opening`, and the EVM channel refuses a refund whose `amount` is not a positive decimal below 2^128 with
+`x402/payload-malformed`, as `channel.kind` does. Both read the payload alone, so which option `accepted` is does not change the answer.
 
 Most pairings take payments of one path, and every payment they take gets one answer. These take more than one, and
 answer by the payment's kind:

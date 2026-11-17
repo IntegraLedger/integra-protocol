@@ -25,9 +25,9 @@ const issued = (method: string, intent: string, request: unknown): MppChallenge 
   expires: F.expires,
 });
 const requestOf = (c: MppChallenge) => JSON.parse(fromB64u(c.request));
-type Advertises = { advertise(d: MppChallenge[], h: string, l: string, o: MppChallenge, p: number | null, a?: string): unknown };
+type Advertises = { advertise(d: MppChallenge[], h: string, l: string, o: MppChallenge, p: number | null, act?: undefined, a?: string): unknown };
 const placed = (b: Advertises, c: MppChallenge, agreementUrl?: string): MppChallenge => {
-  const doc = b.advertise([c], F.H, F.link, c, 0, agreementUrl);
+  const doc = b.advertise([c], F.H, F.link, c, 0, undefined, agreementUrl);
   if (!Array.isArray(doc)) throw new Error(JSON.stringify(doc));
   return doc[0]!;
 };

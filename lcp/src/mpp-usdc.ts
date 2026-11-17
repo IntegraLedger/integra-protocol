@@ -75,6 +75,7 @@ import type { LcpPattern } from "./x402.js";
 import { MAX_SIGNATURE_BYTES } from "./internal/bounds.js";
 import { EIP155_TEMPO_MPP } from "./internal/data/eip155-tempo-mpp.js";
 import { STACKS as STACKS_DATA } from "./internal/data/stacks.js";
+import type { Act } from "./internal/read.js";
 import type { Entry, NoRead } from "./internal/registry.js";
 
 const EVM = "mpp/charge/usdc/evm" as const;
@@ -198,12 +199,13 @@ function advertiseAs(pairing: UsdcDirect) {
     link: string,
     offer: MppChallenge,
     position: number | null,
+    act?: Act,
     agreementUrl?: string,
   ): MppChallenge[] | Refusal => {
     const pairings = pairingsOf(offer);
     if (isRefusal(pairings)) return pairings;
     if (!pairings.includes(pairing)) return refusal("mpp/not-this-pairing");
-    return place(doc, h, link, offer, position, agreementUrl);
+    return place(doc, h, link, offer, position, act, agreementUrl);
   };
 }
 

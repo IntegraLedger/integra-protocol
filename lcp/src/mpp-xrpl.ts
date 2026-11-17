@@ -328,6 +328,7 @@ function advertise(
   link: string,
   offer: MppChallenge,
   position: number | null,
+  act?: Act,
   agreementUrl?: string,
 ): MppChallenge[] | Refusal {
   if (normalHash(h) === null) return refusal("mpp/challenge-malformed");
@@ -338,6 +339,7 @@ function advertise(
     link,
     offer,
     position,
+    act,
     (issued) => (issued === undefined || sameInvoice(issued, invoice) ? invoice : refusal("xrpl/carrier-occupied")),
     agreementUrl,
   );

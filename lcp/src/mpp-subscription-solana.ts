@@ -42,6 +42,7 @@ import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 import { SOLANA as SOLANA_DATA } from "./internal/data/solana.js";
 import { mppPayee } from "./internal/payee.js";
+import type { Act } from "./internal/read.js";
 import type { Entry } from "./internal/registry.js";
 
 const ID = "mpp/subscription/solana" as const;
@@ -139,6 +140,7 @@ function advertise(
   link: string,
   offer: MppChallenge,
   position: number | null,
+  act?: Act,
   agreementUrl?: string,
 ): MppChallenge[] | Refusal {
   if (normalHash(h) === null) return refusal("mpp/challenge-malformed");
@@ -149,6 +151,7 @@ function advertise(
     link,
     offer,
     position,
+    act,
     (issued) => (issued === undefined || issued === memo ? memo : refusal("svm/carrier-occupied")),
     agreementUrl,
   );

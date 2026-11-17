@@ -85,17 +85,9 @@ describe("mpp-x402-mapping.json", () => {
       expect(await recoverTypedDataAddress({ ...td, signature })).toBe(row.credential.payload.from);
     });
   }
-  for (const row of rowsOf(V.refusals, "mpp-x402-mapping.json refusals", { exact: 17 })) {
+  for (const row of rowsOf(V.refusals, "mpp-x402-mapping.json refusals", { exact: 18 })) {
     it(`refuses ${row.case}`, () => {
       expect(toX402(row.credential, row.token, row.issued)).toEqual(row.expect);
     });
   }
-  it("refuses a challenge with no expires that still offers transaction, mpp/expires-required", () => {
-    const row = V.refusals.find((r: { case: string }) => r.case === "a challenge with no expires, which offers no pairing");
-    const credential = structuredClone(row.credential);
-    const request = JSON.parse(Buffer.from(credential.challenge.request, "base64url").toString("utf8"));
-    request.methodDetails.credentialTypes = ["authorization", "transaction"];
-    credential.challenge.request = Buffer.from(JSON.stringify(request)).toString("base64url");
-    expect(toX402(credential, row.token, row.issued)).toEqual(row.expect);
-  });
 });

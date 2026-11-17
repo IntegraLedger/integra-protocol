@@ -583,9 +583,9 @@ describe("mpp-charge-nearintents.json", () => {
 
   it("pairingsOf, and advertise places id, opaque and externalId", () => {
     expect(pairingsOf(V.challenge)).toEqual(["mpp/charge/nearintents"]);
-    expect(chargeNearIntents.advertise([V.challenge], H, V.fixed.link, V.challenge, 0, undefined, V.unplaced.expect)).toEqual([V.place.expect]);
+    expect(chargeNearIntents.advertise([V.challenge], H, V.fixed.link, V.challenge, 0, undefined, undefined, V.unplaced.expect)).toEqual([V.place.expect]);
     const occupied = withRequest(V.challenge, V.occupied.request);
-    expect(chargeNearIntents.advertise([occupied], H, V.fixed.link, occupied, 0, undefined, V.unplaced.expect)).toEqual(refused(V.occupied.expect));
+    expect(chargeNearIntents.advertise([occupied], H, V.fixed.link, occupied, 0, undefined, undefined, V.unplaced.expect)).toEqual(refused(V.occupied.expect));
     expect(chargeNearIntents.claims).toBe(false);
     expect(chargeNearIntents.data.coverage).toBe("none");
   });

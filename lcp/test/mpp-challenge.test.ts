@@ -103,7 +103,7 @@ describe("mpp-challenge.json", () => {
   });
 
   it("MV14: the agreement URL in opaque", async () => {
-    const placed = place([C_E], H, link, C_E, 0, V.fixed.agreementUrl) as MppChallenge[];
+    const placed = place([C_E], H, link, C_E, 0, undefined, V.fixed.agreementUrl) as MppChallenge[];
     const opaque = placed[0]!.opaque!;
     expect(opaque.length).toBe(V.MV14.expectOpaqueLength);
     expect(sha256(opaque)).toBe(V.MV14.expectOpaqueSha256);
@@ -196,7 +196,7 @@ describe("mpp-challenge.json", () => {
     expect(place(placed, H2, link, C_E, 0)).toEqual({ refused: true, code: "mpp/legal-context-conflict" });
     expect(place(placed, H, link + "?v=2", C_E, 0)).toEqual({ refused: true, code: "mpp/legal-context-conflict" });
     expect(place([C_E], H, "http://atr.seller.example/x", C_E, 0)).toEqual({ refused: true, code: "mpp/link-not-https" });
-    expect(place([C_E], H, link, C_E, 0, "http://pay.seller.example/")).toEqual({ refused: true, code: "mpp/link-not-https" });
+    expect(place([C_E], H, link, C_E, 0, undefined, "http://pay.seller.example/")).toEqual({ refused: true, code: "mpp/link-not-https" });
     expect(place([C_E], H, link, C_T, 0)).toEqual({ refused: true, code: "mpp/not-this-pairing" });
     expect(read([C_E])).toEqual({ refused: true, code: "mpp/no-legal-context" });
     const other = place([C_E], H2, link, C_E, 0) as MppChallenge[];
@@ -517,7 +517,7 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
   const R_E = JSON.parse(V.fixed.R_E);
   const R_T = JSON.parse(V.fixed.R_T);
   const placed = (c: MppChallenge, agreementUrl?: string) =>
-    (place([c], H, link, c, 0, agreementUrl) as (MppChallenge & { id: string })[])[0]!;
+    (place([c], H, link, c, 0, undefined, agreementUrl) as (MppChallenge & { id: string })[])[0]!;
   const evmCharge = (request: object) => challenge("evm", "charge", JSON.stringify(request));
   const chE = placed(C_E);
   /** C_E's request without credentialTypes: the transaction and hash pairings. */
@@ -646,7 +646,7 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
     expect((await built(evmTransaction.build({ challenge: chCalls, from, now: 0 }, H))).complete(await evmWireOf(transaction))).not.toHaveProperty("refused");
     expect(await evmAuthorization.bound(await credential())).toBe(H);
     expect(parseChallenges(Array.from({ length: 32 }, (_, k) => payment(k)))).toHaveLength(32);
-    const agreed = [placed(C_E, V.fixed.agreementUrl), (place([C_E, C_CALLS], H, link, C_CALLS, V.fixed.agreementUrl) as MppChallenge[])[1]!];
+    const agreed = [placed(C_E, V.fixed.agreementUrl), (place([C_E, C_CALLS], H, link, C_CALLS, 1, undefined, V.fixed.agreementUrl) as MppChallenge[])[1]!];
     expect(read(agreed)).toMatchObject({ h: H, link, agreement: V.fixed.agreementUrl });
   });
 
@@ -764,7 +764,7 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
     ],
     "read with two challenges whose links or agreement URLs differ": async () => [
       read([chE, (place([C_E, C_CALLS], H, `${link}?other`, C_CALLS, 0) as MppChallenge[])[1]!]),
-      read([placed(C_E, V.fixed.agreementUrl), (place([C_E, C_CALLS], H, link, C_CALLS, 0, `${V.fixed.agreementUrl}?other`) as MppChallenge[])[1]!]),
+      read([placed(C_E, V.fixed.agreementUrl), (place([C_E, C_CALLS], H, link, C_CALLS, 0, undefined, `${V.fixed.agreementUrl}?other`) as MppChallenge[])[1]!]),
     ],
     "read with a legalContextAgreementUrl of at most 2048 characters that parses as an absolute URL whose scheme is not https":
       async () => ["http://pay.seller.example/agreement", "HTTP://pay.seller.example/agreement", "ftp://pay.seller.example/a"].map((a) => read(withAgreement(a))),
@@ -774,14 +774,14 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
       async () => [
         place([C_E], H, "http://atr.seller.example/x", C_E, 0),
         place([C_E], H, "not a url", C_E, 0),
-        place([C_E], H, link, C_E, 0, "http://pay.seller.example/agreement"),
-        place([C_E], H, link, C_E, 0, "not a url"),
+        place([C_E], H, link, C_E, 0, undefined, "http://pay.seller.example/agreement"),
+        place([C_E], H, link, C_E, 0, undefined, "not a url"),
         ...["http://atr.seller.example/x", "HTTP://atr.seller.example/x", "ftp://atr.seller.example/x"].map((u) => read(withOpaque({ legalContextUrl: u }))),
       ],
     "place with a link or agreement URL that is an https link over 2048 characters; or read with no challenge read, no legalContextUrl of another scheme and one that is absent, does not parse as an absolute URL, is an https URL the link rule refuses, or is over 2048 characters, in a challenge whose id derives from its legalContext":
       async () => [
         place([C_E], H, long, C_E, 0),
-        place([C_E], H, link, C_E, 0, long),
+        place([C_E], H, link, C_E, 0, undefined, long),
         read(withOpaque({})),
         ...["", "https://", "not a url", "https://u@atr.seller.example/", long, longHttp].map((u) => read(withOpaque({ legalContextUrl: u }))),
       ],

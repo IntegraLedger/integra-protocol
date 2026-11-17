@@ -77,7 +77,7 @@ export interface MppForms {
   readonly offered: { h: AtrHash; link: string; agreement?: string; offer: { challenges: MppChallenge[] } };
   readonly placedIn: readonly MppChallenge[];
   readonly offer: MppChallenge;
-  readonly rest: [position: number | null, agreementUrl?: string];
+  readonly rest: [position: number | null, act?: Act, agreementUrl?: string];
   readonly advertised: MppChallenge[];
   readonly option: MppChallenge;
 }
@@ -679,10 +679,10 @@ function withoutSplitCarrier(c: MppChallenge, request: { [k: string]: Json }): {
 }
 
 /**
- * `place` for a Tempo charge (profile `mpp/charge/tempo/split-memo`, rule 1), then the split that carries H appended to
- * the placed challenge's `methodDetails.splits`: `{recipient, amount: "1", memo: H}`, `recipient` the request's own, H
- * as `0x` and 64 lowercase hex digits. The request is re-encoded as base64url of the core's `canonicalJson`, at most
- * 8 KiB, else `mpp/request-malformed`. The placed challenge is held to the pairings' filter with the split required
+ * `place`, given the act, for a Tempo charge (profile `mpp/charge/tempo/split-memo`, rule 1), then the split that
+ * carries H appended to the placed challenge's `methodDetails.splits`: `{recipient, amount: "1", memo: H}`, `recipient`
+ * the request's own, H as `0x` and 64 lowercase hex digits. The request is re-encoded as base64url of the core's
+ * `canonicalJson`, at most 8 KiB, else `mpp/request-malformed`. The placed challenge is held to the pairings' filter with the split required
  * (`checkChallenge`), whose refusal it gives. Nothing else of the request is written: the seller's option names
  * `supportedModes` and `feePayer` as issued, which the ATR's binding slot holds.
  */
@@ -692,9 +692,10 @@ export function placeSplit(
   link: string,
   option: MppChallenge,
   position: number,
+  act?: Act,
   agreementUrl?: string,
 ): MppChallenge[] | Refusal {
-  const placed = place(doc, h, link, option, position, agreementUrl);
+  const placed = place(doc, h, link, option, position, act, agreementUrl);
   if (isRefusal(placed)) return placed;
   const i = doc.findIndex((c) => sameBound(c, option));
   const request = decodeObject(placed[i]!.request);
@@ -967,8 +968,8 @@ export function place(
   link: string,
   option: MppChallenge,
   position: number | null,
-  agreementUrl?: string,
   act: Act = "payment",
+  agreementUrl?: string,
 ): MppChallenge[] | Refusal {
   if (
     !Array.isArray(doc) ||
@@ -1019,9 +1020,9 @@ export function place(
 }
 
 /**
- * `place`, then the request member `CARRIER` names for the option's intent and method set to the value `carrier`
- * computes from the member as issued (undefined when absent). The request is re-encoded as base64url of the core's
- * `canonicalJson`, at most 8 KiB.
+ * `place`, given the act, then the request member `CARRIER` names for the option's intent and method set to the value
+ * `carrier` computes from the member as issued (undefined when absent). The request is re-encoded as base64url of the
+ * core's `canonicalJson`, at most 8 KiB.
  */
 export function placeCarrier(
   doc: readonly MppChallenge[],
@@ -1029,10 +1030,11 @@ export function placeCarrier(
   link: string,
   option: MppChallenge,
   position: number | null,
+  act: Act | undefined,
   carrier: (issued: Json | undefined) => string | Refusal,
   agreementUrl?: string,
 ): MppChallenge[] | Refusal {
-  const placed = place(doc, h, link, option, position, agreementUrl);
+  const placed = place(doc, h, link, option, position, act, agreementUrl);
   if (isRefusal(placed)) return placed;
   const i = doc.findIndex((c) => sameBound(c, option));
   const request = decodeObject(placed[i]!.request);
@@ -1378,8 +1380,10 @@ export function checkedFor(c: unknown, pairing: MppPairingId): Checked | Refusal
 }
 
 /**
- * The echoed challenge of a credential for `pairing`: H from `challengeBound`, the challenge's intent and method, which
- * must be `pairing`'s, and the challenge held to `pairing`'s filter (`checkedFor`), whose refusal it gives.
+ * The echoed challenge of a credential for `pairing`: H from `echoedRead`'s checks, the ones `challengeBound` makes save
+ * the recorded id, which this function is not given (the id derives from H and `opaque` names it); the challenge's
+ * intent and method, which must be `pairing`'s; and the challenge held to `pairing`'s filter (`checkedFor`), whose
+ * refusal it gives.
  */
 export function echoedFor(
   c: unknown,

@@ -29,6 +29,7 @@ import { broadcastsWithin } from "./internal/broadcaster.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 import { CARD } from "./internal/data/card.js";
+import type { Act } from "./internal/read.js";
 import type { Entry, NoRead } from "./internal/registry.js";
 
 /** The Stripe metadata key the seller places H under: at most 40 characters, no square brackets. */
@@ -55,6 +56,7 @@ function advertiseAs(pairing: ConfirmOnly) {
     link: string,
     offer: MppChallenge,
     position: number | null,
+    act?: Act,
     agreementUrl?: string,
   ): MppChallenge[] | Refusal => {
     if (!isObject(offer) || offer.intent !== pairing.split("/")[1] || offer.method !== pairing.split("/")[2]) {
@@ -76,6 +78,7 @@ function advertiseAs(pairing: ConfirmOnly) {
       link,
       offer,
       position,
+      act,
       (issued: Json | undefined) => (issued === undefined || issued === value ? value : refusal("mpp/carrier-occupied")),
       agreementUrl,
     );

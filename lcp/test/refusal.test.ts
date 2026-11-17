@@ -514,12 +514,12 @@ describe("every placement function refuses a seller document carrying a refused 
     ),
   );
   type Place = (doc: unknown, h: unknown, link: unknown, offer: unknown, agreementUrl?: string) => unknown;
-  type MppPlace = (doc: unknown, h: unknown, link: unknown, offer: unknown, position: number | null, agreementUrl?: string) => unknown;
+  type MppPlace = (doc: unknown, h: unknown, link: unknown, offer: unknown, position: number | null, act?: undefined, agreementUrl?: string) => unknown;
   // An MPP placement at the challenge's position: 0, or none for a Tempo subscription, whose id is H alone.
   const atPosition =
     (id: string, f: MppPlace): Place =>
     (doc, h, link, offer, agreementUrl) =>
-      f(doc, h, link, offer, id === "mpp/subscription/tempo" ? null : 0, agreementUrl);
+      f(doc, h, link, offer, id === "mpp/subscription/tempo" ? null : 0, undefined, agreementUrl);
   const refused = (code: string) => ({ refused: true, code });
 
   // An x402 document as issued: buyer row B2's advertised document without its legal context, its one option without
@@ -645,7 +645,7 @@ describe("every placement function refuses a seller document carrying a refused 
   // unplaced challenge has no quote and no expires, which advertise and MPP's place require, so both take it placed.
   const NEARINTENTS = "mpp/charge/nearintents";
   const heldToOffer = (id: string, f: MppPlace): MppPlace =>
-    id === NEARINTENTS ? (doc, h, link, offer, position, agreementUrl) => (f as (...a: unknown[]) => unknown)(doc, h, link, offer, position, agreementUrl, offer) : f;
+    id === NEARINTENTS ? (doc, h, link, offer, position, act, agreementUrl) => (f as (...a: unknown[]) => unknown)(doc, h, link, offer, position, act, agreementUrl, offer) : f;
   const mppCalls = [
     ...mpp.map((b) => [b.id, "advertise", atPosition(b.id, heldToOffer(b.id, b.advertise as MppPlace)), !lightning.has(b.id) && b.id !== NEARINTENTS] as const),
     ...rowsOf(mpp, "the MPP pairings", {

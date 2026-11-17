@@ -606,6 +606,20 @@ describe("mpp-charge-evm-permit2.json", () => {
 });
 
 describe("mpp-charge-evm-transaction.json and mpp-charge-evm-hash.json", () => {
+  // broadcaster.json's refusal rows for these pairings: a credential of a type they do not take.
+  it("a credential of another type: reference refuses it as bound does, mpp/credential-type", async () => {
+    const rows = load("broadcaster.json").refusals.filter((r: { pairing: string }) => r.pairing === "mpp/charge/evm/transaction" || r.pairing === "mpp/charge/evm/hash");
+    const typed = rowsOf<{ pairing: string; presented: MppCredential; expectRefusal: string }>(
+      rows.filter((r: { presented: { payload?: { type?: unknown } } }) => r.presented?.payload?.type === "authorization"),
+      "broadcaster.json's authorization rows under the EVM transaction and hash charges",
+      { exact: 2 },
+    );
+    for (const row of typed) {
+      const b = row.pairing === "mpp/charge/evm/hash" ? evmHash : evmTransaction;
+      expect(await b.reference(row.presented, row.presented.challenge)).toEqual({ refused: true, code: row.expectRefusal });
+    }
+  });
+
   it("MV11: the transfer call, signed as a whole transaction, carries no H", async () => {
     expect(pairingsOf(challenge("evm", "charge", TX.fixed.R_ENoTypes))).toEqual(TX.MV11.expectPairings);
     expect(pairingsOf(challenge("evm", "charge", TX.fixed.R_ESplitsCallTypes))).toEqual(TX.MV11.expectSplitsCallTypes);

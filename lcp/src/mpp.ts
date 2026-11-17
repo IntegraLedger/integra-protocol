@@ -91,6 +91,7 @@ import { mppPayee } from "./internal/payee.js";
 import type { LcpPattern } from "./x402.js";
 import { MAX_CHALLENGES, MAX_SIGNATURE_BYTES } from "./internal/bounds.js";
 import { EIP155_TEMPO_MPP } from "./internal/data/eip155-tempo-mpp.js";
+import type { Act } from "./internal/read.js";
 import type { Entry } from "./internal/registry.js";
 
 export {
@@ -276,7 +277,7 @@ function echoed(
   return echoedFor(presented, pairing);
 }
 
-/** MPP's `place` for `pairing`, with the agreement URL in `opaque` when one is given. */
+/** MPP's `place` for `pairing`, with the agreement URL in `opaque` when one is given, and the act. */
 function advertiseAs(pairing: ChargeId) {
   return (
     doc: readonly MppChallenge[],
@@ -284,12 +285,13 @@ function advertiseAs(pairing: ChargeId) {
     link: string,
     offer: MppChallenge,
     position: number | null,
+    act?: Act,
     agreementUrl?: string,
   ): MppChallenge[] | Refusal => {
     const pairings = pairingsOf(offer);
     if (isRefusal(pairings)) return pairings;
     if (!pairings.includes(pairing)) return refusal("mpp/not-this-pairing");
-    return place(doc, h, link, offer, position, agreementUrl);
+    return place(doc, h, link, offer, position, act, agreementUrl);
   };
 }
 
@@ -793,11 +795,21 @@ function evmCallBuild(pairing: typeof TRANSACTION | typeof HASH) {
  */
 const EVM_CALL_TYPES = { transaction: "payee", hash: "payer" } as const;
 
-/** The echoed challenge, held to `pairing`'s filter (`echoedFor`); then `mpp/no-signed-place`. */
+/** Whether a credential's payload `type` is one the EVM transaction and hash charges take. */
+function takesCallType(payload: { [k: string]: Json }): boolean {
+  const t = payload["type"];
+  return typeof t === "string" && Object.hasOwn(EVM_CALL_TYPES, t);
+}
+
+/**
+ * The echoed challenge, held to `pairing`'s filter (`echoedFor`); then a payload `type` other than `transaction` and
+ * `hash` is `mpp/credential-type`, before anything else of the payload is read; then `mpp/no-signed-place`.
+ */
 function noSignedPlace(pairing: typeof TRANSACTION | typeof HASH) {
   return async (presented: unknown): Promise<AtrHash | Refusal> => {
     const e = echoedFor(presented, pairing);
     if (isRefusal(e)) return e;
+    if (!takesCallType(e.payload)) return refusal("mpp/credential-type");
     return refusal("mpp/no-signed-place");
   };
 }
@@ -846,6 +858,9 @@ async function referenceFor(
   if (request === undefined) return refusal("mpp/request-malformed");
   const e = echoedOf(c as MppChallenge & { id: string }, request);
   if (isRefusal(e)) return e;
+  const payload = presented["payload"];
+  if (!isObject(payload)) return refusal("mpp/credential-malformed");
+  if (!takesCallType(payload as { [k: string]: Json })) return refusal("mpp/credential-type");
   const asset = requestAddress(e, "currency");
   if (isRefusal(asset)) return asset;
   const chainId = echoedChain(e);
@@ -957,8 +972,8 @@ export const evmPermit2 = Object.freeze({
  * `mpp/charge/evm/transaction`, whose `build` writes `broadcast: false`. `broadcaster` answers by the credential's
  * `type`, as `reference` and `status` take either: `transaction`, `"payee"`, a signed transaction the seller's server
  * broadcasts, naming its hash to `status`; `hash`, `"payer"`, a transaction the payer broadcast, which `status` reads
- * by that hash. A credential of any other type gets `mpp/no-signed-place`, the code `bound` gives every credential
- * within its shape gate.
+ * by that hash. A credential of any other type gets `mpp/credential-type`, as `bound` refuses it; `bound` gives every
+ * credential of either type `mpp/no-signed-place`.
  */
 export const evmTransaction = Object.freeze({
   id: TRANSACTION,
@@ -974,7 +989,7 @@ export const evmTransaction = Object.freeze({
   read,
   build: evmCallBuild(TRANSACTION),
   bound: noSignedPlace(TRANSACTION),
-  broadcaster: mppBroadcaster(byType(EVM_CALL_TYPES, () => refusal("mpp/no-signed-place"))),
+  broadcaster: mppBroadcaster(byType(EVM_CALL_TYPES)),
   reference: networkReference(TRANSACTION),
   status: transferPresent,
 }) satisfies Entry<
@@ -996,8 +1011,8 @@ export const evmTransaction = Object.freeze({
  * `mpp/charge/evm/hash`, whose `build` writes `broadcast: true`. `broadcaster` answers by the credential's `type`, as
  * `reference` and `status` take either: `hash`, `"payer"`, a transaction the payer broadcast, which `status` reads by
  * that hash; `transaction`, `"payee"`, a signed transaction the seller's server broadcasts, naming its hash to
- * `status`. A credential of any other type gets `mpp/no-signed-place`, the code `bound` gives every credential within
- * its shape gate.
+ * `status`. A credential of any other type gets `mpp/credential-type`, as `bound` refuses it; `bound` gives every
+ * credential of either type `mpp/no-signed-place`.
  */
 export const evmHash = Object.freeze({
   id: HASH,
@@ -1013,7 +1028,7 @@ export const evmHash = Object.freeze({
   read,
   build: evmCallBuild(HASH),
   bound: noSignedPlace(HASH),
-  broadcaster: mppBroadcaster(byType(EVM_CALL_TYPES, () => refusal("mpp/no-signed-place"))),
+  broadcaster: mppBroadcaster(byType(EVM_CALL_TYPES)),
   reference: networkReference(HASH),
   status: transferPresent,
 }) satisfies Entry<

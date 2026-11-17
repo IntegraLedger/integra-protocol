@@ -48,7 +48,7 @@ describe("mpp-charge-nearintents.json: unplaced, tie and issuedDigest read a cha
 
   it("a second quote for H: advertise places it held to the slot entry, and it gives the first quote's digest and entry", async () => {
     const second = quoted(V.secondQuote.request, V.secondQuote.expires);
-    expect(advertise([second], H, link, second, 0, undefined, named)).toEqual([V.secondQuote.expect]);
+    expect(advertise([second], H, link, second, 0, undefined, undefined, named)).toEqual([V.secondQuote.expect]);
     expect(await issuedDigest(V.secondQuote.expect)).toBe(V.secondQuote.expectDigest);
     expect(V.secondQuote.expectDigest).toBe(V.unplaced.expectDigest);
     expect(tie([second])).toEqual(tie([first]));
@@ -58,7 +58,7 @@ describe("mpp-charge-nearintents.json: unplaced, tie and issuedDigest read a cha
 describe("mpp-charge-nearintents.json: advertise holds a quote's fixed members to the challenge the ATR names", () => {
   it("the first quote is placed held to the slot entry, to advertiseBeforeCarrier's challenge, or to itself", () => {
     for (const to of [named, V.beforeCarrier.expect, first]) {
-      expect(advertise([first], H, link, first, 0, undefined, to)).toEqual([V.place.expect]);
+      expect(advertise([first], H, link, first, 0, undefined, undefined, to)).toEqual([V.place.expect]);
     }
   });
 
@@ -66,7 +66,7 @@ describe("mpp-charge-nearintents.json: advertise holds a quote's fixed members t
     for (const row of rowsOf(V.fixedChanged.rows, "mpp-charge-nearintents.json fixedChanged.rows", { exact: 10 })) {
       const c = quoted(edited(row.path, row.value), V.fixed.expires);
       expect(pairingsOf(c), row.member).toEqual(["mpp/charge/nearintents"]);
-      expect(advertise([c], H, link, c, 0, undefined, named), row.member).toEqual(refused(V.fixedChanged.expect));
+      expect(advertise([c], H, link, c, 0, undefined, undefined, named), row.member).toEqual(refused(V.fixedChanged.expect));
       expect(await issuedDigest(c), row.member).toBe(row.expectDigest);
       expect(row.expectDigest, row.member).not.toBe(V.unplaced.expectDigest);
     }
@@ -74,7 +74,7 @@ describe("mpp-charge-nearintents.json: advertise holds a quote's fixed members t
 
   it("with no challenge the ATR names, or one that is not a challenge, nothing is held: refused", () => {
     for (const to of [undefined, null, "challenge", {}, { ...named, request: 5 }]) {
-      expect(advertise([first], H, link, first, 0, undefined, to as MppChallenge)).toEqual(refused(V.fixedChanged.expect));
+      expect(advertise([first], H, link, first, 0, undefined, undefined, to as MppChallenge)).toEqual(refused(V.fixedChanged.expect));
     }
   });
 
@@ -83,14 +83,14 @@ describe("mpp-charge-nearintents.json: advertise holds a quote's fixed members t
     for (const path of paths) {
       for (const value of [undefined, 5]) {
         const c = quoted(edited(path, value), V.fixed.expires);
-        expect(advertise([c], H, link, c, 0, undefined, named), `${path.join(".")} ${value}`).toEqual(refused("mpp/request-malformed"));
+        expect(advertise([c], H, link, c, 0, undefined, undefined, named), `${path.join(".")} ${value}`).toEqual(refused("mpp/request-malformed"));
       }
     }
   });
 
   it("an occupied externalId stays refused", () => {
     const c = quoted(V.occupied.request, V.fixed.expires);
-    expect(advertise([c], H, link, c, 0, undefined, named)).toEqual(refused(V.occupied.expect));
+    expect(advertise([c], H, link, c, 0, undefined, undefined, named)).toEqual(refused(V.occupied.expect));
   });
 });
 
@@ -128,7 +128,7 @@ describe("mpp-charge-nearintents.json: reference names the deposit by its origin
   /** A hash credential for `hash` under the first quote on `originNetwork`, placed, and the challenge it answers. */
   const on = (originNetwork: string, hash: Json) => {
     const c = quoted(edited(["methodDetails", "originNetwork"], originNetwork), V.fixed.expires);
-    const [placed] = advertise([c], H, link, c, 0, undefined, c) as (MppChallenge & { id: string })[];
+    const [placed] = advertise([c], H, link, c, 0, undefined, undefined, c) as (MppChallenge & { id: string })[];
     const credential: MppCredential = { challenge: placed!, payload: { type: "hash", hash } };
     return { credential, option: structuredClone(placed!) };
   };

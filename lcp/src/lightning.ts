@@ -28,6 +28,7 @@ import {
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern, PaymentRequired, PaymentRequirements } from "./x402.js";
 import { LIGHTNING } from "./internal/data/lightning.js";
+import type { Act } from "./internal/read.js";
 import type { Entry, NoRead } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
@@ -167,11 +168,12 @@ function lnAdvertise(pairing: LnMppPairingId) {
     link: string,
     offer: MppChallenge,
     position: number | null,
+    act?: Act,
     agreementUrl?: string,
   ): MppChallenge[] | Refusal => {
     const b = lnChallengeChecks(pairing, offer, h, false);
     if (isRefusal(b)) return b;
-    return place(doc, h, link, offer, position, agreementUrl);
+    return place(doc, h, link, offer, position, act, agreementUrl);
   };
 }
 
@@ -187,12 +189,13 @@ function lnAdvertiseBeforeCarrier(pairing: LnMppPairingId) {
     link: string,
     offer: MppChallenge,
     position: number | null,
+    act?: Act,
     agreementUrl?: string,
   ): MppChallenge[] | Refusal => {
     const checked = checkChallenge(offer, false);
     if (isRefusal(checked)) return checked;
     if (!checked.pairings.includes(pairing)) return refusal("mpp/not-this-pairing");
-    return place(doc, h, link, offer, position, agreementUrl);
+    return place(doc, h, link, offer, position, act, agreementUrl);
   };
 }
 

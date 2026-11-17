@@ -30,6 +30,7 @@ import { isExternalId } from "./mpp-rail-checks.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 import { NEAR } from "./internal/data/near.js";
+import type { Act } from "./internal/read.js";
 import type { Entry, NoRead } from "./internal/registry.js";
 
 const ID = "mpp/charge/nearintents" as const;
@@ -114,11 +115,12 @@ function advertise(
   link: string,
   offer: MppChallenge,
   position: number | null,
+  act?: Act,
   agreementUrl?: string,
   named?: MppChallenge,
 ): MppChallenge[] | Refusal {
   if (normalHash(h) === null) return refusal("mpp/challenge-malformed");
-  const placed = placeCarrier(doc, h, link, offer, position, carrierFor(h), agreementUrl);
+  const placed = placeCarrier(doc, h, link, offer, position, act, carrierFor(h), agreementUrl);
   if (isRefusal(placed)) return placed;
   if (!holdsStrings(offer, [...FIXED, ...QUOTED])) return refusal("mpp/request-malformed");
   if (!isChallengeShape(named) || !sameBound(unplacedChallenge(offer), unplacedChallenge(named))) {
@@ -130,7 +132,8 @@ function advertise(
 /**
  * The placement at issue, before any quote: MPP's `place`, then `externalId` set to H's LCP string, once the challenge
  * carries every fixed member the draft requires as a string (else `mpp/request-malformed`). The quote's members are not
- * read, and a challenge without `expires` is placed and given back without one.
+ * read, and a payment challenge without `expires` is placed and given back without one; an agreement challenge without
+ * it is `mpp/expires-required`, as `place` refuses it.
  */
 function advertiseBeforeCarrier(
   doc: readonly MppChallenge[],
@@ -138,14 +141,15 @@ function advertiseBeforeCarrier(
   link: string,
   offer: MppChallenge,
   position: number | null,
+  act?: Act,
   agreementUrl?: string,
 ): MppChallenge[] | Refusal {
   if (normalHash(h) === null) return refusal("mpp/challenge-malformed");
-  const lend = isChallengeShape(offer) && offer.expires === undefined;
+  const lend = act !== "agreement" && isChallengeShape(offer) && offer.expires === undefined;
   const lent = (c: MppChallenge): MppChallenge =>
     lend && isChallengeShape(c) && sameBound(c, offer) ? { ...c, expires: LENT_EXPIRES } : c;
   const given = Array.isArray(doc) ? doc.map(lent) : doc;
-  const placed = placeCarrier(given, h, link, lent(offer), position, carrierFor(h), agreementUrl);
+  const placed = placeCarrier(given, h, link, lent(offer), position, act, carrierFor(h), agreementUrl);
   if (isRefusal(placed)) return placed;
   if (!holdsStrings(offer, FIXED)) return refusal("mpp/request-malformed");
   return placed.map((c, i) => {
@@ -249,9 +253,9 @@ const pattern: LcpPattern = deepFreeze({
   forwardIndexable: false,
 });
 
-/** This pairing's family descriptor: MPP's, with `advertise` taking the challenge as the ATR names it. */
+/** This pairing's family descriptor: MPP's, with `advertise` taking, after the agreement URL, the challenge as the ATR names it. */
 type NearIntentsForms = Omit<MppForms, "rest"> & {
-  readonly rest: [position: number | null, agreementUrl?: string, named?: MppChallenge];
+  readonly rest: [position: number | null, act?: Act, agreementUrl?: string, named?: MppChallenge];
 } & NoRead & { choice: never; unsigned: never };
 
 /**

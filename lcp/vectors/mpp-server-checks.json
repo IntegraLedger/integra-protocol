@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the two checks an MPP resource server makes before anything moves, and their order (mpp-charge.md, The server's order): place with the position and the act the caller gives, an agreement challenge stating expires, tie and issuedDigest over a challenge as its pairing's unplaced gives it, the echoed id held whole to the id recorded at issue, the order of the checks, an agreement challenge composed anew in the position of the one it replaces, and an echoed opaque that is an object. The order of the steps has no outside oracle; the encodings it starts from are the profile's, as below. Every expected value was computed from the profile with Python 3.12.3's json, base64 and hashlib: RFC 8785 as json.dumps(sort_keys=True, separators=(',',':')) over these values, which hold ASCII keys and no fractions; base64url without padding; SHA-256. The credentials are those of mpp-charge-evm-authorization.json (buyer B6), mpp-charge-xrpl.json (place, refusals[0]) and mpp-charge-card.json (M1), with the changes each row's case names. C_E, H, the link and the agreement URL are mpp-challenge.json's.",
+ "about": "Vectors for the two checks an MPP resource server makes before anything moves, and their order (mpp-charge.md, The server's order): place with the position and the act the caller gives, an agreement challenge stating expires, each pairing's advertise passing the act, tie and issuedDigest over a challenge as its pairing's unplaced gives it, the echoed id held whole to the id recorded at issue, the order of the checks, an agreement challenge composed anew in the position of the one it replaces, and an echoed opaque that is an object. The order of the steps has no outside oracle; the encodings it starts from are the profile's, as below. Every expected value was computed from the profile with Python 3.12.3's json, base64 and hashlib: RFC 8785 as json.dumps(sort_keys=True, separators=(',',':')) over these values, which hold ASCII keys and no fractions; base64url without padding; SHA-256. The credentials are those of mpp-charge-evm-authorization.json (buyer B6), mpp-charge-xrpl.json (place, refusals[0]) and mpp-charge-card.json (M1), with the changes each row's case names. The advertise rows' challenges are each named file's, with id, opaque and expires removed, and, where the pairing's advertise takes it so, the carrier its unplaced removes; the agreement act's code is the profile's rule 2 (every agreement challenge states expires), and `payment`'s, where the call refuses, is the code docs/reference/refusals.md gives a challenge with no expires whose every pairing needs one. C_E, H, the link and the agreement URL are mpp-challenge.json's.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "H2": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -284,6 +284,538 @@
     }
    ]
   }
+ },
+ "advertise": {
+  "case": "every pairing's advertise passes the act to place: a challenge without expires, composed as an agreement challenge, is mpp/expires-required on every MPP pairing and on each member that composes one; `payment` is what the same call gives with the act payment, the challenge placed or the code its filter gives a challenge without expires",
+  "rows": [
+   {
+    "case": "mpp/charge/evm/authorization, advertise: a challenge from broadcaster.json without expires",
+    "pairing": "mpp/charge/evm/authorization",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "evm",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgwMzZDYkQ1Mzg0MmM1NDI2NjM0ZTc5Mjk1NDFlQzIzMThmM2RDRjdlIiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjo4NDUzMiwiY3JlZGVudGlhbFR5cGVzIjpbInBlcm1pdDIiLCJhdXRob3JpemF0aW9uIl0sInBlcm1pdDJBZGRyZXNzIjoiMHgwMDAwMDAwMDAwMjJENDczMDMwRjExNmRERUU5RjZCNDNhQzc4QkEzIn0sInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9"
+    },
+    "position": 0,
+    "payment": "mpp/expires-required",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/charge/evm/permit2, advertise: a challenge from broadcaster.json without expires",
+    "pairing": "mpp/charge/evm/permit2",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "evm",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgwMzZDYkQ1Mzg0MmM1NDI2NjM0ZTc5Mjk1NDFlQzIzMThmM2RDRjdlIiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjo4NDUzMiwiY3JlZGVudGlhbFR5cGVzIjpbInBlcm1pdDIiLCJhdXRob3JpemF0aW9uIl0sInBlcm1pdDJBZGRyZXNzIjoiMHgwMDAwMDAwMDAwMjJENDczMDMwRjExNmRERUU5RjZCNDNhQzc4QkEzIn0sInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9"
+    },
+    "position": 0,
+    "payment": "mpp/expires-required",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/charge/evm/transaction, advertise: a challenge from broadcaster.json without expires",
+    "pairing": "mpp/charge/evm/transaction",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "evm",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgwMzZDYkQ1Mzg0MmM1NDI2NjM0ZTc5Mjk1NDFlQzIzMThmM2RDRjdlIiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjo4NDUzMiwicGVybWl0MkFkZHJlc3MiOiIweDAwMDAwMDAwMDAyMkQ0NzMwMzBGMTE2ZERFRTlGNkI0M2FDNzhCQTMifSwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIn0"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/charge/evm/hash, advertise: a challenge from broadcaster.json without expires",
+    "pairing": "mpp/charge/evm/hash",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "evm",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgwMzZDYkQ1Mzg0MmM1NDI2NjM0ZTc5Mjk1NDFlQzIzMThmM2RDRjdlIiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjo4NDUzMiwicGVybWl0MkFkZHJlc3MiOiIweDAwMDAwMDAwMDAyMkQ0NzMwMzBGMTE2ZERFRTlGNkI0M2FDNzhCQTMifSwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIn0"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/charge/tempo/split-memo, advertise: a challenge from mpp-charge-tempo-split-memo.json without expires",
+    "pairing": "mpp/charge/tempo/split-memo",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "tempo",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgyMGMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIiwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjo0MjQzMSwiZmVlUGF5ZXIiOnRydWUsInN1cHBvcnRlZE1vZGVzIjpbInB1bGwiXX19"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/charge/tempo/split-memo/push, advertise: a challenge from mpp-charge-tempo-split-memo.json without expires",
+    "pairing": "mpp/charge/tempo/split-memo/push",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "tempo",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgyMGMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIiwicmVjaXBpZW50IjoiMHgyMDk2OTNCYzZhZmMwQzUzMjhiQTM2RmFGMDNDNTE0RUYzMTIyODdDIiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjo0MjQzMSwiZmVlUGF5ZXIiOmZhbHNlLCJzdXBwb3J0ZWRNb2RlcyI6WyJwdXNoIl19fQ"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/session/evm, advertise: a challenge from broadcaster.json without expires",
+    "pairing": "mpp/session/evm",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "evm",
+     "intent": "session",
+     "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MDM2Q2JENTM4NDJjNTQyNjYzNGU3OTI5NTQxZUMyMzE4ZjNkQ0Y3ZSIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJhdXRob3JpemF0aW9uIiwicGVybWl0MiJdLCJlc2Nyb3dDb250cmFjdCI6IjB4MTIzNDU2Nzg5MEFiY2RFRjEyMzQ1Njc4OTBhQmNkZWYxMjM0NTY3OCJ9LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifQ"
+    },
+    "position": 0,
+    "payment": "mpp/expires-required",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/session/tempo, advertise: a challenge from broadcaster.json without expires",
+    "pairing": "mpp/session/tempo",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "tempo",
+     "intent": "session",
+     "request": "eyJhbW91bnQiOiIxMDAiLCJjdXJyZW5jeSI6IjB4MjBjMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMCIsIm1ldGhvZERldGFpbHMiOnsiY2hhaW5JZCI6NDI0MzEsImVzY3Jvd0NvbnRyYWN0IjoiMHg0RDUwNTAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIiwic2Vzc2lvblByb3RvY29sIjoidjIifSwicmVjaXBpZW50IjoiMHg3NDJkMzVDYzY2MzRDMDUzMjkyNWEzYjg0NEJjOWU3NTk1ZjhmRTAwIn0"
+    },
+    "position": 0,
+    "payment": "mpp/expires-required",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/subscription/tempo, advertise: a challenge from mpp-server-checks.json without expires",
+    "pairing": "mpp/subscription/tempo",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "tempo",
+     "intent": "subscription",
+     "request": "eyJhbW91bnQiOiIxMDAwMDAwMCIsImN1cnJlbmN5IjoiMHgyMGMwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwIiwibWV0aG9kRGV0YWlscyI6eyJhY2Nlc3NLZXkiOnsiYWNjZXNzS2V5QWRkcmVzcyI6IjB4NzA5OTc5NzBDNTE4MTJkYzNBMDEwQzdkMDFiNTBlMGQxN2RjNzlDOCIsImtleVR5cGUiOiJzZWNwMjU2azEifSwiY2hhaW5JZCI6NDI0MzF9LCJwZXJpb2RDb3VudCI6IjMwIiwicGVyaW9kVW5pdCI6ImRheSIsInJlY2lwaWVudCI6IjB4NzQyZDM1Q2M2NjM0QzA1MzI5MjVhM2I4NDRCYzllNzU5NWY4ZkUwMCIsInN1YnNjcmlwdGlvbkV4cGlyZXMiOiIyMDI2LTEyLTIwVDAwOjAwOjAwWiJ9"
+    },
+    "position": null,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/charge/lightning, advertise: a challenge from mpp-charge-lightning.json without expires",
+    "pairing": "mpp/charge/lightning",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "lightning",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5Ijoic2F0IiwibWV0aG9kRGV0YWlscyI6eyJpbnZvaWNlIjoibG5iYzI1MG4xcDR0end1cXBwNTR5M3U5czh5bGVtc3Y4bDNld3l6enUwa2xodWp2dXZta2w2bGxjaHEyM3Z5OHJ6anNmMHFzcDV6eWczenlnM3p5ZzN6eWczenlnM3p5ZzN6eWczenlnM3p5ZzN6eWczenlnM3p5ZzN6eWdzaHA1aGZ1cGQwdTBxODg3NXMycGdyMDltdDN6eXdjcXhjZHJqY3RoNDg5NXpybGtydXNxemtrc3hxemZ2OXFyc2dxMDBzNHhqeHRydXR2enA3eXptZHl5cXB5a3Z2bm54ZzZ2YWNtbjQ0bnFscXFzZXB3NnZ5OGtqdnE1czhqcnhxOGF5eTNwYTd4cnd6MHp4OGFuZ2syMHR0bjBhd3h1bWpza21heGYwcXFjemhraG0iLCJuZXR3b3JrIjoibWFpbm5ldCIsInBheW1lbnRIYXNoIjoiYTkyM2MyYzBlNGZlNzcwNjFmZjFjYjg4MjE3MWY2ZmRmOTI2NzE5YmI3ZjVmZmUyZTA1NDU4NDM4YzUyODI1ZSJ9fQ"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/charge/lightning, advertiseBeforeCarrier: a challenge from mpp-charge-lightning.json without expires",
+    "pairing": "mpp/charge/lightning",
+    "member": "advertiseBeforeCarrier",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "lightning",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5Ijoic2F0IiwibWV0aG9kRGV0YWlscyI6eyJuZXR3b3JrIjoibWFpbm5ldCIsInBheW1lbnRIYXNoIjoiYTkyM2MyYzBlNGZlNzcwNjFmZjFjYjg4MjE3MWY2ZmRmOTI2NzE5YmI3ZjVmZmUyZTA1NDU4NDM4YzUyODI1ZSJ9fQ"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/session/lightning, advertise: a challenge from broadcaster.json without expires",
+    "pairing": "mpp/session/lightning",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "lightning",
+     "intent": "session",
+     "request": "eyJhbW91bnQiOiIyIiwiY3VycmVuY3kiOiJzYXQiLCJkZXBvc2l0SW52b2ljZSI6ImxuYmMyNTBuMXA0dHp3dXFwcDU0eTN1OXM4eWxlbXN2OGwzZXd5enp1MGtsaHVqdnV2bWtsNmxsY2hxMjN2eThyempzZjBxc3A1enlnM3p5ZzN6eWczenlnM3p5ZzN6eWczenlnM3p5ZzN6eWczenlnM3p5ZzN6eWczenlnc2hwNWhmdXBkMHUwcTg4NzVzMnBncjA5bXQzenl3Y3F4Y2RyamN0aDQ4OTV6cmxrcnVzcXpra3N4cXpmdjlxcnNncTAwczR4anh0cnV0dnpwN3l6bWR5eXFweWt2dm5ueGc2dmFjbW40NG5xbHFxc2VwdzZ2eThranZxNXM4anJ4cThheXkzcGE3eHJ3ejB6eDhhbmdrMjB0dG4wYXd4dW1qc2ttYXhmMHFxY3poa2htIiwicGF5bWVudEhhc2giOiJhOTIzYzJjMGU0ZmU3NzA2MWZmMWNiODgyMTcxZjZmZGY5MjY3MTliYjdmNWZmZTJlMDU0NTg0MzhjNTI4MjVlIn0"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/session/lightning, advertiseBeforeCarrier: a challenge from broadcaster.json without expires",
+    "pairing": "mpp/session/lightning",
+    "member": "advertiseBeforeCarrier",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "lightning",
+     "intent": "session",
+     "request": "eyJhbW91bnQiOiIyIiwiY3VycmVuY3kiOiJzYXQiLCJwYXltZW50SGFzaCI6ImE5MjNjMmMwZTRmZTc3MDYxZmYxY2I4ODIxNzFmNmZkZjkyNjcxOWJiN2Y1ZmZlMmUwNTQ1ODQzOGM1MjgyNWUifQ"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/charge/solana, advertise: a challenge from broadcaster.json without expires",
+    "pairing": "mpp/charge/solana",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsImZlZVBheWVyIjp0cnVlLCJmZWVQYXllcktleSI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwibmV0d29yayI6ImRldm5ldCIsInJlY2VudEJsb2NraGFzaCI6IkVaM3JTVDVkdkhtYmFuaDc1amM0UHVMZlY5NnZwOWZFWUJWZU5rNEZmTTFrIiwidG9rZW5Qcm9ncmFtIjoiVG9rZW5rZWdRZmVaeWlOd0FKYk5iR0tQRlhDV3VCdmY5U3M2MjNWUTVEQSJ9LCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/charge/solana/unsponsored, advertise: a challenge from broadcaster.json without expires",
+    "pairing": "mpp/charge/solana/unsponsored",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsImZlZVBheWVyIjp0cnVlLCJmZWVQYXllcktleSI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwibmV0d29yayI6ImRldm5ldCIsInJlY2VudEJsb2NraGFzaCI6IkVaM3JTVDVkdkhtYmFuaDc1amM0UHVMZlY5NnZwOWZFWUJWZU5rNEZmTTFrIiwidG9rZW5Qcm9ncmFtIjoiVG9rZW5rZWdRZmVaeWlOd0FKYk5iR0tQRlhDV3VCdmY5U3M2MjNWUTVEQSJ9LCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/subscription/solana, advertise: a challenge from mpp-subscription-solana.json without expires",
+    "pairing": "mpp/subscription/solana",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "subscription",
+     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuSWQiOiJHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZSIsInB1bGxlciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJ0b2tlblByb2dyYW0iOiJUb2tlbmtlZ1FmZVp5aU53QUpiTmJHS1BGWENXdUJ2ZjlTczYyM1ZRNURBIn0sInBlcmlvZENvdW50IjoiMzAiLCJwZXJpb2RVbml0IjoiZGF5IiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/session/solana/memo, advertise: a challenge from mpp-session-solana.json without expires",
+    "pairing": "mpp/session/solana/memo",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "session",
+     "request": "eyJjYXAiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1vZGVzIjpbInB1bGwiXSwibmV0d29yayI6ImRldm5ldCIsIm9wZXJhdG9yIjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJwdWxsVm91Y2hlclN0cmF0ZWd5IjoiY2xpZW50Vm91Y2hlciIsInJlY2VudEJsb2NraGFzaCI6IkVaM3JTVDVkdkhtYmFuaDc1amM0UHVMZlY5NnZwOWZFWUJWZU5rNEZmTTFrIiwicmVjZW50U2xvdCI6IjQwMDAwMDAwMCIsInJlY2lwaWVudCI6IjJ3S3VwTFI5cTZ3WFlwcHc4R3IyTnZXeEtCVXFtNFBQSktrUWZveEhEQmc0In0"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/session/solana/stock, advertise: a challenge from mpp-session-solana.json without expires",
+    "pairing": "mpp/session/solana/stock",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "session",
+     "request": "eyJjYXAiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1vZGVzIjpbInB1bGwiXSwibmV0d29yayI6ImRldm5ldCIsIm9wZXJhdG9yIjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJwdWxsVm91Y2hlclN0cmF0ZWd5IjoiY2xpZW50Vm91Y2hlciIsInJlY2VudEJsb2NraGFzaCI6IkVaM3JTVDVkdkhtYmFuaDc1amM0UHVMZlY5NnZwOWZFWUJWZU5rNEZmTTFrIiwicmVjZW50U2xvdCI6IjQwMDAwMDAwMCIsInJlY2lwaWVudCI6IjJ3S3VwTFI5cTZ3WFlwcHc4R3IyTnZXeEtCVXFtNFBQSktrUWZveEhEQmc0In0"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/charge/xrpl, advertise: a challenge from broadcaster.json without expires",
+    "pairing": "mpp/charge/xrpl",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "xrpl",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiJYUlAiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJ0ZXN0bmV0In0sInJlY2lwaWVudCI6InJwamZBZUUzRGVlSFBGbk4yUGdHRlc1WXhuWkZBanJFeU4ifQ"
+    },
+    "position": 0,
+    "payment": "mpp/expires-required",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/charge/nearintents, advertise: a challenge from broadcaster.json without expires",
+    "pairing": "mpp/charge/nearintents",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "nearintents",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIxMDA1MDAwIiwiY3VycmVuY3kiOiJlaXAxNTU6NDIxNjEvZXJjMjA6MHhhZjg4ZDA2NWU3N2M4Y0MyMjM5MzI3QzVFRGIzQTQzMjI2OGU1ODMxIiwiZGVzY3JpcHRpb24iOiJDcm9zcy1jaGFpbiBwcmVtaXVtIGRhdGEgYWNjZXNzIiwiZXh0ZXJuYWxJZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwibWV0aG9kRGV0YWlscyI6eyJhbW91bnRPdXQiOiIxMDAwMDAwIiwiY3JlZGVudGlhbFR5cGVzIjpbImhhc2giXSwiZGVwb3NpdE1lbW8iOm51bGwsImRlc3RpbmF0aW9uQXNzZXQiOiJuZWFyOm1haW5uZXQvbmVwMTQxOjE3MjA4NjI4Zjg0ZjVkNmFkMzNmMGRhM2JiYmViMjdmZmNiMzk4ZWFjNTAxYTMxYmQ2YWQyMDExZTM2MTMzYTEiLCJkZXN0aW5hdGlvbk5ldHdvcmsiOiJuZWFyOm1haW5uZXQiLCJkZXN0aW5hdGlvblJlY2lwaWVudCI6Im1lcmNoYW50Lm5lYXIiLCJtaW5BbW91bnRJbiI6IjEwMDAwMDAiLCJvcmlnaW5OZXR3b3JrIjoiZWlwMTU1OjQyMTYxIiwicmVmdW5kVG8iOiIweDI1MjdEMDI1OTlCYTY0MWMxOUZFYTc5M2NEMEY5YTZlODQ1N0MzMTciLCJzZXR0bGVtZW50QmFja2VuZCI6Im5lYXItaW50ZW50cyIsInNsaXBwYWdlVG9sZXJhbmNlIjoxMDAsInRpbWVFc3RpbWF0ZSI6MTIwfSwicmVjaXBpZW50IjoiMHg3NmI0YzU2MDg1RUQxMzZhODc0NEQ1MmJFOTU2Mzk2NjI0YTczMEU4In0"
+    },
+    "position": 0,
+    "payment": "mpp/expires-required",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/charge/nearintents, advertiseBeforeCarrier: a challenge from broadcaster.json without expires",
+    "pairing": "mpp/charge/nearintents",
+    "member": "advertiseBeforeCarrier",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "nearintents",
+     "intent": "charge",
+     "request": "eyJjdXJyZW5jeSI6ImVpcDE1NTo0MjE2MS9lcmMyMDoweGFmODhkMDY1ZTc3YzhjQzIyMzkzMjdDNUVEYjNBNDMyMjY4ZTU4MzEiLCJkZXNjcmlwdGlvbiI6IkNyb3NzLWNoYWluIHByZW1pdW0gZGF0YSBhY2Nlc3MiLCJtZXRob2REZXRhaWxzIjp7ImFtb3VudE91dCI6IjEwMDAwMDAiLCJjcmVkZW50aWFsVHlwZXMiOlsiaGFzaCJdLCJkZXN0aW5hdGlvbkFzc2V0IjoibmVhcjptYWlubmV0L25lcDE0MToxNzIwODYyOGY4NGY1ZDZhZDMzZjBkYTNiYmJlYjI3ZmZjYjM5OGVhYzUwMWEzMWJkNmFkMjAxMWUzNjEzM2ExIiwiZGVzdGluYXRpb25OZXR3b3JrIjoibmVhcjptYWlubmV0IiwiZGVzdGluYXRpb25SZWNpcGllbnQiOiJtZXJjaGFudC5uZWFyIiwib3JpZ2luTmV0d29yayI6ImVpcDE1NTo0MjE2MSIsInNldHRsZW1lbnRCYWNrZW5kIjoibmVhci1pbnRlbnRzIiwic2xpcHBhZ2VUb2xlcmFuY2UiOjEwMH19"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/session/xrpl, advertise: a challenge from broadcaster.json without expires",
+    "pairing": "mpp/session/xrpl",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "xrpl",
+     "intent": "session",
+     "request": "eyJhbW91bnQiOiIxMDAiLCJjaGFubmVsSWQiOiIiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJ0ZXN0bmV0In0sInJlY2lwaWVudCI6InJwamZBZUUzRGVlSFBGbk4yUGdHRlc1WXhuWkZBanJFeU4ifQ"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/session/xrpl/stock, advertise: a challenge from broadcaster.json without expires",
+    "pairing": "mpp/session/xrpl/stock",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "xrpl",
+     "intent": "session",
+     "request": "eyJhbW91bnQiOiIxMDAiLCJjaGFubmVsSWQiOiIiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJ0ZXN0bmV0In0sInJlY2lwaWVudCI6InJwamZBZUUzRGVlSFBGbk4yUGdHRlc1WXhuWkZBanJFeU4ifQ"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/session/hedera/stock, advertise: a challenge from broadcaster.json without expires",
+    "pairing": "mpp/session/hedera/stock",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "hedera",
+     "intent": "session",
+     "request": "eyJhbW91bnQiOiIyNSIsImN1cnJlbmN5IjoiMHgwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAwMDAxNTQ5IiwibWV0aG9kRGV0YWlscyI6eyJjaGFpbklkIjoyOTYsImVzY3Jvd0NvbnRyYWN0IjoiMHg4QWFmNjY5MEMyYTYzOTdkNTk1Rjk3RTIyNGZDMTk3NTlEZTZmZGFFIn0sInJlY2lwaWVudCI6IjB4NzQyZDM1Y2M2NjM0YzA1MzI5MjVhM2I4NDRiYzllNzU5NWY4ZmUwMCIsInN1Z2dlc3RlZERlcG9zaXQiOiIxMDAwMDAwMCIsInVuaXRUeXBlIjoibGxtX3Rva2VuIn0"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/charge/card, advertise: a challenge from broadcaster.json without expires",
+    "pairing": "mpp/charge/card",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "card",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiI0OTk5IiwiY3VycmVuY3kiOiJ1c2QiLCJtZXRob2REZXRhaWxzIjp7ImFjY2VwdGVkTmV0d29ya3MiOlsidmlzYSIsIm1hc3RlcmNhcmQiXSwiandrc1VyaSI6Imh0dHBzOi8vYXBpLnNlbGxlci5leGFtcGxlLy53ZWxsLWtub3duL2p3a3MuanNvbiIsImtpZCI6ImVuYy0yMDI2LTAxIiwibWVyY2hhbnROYW1lIjoiU2VsbGVyIEV4YW1wbGUifSwicmVjaXBpZW50IjoibWVyY2hfYWJjMTIzIn0"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/charge/stripe, advertise: a challenge from broadcaster.json without expires",
+    "pairing": "mpp/charge/stripe",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "stripe",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiI1MDAwIiwiY3VycmVuY3kiOiJ1c2QiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmtJZCI6InByb2ZpbGVfMU1xRGNWS0E1ZkVPMnRadktRbTlnOFlqIiwicGF5bWVudE1ldGhvZFR5cGVzIjpbImNhcmQiLCJsaW5rIl19fQ"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/subscription/stripe, advertise: a challenge from broadcaster.json without expires",
+    "pairing": "mpp/subscription/stripe",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "stripe",
+     "intent": "subscription",
+     "request": "eyJhbW91bnQiOiI1MDAwIiwiY3VycmVuY3kiOiJ1c2QiLCJtZXRob2REZXRhaWxzIjp7Im1ldGFkYXRhIjp7InBsYW4iOiJnb2xkIn0sIm5ldHdvcmtJZCI6InByb2ZpbGVfMU1xRGNWS0E1ZkVPMnRadktRbTlnOFlqIiwicGF5bWVudE1ldGhvZFR5cGVzIjpbImNhcmQiLCJsaW5rIl19fQ"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/charge/usdc/evm, advertise: a challenge from mpp-charge-usdc-evm.json without expires",
+    "pairing": "mpp/charge/usdc/evm",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "usdc",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIxMDAwMCIsImN1cnJlbmN5IjoiMHgwMzZDYkQ1Mzg0MmM1NDI2NjM0ZTc5Mjk1NDFlQzIzMThmM2RDRjdlIiwibWV0aG9kRGV0YWlscyI6eyJldm0iOnsiY2hhaW5JZCI6ODQ1MzIsImNyZWRlbnRpYWxUeXBlcyI6WyJhdXRob3JpemF0aW9uIl0sImRlY2ltYWxzIjo2fSwidHlwZSI6ImV2bSJ9LCJyZWNpcGllbnQiOiIweDIwOTY5M0JjNmFmYzBDNTMyOGJBMzZGYUYwM0M1MTRFRjMxMjI4N0MifQ"
+    },
+    "position": 0,
+    "payment": "mpp/expires-required",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/charge/usdc/solana, advertise: a challenge from broadcaster.json without expires",
+    "pairing": "mpp/charge/usdc/solana",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "usdc",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsic29sYW5hIjp7ImRlY2ltYWxzIjo2LCJmZWVQYXllciI6dHJ1ZSwiZmVlUGF5ZXJLZXkiOiI5aFNSNlM3V1B0eG1Ub2pnbzZHRzNrNHlEUGVjZ0pZMjkyajd4cnNVR1dCdSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInRva2VuUHJvZ3JhbSI6IlRva2Vua2VnUWZlWnlpTndBSmJOYkdLUEZYQ1d1QnZmOVNzNjIzVlE1REEifSwidHlwZSI6InNvbGFuYSJ9LCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/charge/usdc/stacks, advertise: a challenge from mpp-charge-usdc-stacks.json without expires",
+    "pairing": "mpp/charge/usdc/stacks",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "usdc",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIxMDAwMDAwIiwiY3VycmVuY3kiOiJTVDFQUUhRS1YwUkpYWkZZMURHWDhNTlNOWVZFM1ZHWkpTUlRQR1pHTS51c2RjeDo6dXNkY3gtdG9rZW4iLCJyZWNpcGllbnQiOiJTVDNGQlIyQUdLNUg5UUJESDNFRU42REY4RUs4Slk3Ulg4TlFYTU5SUSIsIm1ldGhvZERldGFpbHMiOnsidHlwZSI6InN0YWNrcyIsInN0YWNrcyI6eyJuZXR3b3JrIjoidGVzdG5ldCIsImNoYWluSWQiOiIyMTQ3NDgzNjQ4IiwiY29udHJhY3RBZGRyZXNzIjoiU1QxUFFIUUtWMFJKWFpGWTFER1g4TU5TTllWRTNWR1pKU1JUUEdaR00iLCJjb250cmFjdE5hbWUiOiJ1c2RjeCIsImFzc2V0TmFtZSI6InVzZGN4LXRva2VuIiwiZnVuY3Rpb25OYW1lIjoidHJhbnNmZXIiLCJkZWNpbWFscyI6Nn19fQ"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   },
+   {
+    "case": "mpp/charge/usdc/gateway, advertise: a challenge from mpp-charge-usdc-gateway.json without expires",
+    "pairing": "mpp/charge/usdc/gateway",
+    "member": "advertise",
+    "issued": {
+     "realm": "api.seller.example",
+     "method": "usdc",
+     "intent": "charge",
+     "request": "eyJhbW91bnQiOiIyNTAwMDAwMCIsImN1cnJlbmN5IjoidXNkYyIsIm1ldGhvZERldGFpbHMiOnsiZ2F0ZXdheSI6eyJhY2NlcHRlZFNvdXJjZXMiOlsiZWlwMTU1OjUwNDIwMDIiXSwiZGVzdGluYXRpb25OZXR3b3JrIjoiZWlwMTU1Ojg0NTMyIiwibWF4RmVlIjoiNTAwMDAwIn0sInR5cGUiOiJnYXRld2F5In0sInJlY2lwaWVudCI6IjB4MjA5NjkzQmM2YWZjMEM1MzI4YkEzNkZhRjAzQzUxNEVGMzEyMjg3QyJ9"
+    },
+    "position": 0,
+    "payment": "placed",
+    "expect": {
+     "refused": true,
+     "code": "mpp/expires-required"
+    }
+   }
+  ]
  },
  "unplaced": {
   "case": "the pairings whose quote or invoice the seller writes after H: tie binds, and issuedDigest digests, the challenge without the members written after H, so the challenge as issued and as placed give one slot entry and one digest",

@@ -1,10 +1,11 @@
 // mpp-server-checks.json: the two checks an MPP resource server makes before anything moves, in mpp-charge.md's
-// order. `place` takes the challenge's position and act, and refuses an agreement challenge without `expires`; `tie` and
-// `issuedDigest` read a challenge as its pairing's `unplaced` gives it; `challengeBound` holds the echoed id whole to the
-// id recorded at issue; check 1 (`challengeBound`, then `issuedDigest` against the digest the resource server recorded)
-// comes before check 2 (the pairing's `bound`); an agreement challenge composed anew keeps the replaced one's id, and a
-// credential of the replaced one is refused at `issuedDigest`; and an echoed `opaque` that is an object is read by its
-// members. Every expected value is the file's.
+// order. `place` takes the challenge's position and act, and refuses an agreement challenge without `expires`, as every
+// pairing's `advertise` and `advertiseBeforeCarrier` given the act does; `tie` and `issuedDigest` read a challenge as
+// its pairing's `unplaced` gives it; `challengeBound` holds the echoed id whole to the id recorded at issue; check 1
+// (`challengeBound`, then `issuedDigest` against the digest the resource server recorded) comes before check 2 (the
+// pairing's `bound`); an agreement challenge composed anew keeps the replaced one's id, and a credential of the replaced
+// one is refused at `issuedDigest`; and an echoed `opaque` that is an object is read by its members. Every expected
+// value is the file's.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { isRefusal } from "../src/index.js";
@@ -27,7 +28,7 @@ describe("mpp-server-checks.json: place takes the challenge's position", () => {
   for (const row of rowsOf(V.place.rows, "mpp-server-checks.json place.rows", { exact: 8 })) {
     it(`${V.place.case}: ${row.case}`, () => {
       const issued = structuredClone(V.place.issued);
-      expect(place([issued], H, link, issued, row.position, row.agreementUrl)).toEqual(row.expect);
+      expect(place([issued], H, link, issued, row.position, undefined, row.agreementUrl)).toEqual(row.expect);
     });
   }
   for (const row of rowsOf(V.place.taken.rows, "mpp-server-checks.json place.taken.rows", { exact: 2 })) {
@@ -44,7 +45,7 @@ describe("mpp-server-checks.json: place takes the challenge's position", () => {
   for (const row of rowsOf(V.place.agreement.rows, "mpp-server-checks.json place.agreement.rows", { exact: 4 })) {
     it(`${V.place.agreement.case}: ${row.case}`, () => {
       const issued = structuredClone(row.issued);
-      expect(place([issued], H, link, issued, row.position, undefined, row.act)).toEqual(row.expect);
+      expect(place([issued], H, link, issued, row.position, row.act)).toEqual(row.expect);
     });
   }
   it(V.place.again.case, async () => {
@@ -55,6 +56,27 @@ describe("mpp-server-checks.json: place takes the challenge's position", () => {
     expect(await issuedDigest(first[0]!)).toBe(V.place.again.expectDigest);
     expect(await issuedDigest(issued)).toBe(V.place.again.expectDigest);
   });
+});
+
+describe("mpp-server-checks.json: every pairing's advertise passes the act to place", () => {
+  const rows = rowsOf(V.advertise.rows, "mpp-server-checks.json advertise.rows", { exact: 31 });
+  const compose = (row: { pairing: string; member: string; issued: MppChallenge; position: number | null }, act: string) => {
+    const b = MPP_BINDINGS.find((x) => x.id === row.pairing) as unknown as Record<string, (...a: unknown[]) => unknown>;
+    const issued = structuredClone(row.issued);
+    return b[row.member]!([issued], H, link, issued, row.position, act, undefined, issued);
+  };
+  it("names every MPP pairing's advertise and every advertiseBeforeCarrier", () => {
+    const members = MPP_BINDINGS.flatMap((b) => ["advertise", "advertiseBeforeCarrier"].filter((m) => m in b).map((m) => `${b.id} ${m}`));
+    expect(rows.map((r: { pairing: string; member: string }) => `${r.pairing} ${r.member}`).sort()).toEqual(members.sort());
+  });
+  for (const row of rows) {
+    it(`the act passed: ${row.case}`, () => {
+      expect(compose(row, "agreement")).toEqual(row.expect);
+      const paid = compose(row, "payment");
+      if (row.payment === "placed") expect(Array.isArray(paid), row.case).toBe(true);
+      else expect(paid).toEqual({ refused: true, code: row.payment });
+    });
+  }
 });
 
 describe("mpp-server-checks.json: tie and issuedDigest over the challenge as unplaced gives it", () => {
@@ -118,8 +140,8 @@ describe("mpp-server-checks.json: an echoed opaque that is an object is read by 
 describe("mpp-server-checks.json: an agreement challenge composed anew in the position of the one it replaces", () => {
   const R = V.recompose;
   it(R.case, async () => {
-    const replaced = place([R.replaced], H, link, R.replaced, R.position, undefined, "agreement") as MppChallenge[];
-    const recomposed = place([R.recomposed], H, link, R.recomposed, R.position, undefined, "agreement") as MppChallenge[];
+    const replaced = place([R.replaced], H, link, R.replaced, R.position, "agreement") as MppChallenge[];
+    const recomposed = place([R.recomposed], H, link, R.recomposed, R.position, "agreement") as MppChallenge[];
     expect(replaced[0]!.id).toBe(R.expectId);
     expect(recomposed[0]!.id).toBe(R.expectId);
     expect(replaced[0]).toEqual(R.credential.challenge);

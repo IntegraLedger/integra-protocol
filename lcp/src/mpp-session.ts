@@ -88,7 +88,7 @@ import {
   type ReceiveTypedData,
 } from "./internal/evm.js";
 import { mppPayee } from "./internal/payee.js";
-import { decide, type Facts, type Moved, type Presented, type RecoverInput, type Seen, type UnreadableReason } from "./internal/read.js";
+import { decide, type Act, type Facts, type Moved, type Presented, type RecoverInput, type Seen, type UnreadableReason } from "./internal/read.js";
 import type { EvmSearchReader } from "./internal/evm-search.js";
 import { search } from "./internal/evm-x402.js";
 import type { Broadcaster } from "./internal/broadcaster.js";
@@ -492,16 +492,17 @@ function echoed(
   return echoedFor(presented, pairing);
 }
 
-/** MPP's `place`, with the agreement URL in `opaque` when one is given. */
+/** MPP's `place`, with the agreement URL in `opaque` when one is given, and the act. */
 function advertise(
   doc: readonly MppChallenge[],
   h: AtrHash,
   link: string,
   offer: MppChallenge,
   position: number | null,
+  act?: Act,
   agreementUrl?: string,
 ): MppChallenge[] | Refusal {
-  return place(doc, h, link, offer, position, agreementUrl);
+  return place(doc, h, link, offer, position, act, agreementUrl);
 }
 
 /**

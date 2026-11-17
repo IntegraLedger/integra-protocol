@@ -59,6 +59,7 @@ import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 import { SOLANA as SOLANA_DATA } from "./internal/data/solana.js";
 import { mppPayee } from "./internal/payee.js";
+import type { Act } from "./internal/read.js";
 import type { Entry } from "./internal/registry.js";
 
 const MEMO = "mpp/session/solana/memo" as const;
@@ -316,8 +317,16 @@ function unplaced(option: MppChallenge): MppChallenge | Refusal {
 }
 
 /** MPP's `place`: the id derived from H and `opaque`; `request` is left unchanged. */
-function advertise(doc: readonly MppChallenge[], h: AtrHash, link: string, offer: MppChallenge, position: number | null, agreementUrl?: string) {
-  return place(doc, h, link, offer, position, agreementUrl);
+function advertise(
+  doc: readonly MppChallenge[],
+  h: AtrHash,
+  link: string,
+  offer: MppChallenge,
+  position: number | null,
+  act?: Act,
+  agreementUrl?: string,
+) {
+  return place(doc, h, link, offer, position, act, agreementUrl);
 }
 
 function sessionPattern(profile: string, onChain: boolean): LcpPattern {
