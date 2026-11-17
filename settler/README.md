@@ -95,6 +95,17 @@ published in April 2025 as maintenance releases of the packages' 1.x lines witho
 2.1.0 had been published with it in March 2024, so `no-downgrade` refuses them. Every other version of the two
 packages, and every other package, stays under the policy.
 
+A pnpm project that turns hoisting off (`hoist: false`) also declares, for the Concordium module, the one dependency
+`@concordium/web-sdk` 12.0.2 imports without declaring it, `@protobuf-ts/runtime`; without it the module does not load
+("Cannot find package '@protobuf-ts/runtime'"). With hoisting on, pnpm's default, and with npm, nothing is needed.
+
+```yaml
+packageExtensions:
+  "@concordium/web-sdk@12.0.2":
+    dependencies:
+      "@protobuf-ts/runtime": "2.11.1"
+```
+
 ## Quickstart
 
 Start the settler for Tron mainnet and Polkadot Asset Hub, and read what it supports. Neither module holds a key, so
