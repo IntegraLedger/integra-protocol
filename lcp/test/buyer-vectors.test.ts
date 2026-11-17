@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import { hashTypedData, type TypedDataDefinition } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { hash, hashEquals, isHttpsLink, isOtherSchemeLink, pairingOf, parseJson, toLcpString, type AtrHash } from "../src/index.js";
-import { pairingsOf, sessionResume, sessionTempo, type MppChallenge } from "../src/mpp.js";
+import { pairingsOf, sessionResume, sessionTempo, sessionXrpl, type MppChallenge } from "../src/mpp.js";
 import { decodeStringMap } from "../src/mpp-challenge.js";
 import { isRefusal } from "../src/refusal.js";
 import { exactEip3009, type PaymentRequired, type PaymentRequirements } from "../src/x402.js";
@@ -235,8 +235,13 @@ describe("buyer.json BX1: each document is the mpp/session/xrpl B2 document plac
     it(c.case, () => {
       const [got] = c.doc;
       const [base] = B2.doc as { request: string; opaque: string }[];
-      expect({ ...got, request: undefined, opaque: undefined }).toEqual({ ...base, request: undefined, opaque: undefined });
+      expect({ ...got, request: undefined, opaque: undefined, id: undefined }).toEqual({ ...base, request: undefined, opaque: undefined, id: undefined });
       expect(opaque(got!)).toEqual({ ...opaque(base!), legalContext: toLcpString(H) });
+      // The pairing's own read holds the id's H to the opaque's: a document placed for another H is mpp/no-legal-context.
+      const read = sessionXrpl.read(c.doc as MppChallenge[]);
+      expect(isRefusal(read)).toBe(false);
+      expect(hashEquals((read as { h: AtrHash }).h, H)).toBe(true);
+      expect((read as { link: string }).link).toBe(opaque(base!).legalContextUrl);
       expect({ ...request(got!), amount: undefined }).toEqual({ ...request(base!), amount: undefined });
       if (c.expect.detail === undefined) expect(request(got!).amount).toBe("100");
       else {

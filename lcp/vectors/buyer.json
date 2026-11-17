@@ -1184,7 +1184,7 @@
         "intent": "session",
         "request": "eyJhbW91bnQiOltdLCJjaGFubmVsSWQiOiIiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJ0ZXN0bmV0In0sInJlY2lwaWVudCI6InJwamZBZUUzRGVlSFBGbk4yUGdHRlc1WXhuWkZBanJFeU4ifQ",
         "expires": "2026-09-21T14:14:20Z",
-        "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+        "id": "ix4SJYCuP2qMPTaiQpThJgqHvecPWXJ5uXPjkxAHKTg.0",
         "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4OGIxZTEyMjU4MGFlM2Y2YThjM2QzNmEyNDI5NGUxMjYwYTg3YmRlNzBmNTk3Mjc5Yjk3M2UzOTMxMDA3MjkzOCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
        }
       ],
@@ -1204,7 +1204,7 @@
         "intent": "session",
         "request": "eyJhbW91bnQiOnRydWUsImNoYW5uZWxJZCI6IiIsIm1ldGhvZERldGFpbHMiOnsibmV0d29yayI6InRlc3RuZXQifSwicmVjaXBpZW50IjoicnBqZkFlRTNEZWVIUEZuTjJQZ0dGVzVZeG5aRkFqckV5TiJ9",
         "expires": "2026-09-21T14:14:20Z",
-        "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+        "id": "ix4SJYCuP2qMPTaiQpThJgqHvecPWXJ5uXPjkxAHKTg.0",
         "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4OGIxZTEyMjU4MGFlM2Y2YThjM2QzNmEyNDI5NGUxMjYwYTg3YmRlNzBmNTk3Mjc5Yjk3M2UzOTMxMDA3MjkzOCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
        }
       ],
@@ -1224,7 +1224,7 @@
         "intent": "session",
         "request": "eyJhbW91bnQiOjAsImNoYW5uZWxJZCI6IiIsIm1ldGhvZERldGFpbHMiOnsibmV0d29yayI6InRlc3RuZXQifSwicmVjaXBpZW50IjoicnBqZkFlRTNEZWVIUEZuTjJQZ0dGVzVZeG5aRkFqckV5TiJ9",
         "expires": "2026-09-21T14:14:20Z",
-        "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+        "id": "ix4SJYCuP2qMPTaiQpThJgqHvecPWXJ5uXPjkxAHKTg.0",
         "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4OGIxZTEyMjU4MGFlM2Y2YThjM2QzNmEyNDI5NGUxMjYwYTg3YmRlNzBmNTk3Mjc5Yjk3M2UzOTMxMDA3MjkzOCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
        }
       ],
@@ -1244,7 +1244,7 @@
         "intent": "session",
         "request": "eyJhbW91bnQiOltbXV0sImNoYW5uZWxJZCI6IiIsIm1ldGhvZERldGFpbHMiOnsibmV0d29yayI6InRlc3RuZXQifSwicmVjaXBpZW50IjoicnBqZkFlRTNEZWVIUEZuTjJQZ0dGVzVZeG5aRkFqckV5TiJ9",
         "expires": "2026-09-21T14:14:20Z",
-        "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+        "id": "ix4SJYCuP2qMPTaiQpThJgqHvecPWXJ5uXPjkxAHKTg.0",
         "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4OGIxZTEyMjU4MGFlM2Y2YThjM2QzNmEyNDI5NGUxMjYwYTg3YmRlNzBmNTk3Mjc5Yjk3M2UzOTMxMDA3MjkzOCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
        }
       ],
@@ -1264,7 +1264,7 @@
         "intent": "session",
         "request": "eyJhbW91bnQiOjEwMDAsImNoYW5uZWxJZCI6IiIsIm1ldGhvZERldGFpbHMiOnsibmV0d29yayI6InRlc3RuZXQifSwicmVjaXBpZW50IjoicnBqZkFlRTNEZWVIUEZuTjJQZ0dGVzVZeG5aRkFqckV5TiJ9",
         "expires": "2026-09-21T14:14:20Z",
-        "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+        "id": "ix4SJYCuP2qMPTaiQpThJgqHvecPWXJ5uXPjkxAHKTg.0",
         "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4OGIxZTEyMjU4MGFlM2Y2YThjM2QzNmEyNDI5NGUxMjYwYTg3YmRlNzBmNTk3Mjc5Yjk3M2UzOTMxMDA3MjkzOCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
        }
       ],
@@ -1284,7 +1284,7 @@
         "intent": "session",
         "request": "eyJhbW91bnQiOiIxLjUiLCJjaGFubmVsSWQiOiIiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJ0ZXN0bmV0In0sInJlY2lwaWVudCI6InJwamZBZUUzRGVlSFBGbk4yUGdHRlc1WXhuWkZBanJFeU4ifQ",
         "expires": "2026-09-21T14:14:20Z",
-        "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+        "id": "ix4SJYCuP2qMPTaiQpThJgqHvecPWXJ5uXPjkxAHKTg.0",
         "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4OGIxZTEyMjU4MGFlM2Y2YThjM2QzNmEyNDI5NGUxMjYwYTg3YmRlNzBmNTk3Mjc5Yjk3M2UzOTMxMDA3MjkzOCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
        }
       ],
@@ -1304,7 +1304,7 @@
         "intent": "session",
         "request": "eyJhbW91bnQiOiItMSIsImNoYW5uZWxJZCI6IiIsIm1ldGhvZERldGFpbHMiOnsibmV0d29yayI6InRlc3RuZXQifSwicmVjaXBpZW50IjoicnBqZkFlRTNEZWVIUEZuTjJQZ0dGVzVZeG5aRkFqckV5TiJ9",
         "expires": "2026-09-21T14:14:20Z",
-        "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+        "id": "ix4SJYCuP2qMPTaiQpThJgqHvecPWXJ5uXPjkxAHKTg.0",
         "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4OGIxZTEyMjU4MGFlM2Y2YThjM2QzNmEyNDI5NGUxMjYwYTg3YmRlNzBmNTk3Mjc5Yjk3M2UzOTMxMDA3MjkzOCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
        }
       ],
@@ -1324,7 +1324,7 @@
         "intent": "session",
         "request": "eyJhbW91bnQiOiIxODQ0Njc0NDA3MzcwOTU1MTYxNiIsImNoYW5uZWxJZCI6IiIsIm1ldGhvZERldGFpbHMiOnsibmV0d29yayI6InRlc3RuZXQifSwicmVjaXBpZW50IjoicnBqZkFlRTNEZWVIUEZuTjJQZ0dGVzVZeG5aRkFqckV5TiJ9",
         "expires": "2026-09-21T14:14:20Z",
-        "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+        "id": "ix4SJYCuP2qMPTaiQpThJgqHvecPWXJ5uXPjkxAHKTg.0",
         "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4OGIxZTEyMjU4MGFlM2Y2YThjM2QzNmEyNDI5NGUxMjYwYTg3YmRlNzBmNTk3Mjc5Yjk3M2UzOTMxMDA3MjkzOCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
        }
       ],
@@ -1344,7 +1344,7 @@
         "intent": "session",
         "request": "eyJhbW91bnQiOiIxMDAiLCJjaGFubmVsSWQiOiIiLCJtZXRob2REZXRhaWxzIjp7Im5ldHdvcmsiOiJ0ZXN0bmV0In0sInJlY2lwaWVudCI6InJwamZBZUUzRGVlSFBGbk4yUGdHRlc1WXhuWkZBanJFeU4ifQ",
         "expires": "2026-09-21T14:14:20Z",
-        "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
+        "id": "ix4SJYCuP2qMPTaiQpThJgqHvecPWXJ5uXPjkxAHKTg.0",
         "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4OGIxZTEyMjU4MGFlM2Y2YThjM2QzNmEyNDI5NGUxMjYwYTg3YmRlNzBmNTk3Mjc5Yjk3M2UzOTMxMDA3MjkzOCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
        }
       ],
@@ -1355,7 +1355,7 @@
      }
     ]
    },
-   "note": "The link serves fixed.A, a JSON ATR lcp's check 8 admits, whose SHA-256 (GNU coreutils sha256sum and openssl dgst -sha256, which agree) is the advertised H, so a gate that parses the ATR reaches the option filter. Each document is the pairing's B2 document with request.amount replaced, the request re-encoded as compact JSON in base64url without padding (RFC 4648 section 5). The session's amount is a string of whole drops in decimal, at most 2^64 - 1 (the XRP Ledger's Currency Formats: an XRP amount is a string of whole drops), so every other value is mpp/request-malformed and nothing is signed."
+   "note": "The link serves fixed.A, a JSON ATR lcp's check 8 admits, whose SHA-256 (GNU coreutils sha256sum and openssl dgst -sha256, which agree) is the advertised H, so a gate that parses the ATR reaches the option filter. Each document is the pairing's B2 document placed for that H, its id the base64url of H without padding (RFC 4648 section 5, Python's base64) followed by .0 and its opaque's legalContext lcp:sha256: and H, with request.amount replaced, the request re-encoded as compact JSON in base64url without padding (RFC 4648 section 5). The session's amount is a string of whole drops in decimal, at most 2^64 - 1 (the XRP Ledger's Currency Formats: an XRP amount is a string of whole drops), so every other value is mpp/request-malformed and nothing is signed."
   },
   {
    "name": "BW1",
