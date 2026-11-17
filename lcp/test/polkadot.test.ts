@@ -8,7 +8,6 @@ import {
   encodeProfileCall,
   exactPolkadotRemark,
   extrinsicHash,
-  polkadotLocate,
   polkadotStatus,
   splitSigned,
   ss58Decode,
@@ -18,6 +17,28 @@ import {
 } from "../src/polkadot.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { rowsOf } from "./rows.js";
+import { TypeRegistry } from "@polkadot/types";
+import type { ExtrinsicSignatureV4 } from "@polkadot/types/interfaces";
+
+/**
+ * Polkadot Asset Hub's transaction extensions, in the runtime's order: the identifiers of the `TxExtensionV0` a signed v4
+ * extrinsic carries (polkadot-fellows/runtimes at 30696143, system-parachains/asset-hubs/asset-hub-polkadot/src/lib.rs:3136-3148).
+ */
+const ASSET_HUB_EXTENSIONS = [
+  "AuthorizeCall",
+  "CheckNonZeroSender",
+  "CheckSpecVersion",
+  "CheckTxVersion",
+  "CheckGenesis",
+  "CheckMortality",
+  "CheckNonce",
+  "CheckWeight",
+  "ChargeAssetTxPayment",
+  "PrevalidateAttests",
+  "CheckMetadataHash",
+  "EthSetOrigin",
+  "StorageWeightReclaim",
+] as const;
 
 const V = JSON.parse(readFileSync(new URL("../vectors/x402-exact-polkadot-lcp-assets-remark.json", import.meta.url), "utf8"));
 const H: AtrHash = V.fixed.H;
@@ -30,45 +51,69 @@ const withStrings = (v: unknown) => JSON.parse(JSON.stringify(v, (_, x) => (type
 
 type Row = {
   finalized?: string;
+  head?: string;
+  nonceFinal?: string;
+  nonceHead?: string;
+  valid?: string;
   canonical?: string;
   canonicalExtrinsicHash?: `0x${string}`;
   canonicalMissing?: boolean;
   change?: Partial<PolkadotExtrinsic>;
   missing?: boolean;
   readerError?: boolean;
+  raws?: string[];
 };
+/**
+ * A reader of the file's fixtures: V4's raw extrinsics at block 100 (or the row's `raws`), and one bare item at every
+ * other height from 90 to 120; V4's record at index 2 of block 100, as the row changes it; the row's heights, nonces and
+ * validation. Sidecar answers a block by its hash or its height.
+ */
 function readerOf(row: Row): PolkadotReader {
   const base = V.V4.extrinsicAt;
+  const height = BigInt(base.at.height);
   const named = (): PolkadotExtrinsic => ({
     ...base,
-    at: { height: BigInt(base.at.height), hash: base.at.hash },
+    at: { height, hash: base.at.hash },
     ...(row.change ?? {}),
   });
+  const fail = () => {
+    if (row.readerError) throw new Error("transport");
+  };
   return {
     network: V.V4.readerNetwork,
     extrinsic: async (block, index) => {
-      if (row.readerError) throw new Error("transport");
+      fail();
       if (index !== V.V4.index) return null;
       if (block === V.V4.block) return row.missing ? null : named();
-      if (block === BigInt(base.at.height)) {
+      if (block === height) {
         if (row.canonicalMissing) return null;
-        const at = { height: BigInt(base.at.height), hash: row.canonical ?? V.V4.block };
+        const at = { height, hash: row.canonical ?? V.V4.block };
         return { ...named(), at, ...(row.canonicalExtrinsicHash !== undefined ? { hash: row.canonicalExtrinsicHash } : {}) };
       }
       return null;
     },
     rawExtrinsics: async (block) => {
-      if (row.readerError) throw new Error("transport");
-      if (block === V.V4.block || block === BigInt(base.at.height)) return V.V4.raw;
-      if (typeof block === "bigint" && block >= 90n && block <= 110n) return ["0x00"];
+      fail();
+      if (block === V.V4.block || block === height) return row.raws ?? V.V4.raw;
+      // A bare v4 item: its length, the version byte 0x04 and a two-byte call; the search passes it.
+      if (typeof block === "bigint" && block >= 90n && block <= 120n) return ["0x0c040000"];
       return null;
     },
-    finalizedHeight: async () => {
-      if (row.readerError) throw new Error("transport");
-      return BigInt(row.finalized ?? "0");
-    },
+    finalizedHeight: async () => (fail(), BigInt(row.finalized ?? "0")),
+    headHeight: async () => (fail(), BigInt(row.head ?? row.finalized ?? "0")),
+    accountNonce: async (_account, at) => (fail(), BigInt((at === "finalized" ? row.nonceFinal : row.nonceHead) ?? "0")),
+    validate: async () => (fail(), row.valid === undefined || row.valid === "invalid" ? { valid: false, head: 0n } : { valid: true, head: BigInt(row.valid) }),
   };
 }
+
+/** The status query of a V4 row: its act, the act payment where it names none, at its finality, after its position. */
+const queryOf = (row: { act?: string; finality?: string; after?: string }) =>
+  ({
+    ...Q,
+    act: (row.act ?? "payment") as "payment",
+    finality: (row.finality ?? "finalized") as "finalized",
+    ...(row.after === undefined ? {} : { after: BigInt(row.after) }),
+  });
 
 describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
   const required: PaymentRequired = { x402Version: 2, resource: V.fixed.resource, accepts: [O] };
@@ -236,7 +281,7 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
     const xt = toHex(Uint8Array.from([...compact(body.length), ...body]));
     expect(await exactPolkadotRemark.bound(presentedOf(xt, V.V2.expectCall))).toBe(V.V3.expectBound);
     const ref = await exactPolkadotRemark.reference(presentedOf(xt, V.V2.expectCall), O);
-    expect(ref).toEqual({ ...V.V3.expectReference, extrinsicHash: extrinsicHash(fromHex(xt)) });
+    expect(ref).toEqual({ ...V.V3.expectReference, extrinsic: xt });
   });
 
   it("V4: the remark hash", () => {
@@ -246,52 +291,57 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
 
   it("V4: status for each fixture", async () => {
     for (const row of rowsOf(V.V4.status, "x402-exact-polkadot-lcp-assets-remark.json V4.status")) {
-      const ref = {
-        ...V.V4.reference,
-        ...(row.refHash !== undefined ? { extrinsicHash: row.refHash } : {}),
-        h: H,
-        transaction: row.transaction ?? `${V.V4.block}-${V.V4.index}`,
-      };
-      expect(withStrings(await polkadotStatus(ref, readerOf(row), { ...Q, finality: row.finality ?? "finalized" })), row.case).toEqual(row.expect);
+      const ref = { ...V.V4.reference, h: H, ...(row.hint ? { transaction: `${V.V4.block}-${V.V4.index}` } : {}) };
+      expect(withStrings(await polkadotStatus(ref, readerOf(row), queryOf(row))), row.case).toEqual(row.expect);
     }
   });
 
-  it("V4: a ref whose extrinsic hash or asset id is not of the form reference writes is unreadable unparseable, with nothing read", async () => {
-    const ref = { ...V.V4.reference, h: H, transaction: `${V.V4.block}-${V.V4.index}` };
-    expect(withStrings(await polkadotStatus(ref, readerOf({ finalized: "100" }), Q))).toEqual(V.V4.status[0].expect);
-    for (const [k, v] of [["extrinsicHash", null], ["extrinsicHash", "0x12"], ["assetId", null], ["assetId", "1337"], ["assetId", -1]] as const) {
+  it("eraNonce: the signer, era and nonce @polkadot/types decodes under the runtime's extensions, and reference reads the same", async () => {
+    // The independent decoding: @polkadot/types 17.0.1's ExtrinsicSignatureV4, under Polkadot Asset Hub's extensions in the
+    // runtime's order (the file's eraNonce about), read from the byte after the version byte.
+    const registry = new TypeRegistry();
+    const none = { extrinsic: {}, payload: {} };
+    registry.setSignedExtensions([...ASSET_HUB_EXTENSIONS], { AuthorizeCall: none, EthSetOrigin: none, StorageWeightReclaim: none });
+    let referenced = 0;
+    for (const row of rowsOf(V.eraNonce.rows, "x402-exact-polkadot-lcp-assets-remark.json eraNonce", { exact: 6 })) {
+      const xt: string = row.extrinsic.startsWith("0x") ? row.extrinsic : V[row.extrinsic].extrinsic;
+      const bytes = fromHex(xt);
+      const at = registry.createType("Compact<u32>", bytes).encodedLength;
+      expect(bytes[at], row.case).toBe(0x84);
+      const sig = registry.createType<ExtrinsicSignatureV4>("ExtrinsicSignatureV4", bytes.subarray(at + 1), { isSigned: true });
+      const era = sig.era.isMortalEra ? { period: sig.era.asMortalEra.period.toNumber(), phase: sig.era.asMortalEra.phase.toNumber() } : "immortal";
+      expect({ signer: toHex(sig.signer.toU8a().subarray(1)), era, nonce: sig.nonce.toString() }, row.case).toEqual(row.expect);
+      expect(toHex(bytes.subarray(at + 1 + sig.encodedLength)), row.case).toBe(row.call);
+      const split = splitSigned(bytes);
+      if ("refused" in split) throw new Error(split.code);
+      expect(toHex(split.signer), row.case).toBe(row.expect.signer);
+      if (row.call !== V.V2.expectCall) continue;
+      // lcp's own reading of the same bytes: reference, from what the payer signed.
+      const ref = await exactPolkadotRemark.reference(presentedOf(xt, row.call), O);
+      expect(ref, row.case).toMatchObject(row.expect);
+      referenced++;
+    }
+    expect(referenced).toBe(5);
+  });
+
+  it("V4: a ref whose signer, nonce, era or extrinsic is not of the form reference writes is unreadable unparseable, with nothing read", async () => {
+    const ref = { ...V.V4.reference, h: H };
+    const row = V.V4.status[0];
+    expect(withStrings(await polkadotStatus(ref, readerOf(row), queryOf(row)))).toEqual(row.expect);
+    for (const [k, v] of [["signer", null], ["signer", "0x12"], ["nonce", 1], ["nonce", "01"], ["era", { period: 3, phase: 0 }], ["extrinsic", "0xZZ"], ["transaction", "x"]] as const) {
       let reads = 0;
-      const counted = new Proxy(readerOf({ finalized: "100" }), {
+      const counted = new Proxy(readerOf(row), {
         get: (t, p) => (p === "network" ? t.network : (...a: never[]) => (reads++, (t as never as Record<string, (...x: never[]) => unknown>)[p as string]!(...a))),
       });
-      expect(await polkadotStatus({ ...ref, [k]: v } as never, counted, Q), `${k} ${String(v)}`).toEqual(UNPARSEABLE);
+      expect(await polkadotStatus({ ...ref, [k]: v } as never, counted, queryOf(row)), `${k} ${String(v)}`).toEqual(UNPARSEABLE);
       expect(reads, `${k} ${String(v)}`).toBe(0);
     }
   });
 
-  it("V4: locate refuses a ref whose extrinsic hash is not 0x and 64 hex digits as polkadot/wrong-reader, with nothing read", async () => {
-    const found = V.V4.locate[0];
-    const range = [BigInt(found.from), BigInt(found.to)] as const;
-    expect(await polkadotLocate(V.V4.reference, readerOf({ finalized: "100" }), ...range)).toBe(found.expect);
-    for (const v of [undefined, null, 1, "0x12", V.V4.reference.extrinsicHash.slice(2)]) {
-      let reads = 0;
-      const counted = new Proxy(readerOf({ finalized: "100" }), {
-        get: (t, p) => (p === "network" ? t.network : (...a: never[]) => (reads++, (t as never as Record<string, (...x: never[]) => unknown>)[p as string]!(...a))),
-      });
-      const got = await polkadotLocate({ ...V.V4.reference, extrinsicHash: v } as never, counted, ...range);
-      expect(got, String(v)).toEqual({ refused: true, code: "polkadot/wrong-reader" });
-      expect(reads, String(v)).toBe(0);
-    }
-  });
-
-  it("V4: recover and locate", async () => {
+  it("V4: recover", async () => {
     const reader = readerOf({ finalized: "100" });
     const transaction = `${V.V4.block}-${V.V4.index}`;
     expect(await exactPolkadotRemark.recover({ network: V.V4.readerNetwork, tx: transaction, option: O }, reader)).toBe(V.V4.recover.expect);
-    for (const row of rowsOf(V.V4.locate, "x402-exact-polkadot-lcp-assets-remark.json V4.locate")) {
-      const got = await polkadotLocate(V.V4.reference, readerOf({ finalized: "100", ...row }), BigInt(row.from), BigInt(row.to));
-      expect(got === null || typeof got === "string" ? got : got.code, row.case).toBe(row.expect);
-    }
     for (const row of rowsOf(V.V4.recoverRefusals, "x402-exact-polkadot-lcp-assets-remark.json V4.recoverRefusals")) {
       const raw = [...V.V4.raw];
       raw[V.V4.index] = row.raw;
@@ -342,29 +392,22 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
     expect(await recoverWith(V.V4.raw, () => async () => null)).toEqual(notFound);
   });
 
-  it("plant: a transfer of another asset at the named position is never the settlement", async () => {
-    const ref = { ...V.V4.reference, h: H, transaction: `${V.V4.block}-${V.V4.index}` };
-    expect(withStrings(await polkadotStatus(ref, readerOf({ finalized: "100", change: V.plant.change }), Q))).toEqual(V.plant.expect);
+  it("plant: a record with no Remarked event is never the settlement", async () => {
+    const ref = { ...V.V4.reference, h: H };
+    expect(withStrings(await polkadotStatus(ref, readerOf(V.plant), queryOf(V.plant)))).toEqual(V.plant.expect);
   });
 
-  it("status on the act agreement, at a position, and against a reader of another network", async () => {
-    const ref = { ...V.V4.reference, h: H, transaction: `${V.V4.block}-${V.V4.index}` };
-    const settled = V.V4.status[0].expect;
-    const reader = readerOf({ finalized: "100" });
-    expect(withStrings(await polkadotStatus(ref, reader, { act: "agreement", finality: "finalized" }))).toEqual(settled);
-    // The settled extrinsic at its own height is at the position given: before-position (read-status rule 16).
-    expect(withStrings(await polkadotStatus(ref, reader, { ...Q, after: 100n }))).toEqual({
-      state: "failed",
-      reason: "before-position",
-      transaction: settled.transaction,
-      position: "100",
-      finality: "finalized",
-      foreign: [],
-    });
-    expect(withStrings(await polkadotStatus(ref, reader, { ...Q, after: 99n }))).toEqual(settled);
+  it("status on the act agreement, and against a reader of another network", async () => {
+    const ref = { ...V.V4.reference, h: H };
+    const row = V.V4.status[0];
+    const reader = readerOf(row);
+    expect(withStrings(await polkadotStatus(ref, reader, { ...queryOf(row), act: "agreement" }))).toEqual(row.expect);
     const other = { ...reader, network: "polkadot:67f9723393ef76214df0118c34bbbd3d" as const };
-    expect(await polkadotStatus(ref, other, Q)).toEqual({ state: "unreadable", reason: "chain-mismatch", foreign: [] });
+    expect(await polkadotStatus(ref, other, queryOf(row))).toEqual({ state: "unreadable", reason: "chain-mismatch", foreign: [] });
     expect(await polkadotStatus(ref, reader, { ...Q, finality: "final" } as never)).toEqual(UNPARSEABLE);
+    // A presented `accepted` that is not the option the reference is given is refused.
+    const pay = presentedOf(V.V3.extrinsic, V.V2.expectCall);
+    expect(await exactPolkadotRemark.reference(pay, { ...O, amount: "1" })).toEqual({ refused: true, code: "x402/accepted-not-option" });
   });
 
   it("the option filter, advertise and read", () => {

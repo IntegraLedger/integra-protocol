@@ -13,7 +13,7 @@ The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
 A link is an absolute URL, on this page, when the WHATWG URL Standard's basic URL parser reads it with no base, as the
 package's own copy of that parser reads it ([The link](../concepts/atr-hash.md#the-link)), on every runtime alike.
-This page lists all 499 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
+This page lists all 497 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
 
@@ -47,7 +47,7 @@ of the rail that may answer differently later, with nothing the caller must chan
 | [`casper`](#casper) | 13 | Casper (`@integraledger/lcp/casper`). |
 | [`ccd`](#ccd) | 17 | Concordium (`@integraledger/lcp/ccd`). |
 | [`near`](#near) | 16 | NEAR (`@integraledger/lcp/near`, and `chargeNearIntents` in `@integraledger/lcp/mpp`). |
-| [`polkadot`](#polkadot) | 19 | Polkadot Asset Hub (`@integraledger/lcp/polkadot`). |
+| [`polkadot`](#polkadot) | 17 | Polkadot Asset Hub (`@integraledger/lcp/polkadot`). |
 | [`starknet`](#starknet) | 15 | Starknet (`@integraledger/lcp/starknet`). |
 | [`sui`](#sui) | 12 | Sui (`@integraledger/lcp/sui`). |
 | [`tron`](#tron) | 15 | Tron (`@integraledger/lcp/tron`). |
@@ -624,16 +624,14 @@ Polkadot Asset Hub (`@integraledger/lcp/polkadot`).
 | `polkadot/extrinsic-too-large` | A Polkadot extrinsic, or the raw extrinsic a recovery reads, is longer than 4,096 bytes. |
 | `polkadot/network-unsupported` | A Polkadot option's network starts with `polkadot:` but is not one this package supports. |
 | `polkadot/no-remark` | The Polkadot extrinsic `polkadotRecover` reads, in a block the finalized chain holds, did not dispatch successfully with a `Remarked` event for its remark. |
-| `polkadot/no-transfer` | The recovered Polkadot extrinsic's record, in a block the finalized chain holds, carries no `Transferred` event of the asset its profile call names. |
-| `polkadot/not-final` | **Read to repeat.** The extrinsic `polkadotRecover` reads did not dispatch with its remark or the asset transfer, in a block above the finalized height: a read to repeat, since that block can be replaced. |
+| `polkadot/not-final` | **Read to repeat.** The extrinsic `polkadotRecover` reads did not dispatch with the `Remarked` event for its remark, in a block above the finalized height: a read to repeat, since that block can be replaced. |
 | `polkadot/not-found` | **Read to repeat.** The Polkadot reader holds no block for the timepoint given to `polkadotRecover`, or no record of the extrinsic at its index. |
-| `polkadot/not-located` | The timepoint given to `polkadotRecover` names no extrinsic: its block holds none at that index, or the finalized chain holds another block at that height without the same extrinsic at that index. `polkadotLocate` finds the extrinsic by its hash. |
+| `polkadot/not-located` | The timepoint given to `polkadotRecover` names no extrinsic: its block holds none at that index, or the finalized chain holds another block at that height without the same extrinsic at that index. `polkadotStatus` reads the payment by the signer's account nonce, not by a timepoint. |
 | `polkadot/not-signed-v4` | The Polkadot extrinsic is not a signed version 4 extrinsic. |
 | `polkadot/option-malformed` | A Polkadot option does not name the `lcp-assets-remark` transfer method, names another flow, or has an invalid asset id, amount or timeout (a positive safe integer of at most 3600 seconds), or the choice given to `build` is not an object. |
-| `polkadot/range` | `polkadotLocate` is given a block range that is not non-negative bigints in order spanning at most 256 blocks. |
 | `polkadot/remark-not-lcp` | The Polkadot remark is not exactly an ATR hash's LCP string form with lowercase hex, byte for byte. |
 | `polkadot/signature-malformed` | The Polkadot extrinsic's `MultiSignature` has an unknown variant or runs past the end. |
-| `polkadot/unreadable` | **Read to repeat.** The Polkadot reader threw, or answered out of its documented form: to `polkadotRecover`, block extrinsics that are not an array, an entry there that is not a hex string, a record that is not an extrinsic's, raw bytes whose BLAKE2b-256 is not the hash of the chain's record of them, or a finalized height that is not a bigint; to `polkadotLocate`, block extrinsics that are not an array. |
+| `polkadot/unreadable` | **Read to repeat.** The Polkadot reader threw, or answered out of its documented form: to `polkadotRecover`, block extrinsics that are not an array, an entry there that is not a hex string, a record that is not an extrinsic's, raw bytes whose BLAKE2b-256 is not the hash of the chain's record of them, or a finalized height that is not a bigint. |
 | `polkadot/wrong-reader` | The Polkadot reader is missing or answers for a different network than the reference names, or the reference given to `polkadotLocate` has an `extrinsicHash` that is not `0x` and 64 hex digits, or the reference given to `polkadotRecover` names a `transaction` that is not a `<block hash>-<index>` timepoint. |
 
 ## starknet

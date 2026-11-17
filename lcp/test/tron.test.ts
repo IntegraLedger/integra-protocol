@@ -68,7 +68,13 @@ function readerFor(a: {
   head?: Answer;
   solidHead?: { number: string; timestamp: string } | null;
   rawDataHex?: string | null;
+  archival?: boolean;
+  blockAt?: "lags" | "gap";
 }): TronReader {
+  // Blocks are constructed: each named by its number, the 8 bytes java-tron's blockID begins with, and the bytes ab
+  // after it, linked to the one before it, holding no transaction.
+  const top = a.solidHead === null || a.solidHead === undefined ? 0n : BigInt(a.solidHead.number);
+  const blockOf = (n: bigint) => ({ blockId: blockId(n), number: n, parentHash: blockId(n - 1n), transactions: [] });
   const info = (x: Answer | undefined): TronInfo | NotFound => {
     if (x === "reader-error") throw new ReaderError("transport");
     if (x === null || x === undefined) return null as never;
@@ -82,12 +88,25 @@ function readerFor(a: {
       if (a.rawDataHex === "reader-error") throw new ReaderError("transport");
       return a.rawDataHex === null || a.rawDataHex === undefined ? null : { rawDataHex: a.rawDataHex };
     },
-    solidHead: async () => {
+    now: async () => {
       if (a.solidHead === null || a.solidHead === undefined) throw new ReaderError("transport");
-      return { number: BigInt(a.solidHead.number), timestamp: BigInt(a.solidHead.timestamp) };
+      return { number: BigInt(a.solidHead.number), blockId: blockId(BigInt(a.solidHead.number)), timestamp: BigInt(a.solidHead.timestamp) };
     },
+    blocks: async (start, end) => {
+      const blocks = [];
+      for (let n = start; n < end && n <= top; n++) blocks.push(blockOf(n));
+      return { head: top, blocks };
+    },
+    block: async (n) => {
+      if (a.blockAt !== undefined) return { head: a.blockAt === "gap" ? n : n - 1n, block: null };
+      return { head: top, block: n <= top ? blockOf(n) : null };
+    },
+    ...(a.archival === undefined ? {} : { archival: a.archival }),
   };
 }
+const blockId = (n: bigint): `0x${string}` => `0x${n.toString(16).padStart(16, "0")}${"ab".repeat(24)}`;
+/** The block reads of a reader whose node answers {} for every block and names no head. */
+const NO_BLOCKS = { blocks: async () => ({ head: null, blocks: [] }), block: async () => ({ head: null, block: null }) };
 const REF: TronRef = V.V4.ref;
 const Q = { act: "payment", finality: "solidified" } as const;
 const SEARCH = { state: "pending", reason: "search-incomplete", foreign: [] };
@@ -199,7 +218,8 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
 
   it("V4: status and recover on reader fixtures", async () => {
     for (const row of rowsOf(V.V4.status, "x402-exact-tron-lcp-trc20-memo.json V4.status")) {
-      const got = await exactTronMemo.status(REF, readerFor(row), { ...Q, finality: row.finality ?? "solidified" });
+      const after = row.after === undefined ? {} : { after: BigInt(row.after) };
+      const got = await exactTronMemo.status(REF, readerFor(row), { ...Q, finality: row.finality ?? "solidified", ...after });
       expect([row.case, plain(got)]).toEqual([row.case, row.expect]);
     }
     for (const row of rowsOf(V.V4.recover, "x402-exact-tron-lcp-trc20-memo.json V4.recover")) {
@@ -232,8 +252,83 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
     expect(looked).toEqual([REF.txid]);
   });
 
-  it("plant: a Transfer-topic log from another contract is never the settlement", async () => {
-    expect(plain(await exactTronMemo.status(REF, readerFor({ solid: V.plant.solid }), Q))).toEqual(V.plant.expect);
+  it("V5: the search for H over constructed blocks", async () => {
+    type Receipt = { level: "solid" | "head"; blockNumber: string; result: string; logs: TronInfo["logs"] };
+    type Row = {
+      case: string; after: string; solid: { number: string; timestamp: string }; head: string;
+      blocks?: Record<string, string[]>; receipts?: Record<string, Receipt>; lookup?: Receipt;
+      linkBreak?: string; missing?: string; nodeHead?: string; tooLarge?: string;
+      search?: { number: string; blockId: `0x${string}` }; expect: unknown;
+    };
+    const txs: Record<string, string> = V.V5.transactions;
+    const idOf = (h: string) => `0x${createHash("sha256").update(bytes(h)).digest("hex")}`;
+    for (const row of rowsOf(V.V5.status as Row[], "x402-exact-tron-lcp-trc20-memo.json V5.status")) {
+      const solid = BigInt(row.solid.number);
+      const top = { solid, head: BigInt(row.head) };
+      const block = (n: bigint) => ({
+        blockId: blockId(n),
+        number: n,
+        parentHash: row.linkBreak !== undefined && n === BigInt(row.linkBreak) ? (`0x${"cd".repeat(32)}` as const) : blockId(n - 1n),
+        transactions: (row.blocks?.[n.toString()] ?? []).map((name) => txs[name]!),
+      });
+      const receipts = new Map(Object.entries(row.receipts ?? {}).map(([name, r]) => [idOf(txs[name]!), r]));
+      const infoOf = (r: Receipt) => ({ blockNumber: BigInt(r.blockNumber), result: r.result, logs: r.logs });
+      const missing = row.missing === undefined ? undefined : BigInt(row.missing);
+      const nodeHead = (level: "solid" | "head") => (row.nodeHead === undefined ? top[level] : BigInt(row.nodeHead));
+      const reader: TronReader = {
+        network: REF.network,
+        info: async (txid, level) => {
+          if (txid === REF.txid) {
+            const l = row.lookup;
+            return l !== undefined && (level === "head" || l.level === "solid") ? infoOf(l) : { notFound: true, timestamp: BigInt(row.solid.timestamp) };
+          }
+          const r = receipts.get(txid);
+          return r !== undefined && (level === "head" || r.level === "solid") ? infoOf(r) : { notFound: true, timestamp: BigInt(row.solid.timestamp) };
+        },
+        transaction: async () => null,
+        now: async (level) => ({ number: top[level], blockId: blockId(top[level]), timestamp: BigInt(row.solid.timestamp) }),
+        blocks: async (start, end, level) => {
+          const out = [];
+          for (let n = start; n < end && n <= top[level]; n++) {
+            if (row.tooLarge !== undefined && n === BigInt(row.tooLarge)) throw new ReaderError("too-large");
+            if (n === missing) break;
+            out.push(block(n));
+          }
+          return { head: nodeHead(level), blocks: out };
+        },
+        block: async (n, level) => {
+          if (row.tooLarge !== undefined && n === BigInt(row.tooLarge)) throw new ReaderError("too-large");
+          return { head: nodeHead(level), block: n === missing || n > top[level] ? null : block(n) };
+        },
+      };
+      const search = row.search === undefined ? {} : { search: { number: BigInt(row.search.number), blockId: row.search.blockId } };
+      const got = await exactTronMemo.status(REF, reader, { ...Q, after: BigInt(row.after), ...search });
+      expect([row.case, plain(got)]).toEqual([row.case, row.expect]);
+    }
+  });
+
+  it("reference refuses a presented payment whose accepted is not the option it is given", async () => {
+    const p = payment(V.V2.expectTransactionHex);
+    expect(await exactTronMemo.reference(p, { ...O, amount: "1" })).toEqual({ refused: true, code: "x402/accepted-not-option" });
+  });
+
+  it("the lapse is the signed expiration in the presented raw data, not the reference's expiration member", async () => {
+    const live = V.V4.status[4];
+    expect(live.expect.reason).toBe("instrument-live");
+    const after = { after: BigInt(live.after) };
+    expect(plain(await exactTronMemo.status({ ...REF, expiration: "0" }, readerFor(live), { ...Q, ...after }))).toEqual(live.expect);
+  });
+
+  it("zero: a signed transfer(to, 0) whose receipt holds no Transfer log is a transfer of zero to that call's to", async () => {
+    for (const row of rowsOf(V.zero.rows, "x402-exact-tron-lcp-trc20-memo.json zero.rows", { exact: 2 })) {
+      const tx = V.zero.transactions[row.raw];
+      const ref: TronRef = { ...REF, raw: tx.raw, txid: tx.txid };
+      expect([row.case, plain(await exactTronMemo.status(ref, readerFor(row), Q))]).toEqual([row.case, row.expect]);
+    }
+  });
+
+  it("plant: a Transfer log to another account than payTo is never the settlement", async () => {
+    expect(plain(await exactTronMemo.status(REF, readerFor({ solid: V.plant.solid, solidHead: V.plant.solidHead }), Q))).toEqual(V.plant.expect);
   });
 
   it("status on the act agreement, at a position, and a failed result below the solidified mark", async () => {
@@ -241,11 +336,13 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
     const agreement = { act: "agreement", finality: "solidified" } as const;
     expect(plain(await exactTronMemo.status(REF, readerFor(solid), agreement))).toEqual(solid.expect);
     // Found only at the head, the transaction is below the solidified mark.
-    expect(plain(await exactTronMemo.status(REF, readerFor(head), agreement))).toEqual({ ...head.expect, state: "pending", reason: "below-mark" });
+    const { presented: _h, ...headNamed } = head.expect;
+    expect(plain(await exactTronMemo.status(REF, readerFor(head), agreement))).toEqual({ ...headNamed, state: "pending", reason: "below-mark" });
     // The settled transaction at its own block number is at the position given: before-position (read-status rule 16).
     const block = BigInt(solid.expect.position);
+    const { presented: _s, ...solidNamed } = solid.expect;
     expect(plain(await exactTronMemo.status(REF, readerFor(solid), { ...Q, after: block }))).toEqual({
-      ...solid.expect,
+      ...solidNamed,
       state: "failed",
       reason: "before-position",
     });
@@ -259,6 +356,8 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
       transaction: REF.txid,
       position: reverted.solid.blockNumber,
       finality: "head",
+      moved: [],
+      signer: REF.payer,
       foreign: [],
     });
     expect(await exactTronMemo.recover({ ...INPUT, option: undefined } as never, readerFor(solid))).toEqual({ refused: true, code: "tron/wrong-reader" });
@@ -349,6 +448,11 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
     expect(exactTronMemo.data.coverage).toBe("full");
     expect(exactTronMemo.claims).toBe(true);
     expect(exactTronMemo.data.carrier.member).toBeUndefined();
+    // Zero is admitted only for a contract a run has shown to log a transfer of zero; none is shown yet, so the
+    // agreement's floor stays one base unit (the profile's rule 9).
+    const zero = { ...O, amount: "0" };
+    expect(exactTronMemo.advertise({ ...required, accepts: [zero] }, H, V.fixed.link, zero)).toEqual({ refused: true, code: "tron/option-malformed" });
+    expect(exactTronMemo.data.agreement?.floor).toBe("1");
   });
 
   // A java-tron node accepts a transaction only while its expiration is after the head block's time
@@ -374,15 +478,16 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
             return top >= txBlock ? found : { notFound: true, timestamp: blockTime(top) };
           },
           transaction: async () => null,
-          solidHead: async () => {
-            calls.push("solidHead");
+          now: async () => {
+            calls.push("now");
             const solid = head - 19n;
             head += step;
-            return { number: solid, timestamp: blockTime(solid) };
+            return { number: solid, blockId: blockId(solid), timestamp: blockTime(solid) };
           },
+          ...NO_BLOCKS,
         };
         const got = await exactTronMemo.status(REF, reader, Q);
-        expect(calls[0]).toBe("solidHead");
+        expect(calls[0]).toBe("now");
         expect([start, step, got.state]).not.toEqual([start, step, "failed"]);
       }
     }
@@ -400,7 +505,8 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
       for (const headAt of [expiration - 6000n, txTime - 1n, txTime, ahead]) {
         const reader: TronReader = {
           network: REF.network,
-          solidHead: async () => ({ number: 86542804n, timestamp: ahead }),
+          now: async () => ({ number: 86542804n, blockId: blockId(86542804n), timestamp: ahead }),
+          ...NO_BLOCKS,
           info: async (_txid, level) => {
             const at = level === "solid" ? solidAt : headAt;
             return at >= txTime ? found : { notFound: true, timestamp: at };
@@ -419,7 +525,7 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
     const nowhere = { notFound: true as const, timestamp: "1790300730000" };
     expect(plain(await exactTronMemo.status(REF, readerFor({ solid }), Q))).toEqual(V.V4.status[0].expect);
     const missing = readerFor({ solid: nowhere, head: nowhere });
-    const malformed = { ...missing, solidHead: async () => ({ number: 1n, timestamp: "1790300730000" }) as never };
+    const malformed = { ...missing, now: async () => ({ number: 1n, blockId: blockId(1n), timestamp: "1790300730000" }) as never };
     expect(await exactTronMemo.status(REF, malformed, Q)).toEqual(UNPARSEABLE);
     expect(await exactTronMemo.status(REF, missing, Q)).toEqual(TRANSPORT);
   });
@@ -438,13 +544,15 @@ describe("x402-exact-tron-lcp-trc20-memo.json", () => {
     const head = BigInt(REF.expiration) + 9000n;
     const lookup = (timestamp: bigint | null): TronReader => ({
       network: REF.network,
-      solidHead: async () => ({ number: 86542804n, timestamp: head }),
+      now: async () => ({ number: 86542804n, blockId: blockId(86542804n), timestamp: head }),
+      ...NO_BLOCKS,
       info: async () => ({ notFound: true, timestamp }),
       transaction: async () => null,
     });
     expect(await exactTronMemo.status(REF, lookup(null), Q)).toEqual(SEARCH);
-    // Expired, with no search for H: pending search-incomplete (read-status rule 24).
-    expect(await exactTronMemo.status(REF, lookup(head), Q)).toEqual(SEARCH);
+    // Each lookup at the solid head, past the lapse, with no position given on a node not declared archival: the read
+    // shows no history, so absence is history-gap (read-status rule 18).
+    expect(await exactTronMemo.status(REF, lookup(head), Q)).toEqual({ state: "unreadable", reason: "history-gap", foreign: [] });
   });
 
   // decodeTronTx reads at most 8192 hex characters, counted in UTF-16 code units (agreedRefusals rows "over 8192 hex

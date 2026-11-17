@@ -50,7 +50,7 @@ import {
   subscriptionTempo,
 } from "../src/mpp.js";
 import { nearRecover, nearStatus } from "../src/near.js";
-import { polkadotLocate, polkadotRecover, polkadotStatus } from "../src/polkadot.js";
+import { polkadotRecover, polkadotStatus } from "../src/polkadot.js";
 import { chainIdFelt, outsideExecution, starknetLandedNonce, starknetStatus } from "../src/starknet.js";
 import { muxedFor, stellarLocate, stellarStatus } from "../src/stellar.js";
 import { decodeSuiTx, suiCarrier, suiRecover, suiStatus } from "../src/sui.js";
@@ -609,7 +609,6 @@ describe("polkadot", () => {
   reads([
     ["polkadotStatus", polkadotStatus, file, { state: "unreadable", reason: "unparseable", foreign: [] }, { act: "payment", finality: "finalized" }],
     ["polkadotRecover", polkadotRecover, file, refused("polkadot/wrong-reader")],
-    ["polkadotLocate", polkadotLocate, file, refused("polkadot/wrong-reader"), 0n, 1n],
   ]);
 });
 

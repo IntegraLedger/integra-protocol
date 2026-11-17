@@ -229,6 +229,7 @@
     "@aptos-labs/ts-sdk": "7.5.0",
     "@casper-ecosystem/casper-eip-712": "1.2.1",
     "@mysten/sui": "2.35.0",
+    "@polkadot/types": "17.0.1",
     "@solana/kit": "8.4.0",
     "@stacks/transactions": "7.6.0",
     "@stellar/stellar-sdk": "17.2.1",

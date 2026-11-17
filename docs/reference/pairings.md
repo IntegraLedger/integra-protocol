@@ -329,7 +329,7 @@ Paid: the payer's account signed a NEP-366 delegate action whose one ft_transfer
 
 ### `x402/exact/polkadot/lcp-assets-remark`
 
-The payer signed one Polkadot Asset Hub extrinsic whose bytes end with the profile call, the encoding of a batch of a transfer of the asset and a remark whose bytes are this ATR's hash in LCP string form. The chain verified the signature and dispatched the extrinsic, and its record carries a Remarked event with the BLAKE2b-256 of that remark and a Transferred event of the asset, at the finality recorded. This does not show that amount, payee, asset or timing match the ATR's content.
+The payer signed one Polkadot Asset Hub extrinsic whose bytes hold this ATR's hash in LCP string form as a remark, at the account nonce its reference holds. The chain verified the signature and dispatched the extrinsic with a Remarked event for that remark, at the finality recorded. Where the record shows a transfer event, or the call is a transfer of zero, it states that the extrinsic paid, with each recipient and what moved; where it shows neither, it states that the payer signed. The signer is named. This does not show a transfer's sender, nor that amount, asset or timing match the ATR's content.
 
 ### `x402/exact/solana`
 
@@ -345,7 +345,7 @@ The payer, the sender, signed a Sui transaction whose one unused Pure input is t
 
 ### `x402/exact/tron/lcp-trc20-memo`
 
-The payer signed a Tron transaction whose memo is this ATR's hash in LCP string form, and whose one contract calls transfer on the token. The network verified the signature, which covers the memo through the transaction id. The call succeeded with the token's Transfer event, at the finality recorded. The memo is on chain in the transaction. This does not show that amount, payee, token or timing match the ATR's content.
+The payer, the transaction's owner, signed a Tron transaction whose memo is this ATR's hash in LCP string form, and whose one contract calls transfer on the token. The network verified the signature, which covers the memo through the transaction id, and the receipt's result is SUCCESS, at the finality recorded. Where the receipt holds Transfer logs, the transaction paid, with each recipient and what moved; where it holds none and the signed call is a transfer of zero, it paid zero to that call's recipient; where it holds neither, the payer signed, and no account is named. The owner is named as the signer. This does not show a log's sender, nor that amount, token or timing match the ATR's content.
 
 ### `x402/exact/tvm`
 

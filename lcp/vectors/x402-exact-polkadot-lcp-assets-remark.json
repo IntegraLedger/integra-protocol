@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/polkadot/lcp-assets-remark pairing of @integraledger/lcp's polkadot entry point. H is SHA-256(\"abc\"). V1 is a real extrinsic read live (block 21,053,708, index 3); V2's call was printed by @polkadot/api 16.5.6 and equals a hand encoding in Python; V3's extrinsic was accepted by TaggedTransactionQueue_validate_transaction on Polkadot Asset Hub (Invalid(Payment): signature and extensions accepted, the account unfunded); every BLAKE2b-256 is b2sum -l 256 (GNU coreutils 9.4). Reader fixtures take Sidecar's answer shapes; heights are decimal strings. The upper-case remark rows replace the 77 remark bytes of V3 and V2's call with lcp:sha256:0x and H's digits in upper case; the signature is V3's and does not cover those bytes, which bound does not verify. The recover rows with another call put it after V3's signed preamble and extensions, SCALE by hand with each call's call_index, and recompute the length prefix; the signature is V3's and does not cover that call, which recover does not verify. Status rows are read with the act payment at the finality the row gives, finalized where it gives none, and answer as the profile read-status gives them: since the read holds no search for H and does not read the account's nonce, a dispatch that failed, an extrinsic that is not the payment, one not located and a block the reader does not have answer pending search-incomplete, not failed or not-found, and a dispatch that failed above the finalized height pending below-mark (rules 17, 23, 24 and 26).",
+ "about": "Vectors for the x402/exact/polkadot/lcp-assets-remark pairing of @integraledger/lcp's polkadot entry point. H is SHA-256(\"abc\"). V1 is a real extrinsic read live (block 21,053,708, index 3); V2's call was printed by @polkadot/api 16.5.6 and equals a hand encoding in Python; V3's extrinsic was accepted by TaggedTransactionQueue_validate_transaction on Polkadot Asset Hub (Invalid(Payment): signature and extensions accepted, the account unfunded); every BLAKE2b-256 is b2sum -l 256 (GNU coreutils 9.4). The eraNonce rows' signer, era and nonce are as @polkadot/types 17.0.1 decodes them under Polkadot Asset Hub's transaction extensions (eraNonce's about). Reader fixtures take Sidecar's answer shapes; heights are decimal strings. The upper-case remark rows replace the 77 remark bytes of V3 and V2's call with lcp:sha256:0x and H's digits in upper case; the signature is V3's and does not cover those bytes, which bound does not verify. The recover and status rows with another call put it after V3's signed preamble and extensions, SCALE by hand with each call's pallet and call index as Polkadot Asset Hub's runtime has them (polkadot-fellows/runtimes at 30696143, system-parachains/asset-hubs/asset-hub-polkadot/src/lib.rs:1731-1776: System 0, Balances 10, Utility 40, Proxy 42, Assets 50, ForeignAssets 53; polkadot-sdk at 23b84ba4: utility batch 0, batch_all 2, force_batch 4, proxy.proxy 0, balances transfer_keep_alive 3, assets transfer_keep_alive 9), and recompute the length prefix; the signature is V3's and does not cover that call, which neither recover nor status verifies. The re-signed status rows replace V3's signature with 64 bytes of 0x11, and one its era bytes a502 with b502. A status row's events with another call are constructed in Sidecar's shape, each as the pallet emits it (pallet_proxy's ProxyExecuted, pallet_utility's BatchInterrupted, ItemFailed, ItemCompleted and BatchCompletedWithErrors, pallet_balances' Transfer, the assets pallet's Transferred under foreignAssets). Status rows are read with the act payment at the finality the row gives, finalized where it gives none, after the position the row gives, by the signer's account nonce as the profile's rule 8 states it: the reader fixture answers V4's raw extrinsics at block 100 and one bare v4 item (length, 0x04, a two-byte call) at every other height from 90 to 120, the row's finalized and head heights, the account nonce at each, and the chain's validation of the presented extrinsic (valid at the height given, or not valid); these answers are constructed, not recorded. Each expected answer is derived by hand from read-status.md and the profile's rule 8; each transfer of what moved is named by the extrinsic's timepoint and its place, the index of its event among the fixture's events as the endpoint lists them.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -42,8 +42,13 @@
   "expectReference": {
    "network": "polkadot:68d56f15f85d3136970ec16946040bc1",
    "payee": "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
-   "extrinsicHash": "0xffdc62b15bc3b766b9915bebe37e6282aa5ea4344e32b495f464d4fa7557e6ab",
-   "assetId": 1337
+   "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+   "nonce": "0",
+   "era": {
+    "period": 64,
+    "phase": 42
+   },
+   "extrinsic": "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
   },
   "refusals": [
    {
@@ -107,14 +112,19 @@
   }
  },
  "V4": {
-  "case": "the remark hash; status, recover and locate on reader fixtures",
+  "case": "the remark hash; status and recover on reader fixtures",
   "expectRemarkHash": "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1",
   "readerNetwork": "polkadot:68d56f15f85d3136970ec16946040bc1",
   "reference": {
    "network": "polkadot:68d56f15f85d3136970ec16946040bc1",
    "payee": "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
-   "extrinsicHash": "0xffdc62b15bc3b766b9915bebe37e6282aa5ea4344e32b495f464d4fa7557e6ab",
-   "assetId": 1337
+   "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+   "nonce": "0",
+   "era": {
+    "period": 64,
+    "phase": 42
+   },
+   "extrinsic": "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
   },
   "block": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
   "index": 2,
@@ -161,127 +171,122 @@
    ]
   },
   "raw": [
-   "0x00",
-   "0x04",
+   "0x0c040000",
+   "0x0c040001",
    "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
   ],
   "status": [
    {
-    "case": "finalized 100, canonical hash equal",
+    "case": "the signer's extrinsic at the signed nonce, found by the search at block 100, finalized: settled, the payment presented",
+    "after": "95",
     "finalized": "100",
-    "canonical": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
     "expect": {
      "state": "settled",
      "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
      "position": "100",
      "finality": "finalized",
-     "foreign": []
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "assets:1337",
+       "amount": "10000",
+       "to": "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d",
+       "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+       "place": 0
+      }
+     ],
+     "presented": "yes",
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e"
     }
    },
    {
-    "case": "finalized 99",
-    "finality": "head",
+    "case": "the same with the finalized height 99: at the head, below the mark asked",
+    "after": "95",
     "finalized": "99",
-    "canonical": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "expect": {
-     "state": "settled",
-     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
-     "position": "100",
-     "finality": "head",
-     "foreign": []
-    }
-   },
-   {
-    "case": "the canonical block at 100 is another block holding the same extrinsic at index 2: it counts there",
-    "finalized": "100",
-    "canonical": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "expect": {
-     "state": "settled",
-     "transaction": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb-2",
-     "position": "100",
-     "finality": "finalized",
-     "foreign": []
-    }
-   },
-   {
-    "case": "the canonical block at 100 holds another extrinsic at index 2: the payment is to be located again (polkadotLocate)",
-    "finalized": "100",
-    "canonical": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "canonicalExtrinsicHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "the canonical block at 100 has nothing at index 2: the payment is to be located again (polkadotLocate)",
-    "finalized": "100",
-    "canonical": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "canonicalMissing": true,
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "one bit changed in the reference's hash",
-    "finalized": "100",
-    "canonical": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "refHash": "0xffdc62b15bc3b766b9915bebe37e6282aa5ea4344e32b495f464d4fa7557e6aa",
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "success false",
-    "finalized": "100",
-    "canonical": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "change": {
-     "success": false
-    },
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "success false, finalized 99",
-    "finalized": "99",
-    "canonical": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "change": {
-     "success": false
-    },
+    "head": "101",
+    "nonceFinal": "0",
+    "nonceHead": "1",
+    "valid": "invalid",
     "expect": {
      "state": "pending",
      "reason": "below-mark",
      "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
      "position": "100",
      "finality": "head",
-     "foreign": []
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "assets:1337",
+       "amount": "10000",
+       "to": "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d",
+       "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+       "place": 0
+      }
+     ],
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e"
     }
    },
    {
-    "case": "success false, and the canonical block at 100 is another block holding the same extrinsic at index 2",
+    "case": "the same with the finality head asked: settled at the head",
+    "finality": "head",
+    "after": "95",
+    "finalized": "99",
+    "head": "101",
+    "nonceFinal": "0",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "expect": {
+     "state": "settled",
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "head",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "assets:1337",
+       "amount": "10000",
+       "to": "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d",
+       "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+       "place": 0
+      }
+     ],
+     "presented": "yes",
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e"
+    }
+   },
+   {
+    "case": "success false: the extrinsic carries the remark and did not dispatch, so it consumed the nonce: transaction-failed once the search to the head is whole",
+    "after": "95",
     "finalized": "100",
-    "canonical": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
     "change": {
      "success": false
     },
     "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
+     "state": "failed",
+     "reason": "transaction-failed",
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "finalized",
+     "foreign": [],
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e"
     }
    },
    {
-    "case": "no Remarked",
+    "case": "no Remarked event: the remark's call did not run, transaction-failed, naming what its events show it moved",
+    "after": "95",
     "finalized": "100",
-    "canonical": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
     "change": {
      "events": [
       {
@@ -311,74 +316,1005 @@
      ]
     },
     "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
+     "state": "failed",
+     "reason": "transaction-failed",
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "finalized",
+     "foreign": [],
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+     "moved": [
+      {
+       "asset": "assets:1337",
+       "amount": "10000",
+       "to": "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d",
+       "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+       "place": 0
+      }
+     ]
     }
    },
    {
-    "case": "the bare broadcast hash",
-    "transaction": "0xffdc62b15bc3b766b9915bebe37e6282aa5ea4344e32b495f464d4fa7557e6ab",
-    "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "foreign": []
-    }
-   },
-   {
-    "case": "a malformed index",
-    "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-x",
-    "expect": {
-     "state": "unreadable",
-     "reason": "unparseable",
-     "foreign": []
-    }
-   },
-   {
-    "case": "null",
+    "case": "a Transferred of asset 1984 to the payee: settled, what moved recorded as observed and compared with nothing",
+    "after": "95",
     "finalized": "100",
-    "canonical": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-    "missing": true,
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "change": {
+     "events": [
+      {
+       "pallet": "assets",
+       "method": "Transferred",
+       "data": [
+        "1984",
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+        "10000"
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "Remarked",
+       "data": [
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "finalized",
+     "foreign": [],
+     "moved": [
+      {
+       "asset": "assets:1984",
+       "amount": "10000",
+       "to": "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d",
+       "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+       "place": 0
+      }
+     ],
+     "presented": "yes",
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e"
+    }
+   },
+   {
+    "case": "the record at block 100, index 2 has another hash than the raw extrinsic's: the search holds at that block",
+    "after": "95",
+    "finalized": "100",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "canonicalExtrinsicHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
     "expect": {
      "state": "pending",
      "reason": "search-incomplete",
+     "foreign": [],
+     "search": {
+      "next": "100",
+      "hits": []
+     }
+    }
+   },
+   {
+    "case": "the timepoint a settler named, at the position given: before-position",
+    "after": "100",
+    "hint": true,
+    "finalized": "100",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "expect": {
+     "state": "failed",
+     "reason": "before-position",
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "finalized",
+     "foreign": [],
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+     "moved": [
+      {
+       "asset": "assets:1337",
+       "amount": "10000",
+       "to": "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d",
+       "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+       "place": 0
+      }
+     ]
+    }
+   },
+   {
+    "case": "the nonce at finalized past the signed one and the extrinsic not in the range read: search-incomplete",
+    "after": "100",
+    "finalized": "105",
+    "head": "105",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
+    }
+   },
+   {
+    "case": "validation answered valid at 50: the era (64, 42) ends at block 105; finalized 110, the nonce not past the signed one, and the search to the head whole and empty: instrument-unused",
+    "after": "95",
+    "finalized": "110",
+    "head": "111",
+    "nonceFinal": "0",
+    "nonceHead": "0",
+    "valid": "50",
+    "raws": [
+     "0x0c040000"
+    ],
+    "expect": {
+     "state": "failed",
+     "reason": "instrument-unused",
+     "finality": "finalized",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the same with finalized 104: the era not yet ended at finalized, the signed extrinsic can still land: instrument-live",
+    "after": "95",
+    "finalized": "104",
+    "head": "104",
+    "nonceFinal": "0",
+    "nonceHead": "0",
+    "valid": "50",
+    "raws": [
+     "0x0c040000"
+    ],
+    "expect": {
+     "state": "pending",
+     "reason": "instrument-live",
+     "foreign": [],
+     "search": {
+      "next": "105",
+      "hits": [],
+      "validated": "50"
+     }
+    }
+   },
+   {
+    "case": "no validation answered valid: no bound is proven and the lapse is never answered: instrument-live",
+    "after": "95",
+    "finalized": "110",
+    "head": "111",
+    "nonceFinal": "0",
+    "nonceHead": "0",
+    "valid": "invalid",
+    "raws": [
+     "0x0c040000"
+    ],
+    "expect": {
+     "state": "pending",
+     "reason": "instrument-live",
      "foreign": []
     }
    },
    {
     "case": "a reader error",
     "readerError": true,
+    "after": "95",
     "expect": {
      "state": "unreadable",
      "reason": "transport",
      "foreign": []
+    }
+   },
+   {
+    "case": "a block of the range at or below finalized that the endpoint does not hold: history-gap",
+    "after": "80",
+    "finalized": "100",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "expect": {
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
+    }
+   },
+   {
+    "case": "proxy.proxy over the profile call, its inner call failed: ProxyExecuted carries the error and no Remarked, the nonce consumed: transaction-failed",
+    "after": "95",
+    "finalized": "100",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "raws": [
+     "0x0c040000",
+     "0x0c040001",
+     "0x21048400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002a00001111111111111111111111111111111111111111111111111111111111111111002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+    ],
+    "change": {
+     "hash": "0xeb7a31d8019952b6eabe4f0bfd4149e2abd14bb8a734ff22cdd2db94fecd989c",
+     "events": [
+      {
+       "pallet": "proxy",
+       "method": "ProxyExecuted",
+       "data": [
+        {
+         "err": {
+          "module": {
+           "index": 50,
+           "error": "0x03000000"
+          }
+         }
+        }
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "finalized",
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+     "foreign": [],
+     "state": "failed",
+     "reason": "transaction-failed",
+     "moved": []
+    }
+   },
+   {
+    "case": "utility.batch of the transfer and the remark, the transfer failing first: BatchInterrupted at 0 and no Remarked, the signed transfer naming payTo: transaction-failed",
+    "after": "95",
+    "finalized": "100",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "raws": [
+     "0x0c040000",
+     "0x0c040001",
+     "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002800083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+    ],
+    "change": {
+     "hash": "0x163e6f8d83fbd55669af61a8c4b2f6a398cd8a78b9152004bfb89fcc052bb11e",
+     "events": [
+      {
+       "pallet": "utility",
+       "method": "BatchInterrupted",
+       "data": [
+        "0",
+        {
+         "module": {
+          "index": 50,
+          "error": "0x03000000"
+         }
+        }
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "finalized",
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+     "foreign": [],
+     "state": "failed",
+     "reason": "transaction-failed",
+     "moved": []
+    }
+   },
+   {
+    "case": "utility.batch with the remark first and the transfer failing after it: Remarked, nothing moved, settled on the act agreement",
+    "act": "agreement",
+    "after": "95",
+    "finalized": "100",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "raws": [
+     "0x0c040000",
+     "0x0c040001",
+     "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a50200000000280008000735016c63703a7368613235363a3078626137383136626638663031636665613431343134306465356461653232323362303033363161333936313737613963623431306666363166323030313561643209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c"
+    ],
+    "change": {
+     "hash": "0x06f8c94b28bdcef67e6ff8e0f182bf4c5e8d881536b6f7f36d2df383e7a7e1dc",
+     "events": [
+      {
+       "pallet": "system",
+       "method": "Remarked",
+       "data": [
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
+       ]
+      },
+      {
+       "pallet": "utility",
+       "method": "BatchInterrupted",
+       "data": [
+        "1",
+        {
+         "module": {
+          "index": 50,
+          "error": "0x03000000"
+         }
+        }
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "finalized",
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+     "foreign": [],
+     "state": "settled",
+     "moved": [],
+     "presented": "no"
+    }
+   },
+   {
+    "case": "the same on the act payment: nothing moved names payTo, instrument-consumed, other-account",
+    "after": "95",
+    "finalized": "100",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "raws": [
+     "0x0c040000",
+     "0x0c040001",
+     "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a50200000000280008000735016c63703a7368613235363a3078626137383136626638663031636665613431343134306465356461653232323362303033363161333936313737613963623431306666363166323030313561643209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c"
+    ],
+    "change": {
+     "hash": "0x06f8c94b28bdcef67e6ff8e0f182bf4c5e8d881536b6f7f36d2df383e7a7e1dc",
+     "events": [
+      {
+       "pallet": "system",
+       "method": "Remarked",
+       "data": [
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
+       ]
+      },
+      {
+       "pallet": "utility",
+       "method": "BatchInterrupted",
+       "data": [
+        "1",
+        {
+         "module": {
+          "index": 50,
+          "error": "0x03000000"
+         }
+        }
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "finalized",
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+     "foreign": [],
+     "state": "failed",
+     "reason": "instrument-consumed",
+     "carries": "other-account",
+     "moved": []
+    }
+   },
+   {
+    "case": "utility.force_batch of the transfer and the remark, the transfer failing: Remarked, nothing moved, settled on the act agreement",
+    "act": "agreement",
+    "after": "95",
+    "finalized": "100",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "raws": [
+     "0x0c040000",
+     "0x0c040001",
+     "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002804083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+    ],
+    "change": {
+     "hash": "0x5d58102bbe8d2ae01da361d043dfcc5c102aa59be83d142cfbf9956b317cf012",
+     "events": [
+      {
+       "pallet": "utility",
+       "method": "ItemFailed",
+       "data": [
+        {
+         "module": {
+          "index": 50,
+          "error": "0x03000000"
+         }
+        }
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "Remarked",
+       "data": [
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
+       ]
+      },
+      {
+       "pallet": "utility",
+       "method": "ItemCompleted",
+       "data": []
+      },
+      {
+       "pallet": "utility",
+       "method": "BatchCompletedWithErrors",
+       "data": []
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "finalized",
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+     "foreign": [],
+     "state": "settled",
+     "moved": [],
+     "presented": "no"
+    }
+   },
+   {
+    "case": "the same on the act payment: nothing moved names payTo, instrument-consumed, other-account",
+    "after": "95",
+    "finalized": "100",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "raws": [
+     "0x0c040000",
+     "0x0c040001",
+     "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002804083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+    ],
+    "change": {
+     "hash": "0x5d58102bbe8d2ae01da361d043dfcc5c102aa59be83d142cfbf9956b317cf012",
+     "events": [
+      {
+       "pallet": "utility",
+       "method": "ItemFailed",
+       "data": [
+        {
+         "module": {
+          "index": 50,
+          "error": "0x03000000"
+         }
+        }
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "Remarked",
+       "data": [
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
+       ]
+      },
+      {
+       "pallet": "utility",
+       "method": "ItemCompleted",
+       "data": []
+      },
+      {
+       "pallet": "utility",
+       "method": "BatchCompletedWithErrors",
+       "data": []
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "finalized",
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+     "foreign": [],
+     "state": "failed",
+     "reason": "instrument-consumed",
+     "carries": "other-account",
+     "moved": []
+    }
+   },
+   {
+    "case": "batch_all of balances.transfer_keep_alive to the payee and the remark: a balances.Transfer to payTo, settled, the native token recorded as observed",
+    "after": "95",
+    "finalized": "100",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "raws": [
+     "0x0c040000",
+     "0x0c040001",
+     "0x89038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002802080a0300d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+    ],
+    "change": {
+     "hash": "0xbd04e5eaa4a5f6edc151666c695cfffa15ecbd636e5dac6601bca418739673ca",
+     "events": [
+      {
+       "pallet": "balances",
+       "method": "Transfer",
+       "data": [
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+        "10000"
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "Remarked",
+       "data": [
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "finalized",
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+     "foreign": [],
+     "state": "settled",
+     "moved": [
+      {
+       "asset": "native",
+       "amount": "10000",
+       "to": "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d",
+       "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+       "place": 0
+      }
+     ],
+     "presented": "no"
+    }
+   },
+   {
+    "case": "batch_all of a foreignAssets transfer to the payee and the remark: a foreignAssets Transferred to payTo, settled, its asset recorded as observed",
+    "after": "95",
+    "finalized": "100",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "raws": [
+     "0x0c040000",
+     "0x0c040001",
+     "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002802083509010000d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+    ],
+    "change": {
+     "hash": "0x6bae79ffc9090ee7949768d226bcc25dff091d6e1db09f7280dedd63af99b659",
+     "events": [
+      {
+       "pallet": "foreignAssets",
+       "method": "Transferred",
+       "data": [
+        {
+         "parents": 1,
+         "interior": {
+          "here": null
+         }
+        },
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+        "10000"
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "Remarked",
+       "data": [
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "finalized",
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+     "foreign": [],
+     "state": "settled",
+     "moved": [
+      {
+       "asset": "foreignAssets:{\"parents\":1,\"interior\":{\"here\":null}}",
+       "amount": "10000",
+       "to": "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d",
+       "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+       "place": 0
+      }
+     ],
+     "presented": "no"
+    }
+   },
+   {
+    "case": "a re-signed copy at the signed nonce, its signature another and its signed body the presented one's: settled, presented yes",
+    "after": "95",
+    "finalized": "100",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "raws": [
+     "0x0c040000",
+     "0x0c040001",
+     "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e0011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111a502000000002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+    ],
+    "change": {
+     "hash": "0xd7e1e9ffb4807a0dc843d90db2b2ec2a10232c812baf2b97ca66ee194a888ced",
+     "events": [
+      {
+       "pallet": "assets",
+       "method": "Transferred",
+       "data": [
+        "1337",
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+        "10000"
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "Remarked",
+       "data": [
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "finalized",
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+     "foreign": [],
+     "state": "settled",
+     "moved": [
+      {
+       "asset": "assets:1337",
+       "amount": "10000",
+       "to": "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d",
+       "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+       "place": 0
+      }
+     ],
+     "presented": "yes"
+    }
+   },
+   {
+    "case": "a copy re-signed at the signed nonce with another era: settled, presented no",
+    "after": "95",
+    "finalized": "100",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "raws": [
+     "0x0c040000",
+     "0x0c040001",
+     "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e0011111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111b502000000002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+    ],
+    "change": {
+     "hash": "0xfdcb88b57522db78cfc2fc5207f609688c5d8e212ef1ba7f8da92de5440f9248",
+     "events": [
+      {
+       "pallet": "assets",
+       "method": "Transferred",
+       "data": [
+        "1337",
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+        "10000"
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "Remarked",
+       "data": [
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "finalized",
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+     "foreign": [],
+     "state": "settled",
+     "moved": [
+      {
+       "asset": "assets:1337",
+       "amount": "10000",
+       "to": "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d",
+       "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+       "place": 0
+      }
+     ],
+     "presented": "no"
+    }
+   },
+   {
+    "case": "batch_all of the two calls in the other order, the remark first: settled, the transfer's event at its own place",
+    "after": "95",
+    "finalized": "100",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "raws": [
+     "0x0c040000",
+     "0x0c040001",
+     "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a50200000000280208000735016c63703a7368613235363a3078626137383136626638663031636665613431343134306465356461653232323362303033363161333936313737613963623431306666363166323030313561643209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c"
+    ],
+    "change": {
+     "hash": "0x335947bf7070396c33aa5ad17acba422ff4c4b8b9f15e7056ef763cde5d26912",
+     "events": [
+      {
+       "pallet": "system",
+       "method": "Remarked",
+       "data": [
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
+       ]
+      },
+      {
+       "pallet": "assets",
+       "method": "Transferred",
+       "data": [
+        "1337",
+        "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
+        "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
+        "10000"
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "1",
+          "proofSize": "1"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "finalized",
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+     "foreign": [],
+     "state": "settled",
+     "moved": [
+      {
+       "asset": "assets:1337",
+       "amount": "10000",
+       "to": "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d",
+       "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+       "place": 1
+      }
+     ],
+     "presented": "no"
+    }
+   },
+   {
+    "case": "a block whose first items are bare, a v4 and a v5 item each over POLKADOT_BOUNDS.extrinsic: the search passes them and settles on the signer's extrinsic",
+    "after": "95",
+    "finalized": "100",
+    "head": "101",
+    "nonceFinal": "1",
+    "nonceHead": "1",
+    "valid": "invalid",
+    "raws": [
+     "0x2d4e0400000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+     "0x2d4e0500000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+     "0x91038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502000000002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164"
+    ],
+    "expect": {
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "finalized",
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+     "foreign": [],
+     "state": "settled",
+     "moved": [
+      {
+       "asset": "assets:1337",
+       "amount": "10000",
+       "to": "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d",
+       "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+       "place": 0
+      }
+     ],
+     "presented": "yes"
     }
    }
   ],
   "recover": {
    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
   },
-  "locate": [
-   {
-    "from": "98",
-    "to": "101",
-    "expect": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2"
-   },
-   {
-    "from": "0",
-    "to": "256",
-    "expect": "polkadot/range"
-   },
-   {
-    "case": "the block at the matched height changes between the two reads: its record at the matched index has another hash",
-    "from": "98",
-    "to": "101",
-    "canonical": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-    "canonicalExtrinsicHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
-    "expect": null,
-    "source": "locate returns a timepoint only for the recorded extrinsic hash; Sidecar reads a block by height, so two reads of one height can answer from two blocks"
-   }
-  ],
   "recoverRefusals": [
    {
     "case": "the raw extrinsic at the timepoint carries an upper-case remark",
@@ -410,7 +1346,7 @@
     "canonical": "0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
     "canonicalExtrinsicHash": "0xcccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
     "expect": "polkadot/not-located",
-    "source": "Polkadot SDK: once a block is finalized it can never be reverted, so a block at a finalized height other than the canonical one is not on the chain, and the timepoint names no extrinsic there; polkadotLocate finds the extrinsic by its hash; the status row of this fixture is pending not-located"
+    "source": "Polkadot SDK: once a block is finalized it can never be reverted, so a block at a finalized height other than the canonical one is not on the chain, and the timepoint names no extrinsic there; status finds the signer's extrinsic by its account nonce, never by the timepoint, which is a hint"
    },
    {
     "case": "the canonical block at 100 has nothing at index 2",
@@ -469,8 +1405,8 @@
       }
      ]
     },
-    "expect": "polkadot/no-transfer",
-    "source": "the plant's record: an event of another asset is not the transfer of asset 1337 that the call names"
+    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "source": "the plant's record: an event of another asset is not the transfer of asset 1337 that the call names Since the pairing's success is the extrinsic's dispatch with Remarked for the remark, whatever it moved (the profile's rule 8, Succeeded), recover returns H whatever the extrinsic transferred."
    },
    {
     "case": "Transferred of asset 1984 at the named position, finalized 99: the block is above the finalized height",
@@ -511,8 +1447,8 @@
       }
      ]
     },
-    "expect": "polkadot/not-final",
-    "source": "Sidecar: /blocks/head/header answers the most recently finalized block; a block above it can be replaced (GRANDPA finalizes blocks; until then a fork can replace one), so its record gives no verdict yet, as the status rows with finalized 99 read it (at head)"
+    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "source": "Sidecar: /blocks/head/header answers the most recently finalized block; a block above it can be replaced (GRANDPA finalizes blocks; until then a fork can replace one), so its record gives no verdict yet, as the status rows with finalized 99 read it (at head) Since the pairing's success is the extrinsic's dispatch with Remarked for the remark, whatever it moved (the profile's rule 8, Succeeded), recover returns H whatever the extrinsic transferred."
    },
    {
     "case": "success false: the extrinsic did not dispatch",
@@ -568,8 +1504,8 @@
       }
      ]
     },
-    "expect": "polkadot/no-transfer",
-    "source": "pallet_utility's batch (call_index 0) of frame_system's remark_with_event (7) and remark (0), whose data is V2's call, around V3's signed preamble, SCALE by hand; frame_system's remark emits no event and moves nothing, so the record has Remarked and no Transferred; the hash is b2sum -l 256"
+    "expect": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
+    "source": "pallet_utility's batch (call_index 0) of frame_system's remark_with_event (7) and remark (0), whose data is V2's call, around V3's signed preamble, SCALE by hand; frame_system's remark emits no event and moves nothing, so the record has Remarked and no Transferred; the hash is b2sum -l 256 Since the pairing's success is the extrinsic's dispatch with Remarked for the remark, whatever it moved (the profile's rule 8, Succeeded), recover returns H whatever the extrinsic transferred."
    },
    {
     "case": "the raw extrinsic at the timepoint is a bare system.remark_with_event of the remark, with no transfer",
@@ -654,25 +1590,17 @@
   ]
  },
  "plant": {
-  "case": "Transferred of asset 1984 at the named position: never settled",
+  "case": "the record at block 100 holds no Remarked event: never settled",
   "change": {
    "events": [
     {
      "pallet": "assets",
      "method": "Transferred",
      "data": [
-      "1984",
+      "1337",
       "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
       "15oF4uVJwmo4TdGW7VfQxNLavjCXviqxT9S1MgbjMNHr6Sp5",
       "10000"
-     ]
-    },
-    {
-     "pallet": "system",
-     "method": "Remarked",
-     "data": [
-      "16SYiSu5tWgdV4sWiaxir7GYEiFfTc9GYnRd34PDGCUMgkmP",
-      "0xb8a688f3c46616928a460fb8e39ad581d5686ffdde5e1710d0614ae4a34480c1"
      ]
     },
     {
@@ -691,10 +1619,29 @@
     }
    ]
   },
+  "after": "95",
+  "finalized": "100",
+  "head": "101",
+  "nonceFinal": "1",
+  "nonceHead": "1",
+  "valid": "invalid",
   "expect": {
-   "state": "pending",
-   "reason": "search-incomplete",
-   "foreign": []
+   "state": "failed",
+   "reason": "transaction-failed",
+   "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+   "position": "100",
+   "finality": "finalized",
+   "foreign": [],
+   "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+   "moved": [
+    {
+     "asset": "assets:1337",
+     "amount": "10000",
+     "to": "0xd43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d",
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "place": 0
+    }
+   ]
   }
  },
  "options": [
@@ -924,6 +1871,86 @@
      }
     },
     "expect": "polkadot/option-malformed"
+   }
+  ]
+ },
+ "eraNonce": {
+  "about": "The era and the account nonce that follow the signature, the first two explicit bytes of the extensions (CheckMortality, then CheckNonce), each row's expected value as @polkadot/types 17.0.1 decodes it: its ExtrinsicSignatureV4 read from the byte after the version byte, under a TypeRegistry whose signed extensions are Polkadot Asset Hub's, in the runtime's order (polkadot-fellows/runtimes at 30696143, system-parachains/asset-hubs/asset-hub-polkadot/src/lib.rs:1835-1851, the TxExtensionV0 a signed v4 extrinsic carries, its identifiers listed at :3136-3148), AuthorizeCall, EthSetOrigin and StorageWeightReclaim given no explicit bytes (each encodes none there: SetOrigin's one field is codec(skip), polkadot-sdk substrate/frame/revive/src/evm/tx_extension.rs:48-53 at 23b84ba4). That decoding gives the signer, the era, the nonce and the call that follows the extensions, `call`, which it must end exactly at. A mortal era's two bytes are as polkadot-sdk substrate/primitives/runtime/src/generic/era.rs:118-135 at 23b84ba4 decodes them: period 2 << (e mod 16), phase (e >> 4) times max(period >> 12, 1); one zero byte is immortal. V3 was accepted by the chain's TaggedTransactionQueue_validate_transaction on Polkadot Asset Hub, so its extensions decode under the runtime; V1 is a real extrinsic read live, whose call is not the profile's. The other rows are constructed: V3's bytes (or V1's signed preamble and extensions) with the explicit extension bytes written by hand in SCALE in Python 3.12.3, V2's call after them and the length prefix recomputed; the signature does not cover them, which reference does not verify. reference reads each row whose call is V2's to the same signer, era and nonce.",
+  "rows": [
+   {
+    "case": "V3: era bytes a502, nonce 0",
+    "extrinsic": "V3",
+    "call": "0x2802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+    "expect": {
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+     "era": {
+      "period": 64,
+      "phase": 42
+     },
+     "nonce": "0"
+    }
+   },
+   {
+    "case": "V1: era bytes 5500, nonce 0, its asset fee location after them",
+    "extrinsic": "V1",
+    "call": "0x3208e514008167e55fee5bd1cab9465961646ea62dd3793bfec70c1983ba0734d7260bc29d07820260fc02",
+    "expect": {
+     "signer": "0x74d7ec84c9249fb32e1e4e86f3747aca65d3c4e519072356108956391f4419ca",
+     "era": {
+      "period": 64,
+      "phase": 5
+     },
+     "nonce": "0"
+    }
+   },
+   {
+    "case": "V1's signed preamble and extensions with V2's call (constructed)",
+    "extrinsic": "0xad03840074d7ec84c9249fb32e1e4e86f3747aca65d3c4e519072356108956391f4419ca00dd440952b3bd22b9546bc9ae7c5d434dcf6969bbf867622e87cb50fbc15dd3ef6a4dba25ee8dc410c2d8470916fa484da9eadbbd5c0b6afc3ae5618420afe70055000000010002043205e514002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+    "call": "0x2802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+    "expect": {
+     "signer": "0x74d7ec84c9249fb32e1e4e86f3747aca65d3c4e519072356108956391f4419ca",
+     "era": {
+      "period": 64,
+      "phase": 5
+     },
+     "nonce": "0"
+    }
+   },
+   {
+    "case": "V3 with nonce 1000 and tip 7 (constructed): the nonce is read before the tip",
+    "extrinsic": "0x95038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd400a502a10f1c00002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+    "call": "0x2802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+    "expect": {
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+     "era": {
+      "period": 64,
+      "phase": 42
+     },
+     "nonce": "1000"
+    }
+   },
+   {
+    "case": "V3 with an immortal era and nonce 5 (constructed)",
+    "extrinsic": "0x8d038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd40000140000002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+    "call": "0x2802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+    "expect": {
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+     "era": "immortal",
+     "nonce": "5"
+    }
+   },
+   {
+    "case": "V3 with era bytes 0f10, period 65536 quantized by 16, and nonce 70000 (constructed)",
+    "extrinsic": "0x9d038400f0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e00f89553773fab874dbdeb508f55b2e87ec93fc489a4ab8b65bf47898ca18824669391a63ca8dbf3de605b18c531ed224c0fdbaebbaa0a7ecd7ece6acf9c3bd4000f10c24504000000002802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+    "call": "0x2802083209e51400d43593c715fdd31c61141abd04a99fd6822c8558854ccde39a5684e7a56da27d419c000735016c63703a7368613235363a307862613738313662663866303163666561343134313430646535646165323232336230303336316133393631373761396362343130666636316632303031356164",
+    "expect": {
+     "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e",
+     "era": {
+      "period": 65536,
+      "phase": 4096
+     },
+     "nonce": "70000"
+    }
    }
   ]
  }

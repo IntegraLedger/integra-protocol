@@ -425,7 +425,7 @@
     {
       "unit": "Polkadot",
       "exports": {
-        "./polkadot": ["CALL", "LCP_ASSETS_REMARK", "PolkadotExtrinsic", "PolkadotNetwork", "PolkadotReader", "PolkadotRef", "PolkadotStatus", "PolkadotUnsigned", "ProfileCall", "decodeProfileCall", "encodeProfileCall", "exactPolkadotRemark", "extrinsicHash", "polkadotLocate", "polkadotRecover", "polkadotStatus", "splitSigned", "ss58Decode"]
+        "./polkadot": ["CALL", "LCP_ASSETS_REMARK", "POLKADOT_BOUNDS", "PolkadotCursor", "PolkadotEra", "PolkadotExtrinsic", "PolkadotLanded", "PolkadotNetwork", "PolkadotQuery", "PolkadotReader", "PolkadotRef", "PolkadotStatus", "PolkadotUnsigned", "ProfileCall", "decodeProfileCall", "encodeProfileCall", "exactPolkadotRemark", "extrinsicHash", "polkadotRecover", "polkadotStatus", "splitSigned", "ss58Decode"]
       },
       "use": "Any Polkadot Asset Hub buyer's client signs one extrinsic that transfers the asset and remarks H, any server checks it, and anyone reads it back.",
       "fixedBy": "x402-exact-polkadot-lcp-assets-remark.md."
@@ -457,9 +457,9 @@
     {
       "unit": "Tron",
       "exports": {
-        "./tron": ["LCP_TRC20_MEMO", "TRANSFER_SELECTOR", "TRANSFER_TOPIC", "TRIGGER_SMART_CONTRACT", "TRIGGER_URL", "TronInfo", "TronNetwork", "TronRaw", "TronReader", "TronRef", "TronStatus", "TronUnsigned", "decodeTronTx", "encodeTronRaw", "exactTronMemo", "tronAddress", "tronCarrier", "tronRecover", "tronStatus"]
+        "./tron": ["LCP_TRC20_MEMO", "TRANSFER_SELECTOR", "TRANSFER_TOPIC", "TRIGGER_SMART_CONTRACT", "TRIGGER_URL", "TRON_BOUNDS", "TronBlock", "TronCursor", "TronInfo", "TronLevel", "TronNetwork", "TronNow", "TronQuery", "TronRaw", "TronReader", "TronRef", "TronStatus", "TronUnsigned", "decodeTronTx", "encodeTronRaw", "exactTronMemo", "tronAddress", "tronCarrier", "tronRecover", "tronStatus"]
       },
-      "use": "Any Tron buyer's client signs a TRC-20 transfer whose memo is H, any server checks it, and anyone reads it back by its transaction id.",
+      "use": "Any Tron buyer's client signs a TRC-20 transfer whose memo is H, any server checks it, and anyone reads it back by its transaction id and searches a node's blocks for H.",
       "fixedBy": "x402-exact-tron-lcp-trc20-memo.md."
     },
     {

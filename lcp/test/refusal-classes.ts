@@ -149,8 +149,8 @@ export const NOT_READS_TO_REPEAT: Readonly<Record<string, readonly string[]>> = 
   ],
   polkadot: [
     "address-malformed", "address-not-id", "call-not-profile", "call-not-suffix", "extrinsic-malformed",
-    "extrinsic-too-large", "network-unsupported", "no-remark", "no-transfer", "not-located", "not-signed-v4",
-    "option-malformed", "range", "remark-not-lcp", "signature-malformed", "wrong-reader",
+    "extrinsic-too-large", "network-unsupported", "no-remark", "not-located", "not-signed-v4",
+    "option-malformed", "remark-not-lcp", "signature-malformed", "wrong-reader",
   ],
   stacks: ["chain-mismatch", "no-memo", "not-success", "wrong-reader"],
   starknet: [

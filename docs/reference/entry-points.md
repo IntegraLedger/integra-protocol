@@ -29,7 +29,7 @@ Import each entry point by its subpath. Every entry point is ESM with its own ty
 | [`@integraledger/lcp/lightning`](#integraledgerlcplightning) | BOLT11 invoices, the x402 Lightning payment's types, and the Lightning pairings on MPP. On MPP the seller's node writes the ATR hash as the invoice's description hash `h`. The payer signs nothing; it pays the invoice. |
 | [`@integraledger/lcp/mpp`](#integraledgerlcpmpp) | The `mpp` entry point: MPP's challenge pieces and its pairings. The charge pairings here are EVM `authorization` (the signed nonce is keccak256 of the JSON array [id, realm]), EVM `permit2` (the signed witness carries that value), and EVM `transaction` and `hash` (nothing signed carries H). The card, Stripe, Solana, XRP Ledger, NEAR Intents and `usdc` charges, and the session and subscription pairings other than Lightning's, are re-exported from their modules. `FETCHED` is the key under which a pairing's `fetchPresented` writes the seller's read onto a credential. |
 | [`@integraledger/lcp/near`](#integraledgerlcpnear) | NEAR: the pairing `x402/exact/near`. The payer signs a NEP-366 delegate action for one NEP-141 `ft_transfer` whose `memo` argument is the ATR hash's LCP string; a facilitator's relayer submits it. The read finds the payer's act by the payer's access key, through a bounded reader, and searches every access key of the payer's account for H. |
-| [`@integraledger/lcp/polkadot`](#integraledgerlcppolkadot) | Polkadot Asset Hub: the profile pairing `x402/exact/polkadot/lcp-assets-remark`, in which the payer signs one extrinsic whose call is `utility.batch_all([assets.transfer_keep_alive, system.remark_with_event])` with the ATR hash's LCP string as the remark; the settlement is read by block and index through Sidecar. SCALE is encoded and decoded here for these shapes only. |
+| [`@integraledger/lcp/polkadot`](#integraledgerlcppolkadot) | Polkadot Asset Hub: the profile pairing `x402/exact/polkadot/lcp-assets-remark`, in which the payer signs one extrinsic whose call is `utility.batch_all([assets.transfer_keep_alive, system.remark_with_event])` with the ATR hash's LCP string as the remark; the settlement is read by the signer's account nonce through polkadot-rest-api. SCALE is encoded and decoded here for these shapes only. |
 | [`@integraledger/lcp/stacks`](#integraledgerlcpstacks) | Stacks rail pieces: the transaction id, the reader a read goes through, the read of a payment by its origin and the nonce the origin signed with the search for H over the origin's nonces, and the zero-party recovery of the ATR hash from a mined transaction. The profile `mpp/charge/usdc/stacks` states the read. |
 | [`@integraledger/lcp/starknet`](#integraledgerlcpstarknet) | Starknet: the pairing `x402/exact/starknet`. The payer signs a SNIP-12 `OutsideExecution` (SNIP-9 v2) authorizing one token `transfer`; its `Nonce` is the ATR hash's low 250 bits. Settlement is read from the executed call's trace through a bounded reader. The chain holds 250 of the hash's bits, so a holder of the ATR confirms the hash from it but nothing recovers the hash. |
 | [`@integraledger/lcp/stellar`](#integraledgerlcpstellar) | Stellar rail pieces: the payer-signed Soroban `transfer`, its muxed `to` whose 8-byte id is the ATR hash's first 8 bytes, the digest of the signed authorization entry, and settlement read through a bounded reader. |
@@ -291,7 +291,7 @@ import { exactNear, FT_TRANSFER_GAS, ftTransferArgs, … } from "@integraledger/
 
 ## `@integraledger/lcp/polkadot`
 
-Polkadot Asset Hub: the profile pairing `x402/exact/polkadot/lcp-assets-remark`, in which the payer signs one extrinsic whose call is `utility.batch_all([assets.transfer_keep_alive, system.remark_with_event])` with the ATR hash's LCP string as the remark; the settlement is read by block and index through Sidecar. SCALE is encoded and decoded here for these shapes only.
+Polkadot Asset Hub: the profile pairing `x402/exact/polkadot/lcp-assets-remark`, in which the payer signs one extrinsic whose call is `utility.batch_all([assets.transfer_keep_alive, system.remark_with_event])` with the ATR hash's LCP string as the remark; the settlement is read by the signer's account nonce through polkadot-rest-api. SCALE is encoded and decoded here for these shapes only.
 
 ```ts no-check
 import { CALL, decodeProfileCall, encodeProfileCall, … } from "@integraledger/lcp/polkadot";
@@ -299,9 +299,9 @@ import { CALL, decodeProfileCall, encodeProfileCall, … } from "@integraledger/
 
 **Pairings:** `x402/exact/polkadot/lcp-assets-remark`.
 
-**Values (11):** `CALL`, `decodeProfileCall`, `encodeProfileCall`, `exactPolkadotRemark`, `extrinsicHash`, `LCP_ASSETS_REMARK`, `polkadotLocate`, `polkadotRecover`, `polkadotStatus`, `splitSigned`, `ss58Decode`.
+**Values (11):** `CALL`, `decodeProfileCall`, `encodeProfileCall`, `exactPolkadotRemark`, `extrinsicHash`, `LCP_ASSETS_REMARK`, `POLKADOT_BOUNDS`, `polkadotRecover`, `polkadotStatus`, `splitSigned`, `ss58Decode`.
 
-**Types (8):** `Broadcaster`, `PolkadotExtrinsic`, `PolkadotNetwork`, `PolkadotReader`, `PolkadotRef`, `PolkadotStatus`, `PolkadotUnsigned`, `ProfileCall`.
+**Types (12):** `Broadcaster`, `PolkadotCursor`, `PolkadotEra`, `PolkadotExtrinsic`, `PolkadotLanded`, `PolkadotNetwork`, `PolkadotQuery`, `PolkadotReader`, `PolkadotRef`, `PolkadotStatus`, `PolkadotUnsigned`, `ProfileCall`.
 
 ## `@integraledger/lcp/stacks`
 
@@ -389,9 +389,9 @@ import { decodeTronTx, encodeTronRaw, exactTronMemo, … } from "@integraledger/
 
 **Pairings:** `x402/exact/tron/lcp-trc20-memo`.
 
-**Values (12):** `decodeTronTx`, `encodeTronRaw`, `exactTronMemo`, `LCP_TRC20_MEMO`, `TRANSFER_SELECTOR`, `TRANSFER_TOPIC`, `TRIGGER_SMART_CONTRACT`, `TRIGGER_URL`, `tronAddress`, `tronCarrier`, `tronRecover`, `tronStatus`.
+**Values (13):** `decodeTronTx`, `encodeTronRaw`, `exactTronMemo`, `LCP_TRC20_MEMO`, `TRANSFER_SELECTOR`, `TRANSFER_TOPIC`, `TRIGGER_SMART_CONTRACT`, `TRIGGER_URL`, `TRON_BOUNDS`, `tronAddress`, `tronCarrier`, `tronRecover`, `tronStatus`.
 
-**Types (8):** `Broadcaster`, `TronInfo`, `TronNetwork`, `TronRaw`, `TronReader`, `TronRef`, `TronStatus`, `TronUnsigned`.
+**Types (13):** `Broadcaster`, `TronBlock`, `TronCursor`, `TronInfo`, `TronLevel`, `TronNetwork`, `TronNow`, `TronQuery`, `TronRaw`, `TronReader`, `TronRef`, `TronStatus`, `TronUnsigned`.
 
 ## `@integraledger/lcp/tvm`
 

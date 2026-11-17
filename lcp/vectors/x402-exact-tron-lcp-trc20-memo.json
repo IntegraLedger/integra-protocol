@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/tron/lcp-trc20-memo pairing: the tron entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. V1 is mainnet transaction 40662c9c…, read live from a Solidity node. V2's inputs are the published Anvil development key, USDT-TRC20, the payee bytes of x402's example option under 0x41, and solidified block 86542765. The signature was made with coincurve 21.0.0 (RFC 6979) and recovers to the payer; base58check with base58 2.1.1; the Transfer topic with pycryptodome 3.23.0 keccak; every SHA-256 with hashlib. Negative transactions are V2 with fields changed, written by hand from Tron.proto's field numbers. V4's status fixtures model the nodes' answers: a lookup that finds nothing answers notFound with the time of the latest block at its level on the node that answered, and null marks an answer status does not read. A node includes a transaction only while its expiration is after the head block's time (java-tron Manager.validateCommon), so a lookup names absence through the solid head read first only when its node has reached that head's time. V4's recover fixtures model the transaction read's answers: a transaction id is the SHA-256 of its raw data, so raw data whose SHA-256 is another is not the transaction the id names, an answer recover refuses tron/unreadable as it refuses a failed read. Byte strings are lowercase hex; int64 values are decimal strings. V4's status rows and the plant are read with the act payment at the finality the row gives, solidified where it gives none, and answer as the profile read-status gives them: since the read holds no search for H, a transaction whose result is not SUCCESS, one with no Transfer log from the asset, an expired one and one not found answer pending search-incomplete, not failed or not-found (rules 23, 24 and 26).",
+ "about": "Vectors for the x402/exact/tron/lcp-trc20-memo pairing: the tron entry point of @integraledger/lcp. H is SHA-256(\"abc\") from FIPS 180-2. V1 is mainnet transaction 40662c9c…, read live from a Solidity node. V2's inputs are the published Anvil development key, USDT-TRC20, the payee bytes of x402's example option under 0x41, and solidified block 86542765. The signature was made with coincurve 21.0.0 (RFC 6979) and recovers to the payer; base58check with base58 2.1.1; the Transfer topic with pycryptodome 3.23.0 keccak; every SHA-256 with hashlib. Negative transactions are V2 with fields changed, written by hand from Tron.proto's field numbers. V4's status fixtures model the nodes' answers: a lookup that finds nothing answers notFound with the time of the latest block at its level on the node that answered, and null marks an answer status does not read. A node includes a transaction only while its expiration is after the head block's time (java-tron Manager.validateCommon), so a lookup names absence through the solid head read first only when its node has reached that head's time. V4's recover fixtures model the transaction read's answers: a transaction id is the SHA-256 of its raw data, so raw data whose SHA-256 is another is not the transaction the id names, an answer recover refuses tron/unreadable as it refuses a failed read. Byte strings are lowercase hex; int64 values are decimal strings. V4's status rows and the plant are read with the act payment at the finality the row gives, solidified where it gives none, after the position the row gives, and answer as the profile read-status gives them with the pairing's rule 8: each reference holds V2's raw data, the payment presented. Status rows read the transaction's owner, the reference's payer, against the option's payee, and record each Transfer log of the receipt (its emitter, the recipient its third topic names and the amount its data holds, the data written for these modeled answers from the amount V2 signs) as what moved, named by the id and the log's place among the receipt's logs; on the act payment the transaction is the payment only where a log's recipient is payTo, whatever contract emitted it. Block answers are constructed, in the shape java-tron at 4e8389f1 gives (framework/src/main/java/org/tron/core/services/http/GetBlockByLimitNextServlet.java:18, :45-52; Util.java:137-148, :295-298): each block is named by its number, the 8 bytes a blockID begins with, then the bytes ab, its parentHash the block before it's. A failed receipt, a receipt that names no payee's account and a lapse take the search for H, and until the run that shows a block's answer lists every transaction of its block a complete search proves no absence: they answer pending search-incomplete, with the search's position where it had a range (rule 25). V5's rows read the search over constructed blocks whose transactions are V2's raw data with fields changed by hand (its timestamp, its owner, its call's recipient), each id their SHA-256 by hashlib. zero's rows read a signed transfer(to, 0) whose receipt holds no Transfer log, as its case states.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -86,7 +86,9 @@
   "expectReference": {
    "network": "tron:728126428",
    "payee": "TCwX1UeSkVfu43HD5xNMmFqDR2Xgjdxihx",
+   "payer": "TYBNgWfhGuNzdLtjKtxXTfskAhTbMcqbaG",
    "txid": "0xbc5ef82919472351c4e4640798f5d8e87a43c93edc9d867b5f9d40b5077c73f1",
+   "raw": "0a0289ad22087d1ddbe0b0adbe8740a0b6f4b18d34524d6c63703a7368613235363a3078626137383136626638663031636665613431343134306465356461653232323362303033363161333936313737613963623431306666363166323030313561645aae01081f12a9010a31747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e54726967676572536d617274436f6e747261637412740a1541f39fd6e51aad88f6f4ce6ab8827279cfffb92266121541a614f803b6fd780986a42c78ec9c7f77e6ded13c2244a9059cbb000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c000000000000000000000000000000000000000000000000000000000000271070c0e1f0b18d34900180c2d72f",
    "asset": "0x41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
    "expiration": "1790300724000"
   },
@@ -122,7 +124,9 @@
   "ref": {
    "network": "tron:728126428",
    "payee": "TCwX1UeSkVfu43HD5xNMmFqDR2Xgjdxihx",
+   "payer": "TYBNgWfhGuNzdLtjKtxXTfskAhTbMcqbaG",
    "txid": "0xbc5ef82919472351c4e4640798f5d8e87a43c93edc9d867b5f9d40b5077c73f1",
+   "raw": "0a0289ad22087d1ddbe0b0adbe8740a0b6f4b18d34524d6c63703a7368613235363a3078626137383136626638663031636665613431343134306465356461653232323362303033363161333936313737613963623431306666363166323030313561645aae01081f12a9010a31747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e54726967676572536d617274436f6e747261637412740a1541f39fd6e51aad88f6f4ce6ab8827279cfffb92266121541a614f803b6fd780986a42c78ec9c7f77e6ded13c2244a9059cbb000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c000000000000000000000000000000000000000000000000000000000000271070c0e1f0b18d34900180c2d72f",
    "asset": "0x41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
    "expiration": "1790300724000"
   },
@@ -139,7 +143,8 @@
         "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
         "000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
         "000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
-       ]
+       ],
+       "data": "0000000000000000000000000000000000000000000000000000000000002710"
       }
      ]
     },
@@ -150,7 +155,18 @@
      "transaction": "0xbc5ef82919472351c4e4640798f5d8e87a43c93edc9d867b5f9d40b5077c73f1",
      "position": "86542790",
      "finality": "solidified",
-     "foreign": []
+     "moved": [
+      {
+       "asset": "0x41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
+       "amount": "10000",
+       "to": "0x41209693bc6afc0c5328ba36faf03c514ef312287c",
+       "transaction": "0xbc5ef82919472351c4e4640798f5d8e87a43c93edc9d867b5f9d40b5077c73f1",
+       "place": 0
+      }
+     ],
+     "signer": "TYBNgWfhGuNzdLtjKtxXTfskAhTbMcqbaG",
+     "foreign": [],
+     "presented": "yes"
     }
    },
    {
@@ -170,7 +186,8 @@
         "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
         "000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
         "000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
-       ]
+       ],
+       "data": "0000000000000000000000000000000000000000000000000000000000002710"
       }
      ]
     },
@@ -180,7 +197,18 @@
      "transaction": "0xbc5ef82919472351c4e4640798f5d8e87a43c93edc9d867b5f9d40b5077c73f1",
      "position": "86542790",
      "finality": "head",
-     "foreign": []
+     "moved": [
+      {
+       "asset": "0x41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
+       "amount": "10000",
+       "to": "0x41209693bc6afc0c5328ba36faf03c514ef312287c",
+       "transaction": "0xbc5ef82919472351c4e4640798f5d8e87a43c93edc9d867b5f9d40b5077c73f1",
+       "place": 0
+      }
+     ],
+     "signer": "TYBNgWfhGuNzdLtjKtxXTfskAhTbMcqbaG",
+     "foreign": [],
+     "presented": "yes"
     }
    },
    {
@@ -191,7 +219,10 @@
      "logs": []
     },
     "head": null,
-    "solidHead": null,
+    "solidHead": {
+     "number": "86542801",
+     "timestamp": "1790300730000"
+    },
     "expect": {
      "state": "pending",
      "reason": "search-incomplete",
@@ -199,22 +230,33 @@
     }
    },
    {
-    "case": "SUCCESS with no Transfer log from the asset",
+    "case": "a SUCCESS receipt with no Transfer log and a signed amount that is not zero: it names no account, so on the act payment it is not the payment and is named as a foreign item, other-account; with no position given the search has no range",
     "solid": {
      "blockNumber": "86542790",
      "result": "SUCCESS",
      "logs": []
     },
     "head": null,
-    "solidHead": null,
+    "solidHead": {
+     "number": "86542801",
+     "timestamp": "1790300730000"
+    },
     "expect": {
      "state": "pending",
      "reason": "search-incomplete",
-     "foreign": []
+     "foreign": [
+      {
+       "transaction": "0xbc5ef82919472351c4e4640798f5d8e87a43c93edc9d867b5f9d40b5077c73f1",
+       "position": "86542790",
+       "signer": "TYBNgWfhGuNzdLtjKtxXTfskAhTbMcqbaG",
+       "moved": [],
+       "reason": "other-account"
+      }
+     ]
     }
    },
    {
-    "case": "nowhere, solid head at 1790300729999, both lookups naming it",
+    "case": "nowhere, solid head at 1790300729999, both lookups naming it, the block at the position given read: instrument-live",
     "solid": {
      "notFound": true,
      "timestamp": "1790300729999"
@@ -229,12 +271,13 @@
     },
     "expect": {
      "state": "pending",
-     "reason": "search-incomplete",
+     "reason": "instrument-live",
      "foreign": []
-    }
+    },
+    "after": "86542799"
    },
    {
-    "case": "nowhere, solid head at 1790300730000, both lookups naming it",
+    "case": "nowhere, solid head at 1790300730000, both lookups naming it, the block at the position given read: the lapse, its search for H read to the head with nothing found, and still search-incomplete until the run that shows a block's answer lists every transaction of its block",
     "solid": {
      "notFound": true,
      "timestamp": "1790300730000"
@@ -250,8 +293,13 @@
     "expect": {
      "state": "pending",
      "reason": "search-incomplete",
+     "search": {
+      "number": "86542801",
+      "blockId": "0x00000000052889d1abababababababababababababababababababababababab"
+     },
      "foreign": []
-    }
+    },
+    "after": "86542800"
    },
    {
     "case": "a ReaderError",
@@ -303,6 +351,112 @@
      "reason": "search-incomplete",
      "foreign": []
     }
+   },
+   {
+    "case": "nowhere at both lookups, each at the solid head, and no position given on a node not declared archival: history-gap",
+    "solid": {
+     "notFound": true,
+     "timestamp": "1790300729999"
+    },
+    "head": {
+     "notFound": true,
+     "timestamp": "1790300729999"
+    },
+    "solidHead": {
+     "number": "86542800",
+     "timestamp": "1790300729999"
+    },
+    "expect": {
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the same on a node declared archival: before the lapse, instrument-live",
+    "archival": true,
+    "solid": {
+     "notFound": true,
+     "timestamp": "1790300729999"
+    },
+    "head": {
+     "notFound": true,
+     "timestamp": "1790300729999"
+    },
+    "solidHead": {
+     "number": "86542800",
+     "timestamp": "1790300729999"
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "instrument-live",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the same past the lapse on a node declared archival: the search has no range, search-incomplete",
+    "archival": true,
+    "solid": {
+     "notFound": true,
+     "timestamp": "1790300730000"
+    },
+    "head": {
+     "notFound": true,
+     "timestamp": "1790300730000"
+    },
+    "solidHead": {
+     "number": "86542801",
+     "timestamp": "1790300730000"
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
+    }
+   },
+   {
+    "case": "nowhere at both lookups, and the block at the position given answered {} by a node whose solidified head is below it: no history shown, search-incomplete",
+    "after": "86542799",
+    "blockAt": "lags",
+    "solid": {
+     "notFound": true,
+     "timestamp": "1790300729999"
+    },
+    "head": {
+     "notFound": true,
+     "timestamp": "1790300729999"
+    },
+    "solidHead": {
+     "number": "86542800",
+     "timestamp": "1790300729999"
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the same answered {} by a node whose solidified head is at or past it: history-gap",
+    "after": "86542799",
+    "blockAt": "gap",
+    "solid": {
+     "notFound": true,
+     "timestamp": "1790300729999"
+    },
+    "head": {
+     "notFound": true,
+     "timestamp": "1790300729999"
+    },
+    "solidHead": {
+     "number": "86542800",
+     "timestamp": "1790300729999"
+    },
+    "expect": {
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
+    }
    }
   ],
   "recover": [
@@ -338,25 +492,46 @@
   ]
  },
  "plant": {
-  "case": "a solidified SUCCESS whose only Transfer-topic log is another contract's",
+  "case": "a solidified SUCCESS whose one Transfer log names another account than payTo: never the settlement",
   "solid": {
    "blockNumber": "86542790",
    "result": "SUCCESS",
    "logs": [
     {
-     "address": "cc9f9d7cbdc3a9103cd02727fe8c9752ffe7a3d7",
+     "address": "a614f803b6fd780986a42c78ec9c7f77e6ded13c",
      "topics": [
       "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
       "000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
-      "000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
-     ]
+      "0000000000000000000000001111111111111111111111111111111111111111"
+     ],
+     "data": "0000000000000000000000000000000000000000000000000000000000002710"
     }
    ]
   },
   "expect": {
    "state": "pending",
    "reason": "search-incomplete",
-   "foreign": []
+   "foreign": [
+    {
+     "transaction": "0xbc5ef82919472351c4e4640798f5d8e87a43c93edc9d867b5f9d40b5077c73f1",
+     "position": "86542790",
+     "signer": "TYBNgWfhGuNzdLtjKtxXTfskAhTbMcqbaG",
+     "moved": [
+      {
+       "asset": "0x41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
+       "amount": "10000",
+       "to": "0x411111111111111111111111111111111111111111",
+       "transaction": "0xbc5ef82919472351c4e4640798f5d8e87a43c93edc9d867b5f9d40b5077c73f1",
+       "place": 0
+      }
+     ],
+     "reason": "other-account"
+    }
+   ]
+  },
+  "solidHead": {
+   "number": "86542801",
+   "timestamp": "1790300730000"
   }
  },
  "agreedRefusals": {
@@ -856,5 +1031,564 @@
     "expect": "tron/option-malformed"
    }
   ]
+ },
+ "V5": {
+  "case": "the search for H over constructed blocks, the presented transaction absent and past its lapse unless the row gives its lookup",
+  "transactions": {
+   "resigned": "0a0289ad22087d1ddbe0b0adbe8740a0b6f4b18d34524d6c63703a7368613235363a3078626137383136626638663031636665613431343134306465356461653232323362303033363161333936313737613963623431306666363166323030313561645aae01081f12a9010a31747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e54726967676572536d617274436f6e747261637412740a1541f39fd6e51aad88f6f4ce6ab8827279cfffb92266121541a614f803b6fd780986a42c78ec9c7f77e6ded13c2244a9059cbb000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c000000000000000000000000000000000000000000000000000000000000271070c1e1f0b18d34900180c2d72f",
+   "other-account": "0a0289ad22087d1ddbe0b0adbe8740a0b6f4b18d34524d6c63703a7368613235363a3078626137383136626638663031636665613431343134306465356461653232323362303033363161333936313737613963623431306666363166323030313561645aae01081f12a9010a31747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e54726967676572536d617274436f6e747261637412740a1541f39fd6e51aad88f6f4ce6ab8827279cfffb92266121541a614f803b6fd780986a42c78ec9c7f77e6ded13c2244a9059cbb0000000000000000000000001111111111111111111111111111111111111111000000000000000000000000000000000000000000000000000000000000271070c1e1f0b18d34900180c2d72f",
+   "payee-owned": "0a0289ad22087d1ddbe0b0adbe8740a0b6f4b18d34524d6c63703a7368613235363a3078626137383136626638663031636665613431343134306465356461653232323362303033363161333936313737613963623431306666363166323030313561645aae01081f12a9010a31747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e54726967676572536d617274436f6e747261637412740a1541209693bc6afc0c5328ba36faf03c514ef312287c121541a614f803b6fd780986a42c78ec9c7f77e6ded13c2244a9059cbb000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c000000000000000000000000000000000000000000000000000000000000271070c2e1f0b18d34900180c2d72f",
+   "undecodable": "0000",
+   "resigned-upper": "0a0289ad22087d1ddbe0b0adbe8740a0b6f4b18d34524d6c63703a7368613235363a3078424137383136424638463031434645413431343134304445354441453232323342303033363141333936313737413943423431304646363146323030313541445aae01081f12a9010a31747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e54726967676572536d617274436f6e747261637412740a1541f39fd6e51aad88f6f4ce6ab8827279cfffb92266121541a614f803b6fd780986a42c78ec9c7f77e6ded13c2244a9059cbb000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c000000000000000000000000000000000000000000000000000000000000271070c1e1f0b18d34900180c2d72f"
+  },
+  "status": [
+   {
+    "case": "the lapse, the search to the head finding nothing: still search-incomplete, at the solidified head",
+    "after": "86542790",
+    "solid": {
+     "number": "86542795",
+     "timestamp": "1790300730000"
+    },
+    "head": "86542797",
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "number": "86542795",
+      "blockId": "0x00000000052889cbabababababababababababababababababababababababab"
+     },
+     "foreign": []
+    }
+   },
+   {
+    "case": "a transaction the payer signed again over H to payTo, in the range at the solidified level: settled on it, not the payment presented",
+    "after": "86542790",
+    "solid": {
+     "number": "86542795",
+     "timestamp": "1790300730000"
+    },
+    "head": "86542797",
+    "blocks": {
+     "86542793": [
+      "resigned"
+     ]
+    },
+    "receipts": {
+     "resigned": {
+      "level": "solid",
+      "blockNumber": "86542793",
+      "result": "SUCCESS",
+      "logs": [
+       {
+        "address": "a614f803b6fd780986a42c78ec9c7f77e6ded13c",
+        "topics": [
+         "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+         "000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+        ],
+        "data": "0000000000000000000000000000000000000000000000000000000000002710"
+       }
+      ]
+     }
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0x5b7d02aa19f7fceafe427faeac196d3500a96b2cb953c8780719ac43814c0167",
+     "position": "86542793",
+     "finality": "solidified",
+     "moved": [
+      {
+       "asset": "0x41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
+       "amount": "10000",
+       "to": "0x41209693bc6afc0c5328ba36faf03c514ef312287c",
+       "transaction": "0x5b7d02aa19f7fceafe427faeac196d3500a96b2cb953c8780719ac43814c0167",
+       "place": 0
+      }
+     ],
+     "signer": "TYBNgWfhGuNzdLtjKtxXTfskAhTbMcqbaG",
+     "presented": "no",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the same with H's hex digits in upper case in its memo, which bound accepts as H: settled on it, the search comparing H as bound reads it",
+    "after": "86542790",
+    "solid": {
+     "number": "86542795",
+     "timestamp": "1790300730000"
+    },
+    "head": "86542797",
+    "blocks": {
+     "86542793": [
+      "resigned-upper"
+     ]
+    },
+    "receipts": {
+     "resigned-upper": {
+      "level": "solid",
+      "blockNumber": "86542793",
+      "result": "SUCCESS",
+      "logs": [
+       {
+        "address": "a614f803b6fd780986a42c78ec9c7f77e6ded13c",
+        "topics": [
+         "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+         "000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+        ],
+        "data": "0000000000000000000000000000000000000000000000000000000000002710"
+       }
+      ]
+     }
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0x67b0633073c4abb69d9fb77495d084a2f187d337b35fa05054c35cf33b6a1f79",
+     "position": "86542793",
+     "finality": "solidified",
+     "moved": [
+      {
+       "asset": "0x41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
+       "amount": "10000",
+       "to": "0x41209693bc6afc0c5328ba36faf03c514ef312287c",
+       "transaction": "0x67b0633073c4abb69d9fb77495d084a2f187d337b35fa05054c35cf33b6a1f79",
+       "place": 0
+      }
+     ],
+     "signer": "TYBNgWfhGuNzdLtjKtxXTfskAhTbMcqbaG",
+     "presented": "no",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the same above the solidified head, read under /wallet: below-mark, naming it",
+    "after": "86542790",
+    "solid": {
+     "number": "86542795",
+     "timestamp": "1790300730000"
+    },
+    "head": "86542797",
+    "blocks": {
+     "86542797": [
+      "resigned"
+     ]
+    },
+    "receipts": {
+     "resigned": {
+      "level": "head",
+      "blockNumber": "86542797",
+      "result": "SUCCESS",
+      "logs": [
+       {
+        "address": "a614f803b6fd780986a42c78ec9c7f77e6ded13c",
+        "topics": [
+         "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+         "000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+        ],
+        "data": "0000000000000000000000000000000000000000000000000000000000002710"
+       }
+      ]
+     }
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "below-mark",
+     "transaction": "0x5b7d02aa19f7fceafe427faeac196d3500a96b2cb953c8780719ac43814c0167",
+     "position": "86542797",
+     "finality": "head",
+     "moved": [
+      {
+       "asset": "0x41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
+       "amount": "10000",
+       "to": "0x41209693bc6afc0c5328ba36faf03c514ef312287c",
+       "transaction": "0x5b7d02aa19f7fceafe427faeac196d3500a96b2cb953c8780719ac43814c0167",
+       "place": 0
+      }
+     ],
+     "signer": "TYBNgWfhGuNzdLtjKtxXTfskAhTbMcqbaG",
+     "search": {
+      "number": "86542795",
+      "blockId": "0x00000000052889cbabababababababababababababababababababababababab"
+     },
+     "foreign": []
+    }
+   },
+   {
+    "case": "a transaction of the payer's over H to another account: a foreign item, other-account, deciding nothing",
+    "after": "86542790",
+    "solid": {
+     "number": "86542795",
+     "timestamp": "1790300730000"
+    },
+    "head": "86542797",
+    "blocks": {
+     "86542793": [
+      "other-account"
+     ]
+    },
+    "receipts": {
+     "other-account": {
+      "level": "solid",
+      "blockNumber": "86542793",
+      "result": "SUCCESS",
+      "logs": [
+       {
+        "address": "a614f803b6fd780986a42c78ec9c7f77e6ded13c",
+        "topics": [
+         "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+         "000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "0000000000000000000000001111111111111111111111111111111111111111"
+        ],
+        "data": "0000000000000000000000000000000000000000000000000000000000002710"
+       }
+      ]
+     }
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "number": "86542795",
+      "blockId": "0x00000000052889cbabababababababababababababababababababababababab"
+     },
+     "foreign": [
+      {
+       "transaction": "0x34bfe9a22fd6879336629420e051c02d2c189112ece62ab9fc6444e051163c1f",
+       "position": "86542793",
+       "signer": "TYBNgWfhGuNzdLtjKtxXTfskAhTbMcqbaG",
+       "moved": [
+        {
+         "asset": "0x41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
+         "amount": "10000",
+         "to": "0x411111111111111111111111111111111111111111",
+         "transaction": "0x34bfe9a22fd6879336629420e051c02d2c189112ece62ab9fc6444e051163c1f",
+         "place": 0
+        }
+       ],
+       "reason": "other-account"
+      }
+     ]
+    }
+   },
+   {
+    "case": "a transaction over H the payee owns: a foreign item, payee-signed",
+    "after": "86542790",
+    "solid": {
+     "number": "86542795",
+     "timestamp": "1790300730000"
+    },
+    "head": "86542797",
+    "blocks": {
+     "86542793": [
+      "payee-owned"
+     ]
+    },
+    "receipts": {
+     "payee-owned": {
+      "level": "solid",
+      "blockNumber": "86542793",
+      "result": "SUCCESS",
+      "logs": [
+       {
+        "address": "a614f803b6fd780986a42c78ec9c7f77e6ded13c",
+        "topics": [
+         "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+         "000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+        ],
+        "data": "0000000000000000000000000000000000000000000000000000000000002710"
+       }
+      ]
+     }
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "number": "86542795",
+      "blockId": "0x00000000052889cbabababababababababababababababababababababababab"
+     },
+     "foreign": [
+      {
+       "transaction": "0x9f9506d1aa40d619bbde052e06da319af44c5efb8bba7c839d97c957d396ebc0",
+       "position": "86542793",
+       "signer": "TCwX1UeSkVfu43HD5xNMmFqDR2Xgjdxihx",
+       "moved": [
+        {
+         "asset": "0x41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
+         "amount": "10000",
+         "to": "0x41209693bc6afc0c5328ba36faf03c514ef312287c",
+         "transaction": "0x9f9506d1aa40d619bbde052e06da319af44c5efb8bba7c839d97c957d396ebc0",
+         "place": 0
+        }
+       ],
+       "reason": "payee-signed"
+      }
+     ]
+    }
+   },
+   {
+    "case": "a block whose parentHash is not the blockID before it: search-incomplete, starting again at the position given",
+    "after": "86542790",
+    "solid": {
+     "number": "86542795",
+     "timestamp": "1790300730000"
+    },
+    "head": "86542797",
+    "linkBreak": "86542793",
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a block missing from the range's answer, the node's own solidified head below it: search-incomplete at the last block linked",
+    "after": "86542790",
+    "solid": {
+     "number": "86542795",
+     "timestamp": "1790300730000"
+    },
+    "head": "86542797",
+    "missing": "86542793",
+    "nodeHead": "86542792",
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "number": "86542792",
+      "blockId": "0x00000000052889c8abababababababababababababababababababababababab"
+     },
+     "foreign": []
+    }
+   },
+   {
+    "case": "a block missing from the range's answer and answered {} alone by a node at or past it: history-gap",
+    "after": "86542790",
+    "solid": {
+     "number": "86542795",
+     "timestamp": "1790300730000"
+    },
+    "head": "86542797",
+    "missing": "86542793",
+    "nodeHead": "86542795",
+    "expect": {
+     "state": "unreadable",
+     "reason": "history-gap",
+     "foreign": []
+    }
+   },
+   {
+    "case": "one block over the reader's byte bound: too-large",
+    "after": "86542790",
+    "solid": {
+     "number": "86542795",
+     "timestamp": "1790300730000"
+    },
+    "head": "86542797",
+    "tooLarge": "86542793",
+    "expect": {
+     "state": "unreadable",
+     "reason": "too-large",
+     "foreign": []
+    }
+   },
+   {
+    "case": "a transaction that is no protobuf message: an item the search could not decode, named by its id, the search held before its block",
+    "after": "86542790",
+    "solid": {
+     "number": "86542795",
+     "timestamp": "1790300730000"
+    },
+    "head": "86542797",
+    "blocks": {
+     "86542793": [
+      "undecodable"
+     ]
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "number": "86542792",
+      "blockId": "0x00000000052889c8abababababababababababababababababababababababab"
+     },
+     "undecoded": [
+      "0x96a296d224f285c67bee93c30f8a309157f0daa35dc5b87e410b78630a09cfc7"
+     ],
+     "foreign": []
+    }
+   },
+   {
+    "case": "the presented transaction included with a failed result at the solidified level: its search finds nothing, search-incomplete",
+    "after": "86542790",
+    "solid": {
+     "number": "86542795",
+     "timestamp": "1790300730000"
+    },
+    "head": "86542797",
+    "lookup": {
+     "level": "solid",
+     "blockNumber": "86542791",
+     "result": "REVERT",
+     "logs": []
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "number": "86542795",
+      "blockId": "0x00000000052889cbabababababababababababababababababababababababab"
+     },
+     "foreign": []
+    }
+   },
+   {
+    "case": "a range longer than the blocks one read takes: search-incomplete at the last block it read",
+    "after": "86542790",
+    "solid": {
+     "number": "86543100",
+     "timestamp": "1790300730000"
+    },
+    "head": "86543100",
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "number": "86542990",
+      "blockId": "0x0000000005288a8eabababababababababababababababababababababababab"
+     },
+     "foreign": []
+    }
+   },
+   {
+    "case": "the search position an earlier answer returned is where the next read starts: an act before it is not read again",
+    "after": "86542790",
+    "solid": {
+     "number": "86542795",
+     "timestamp": "1790300730000"
+    },
+    "head": "86542797",
+    "search": {
+     "number": "86542793",
+     "blockId": "0x00000000052889c9abababababababababababababababababababababababab"
+    },
+    "blocks": {
+     "86542793": [
+      "resigned"
+     ]
+    },
+    "receipts": {
+     "resigned": {
+      "level": "solid",
+      "blockNumber": "86542793",
+      "result": "SUCCESS",
+      "logs": [
+       {
+        "address": "a614f803b6fd780986a42c78ec9c7f77e6ded13c",
+        "topics": [
+         "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+         "000000000000000000000000f39fd6e51aad88f6f4ce6ab8827279cfffb92266",
+         "000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c"
+        ],
+        "data": "0000000000000000000000000000000000000000000000000000000000002710"
+       }
+      ]
+     }
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "search": {
+      "number": "86542795",
+      "blockId": "0x00000000052889cbabababababababababababababababababababababababab"
+     },
+     "foreign": []
+    }
+   }
+  ]
+ },
+ "zero": {
+  "case": "A transaction of the form whose signed call is transfer(to, 0) and whose receipt, SUCCESS, holds no Transfer log, as a token that logs nothing for zero answers: V2's raw data with the call's amount word zeroed (zero) or its recipient the account 0x41 and twenty 0x11 bytes and its amount zeroed (other), by hand, each id its SHA-256 by hashlib. Each row's reference is V4's with the row's raw data and id. What moved is that call's transfer of zero to its to, named by the id and the place call; on the act payment it is the payment where that to is payTo (the profile's rule 8). The other account's is read at the solidified level with no position given, so its search for H has no range: pending search-incomplete, the transaction named a foreign item, other-account.",
+  "rows": [
+   {
+    "case": "transfer(payTo, 0) with no Transfer log: settled, a transfer of zero to payTo recorded",
+    "raw": "zero",
+    "solid": {
+     "blockNumber": "86542790",
+     "result": "SUCCESS",
+     "logs": []
+    },
+    "head": null,
+    "solidHead": {
+     "number": "86542795",
+     "timestamp": "1790300730000"
+    },
+    "expect": {
+     "state": "settled",
+     "transaction": "0x4336ce73c18b5d7c053064c87431eae9430dbab7827213772b5f29aa4492ae13",
+     "position": "86542790",
+     "finality": "solidified",
+     "moved": [
+      {
+       "asset": "0x41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
+       "amount": "0",
+       "to": "0x41209693bc6afc0c5328ba36faf03c514ef312287c",
+       "transaction": "0x4336ce73c18b5d7c053064c87431eae9430dbab7827213772b5f29aa4492ae13",
+       "place": "call"
+      }
+     ],
+     "signer": "TYBNgWfhGuNzdLtjKtxXTfskAhTbMcqbaG",
+     "foreign": [],
+     "presented": "yes"
+    }
+   },
+   {
+    "case": "transfer(another account, 0) with no Transfer log: it names another account than payTo, so it is not the payment and is named a foreign item, other-account; with no range to search, search-incomplete",
+    "raw": "other",
+    "solid": {
+     "blockNumber": "86542790",
+     "result": "SUCCESS",
+     "logs": []
+    },
+    "head": null,
+    "solidHead": {
+     "number": "86542795",
+     "timestamp": "1790300730000"
+    },
+    "expect": {
+     "state": "pending",
+     "reason": "search-incomplete",
+     "foreign": [
+      {
+       "transaction": "0xa9a23cb82ce9a82e539dbcdf357c4299c5dd3aef0e12cfa9fc7a2d75151e8d87",
+       "position": "86542790",
+       "signer": "TYBNgWfhGuNzdLtjKtxXTfskAhTbMcqbaG",
+       "moved": [
+        {
+         "asset": "0x41a614f803b6fd780986a42c78ec9c7f77e6ded13c",
+         "amount": "0",
+         "to": "0x411111111111111111111111111111111111111111",
+         "transaction": "0xa9a23cb82ce9a82e539dbcdf357c4299c5dd3aef0e12cfa9fc7a2d75151e8d87",
+         "place": "call"
+        }
+       ],
+       "reason": "other-account"
+      }
+     ]
+    }
+   }
+  ],
+  "transactions": {
+   "zero": {
+    "txid": "0x4336ce73c18b5d7c053064c87431eae9430dbab7827213772b5f29aa4492ae13",
+    "raw": "0a0289ad22087d1ddbe0b0adbe8740a0b6f4b18d34524d6c63703a7368613235363a3078626137383136626638663031636665613431343134306465356461653232323362303033363161333936313737613963623431306666363166323030313561645aae01081f12a9010a31747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e54726967676572536d617274436f6e747261637412740a1541f39fd6e51aad88f6f4ce6ab8827279cfffb92266121541a614f803b6fd780986a42c78ec9c7f77e6ded13c2244a9059cbb000000000000000000000000209693bc6afc0c5328ba36faf03c514ef312287c000000000000000000000000000000000000000000000000000000000000000070c0e1f0b18d34900180c2d72f"
+   },
+   "other": {
+    "txid": "0xa9a23cb82ce9a82e539dbcdf357c4299c5dd3aef0e12cfa9fc7a2d75151e8d87",
+    "raw": "0a0289ad22087d1ddbe0b0adbe8740a0b6f4b18d34524d6c63703a7368613235363a3078626137383136626638663031636665613431343134306465356461653232323362303033363161333936313737613963623431306666363166323030313561645aae01081f12a9010a31747970652e676f6f676c65617069732e636f6d2f70726f746f636f6c2e54726967676572536d617274436f6e747261637412740a1541f39fd6e51aad88f6f4ce6ab8827279cfffb92266121541a614f803b6fd780986a42c78ec9c7f77e6ded13c2244a9059cbb0000000000000000000000001111111111111111111111111111111111111111000000000000000000000000000000000000000000000000000000000000000070c0e1f0b18d34900180c2d72f"
+   }
+  }
  }
 }

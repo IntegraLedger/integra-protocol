@@ -4,7 +4,8 @@
 //   hold to the challenge's network (`onNetwork`, src/mpp-usdc.ts);
 // - clause 1 of the two transfer methods this package defines, `x402/exact/polkadot/lcp-assets-remark` and
 //   `x402/exact/tron/lcp-trc20-memo`: the option's `amount` and `maxTimeoutSeconds`, as each pairing's option filter
-//   holds them (`isAmount` and `isTimeoutSeconds`, src/internal/x402.ts, with the pairing's own upper bound).
+//   holds them (`isAmount` and `isTimeoutSeconds`, src/internal/x402.ts, with the pairing's own upper bound; on Tron
+//   `"0"` only for a contract on `TRON_ZERO_SHOWN`, src/internal/data/tron.ts).
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
@@ -25,7 +26,7 @@ const CLAUSES: readonly [file: string, n: number, text: string][] = [
   [
     "x402-exact-tron-lcp-trc20-memo.md",
     1,
-    "1. The resource server's option gives `amount` in the token's atomic units as the canonical decimal of a positive integer (digits only, the first not `0`), `asset` (the TRC-20 contract) and `payTo` in base58check, and `maxTimeoutSeconds` as an integer from 1 to 86,340. `PaymentRequired` carries `extensions.legalContext.info` = `{\"type\":\"sha256\",\"value\":H,\"legalContextUrl\":L}`, where H is the SHA-256 of the ATR's exact bytes as `0x` lowercase hex and L is an `https` URL that serves them.",
+    "1. The resource server's option gives `amount` in the token's atomic units as the canonical decimal of a positive integer (digits only, the first not `0`), or `\"0\"` for a contract on the list of contracts a run has shown to succeed and log `Transfer` on a `transfer(to, 0)`, by network and address, which is empty until a run shows one, `asset` (the TRC-20 contract) and `payTo` in base58check, and `maxTimeoutSeconds` as an integer from 1 to 86,340. `PaymentRequired` carries `extensions.legalContext.info` = `{\"type\":\"sha256\",\"value\":H,\"legalContextUrl\":L}`, where H is the SHA-256 of the ATR's exact bytes as `0x` lowercase hex and L is an `https` URL that serves them.",
   ],
 ];
 

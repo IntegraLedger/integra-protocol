@@ -1,7 +1,7 @@
 /**
  * Polkadot Asset Hub: the profile pairing `x402/exact/polkadot/lcp-assets-remark`, in which the payer signs one
  * extrinsic whose call is `utility.batch_all([assets.transfer_keep_alive, system.remark_with_event])` with the ATR
- * hash's LCP string as the remark; the settlement is read by block and index through Sidecar. SCALE is encoded and
+ * hash's LCP string as the remark; the settlement is read by the signer's account nonce through polkadot-rest-api. SCALE is encoded and
  * decoded here for these shapes only.
  */
 import { blake2b } from "@noble/hashes/blake2.js";
@@ -10,7 +10,7 @@ import { fromLcpString, hashEquals, toLcpString, type AtrHash, type Json } from 
 import type { Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash } from "./fields.js";
 import type { PolkadotPaymentPayload } from "./internal/polkadot.js";
-import { advertiseFor, chosen, isAmount, isTimeoutSeconds, paymentWith, presentedWith, readFor, x402Broadcaster, type X402Read, type X402Forms } from "./internal/x402.js";
+import { advertiseFor, chosen, isAmount, isTimeoutSeconds, paymentWith, presentedWith, readFor, sameJson, x402Broadcaster, type X402Read, type X402Forms } from "./internal/x402.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import {
   tie,
@@ -21,8 +21,8 @@ import {
 import { POLKADOT } from "./internal/data/polkadot.js";
 import type { Entry } from "./internal/registry.js";
 import { x402Payee } from "./internal/payee.js";
-import { decide, type Facts, type RecoverInput, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./internal/read.js";
-import { actSeen, bigintOrder, isQuery, ledgerOf, UNPARSEABLE } from "./internal/read-ledger.js";
+import { decide, type Facts, type Moved, type RecoverInput, type Seen, type StatusAnswer, type StatusQuery, type Undecoded, type UnreadableReason } from "./internal/read.js";
+import { bigintOrder, isQuery, ledgerOf, UNPARSEABLE } from "./internal/read-ledger.js";
 import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
@@ -60,7 +60,10 @@ export interface PolkadotExtrinsic {
   events: readonly { pallet: string; method: string; data: readonly Json[] }[];
 }
 
-/** Bounded, read-only calls against one network's Sidecar. Every failure rejects. */
+/**
+ * Bounded, read-only calls against one network's `polkadot-rest-api`, and its declared `json-rpc` side endpoint for the
+ * validation of a presented extrinsic. Every failure rejects.
+ */
 export interface PolkadotReader {
   readonly network: PolkadotNetwork;
   /** `GET /blocks/{block}/extrinsics/{index}`; null when the block or extrinsic does not exist. */
@@ -69,45 +72,70 @@ export interface PolkadotReader {
   rawExtrinsics(block: Hex | bigint): Promise<readonly Hex[] | null>;
   /** `GET /blocks/head/header` → number: the most recently finalized height. */
   finalizedHeight(): Promise<bigint>;
+  /** `GET /blocks/head/header?finalized=false` → number: the latest head the endpoint serves. */
+  headHeight(): Promise<bigint>;
+  /** `GET /accounts/{account}/balance-info?at=` → nonce: the account's nonce at the finalized block, or at the head. */
+  accountNonce(account: Hex, at: "finalized" | "head"): Promise<bigint>;
+  /**
+   * `TaggedTransactionQueue_validate_transaction` of the extrinsic at the best block, through the `json-rpc` endpoint:
+   * whether it answered valid, and the height of the block the call ran at, `state_call`'s `at`, pinned before the call,
+   * never a head read apart from it.
+   */
+  validate(extrinsic: Hex): Promise<{ valid: boolean; head: bigint }>;
 }
 
+/** A signed extrinsic's era: mortal, with its period and phase, or immortal. */
+export type PolkadotEra = { readonly period: number; readonly phase: number } | "immortal";
+
 /**
- * The read keys: the accepted option's network, the extrinsic's hash and the call's asset from the signed bytes, and
- * the payee, the `payTo` of the option the payment answers.
+ * The read keys of the presented extrinsic, from its signed bytes: the signer's 32-byte account, the account nonce and
+ * the era it signed, and the extrinsic itself, which the read validates and compares with what landed; with the
+ * accepted option's network and the payee, the `payTo` of the option the payment answers, the key of the two party
+ * tests and no search key.
  */
 export interface PolkadotRef {
   network: PolkadotNetwork;
   payee: string;
-  extrinsicHash: Hex;
-  assetId: number;
+  signer: Hex;
+  nonce: string;
+  era: PolkadotEra;
+  extrinsic: Hex;
 }
 
 /**
- * The answer of `polkadotStatus`, as the profile `read-status` gives it. Its marks are `head` and `finalized`, in that
- * order, and its position the block height. An answer that names a transaction names the timepoint it read,
- * `<block hash>-<index>`: the one given, or the canonical one when the given block left the chain and the canonical
- * block at that height holds the same extrinsic at that index.
+ * The search's position, which a `pending` answer returns while the search has range left and the next call takes:
+ * the next block to read, never above the finalized height's next, and the timepoints the search met at or below the
+ * finalized height, which the next call reads again.
  */
-export type PolkadotStatus = StatusAnswer<bigint, PolkadotMark>;
+export interface PolkadotCursor {
+  readonly next: bigint;
+  readonly hits: readonly string[];
+  /**
+   * The head at which the chain's validation of the presented extrinsic answered valid, which proves the era's last
+   * block; kept in the position so that the next call takes it back.
+   */
+  readonly validated?: bigint;
+}
+
+/** What `polkadotStatus` takes beside the reference and the reader: the profile `read-status`'s query. */
+export type PolkadotQuery = StatusQuery<PolkadotLanded, bigint, PolkadotMark, PolkadotCursor>;
+
+/** The reference with what the caller adds: H, and the timepoint a settler named, a hint. */
+export type PolkadotLanded = PolkadotRef & { h: AtrHash; transaction?: string };
+
+/**
+ * The answer of `polkadotStatus`, as the profile `read-status` gives it. Its marks are `head` and `finalized`, in that
+ * order, and its position the block height. A transaction is named by its timepoint, `<block hash>-<index>`. A
+ * `settled` answer states `presented`: `yes` where the landed extrinsic's signed body, its signature apart, is the
+ * presented one's, `no` where it is not. Each transfer of what moved is named by the timepoint and its place: the
+ * event's index among the extrinsic's events, or `call 0` for a transfer of zero, the first call of the profile's
+ * batch, which emits no event. A `pending` answer that holds the head at which the chain's validation of the presented
+ * extrinsic answered valid keeps it in its search position, `validated`, for the next call.
+ */
+export type PolkadotStatus = StatusAnswer<bigint, PolkadotMark, PolkadotCursor>;
 
 type PolkadotMark = "head" | "finalized";
 const MARKS: readonly PolkadotMark[] = ["head", "finalized"];
-
-/**
- * What the read of the extrinsic at its timepoint found. `not-located`: no timepoint was given, or the block it names
- * left the chain with no copy of the extrinsic at that index of the canonical block.
- */
-type PolkadotRead =
-  | { state: "settled"; finality: PolkadotMark; height: bigint; transaction: string }
-  | { state: "pending"; why: "not-located" | "not-found" }
-  | {
-      state: "failed";
-      why: "not-this-extrinsic" | "dispatch-failed" | "no-remark" | "no-transfer";
-      finality: PolkadotMark;
-      height: bigint;
-      transaction: string;
-    }
-  | { state: "unreadable"; reason: UnreadableReason };
 
 /** The call the payer's signer wraps in an extrinsic, and how that extrinsic completes the payment. */
 export interface PolkadotUnsigned {
@@ -116,11 +144,26 @@ export interface PolkadotUnsigned {
 }
 
 const ID = "x402/exact/polkadot/lcp-assets-remark" as const;
-const MAX_EXTRINSIC = 4096;
-const REMARK_LENGTH = 77;
-/** The longest profile call: both compacts in their widest form, a `u32` asset id and a `u128` amount. */
-const MAX_CALL = 141;
-const MAX_RANGE = 255n;
+
+/**
+ * The pairing's bounds, each lcp's own or the chain's, with its reason. `extrinsic`: lcp's bound on a signed extrinsic's
+ * bytes, length prefix included, which the profile's extrinsic fits many times over and which bounds what is decoded.
+ * `remark`: the 77 ASCII bytes `lcp:sha256:` and H. `call`: the longest profile call, both compacts in their widest
+ * form, a `u32` asset id and a `u128` amount. `blockHashCount`: the chain's `BlockHashCount`, the number of block hashes
+ * an extrinsic's era can name (the profile's rule 7). `searchBlocks`: lcp's resource bound, the blocks one call of
+ * `polkadotStatus` reads of its search, so that each call's reads are bounded; the next call takes the search's
+ * position. The search holds the signer's own items alone to `extrinsic`.
+ */
+export const POLKADOT_BOUNDS = Object.freeze({
+  extrinsic: 4096,
+  remark: 77,
+  call: 141,
+  blockHashCount: 4096,
+  searchBlocks: 64,
+} as const);
+const MAX_EXTRINSIC = POLKADOT_BOUNDS.extrinsic;
+const REMARK_LENGTH = POLKADOT_BOUNDS.remark;
+const MAX_CALL = POLKADOT_BOUNDS.call;
 const U32_LIMIT = 1n << 32n;
 const U128_LIMIT = 1n << 128n;
 const DECIMAL = /^(0|[1-9][0-9]*)$/;
@@ -404,7 +447,7 @@ function remarkCarrier(remark: Uint8Array): AtrHash | null {
 
 function carriedOf(
   presented: unknown,
-): { network: PolkadotNetwork; xt: Uint8Array; call: ProfileCall; h: AtrHash } | Refusal {
+): { network: PolkadotNetwork; accepted: PaymentRequirements; xt: Uint8Array; call: ProfileCall; h: AtrHash } | Refusal {
   const p = presentedWith(presented, check);
   if (isRefusal(p)) return p;
   const { extrinsic, call } = p.payload;
@@ -419,7 +462,7 @@ function carriedOf(
   if (isRefusal(decoded)) return decoded;
   const h = remarkCarrier(decoded.remark);
   if (h === null) return refusal("polkadot/remark-not-lcp");
-  return { network: p.accepted.network as PolkadotNetwork, xt, call: decoded, h };
+  return { network: p.accepted.network as PolkadotNetwork, accepted: p.accepted, xt, call: decoded, h };
 }
 
 /**
@@ -433,15 +476,57 @@ async function bound(presented: unknown): Promise<AtrHash | Refusal> {
 }
 
 /**
- * The accepted option's network, the extrinsic's hash and the call's asset from the signed bytes, and the payee, the
- * `payTo` of the option the payment answers.
+ * The read keys from the signed bytes: the signer, the account nonce and the era it signed, and the extrinsic; with the
+ * accepted option's network and the payee, the `payTo` of the option the payment answers. A presented `accepted` that
+ * is not `option` is `x402/accepted-not-option`, and an extrinsic whose era or nonce does not decode
+ * `polkadot/extrinsic-malformed`.
  */
 async function reference(presented: unknown, option: PaymentRequirements): Promise<PolkadotRef | Refusal> {
   const c = carriedOf(presented);
   if (isRefusal(c)) return c;
   const payee = x402Payee(option);
   if (isRefusal(payee)) return payee;
-  return { network: c.network, payee, extrinsicHash: extrinsicHash(c.xt), assetId: c.call.assetId };
+  if (!sameJson(c.accepted, option)) return refusal("x402/accepted-not-option");
+  const signed = signedOf(c.xt);
+  if (isRefusal(signed)) return signed;
+  return {
+    network: c.network,
+    payee,
+    signer: toHex(signed.signer),
+    nonce: signed.nonce.toString(),
+    era: signed.era,
+    extrinsic: toHex(c.xt),
+  };
+}
+
+/** A mortal era's two bytes, or the one zero byte of an immortal era, as polkadot-sdk's `Era` decodes them. */
+function eraAt(xt: Uint8Array, at: number): { era: PolkadotEra; next: number } | null {
+  const first = xt[at];
+  if (first === undefined) return null;
+  if (first === 0) return { era: "immortal", next: at + 1 };
+  const second = xt[at + 1];
+  if (second === undefined) return null;
+  const encoded = first + (second << 8);
+  const period = 2 << encoded % 16;
+  const quantize = Math.max(period >> 12, 1);
+  const phase = (encoded >> 4) * quantize;
+  return period >= 4 && phase < period ? { era: { period, phase }, next: at + 2 } : null;
+}
+
+/**
+ * A signed v4 extrinsic's signer, and the era and the account nonce that follow its signature, the first two of its
+ * extensions' explicit bytes: the era (`CheckMortality`) and the compact nonce (`CheckNonce`). An extrinsic whose era or
+ * nonce does not decode is `polkadot/extrinsic-malformed`.
+ */
+function signedOf(xt: Uint8Array): { signer: Uint8Array; era: PolkadotEra; nonce: bigint; sigStart: number; sigEnd: number } | Refusal {
+  const split = splitSigned(xt);
+  if (isRefusal(split)) return split;
+  const era = eraAt(xt, split.end);
+  const nonce = era === null ? null : compactAt(xt, era.next);
+  if (era === null || nonce === null) return refusal("polkadot/extrinsic-malformed");
+  // The length prefix, the version byte and the 33 bytes of `MultiAddress::Id` come before the signature's variant.
+  const sigStart = compactAt(xt, 0)!.next + 34;
+  return { signer: split.signer, era: era.era, nonce: nonce.value, sigStart, sigEnd: split.end };
 }
 
 // ── settlement ───────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -482,24 +567,6 @@ function isAssetId(n: unknown): n is number {
   return Number.isSafeInteger(n) && (n as number) >= 0 && BigInt(n as number) < U32_LIMIT;
 }
 
-/** A `Transferred` event of the asset: its `data[0]` is the asset id, in decimal. */
-function transferred(x: PolkadotExtrinsic, assetId: number): boolean {
-  const asset = String(assetId);
-  return hasEvent(x, "assets", "Transferred", (d) => (typeof d[0] === "string" || typeof d[0] === "number") && String(d[0]) === asset);
-}
-
-/** Why the extrinsic at the timepoint is not this payment, or undefined when it is. */
-function failureOf(
-  found: PolkadotExtrinsic,
-  ref: PolkadotRef,
-  h: AtrHash,
-): "not-this-extrinsic" | "dispatch-failed" | "no-remark" | "no-transfer" | undefined {
-  if (!hashEquals(found.hash, ref.extrinsicHash)) return "not-this-extrinsic";
-  if (!found.success) return "dispatch-failed";
-  if (!remarked(found, ENCODER.encode(toLcpString(h)))) return "no-remark";
-  return transferred(found, ref.assetId) ? undefined : "no-transfer";
-}
-
 /**
  * The record a read answers from, by the finality of the extrinsic found at `block`-`index`. While the finalized
  * height is below its block's, it is the record found, at `head`. Once the finalized chain holds that height, it is the
@@ -530,80 +597,409 @@ async function finalRecord(
   return "not-located";
 }
 
+/** An account in an event's data or a call: SS58 in any simple format, or `0x` and 32 bytes; null otherwise. */
+function accountOf(v: unknown): Uint8Array | null {
+  if (typeof v !== "string") return null;
+  if (/^0x[0-9a-fA-F]{64}$/.test(v)) return fromHex(v.toLowerCase());
+  const a = ss58Decode(v);
+  return isRefusal(a) ? null : a;
+}
+
+const ASSET_INSTANCES = ["assets", "foreignAssets", "poolAssets"] as const;
+/** The place of a transfer of zero, which emits no event: the first call of the profile's `batch_all`. */
+const ZERO_CALL_PLACE = "call 0";
+
 /**
- * Answers the read of the extrinsic at its timepoint `<block hash>-<index>` as the profile `read-status` gives it. The
- * extrinsic is the payer's act when it has the recorded hash, dispatched, and carries the `Remarked` event for this
- * hash's remark and a `Transferred` event of the recorded asset, at the mark of the read: `finalized` when the
- * finalized chain holds that block, `head` when it is above the finalized height; its position is the block's height.
- * When the finalized chain holds another block at that height, the extrinsic at the same index of the canonical block
- * is read instead if its hash is the recorded one. An extrinsic with the recorded hash that did not dispatch is the
- * payer's act included with a failed result, which took the account's nonce. An extrinsic with another hash, or with
- * no `Remarked` or `Transferred` event of the payment, carries no act of the payer's that binds H; a bare broadcast
- * hash, a block the reader does not have, and a block that left the chain with no copy of the extrinsic name no
- * included act. The read holds no search for H and does not read the account's nonce, so none of these answers
- * `failed`. A read that rejects is unreadable `transport`, an answer that is not a record or a height `unparseable`,
- * and a reader for another network than the ref's `chain-mismatch`. A ref, a reader or a query that is not one, a
- * reader that names no network, or a ref whose network is not a Polkadot network, whose `extrinsicHash` is not `0x`
- * and 64 hex digits, whose `assetId` is not an integer from 0 below 2^32, whose `h` is not a hash or whose
- * `transaction` is neither a timepoint nor a bare hash, is unreadable `unparseable`, with nothing read.
+ * What the extrinsic moved, as observed: every `balances.Transfer` and every `Transferred` of the assets pallet's
+ * instances, each with its asset, amount and recipient (`0x` and its 32 bytes), named by the extrinsic's timepoint and
+ * the event's index among its events; and, where the extrinsic ends with the profile call of zero, which emits no
+ * event, a transfer of zero to the account that call names, named by that call's place in the batch.
  */
-export async function polkadotStatus(
-  ref: PolkadotRef & { h: AtrHash; transaction: string },
-  reader: PolkadotReader,
-  query: StatusQuery<PolkadotRef & { h: AtrHash; transaction: string }, bigint, PolkadotMark>,
-): Promise<PolkadotStatus> {
+function movedOf(x: PolkadotExtrinsic, call: ProfileCall | null, transaction: string): Moved[] {
+  const moved: Moved[] = [];
+  for (const [place, e] of x.events.entries()) {
+    if (!isObject(e) || !Array.isArray(e.data)) continue;
+    const d = e.data;
+    let asset: string | undefined;
+    let to: unknown;
+    let amount: unknown;
+    if (e.pallet === "balances" && e.method === "Transfer") [asset, to, amount] = ["native", d[1], d[2]];
+    else if ((ASSET_INSTANCES as readonly string[]).includes(e.pallet) && e.method === "Transferred") {
+      const id = d[0];
+      [asset, to, amount] = [`${e.pallet}:${typeof id === "string" || typeof id === "number" ? String(id) : JSON.stringify(id)}`, d[2], d[3]];
+    }
+    const account = accountOf(to);
+    if (asset === undefined || account === null) continue;
+    if (typeof amount !== "string" && typeof amount !== "number") continue;
+    moved.push({ asset, amount: String(amount), to: toHex(account), transaction, place });
+  }
+  if (call !== null && call.amount === 0n) {
+    moved.push({ asset: `assets:${call.assetId}`, amount: "0", to: toHex(call.dest), transaction, place: ZERO_CALL_PLACE });
+  }
+  return moved;
+}
+
+/** Whether `needle` occurs in `bytes`. */
+function holds(bytes: Uint8Array, needle: Uint8Array): boolean {
+  outer: for (let i = 0; i + needle.length <= bytes.length; i++) {
+    for (let j = 0; j < needle.length; j++) if (bytes[i + j] !== needle[j]) continue outer;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * What the search reads of an item: `bare`, an unsigned or v5 bare item; `signed`, a signed v4 extrinsic with its signer
+ * where its address is a 32-byte account, its era and its nonce; `undecoded`, any other, which could be the signer's.
+ */
+type Item =
+  | { kind: "bare" }
+  | { kind: "signed"; signer: Uint8Array | null; era: PolkadotEra | null; nonce: bigint | null }
+  | { kind: "undecoded" };
+
+function itemOf(xt: Uint8Array): Item {
+  const length = compactAt(xt, 0);
+  if (length === null || length.value !== BigInt(xt.length - length.next)) return { kind: "undecoded" };
+  const version = xt[length.next];
+  if (version === 0x04 || version === 0x05) return { kind: "bare" };
+  if (version !== 0x84) return { kind: "undecoded" };
+  if (xt.length > MAX_EXTRINSIC && xt[length.next + 1] === 0x00 && xt.length >= length.next + 34) {
+    // Over the bound: only its signer is read, so that an item of the signer's is held to the bound.
+    return { kind: "signed", signer: xt.subarray(length.next + 2, length.next + 34), era: null, nonce: null };
+  }
+  const signed = signedOf(xt);
+  if (!isRefusal(signed)) return { kind: "signed", signer: signed.signer, era: signed.era, nonce: signed.nonce };
+  const address = xt[length.next + 1];
+  // An address that is not a 32-byte account (an index, raw bytes, a 20-byte address) is not the signer's `Id`.
+  return address === 0x00 || address === 0x03 ? { kind: "undecoded" } : { kind: "signed", signer: null, era: null, nonce: null };
+}
+
+/** The signed body of a signed v4 extrinsic, its signature apart, or null. */
+function bodyOf(xt: Uint8Array): Uint8Array | null {
+  const s = signedOf(xt);
+  return isRefusal(s) ? null : concat(xt.subarray(compactAt(xt, 0)!.next, s.sigStart), xt.subarray(s.sigEnd));
+}
+
+/** The last block that can include an extrinsic of `era` that the chain validated at `head`, as the settler takes it. */
+function lastBlock(era: { period: number; phase: number }, head: bigint): bigint {
+  const period = BigInt(era.period);
+  const phase = BigInt(era.phase);
+  const birth = ((head > phase ? head : phase) - phase) / period * period + phase;
+  const death = birth + period;
+  const capped = birth + BigInt(POLKADOT_BOUNDS.blockHashCount) + 1n;
+  return death - 1n < capped ? death - 1n : capped;
+}
+
+type Found = { seen: Seen<bigint, PolkadotMark>; raw: Uint8Array };
+
+/** A read that established nothing, or one that stopped where the search can resume. */
+class Stop {
+  constructor(readonly reason: UnreadableReason) {}
+}
+
+/**
+ * Answers the read of the act the query asks about as the profile `read-status` gives it, by the pairing's profile, rule
+ * 8: the payment is read by the signer's account nonce, never by the extrinsic's hash. The read takes the finalized
+ * height, the latest head, and the account's nonce at each; then reads the timepoint a settler named, the hint, and the
+ * search's earlier finds; then searches every block after the position the caller gave up to the latest head, at most
+ * `POLKADOT_BOUNDS.searchBlocks` blocks a call, decoding each item's preamble: the signer's extrinsic at the signed nonce
+ * is the instrument's, and every extrinsic whose bytes hold the remark of H is read for the search for H. An extrinsic
+ * meets the profile's success where it dispatched (`success`) with `Remarked` for the remark; on the act `payment` it
+ * names the payee's account where a transfer it made reaches `payTo`'s 32-byte account. The era's last block is proven
+ * only by the chain's validation of the presented extrinsic answering valid, at the head it names (the search
+ * position's `validated`), and
+ * the lapse is the finalized height past it with the account nonce not past the signed one. A ref, a reader or a query
+ * that is not one is unreadable `unparseable`, with nothing read; a reader for another network `chain-mismatch`; a read
+ * that rejects `transport`; a block of the range at or below the finalized height that the endpoint does not hold
+ * `history-gap`; an item of the signer's over `POLKADOT_BOUNDS.extrinsic` bytes `too-large`.
+ */
+export async function polkadotStatus(ref: PolkadotLanded, reader: PolkadotReader, query: PolkadotQuery): Promise<PolkadotStatus> {
   if (!isQuery(query, MARKS, (p) => typeof p === "bigint")) return UNPARSEABLE;
-  return decide(factsOf(await readPolkadot(ref, reader)), query, LEDGER);
+  const read = await readPolkadot(ref, reader, query).catch((e: unknown) => {
+    if (e instanceof Stop) return e;
+    throw e;
+  });
+  if (read instanceof Stop) return { state: "unreadable", reason: read.reason, foreign: [] };
+  return decide(read.facts, query, LEDGER);
 }
 
 const LEDGER = ledgerOf<bigint, PolkadotMark>(POLKADOT[ID].coverage, MARKS, bigintOrder);
+const NONCE = /^(0|[1-9][0-9]{0,19})$/;
 
-async function readPolkadot(ref: PolkadotRef & { h: AtrHash; transaction: string }, reader: PolkadotReader): Promise<PolkadotRead> {
-  const unparseable = { state: "unreadable", reason: "unparseable" } as const;
-  if (!isObject(ref) || !isObject(reader) || typeof reader.network !== "string") return unparseable;
-  if (!isNetwork(ref.network) || normalHash(ref.extrinsicHash) === null || !isAssetId(ref.assetId)) return unparseable;
-  if (typeof ref.transaction !== "string" || normalHash(ref.h) === null) return unparseable;
-  const tp = TIMEPOINT.exec(ref.transaction);
-  if (tp === null && !BARE_HASH.test(ref.transaction)) return unparseable;
-  if (reader.network !== ref.network) return { state: "unreadable", reason: "chain-mismatch" };
-  if (tp === null) return { state: "pending", why: "not-located" };
-  const block = tp[1]! as Hex;
-  const index = Number(tp[2]);
-  const nh = normalHash(ref.h)!;
+function isEra(e: unknown): e is PolkadotEra {
+  if (e === "immortal") return true;
+  if (!isObject(e) || !Number.isSafeInteger(e["period"]) || !Number.isSafeInteger(e["phase"])) return false;
+  const period = e["period"] as number;
+  return period >= 4 && period <= 65536 && (period & (period - 1)) === 0 && (e["phase"] as number) >= 0 && (e["phase"] as number) < period;
+}
 
-  const x = await readSafely(() => reader.extrinsic(block, index));
-  if ("unreadable" in x) return { state: "unreadable", reason: "transport" };
-  if (x.ok === null) return { state: "pending", why: "not-found" };
-  if (!isExtrinsic(x.ok)) return unparseable;
-  const at = await finalRecord(reader, x.ok, block, index, ref.extrinsicHash);
-  if (at === "transport" || at === "unparseable") return { state: "unreadable", reason: at };
-  if (at === "not-located") return { state: "pending", why: at };
-  const why = failureOf(at.read, ref, nh);
-  const transaction = `${at.read.at.hash}-${index}`;
-  return why === undefined
-    ? { state: "settled", finality: at.finality, height: at.read.at.height, transaction }
-    : { state: "failed", why, finality: at.finality, height: at.read.at.height, transaction };
+function isCursor(c: unknown): c is PolkadotCursor {
+  return (
+    isObject(c) &&
+    typeof c["next"] === "bigint" &&
+    c["next"] >= 0n &&
+    Array.isArray(c["hits"]) &&
+    c["hits"].length <= 16 &&
+    c["hits"].every((t: unknown) => typeof t === "string" && TIMEPOINT.test(t)) &&
+    (c["validated"] === undefined || (typeof c["validated"] === "bigint" && c["validated"] >= 0n))
+  );
+}
+
+async function call<T>(f: () => Promise<T>): Promise<T> {
+  try {
+    return await f();
+  } catch {
+    throw new Stop("transport");
+  }
+}
+
+async function readPolkadot(
+  ref: PolkadotLanded,
+  reader: PolkadotReader,
+  query: PolkadotQuery,
+): Promise<{ facts: Facts<bigint, PolkadotMark, PolkadotCursor> }> {
+  if (!isObject(ref) || !isObject(reader) || typeof reader.network !== "string") throw new Stop("unparseable");
+  const payee = typeof ref.payee === "string" ? ss58Decode(ref.payee) : refusal("polkadot/address-malformed");
+  const h = normalHash(ref.h);
+  if (!isNetwork(ref.network) || isRefusal(payee) || h === null) throw new Stop("unparseable");
+  if (typeof ref.signer !== "string" || !/^0x[0-9a-f]{64}$/.test(ref.signer) || typeof ref.nonce !== "string" || !NONCE.test(ref.nonce)) {
+    throw new Stop("unparseable");
+  }
+  if (!isEra(ref.era) || typeof ref.extrinsic !== "string" || !LOWER_HEX.test(ref.extrinsic)) throw new Stop("unparseable");
+  if (ref.transaction !== undefined && (typeof ref.transaction !== "string" || !TIMEPOINT.test(ref.transaction))) throw new Stop("unparseable");
+  if (query.search !== undefined && !isCursor(query.search)) throw new Stop("unparseable");
+  if (reader.network !== ref.network) throw new Stop("chain-mismatch");
+
+  const signer = fromHex(ref.signer);
+  const signedNonce = BigInt(ref.nonce);
+  const remark = ENCODER.encode(toLcpString(h));
+  const remarkHash = toHex(blake256(remark));
+  const big = (v: unknown): bigint => {
+    if (typeof v !== "bigint" || v < 0n) throw new Stop("unparseable");
+    return v;
+  };
+  const finalized = big(await call(() => reader.finalizedHeight()));
+  const headRead = big(await call(() => reader.headHeight()));
+  const head = headRead > finalized ? headRead : finalized;
+  const nonceFinal = big(await call(() => reader.accountNonce(ref.signer, "finalized")));
+  const nonceHead = big(await call(() => reader.accountNonce(ref.signer, "head")));
+  let validated = query.search?.validated;
+  if (validated === undefined && ref.era !== "immortal") {
+    const v = await call(() => reader.validate(ref.extrinsic));
+    if (!isObject(v) || typeof v.valid !== "boolean") throw new Stop("unparseable");
+    if (v.valid) validated = big(v.head);
+  }
+  const bound = ref.era === "immortal" || validated === undefined ? undefined : lastBlock(ref.era, validated);
+  const others = (query.others ?? []).flatMap((o) =>
+    "ref" in o && isObject(o.ref) && typeof o.ref.signer === "string" && typeof o.ref.nonce === "string" ? [o.ref] : [],
+  );
+
+  const found = new Map<string, Found>();
+  const presentedBody = bodyOf(fromHex(ref.extrinsic));
+  /** Classifies the item at `index` of a block, read whole, where it is the instrument's or holds the remark. */
+  const classify = async (block: Hex | bigint, index: number, xt: Uint8Array): Promise<"ok" | "undecoded" | "again"> => {
+    const item = itemOf(xt);
+    if (item.kind === "undecoded") return "undecoded";
+    const mine = item.kind === "signed" && item.signer !== null && equalBytes(item.signer, signer);
+    if (mine && xt.length > MAX_EXTRINSIC) throw new Stop("too-large");
+    const instrument = mine && item.kind === "signed" && item.nonce === signedNonce;
+    const carries = holds(xt, remark);
+    if (!instrument && !carries) return "ok";
+    const record = await call(() => reader.extrinsic(block, index));
+    if (record === null) return "again";
+    if (!isExtrinsic(record)) throw new Stop("unparseable");
+    if (!hashEquals(record.hash, extrinsicHash(xt))) return "again";
+    const at = await finalRecord(reader, record, record.at.hash, index, record.hash);
+    if (at === "transport") throw new Stop("transport");
+    if (at === "unparseable") throw new Stop("unparseable");
+    if (at === "not-located") return "again";
+    const x = at.read;
+    const succeeded = x.success && hasEvent(x, "system", "Remarked", (d) => typeof d[1] === "string" && hashEquals(d[1], remarkHash));
+    if (!succeeded && !instrument) return "ok";
+    const split = splitSigned(xt);
+    const call0 = isRefusal(split) ? null : endingProfileCall(xt, split.end);
+    const signedTo = isRefusal(split) || succeeded ? null : signedTransfers(xt, split.end);
+    const transaction = `${x.at.hash.toLowerCase()}-${index}`;
+    // What it moved where it dispatched: an extrinsic that did not meet the profile's success keeps what its events show.
+    const moved = succeeded ? movedOf(x, call0, transaction) : x.success ? movedOf(x, null, transaction) : [];
+    const signerHex = item.kind === "signed" && item.signer !== null ? toHex(item.signer) : undefined;
+    const party = item.kind === "signed" && item.signer !== null && equalBytes(item.signer, payee) ? "payee" : mine ? "payer" : "other";
+    const given = item.kind === "signed" && signerHex !== undefined && others.some((o) => o.signer === signerHex && o.nonce === String(item.nonce));
+    // The payment presented: the signer's extrinsic compared with the presented one by its signed body, its signature
+    // apart, the members the payer signed that its bytes hold.
+    const body = mine ? bodyOf(xt) : null;
+    const presented = !mine ? undefined : body === null || presentedBody === null ? "unshown" : equalBytes(body, presentedBody) ? "yes" : "no";
+    const seen: Seen<bigint, PolkadotMark> = {
+      transaction,
+      position: x.at.height,
+      mark: at.finality,
+      // It succeeded where it dispatched and, holding R, with `Remarked` for it: a failure that took the remark with it
+      // is a failed result.
+      result: (carries ? succeeded : x.success) ? "succeeded" : "failed",
+      consumed: instrument,
+      carries: carries && (succeeded || instrument),
+      party,
+      kind: "same",
+      // A failed extrinsic's transfers are rolled back with it: the account it names is the one a transfer its signed
+      // call makes names, under a batch or a proxy as well.
+      account: !succeeded
+        ? signedTo === null || signedTo.length === 0 ? "none" : signedTo.some((to) => equalBytes(to, payee)) ? "payee" : "other"
+        : moved.length === 0 ? "none" : moved.some((m) => equalBytes(fromHex(m.to), payee)) ? "payee" : "other",
+      ...(given ? { given: true } : {}),
+      ...(x.success ? { moved } : {}),
+      ...(signerHex === undefined ? {} : { signer: signerHex }),
+      ...(presented === undefined ? {} : { presented }),
+    };
+    found.set(transaction, { seen, raw: xt });
+    return "ok";
+  };
+  /** The item a timepoint names: the block's raw extrinsics, then its record. */
+  const readAt = async (timepoint: string): Promise<void> => {
+    const tp = TIMEPOINT.exec(timepoint);
+    if (tp === null) return;
+    const list = await call(() => reader.rawExtrinsics(tp[1]! as Hex));
+    if (list === null) return;
+    if (!Array.isArray(list)) throw new Stop("unparseable");
+    const raw: unknown = list[Number(tp[2])];
+    if (raw === undefined) return;
+    if (typeof raw !== "string" || !/^0x(?:[0-9a-fA-F]{2})*$/.test(raw)) throw new Stop("unparseable");
+    const height = await classify(tp[1]! as Hex, Number(tp[2]), fromHex(raw.toLowerCase()));
+    if (height === "undecoded") undecodedAt.push({ transaction: timepoint.toLowerCase(), block: undefined });
+  };
+
+  const undecodedAt: { transaction: string; block: bigint | undefined }[] = [];
+  for (const t of [...(ref.transaction === undefined ? [] : [ref.transaction]), ...(query.search?.hits ?? [])]) await readAt(t);
+
+  const start = query.search?.next ?? (query.after === undefined ? undefined : query.after + 1n);
+  let whole = start !== undefined;
+  let held: bigint | undefined;
+  let next = start;
+  if (start !== undefined) {
+    for (let n = start; n <= head; n++) {
+      if (n - start >= BigInt(POLKADOT_BOUNDS.searchBlocks)) {
+        whole = false;
+        break;
+      }
+      next = n + 1n;
+      const list = await call(() => reader.rawExtrinsics(n));
+      if (list === null) {
+        if (n <= finalized) throw new Stop("history-gap");
+        whole = false;
+        held ??= n;
+        break;
+      }
+      if (!Array.isArray(list)) throw new Stop("unparseable");
+      for (let i = 0; i < list.length; i++) {
+        const raw: unknown = list[i];
+        if (typeof raw !== "string" || !/^0x(?:[0-9a-fA-F]{2})*$/.test(raw)) throw new Stop("unparseable");
+        const got = await classify(n, i, fromHex(raw.toLowerCase()));
+        if (got === "undecoded") {
+          // The block's hash names the item: the block read by height is the one the endpoint holds at it now.
+          const record = await call(() => reader.extrinsic(n, i));
+          const named = isExtrinsic(record) ? `${record.at.hash.toLowerCase()}-${i}` : `${n}-${i}`;
+          undecodedAt.push({ transaction: named, block: n });
+        } else if (got === "again") {
+          whole = false;
+          held ??= n;
+        }
+      }
+    }
+  }
+  const seen = [...found.values()].map((f) => f.seen).sort((a, b) => bigintOrder(a.position!, b.position!) || a.transaction.localeCompare(b.transaction));
+  const hits = seen.filter((s) => s.position! <= finalized).map((s) => s.transaction).slice(0, 16);
+  const cursorAt = (n: bigint): PolkadotCursor => ({
+    next: n < finalized + 1n ? n : finalized + 1n,
+    hits,
+    ...(validated === undefined ? {} : { validated }),
+  });
+  const resume = held ?? next;
+  // The position is given while the search has range left, and wherever it keeps the head the validation proved.
+  const at = resume === undefined || (whole && validated === undefined) ? undefined : cursorAt(resume);
+  const undecoded: Undecoded<PolkadotCursor>[] = undecodedAt.map((u) =>
+    u.block === undefined ? { transaction: u.transaction } : { transaction: u.transaction, at: cursorAt(u.block) },
+  );
+  // The era's end is compared with finalized alone: ended at the head and not at finalized, the extrinsic can still
+  // land in a block the finalized chain takes.
+  const value = {
+    consumed: nonceFinal > signedNonce,
+    lapsed: bound !== undefined && finalized > bound,
+    mark: "finalized" as const,
+    head: { consumed: nonceHead > signedNonce },
+  };
+  return {
+    facts: {
+      seen,
+      value,
+      search: at === undefined ? { whole } : { whole, at },
+      history: query.after !== undefined,
+      ...(undecoded.length === 0 ? {} : { undecoded }),
+    },
+  };
 }
 
 /**
- * The read's facts: the act at its mark and height where it settled, or where it did not dispatch, a failed result
- * that took the nonce; nothing for an extrinsic that is not the act, nor for one not located. The read by timepoint is
- * never a search read whole.
+ * The accounts a signed call transfers to, decoded from its bytes: `assets.transfer` and `transfer_keep_alive` (pallet
+ * 50, calls 8 and 9), `balances.transfer_allow_death` and `transfer_keep_alive` (10; 0 and 3), each to a
+ * `MultiAddress::Id`; `system.remark` and `remark_with_event` (0; 0 and 7), which transfer nothing; and, holding these,
+ * `utility.batch`, `batch_all` and `force_batch` (40; 0, 2 and 4) and `proxy.proxy` (42; 0) over a `MultiAddress::Id`.
+ * Pallet and call indices are Polkadot Asset Hub's (polkadot-fellows/runtimes at 30696143, asset-hub-polkadot's
+ * `construct_runtime`; polkadot-sdk at 23b84ba4, each pallet's `call_index`). Null where the bytes at `at` are no such
+ * call.
  */
-function factsOf(read: PolkadotRead): Facts<bigint, PolkadotMark> {
-  const none = { seen: [], search: { whole: false }, history: false } as const;
-  switch (read.state) {
-    case "unreadable":
-      return { ...none, unreadable: read.reason };
-    case "pending":
-      return none;
-    case "settled":
-      return { ...none, seen: [actSeen(read.transaction, read.finality, read.height)] };
-    case "failed":
-      return read.why === "dispatch-failed"
-        ? { ...none, seen: [actSeen(read.transaction, read.finality, read.height, "failed")] }
-        : none;
+function transfersAt(b: Uint8Array, at: number, depth: number): { to: Uint8Array[]; next: number } | null {
+  const pallet = b[at];
+  const index = b[at + 1];
+  if (pallet === undefined || index === undefined || depth > 4) return null;
+  const args = at + 2;
+  const account = (i: number): Uint8Array | null => (b[i] === 0x00 && i + 33 <= b.length ? b.subarray(i + 1, i + 33) : null);
+  if (pallet === 40 && (index === 0 || index === 2 || index === 4)) {
+    const count = compactAt(b, args);
+    if (count === null || count.value > 64n) return null;
+    const to: Uint8Array[] = [];
+    let next = count.next;
+    for (let i = 0n; i < count.value; i++) {
+      const inner = transfersAt(b, next, depth + 1);
+      if (inner === null) return null;
+      to.push(...inner.to);
+      next = inner.next;
+    }
+    return { to, next };
   }
+  if (pallet === 42 && index === 0) {
+    if (account(args) === null) return null;
+    const kind = b[args + 33];
+    if (kind !== 0x00 && kind !== 0x01) return null;
+    return transfersAt(b, args + 34 + kind, depth + 1);
+  }
+  if (pallet === 50 && (index === 8 || index === 9)) {
+    const asset = compactAt(b, args);
+    const dest = asset === null ? null : account(asset.next);
+    const amount = asset === null || dest === null ? null : compactAt(b, asset.next + 33);
+    return dest === null || amount === null ? null : { to: [dest], next: amount.next };
+  }
+  if (pallet === 10 && (index === 0 || index === 3)) {
+    const dest = account(args);
+    const amount = dest === null ? null : compactAt(b, args + 33);
+    return dest === null || amount === null ? null : { to: [dest], next: amount.next };
+  }
+  if (pallet === 0 && (index === 0 || index === 7)) {
+    const length = compactAt(b, args);
+    if (length === null || length.value > BigInt(b.length - length.next)) return null;
+    return { to: [], next: length.next + Number(length.value) };
+  }
+  return null;
+}
+
+/**
+ * The accounts the call an extrinsic ends with transfers to, that call starting at or after `from`, the longest suffix
+ * `transfersAt` decodes whole; null where none does.
+ */
+function signedTransfers(xt: Uint8Array, from: number): Uint8Array[] | null {
+  for (let start = from; start < xt.length; start++) {
+    const call = transfersAt(xt, start, 0);
+    if (call !== null && call.next === xt.length) return call.to;
+  }
+  return null;
 }
 
 /** The profile call an extrinsic ends with, starting at or after `from`: the longest such suffix, or null. */
@@ -625,9 +1021,8 @@ function endingProfileCall(xt: Uint8Array, from: number): ProfileCall | null {
  * hash's LCP string with lowercase hex. The record read is then chosen as `polkadotStatus` chooses it, and a named
  * block that the finalized chain does not hold, with no copy of the extrinsic at that index of the canonical block at
  * its height, is `polkadot/not-located`. That record must show the extrinsic dispatched with the `Remarked` event for
- * the remark and a `Transferred` event of the call's asset: one that does not is `polkadot/no-remark` or
- * `polkadot/no-transfer` once the finalized chain holds its block, and `polkadot/not-final` while the block is above the
- * finalized height, since that block can be replaced. The input's `tx` is the timepoint, and its `option` the option
+ * the remark, whatever it moved: one that does not is `polkadot/no-remark` once the finalized chain holds its block, and
+ * `polkadot/not-final` while the block is above the finalized height, since that block can be replaced. The input's `tx` is the timepoint, and its `option` the option
  * the payment answers, an object, of which the read needs no member. An input whose `tx` is not a
  * `<block hash>-<index>` timepoint, or whose option is not an object, is `polkadot/wrong-reader`, with nothing read. At
  * most four calls.
@@ -664,47 +1059,8 @@ export async function polkadotRecover(
   const at = await finalRecord(reader, x.ok, block, index, xtHash);
   if (at === "transport" || at === "unparseable") return refusal("polkadot/unreadable");
   if (at === "not-located") return refusal("polkadot/not-located");
-  const noRemark = !at.read.success || !remarked(at.read, call.remark);
-  if (!noRemark && transferred(at.read, call.assetId)) return h;
-  if (at.finality !== "finalized") return refusal("polkadot/not-final");
-  return noRemark ? refusal("polkadot/no-remark") : refusal("polkadot/no-transfer");
-}
-
-/**
- * Finds a payment nobody named, by hashing every extrinsic of each block from `from` to `to` (at most 256 blocks).
- * The first match gives its timepoint, once the block's record at that index has the recorded extrinsic hash. A block
- * that does not exist, or a record at the matched index with another hash (the block at that height changed between
- * the two reads), ends the scan with null. A ref or reader that is not an object, a reader for another network, or a
- * ref whose `extrinsicHash` is not `0x` and 64 hex digits is `polkadot/wrong-reader`, with nothing read.
- */
-export async function polkadotLocate(
-  ref: PolkadotRef,
-  reader: PolkadotReader,
-  from: bigint,
-  to: bigint,
-): Promise<string | null | Refusal> {
-  if (!isObject(ref) || !isObject(reader) || reader.network !== ref.network || normalHash(ref.extrinsicHash) === null) {
-    return refusal("polkadot/wrong-reader");
-  }
-  if (typeof from !== "bigint" || typeof to !== "bigint" || from < 0n || to < from || to - from > MAX_RANGE) {
-    return refusal("polkadot/range");
-  }
-  for (let n = from; n <= to; n++) {
-    const raws = await readSafely(() => reader.rawExtrinsics(n));
-    if ("unreadable" in raws) return refusal("polkadot/unreadable");
-    if (raws.ok === null) return null;
-    if (!Array.isArray(raws.ok)) return refusal("polkadot/unreadable");
-    for (let i = 0; i < raws.ok.length; i++) {
-      const raw = raws.ok[i];
-      if (typeof raw !== "string" || !/^0x(?:[0-9a-fA-F]{2})*$/.test(raw) || raw.length > 2 * MAX_EXTRINSIC + 2) continue;
-      if (!hashEquals(extrinsicHash(fromHex(raw)), ref.extrinsicHash)) continue;
-      const x = await readSafely(() => reader.extrinsic(n, i));
-      if ("unreadable" in x) return refusal("polkadot/unreadable");
-      if (x.ok === null || !isExtrinsic(x.ok) || !hashEquals(x.ok.hash, ref.extrinsicHash)) return null;
-      return `${x.ok.at.hash}-${i}`;
-    }
-  }
-  return null;
+  if (at.read.success && remarked(at.read, call.remark)) return h;
+  return at.finality === "finalized" ? refusal("polkadot/no-remark") : refusal("polkadot/not-final");
 }
 
 /**
@@ -726,7 +1082,8 @@ const pattern: LcpPattern = deepFreeze({
 
 /**
  * `x402/exact/polkadot/lcp-assets-remark`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's
- * facilitator submits the extrinsic the payer signed and names where it landed; `status` reads it by block and index.
+ * facilitator submits the extrinsic the payer signed and names where it landed; `status` reads it by the signer's
+ * account nonce, the timepoint the facilitator named being a hint.
  */
 export const exactPolkadotRemark = Object.freeze({
   id: ID,
@@ -751,9 +1108,9 @@ export const exactPolkadotRemark = Object.freeze({
   X402Forms & {
     choice: { required: PaymentRequired; accepted: PaymentRequirements };
     unsigned: PolkadotUnsigned;
-    landed: { h: AtrHash; transaction: string };
+    landed: { h: AtrHash; transaction?: string };
     network: PolkadotNetwork;
-    query: StatusQuery<PolkadotRef & { h: AtrHash; transaction: string }, bigint, PolkadotMark>;
+    query: PolkadotQuery;
     answer: PolkadotStatus;
   }
 >;
