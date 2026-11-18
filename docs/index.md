@@ -111,10 +111,21 @@ against what the page shows, except the settler's, which need a Postgres databas
 
 ## For AI agents
 
-The documentation site publishes [`llms.txt`](https://lcp.integraledger.com/llms.txt), an index of every page,
-[`llms-full.txt`](https://lcp.integraledger.com/llms-full.txt), every page in one file, and each page as Markdown at
-its address with `.md` added, such as [`/getting-started.md`](https://lcp.integraledger.com/getting-started.md), or at
-its own address for a request whose `Accept` header prefers `text/markdown`.
+The documentation site publishes [`llms.txt`](https://lcp.integraledger.com/llms.txt), an index of every page that
+names the versions the pages document. Each of its sections opens with one file of all its pages, with that file's
+size: [concepts](https://lcp.integraledger.com/concepts/llms-full.txt),
+[guides](https://lcp.integraledger.com/guides/llms-full.txt),
+[reference](https://lcp.integraledger.com/reference/llms-full.txt) and
+[API](https://lcp.integraledger.com/reference/api/llms-full.txt).
+[`llms-full.txt`](https://lcp.integraledger.com/llms-full.txt) holds every page in one file, larger than most context
+windows. Each page is Markdown at its address with `.md` added, such as
+[`/getting-started.md`](https://lcp.integraledger.com/getting-started.md), or at its own address for a request whose
+`Accept` header ranks `text/markdown` at least as high as `text/html`.
+
+The site also serves the protocol's documents as this package ships them. Each profile is at `/profiles/<name>.md`,
+listed in [`/profiles/llms.txt`](https://lcp.integraledger.com/profiles/llms.txt) and gathered in
+[`/profiles/llms-full.txt`](https://lcp.integraledger.com/profiles/llms-full.txt); each vector file is at
+`/vectors/<name>.json`, listed in [`/vectors/llms.txt`](https://lcp.integraledger.com/vectors/llms.txt).
 
 ## Source and license
 
