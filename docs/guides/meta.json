@@ -1,4 +1,4 @@
 {
   "title": "Guides",
-  "pages": ["seller", "buyer", "sessions", "x402", "mpp", "checkouts", "rails", "discovery", "settler"]
+  "pages": ["seller", "buyer", "x402", "mpp", "sessions", "checkouts", "rails", "discovery", "settler"]
 }

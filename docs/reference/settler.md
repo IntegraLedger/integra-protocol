@@ -6,8 +6,10 @@ description: The settler's exports, HTTP API, declarations, order of checks, rec
 # Settler reference
 
 The settler is the package `@integraledger/profile-facilitator`, in this repository's
-[`settler/`](https://github.com/IntegraLedger/integra-protocol/tree/main/settler) folder.
-[Run the settler](../guides/settler.md) starts it and configures each module.
+[`settler/`](https://github.com/IntegraLedger/integra-protocol/tree/main/settler) folder. This page is for the operator
+and the resource server's developer: every answer, reason, check, table, bound and log entry the settler gives.
+[Run the settler](../guides/settler.md) starts it and configures each module. Version 0.5.0 takes
+`@integraledger/lcp` `~0.6.0` as its peer ([Versions](../guides/settler.md#versions)).
 
 ## Exports
 
@@ -85,8 +87,8 @@ which forms it can offer with this settler, and `extra.acceptsZero` before choos
    `unsupported_scheme`. Where an own module claims the payment (by a member of the option, or by what the payment
    holds), it goes to that module, else to the registration's class. On `lnbtc` the answer is `unsupported_scheme`.
 3. lcp's checks of the pairing, from the payment and its requirements alone. A refusal carries x402's reason and, on
-   the `algorand`, `aptos`, `hedera`, `solana`, `starknet` and `sui` modules, lcp's refusal code as `invalidMessage`
-   (on `starknet` and `sui`, the module's own code where its own check refused).
+   the `algorand`, `aptos`, `casper`, `hedera`, `solana`, `starknet` and `sui` modules, lcp's refusal code as
+   `invalidMessage` (on `starknet` and `sui`, the module's own code where its own check refused).
 4. The record: a payment it holds, claimed or final, is refused `invalid_transaction_state`, since `isValid: true`
    tells the caller that a settle may follow.
 5. What the kind declares: an amount of zero where it does not take zero, and a form outside the pairings of the module
@@ -102,20 +104,21 @@ The answer is `{isValid: true, payer}` or `{isValid: false, invalidReason, inval
 ### `/settle`
 
 1. Steps 1 to 3 of `/verify`, with `errorMessage` for `invalidMessage`; `lnbtc` is served here.
-2. The record. A final row is answered `invalid_transaction_state` naming the transaction it holds, never a second
-   success. A claim another settle holds, or one whose hold has ended, is answered as
-   [the record](#the-record-and-what-a-repeat-answers) says.
+2. The record: a final row is answered `invalid_transaction_state` naming the transaction it holds, never a second
+   success.
 3. What the kind declares, as `/verify` checks it.
-4. The class's verify. Where it refuses, lcp's read of the chain: a payment the chain shows landed, or whose value
+4. A claim the record holds that is not final, which another settle holds or whose hold has ended: it is answered as
+   [the record](#the-record-and-what-a-repeat-answers) says, and no step below is made.
+5. The class's verify. Where it refuses, lcp's read of the chain: a payment the chain shows landed, or whose value
    another act consumed, is stored final and answered `invalid_transaction_state` naming its transaction; otherwise the
    class's refusal is the answer, nothing is stored, and a repeat is checked again.
-5. Where the module's read searches from a position no x402 call carries (a ledger, a slot, a block), the chain's
+6. Where the module's read searches from a position no x402 call carries (a ledger, a slot, a block), the chain's
    position, read just before the claim, which the row keeps for every later read.
-6. The claim: one conditional insert of the payment's row, held by this settle for `settleWaitMs`, so that of two
+7. The claim: one conditional insert of the payment's row, held by this settle for `settleWaitMs`, so that of two
    settles of one payment only one submits.
-7. The fee budget, where the module's key pays the fee: a spent budget answers `fee_budget_spent`, sends nothing, and
+8. The fee budget, where the module's key pays the fee: a spent budget answers `fee_budget_spent`, sends nothing, and
    leaves the claim, not final.
-8. The class's settle, which submits what the payer signed. A success that names a transaction is stored final, then
+9. The class's settle, which submits what the payer signed. A success that names a transaction is stored final, then
    answered `{success: true, transaction, network, payer}`. Anything else is classified by lcp's read: a payment the
    chain shows final is stored final and answered (success only where the read shows a transaction this settler sent,
    or the payment it presented, settled); one still live is answered `settlement_pending` naming the transaction sent,
@@ -155,7 +158,9 @@ pairing's `nonce` is not `single-use`; a claim that is not final is kept until a
 
 ## Storage
 
-Postgres holds three tables, created at start where they do not exist:
+Postgres holds three tables, created at start where they do not exist. Postgres 11 or later; the role needs `CREATE` on
+the schema and owns the tables, since every start runs the statements below
+([The database](../guides/settler.md#the-database)):
 
 ```sql
 CREATE TABLE IF NOT EXISTS instrument (
@@ -211,7 +216,9 @@ CREATE TABLE IF NOT EXISTS module_state (
 - Each node call the settler makes itself has a timeout of at most 5 seconds and an answer of at most 4 MiB, except
   Polkadot's block reads, bounded by the runtime's `System.BlockLength` (at most 4 of them at once in a process). A
   published class's calls are bounded by the class, and its settle takes no deadline: `settleWaitMs` bounds the
-  settler's own reads and store calls, and a class's settle runs on its own bounds.
+  settler's own reads and store calls, and a class's settle runs on its own bounds. x402's EVM signer waits up to
+  180 s for a receipt unless `toFacilitatorEvmSigner`'s `confirmationTimeoutMs` is set: set it below `settleWaitMs`,
+  or a `/settle` can outlast its wait.
 - `/settle`'s reads and submission end a second before `settleWaitMs` (a quarter of a shorter wait), the time kept for
   storing the answer. The server's request timeout is `settleWaitMs` plus 60 seconds.
 - An error names a node by its origin alone, since a URL's path or query can hold an API key.
@@ -226,13 +233,14 @@ CREATE TABLE IF NOT EXISTS module_state (
   and `fee-not-counted`. Each module adds its own, such as `node-call-failed` and `settlement-failed`. Every
   `unexpected_verify_error` and `unexpected_settle_error` has an entry that names why, written when it is first given.
 
-## Tests
+## Tests (contributors)
 
-The tests feed lcp's vectors for each module's pairings through the settler's `/verify` and `/settle`, against local
-node stubs that replay recorded node answers (`test/fixtures/tron-mainnet-answers.json`, Polkadot Asset Hub's runtime
-metadata in `test/fixtures/polkadot-asset-hub-2005000.json.gz`) or answers derived from the pairing's profile. They
-need Postgres: set `INTEGRA_DATABASE_URL` to a connection string whose user may create databases. Each test file makes
-and drops its own database, so test runs share one server. CI runs them against a Postgres 18 service.
+The package ships no tests: in a clone of this repository, the tests feed lcp's vectors for each module's pairings
+through the settler's `/verify` and `/settle`, against local node stubs that replay recorded node answers
+(`test/fixtures/tron-mainnet-answers.json`, Polkadot Asset Hub's runtime metadata in
+`test/fixtures/polkadot-asset-hub-2005000.json.gz`) or answers derived from the pairing's profile. They need Postgres:
+set `INTEGRA_DATABASE_URL` to a connection string whose user may create databases. Each test file makes and drops its
+own database, so test runs share one server. CI runs them against a Postgres 18 service.
 
 ```sh
 INTEGRA_DATABASE_URL=postgres://postgres@127.0.0.1:5432/postgres pnpm --filter @integraledger/profile-facilitator test
