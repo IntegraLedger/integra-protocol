@@ -55,15 +55,14 @@ export function remarkStripLeadingTitle() {
 }
 
 /**
- * Turns each raw `<a id="…"></a>` into an empty `span` that carries the id, and removes it from the page's Markdown
- * copy. Markdown pages are compiled without raw HTML, and the API pages mark table rows with these anchors. The id is
- * a fragment target, not a link: the site's `a` component writes an `href` on every `a`, which would make each anchor
- * a link with no name.
+ * Turns each raw `<a id="…"></a>` into an empty `span` that carries the id. Markdown pages are compiled without raw
+ * HTML, and the API pages mark table rows with these anchors. The id is a fragment target, not a link: the site's `a`
+ * component writes an `href` on every `a`, which would make each anchor a link with no name. The page's Markdown copy
+ * keeps the anchor as written (inline HTML is Markdown), so the copy's `#property-…` links find their targets.
  */
 export function remarkHtmlAnchors() {
-  return (tree: MdastNode, file: FileLike) => {
+  return (tree: MdastNode) => {
     const anchor = (node: MdastNode, id: string) => {
-      replaceInMarkdown(file, node, "");
       node.type = "text";
       node.value = "";
       node.data = { hName: "span", hProperties: { id } };
@@ -84,7 +83,6 @@ export function remarkHtmlAnchors() {
         const next = children[i + 1];
         if (open?.[1] && next?.type === "html" && next.value?.trim() === "</a>") {
           anchor(node, open[1]);
-          replaceInMarkdown(file, next, "");
           children.splice(i + 1, 1);
         }
       }

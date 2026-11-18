@@ -35,6 +35,18 @@ export const siteConfig = {
     name: "@integraledger/lcp",
     npm: "https://www.npmjs.com/package/@integraledger/lcp",
   },
+  /** The x402 settler this repository ships, in settler/. */
+  settler: {
+    name: "@integraledger/profile-facilitator",
+    npm: "https://www.npmjs.com/package/@integraledger/profile-facilitator",
+  },
+  /** The protocol's specification, which the package implements. */
+  spec: {
+    name: "Legal Context Protocol v1.0",
+    url: "https://github.com/legal-context-protocol/legal-context-protocol/blob/main/spec/legal-context-protocol-v1.md",
+  },
+  /** The documentation site of the buyer gate packages (integra-agentic-terms), which build on this package. */
+  termsUrl: "https://agenticterms.integraledger.com",
   license: {
     name: "Apache-2.0",
     url: "https://www.apache.org/licenses/LICENSE-2.0",

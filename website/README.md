@@ -64,10 +64,23 @@ could differ; on another platform the build stops and names the platform it is p
 - Asks the network nothing: `next.config.ts` turns off the upgrade check `next build` makes under a coding agent
   (`experimental.agentUpgrade: false`), and the build script empties `__NEXT_AGENT_UPGRADE`, the environment variable
   that turns the check on whatever the configuration says, and sets `NEXT_TELEMETRY_DISABLED=1`.
-- Writes `/llms.txt`, `/llms-full.txt`, each page as Markdown at `/md/<path>.md`, the search index,
-  `sitemap.xml`, `robots.txt` and `/.well-known/security.txt`.
-- Then `scripts/lcp-documents.mjs` writes each LCP document, byte for byte from `../lcp/profiles/`, at its
-  address (`/ucp/x402/2026-10-02`, its `schema.json`, and the rest it lists), and gives each address its type and
+- Writes the files for AI agents (https://llmstxt.org), from `src/lib/llms-files.ts`:
+  - `/llms.txt`: the versions the pages document, the rules they rely on, and every page as Markdown in sidebar
+    order, each section led by its own file with its size; then the LCP documents, profiles and vectors, and, under
+    Optional, the whole site in one file and the project's links;
+  - `/llms-full.txt`, every page in one file, and one file for each section: `/concepts/llms-full.txt`,
+    `/guides/llms-full.txt`, `/reference/llms-full.txt` and `/reference/api/llms-full.txt` (`SECTION_FILES` in
+    `src/lib/llms.ts`; a route under `src/app/<path>/llms-full.txt/` serves each);
+  - each page as Markdown at `/md/<path>.md`: its title, description and address, the date it last changed, the
+    versions it documents and `/llms.txt`, then its body, with each link to a page of the site, or to a profile or
+    vector file in the repository, rewritten to that page's or file's Markdown or JSON on the site;
+  - each profile of `../lcp/profiles/` at `/profiles/<name>.md`, and each vector file of `../lcp/vectors/` at
+    `/vectors/<name>.json`, byte for byte, with an index of each (`/profiles/llms.txt`, `/vectors/llms.txt`) and every
+    profile in one file (`/profiles/llms-full.txt`).
+- Writes the search index, `sitemap.xml`, `robots.txt` (every crawler allowed, with
+  `Content-Signal: search=yes, ai-input=yes, ai-train=yes`) and `/.well-known/security.txt`.
+- Then `scripts/lcp-documents.mjs` writes each LCP document `src/lib/lcp-documents.ts` lists, byte for byte from
+  `../lcp/profiles/`, at its address (`/ucp/x402/2026-10-02`, its `schema.json`, and the rest), and gives each its type and
   `Cache-Control: public, max-age=86400` in `out/_headers`. A profile whose address is also its schema's folder is
   written as `<address>.html`, which the static assets serve at the address itself.
 - Then `scripts/script-policy.mjs` writes each page's script policy into the page: a
@@ -76,8 +89,11 @@ could differ; on another platform the build stops and names the platform it is p
   in `public/_headers`, which keeps `frame-ancestors 'none'`, a directive a page's own policy cannot carry. Every file
   that is not a page takes a second header policy, `default-src 'none'; script-src 'none'`, so none runs a script when
   it is opened as a document.
-- Last, `scripts/worker-headers.mjs` writes `out/_headers` into `.worker/headers.mjs`, the module `worker.js` reads its
+- Then `scripts/worker-headers.mjs` writes `out/_headers` into `.worker/headers.mjs`, the module `worker.js` reads its
   header rules from.
+- Last, `scripts/check-llms.mjs` checks the files for AI agents: every link of the site's own in each `llms.txt` names
+  a file of `out/`, each size an `llms.txt` states is that file's, `/llms.txt` lists every page's Markdown copy, and
+  each copy names `/llms.txt`.
 
 ## How it is served
 
@@ -85,14 +101,15 @@ could differ; on another platform the build stops and names the platform it is p
 their `.md` addresses only:
 
 - `/<path>.md`, and `/index.md` for the home page, answer with the page's Markdown copy (the address
-  [llmstxt.org](https://llmstxt.org) proposes). `/llms.txt` links each page there.
+  [llmstxt.org](https://llmstxt.org) proposes). `/llms.txt` links each page there. A `.md` address that names no page
+  is answered 404 in Markdown that names `/llms.txt`.
 - A request for a page whose `Accept` header ranks `text/markdown` (or `text/x-markdown`) at least as high as
   `text/html` gets the same Markdown at the page's own address; `text/plain` is not a Markdown type and gets HTML.
   A page address that ends in a slash redirects to the address without it, for Markdown as for HTML. Every
   response for a page address carries `Vary: Accept`, and a conditional request for a Markdown copy can be
   answered 304.
-- Every other file is served directly, without the Worker: the LCP documents, the Markdown copies, the scripts, and
-  every `.txt` file, the RSC payload each page fetches among them.
+- Every other file is served directly, without the Worker: the LCP documents, the profiles and vector files, the
+  Markdown copies, the scripts, and every `.txt` file, the RSC payload each page fetches among them.
 
 Cloudflare applies `out/_headers` to the files it serves directly, but its
 [page on the file](https://developers.cloudflare.com/workers/static-assets/headers/) says the rules "are not applied to
@@ -101,11 +118,15 @@ a 404, the headers `out/_headers` gives the address the reader asked for, each i
 gave it: it imports the rules from `.worker/headers.mjs`, and `headers.mjs` matches them, for the Worker and for every
 check. `scripts/check-worker-headers.mjs` runs the Worker in front of static assets that give no header, for every
 page, its `.md` address and each of its `Accept` headers, as a GET and a conditional GET, and for missing
-addresses, and requires each response to carry exactly those headers, with `Vary: Accept` where the `Accept` header
-decides the answer.
+addresses, and requires each response to carry exactly those headers, with the `Link` the Worker adds (below) and
+`Vary: Accept` where the `Accept` header decides the answer.
 
 Each page names `/llms.txt` with `<link rel="describedby">` and its Markdown with `<link rel="alternate"
-type="text/markdown">`. `pnpm dev` does not run `worker.js`.
+type="text/markdown">`, and names both in a line of its body, for an agent that reads the page as text. The same
+links go in HTTP `Link` headers: `out/_headers` gives every address `</llms.txt>; rel="describedby"`, and `worker.js`
+adds the page's Markdown address (`rel="alternate"; type="text/markdown"`) to a page's HTML and the page itself
+(`rel="canonical"`) to its Markdown at its `.md` address. The copies at `/md/` carry `X-Robots-Tag: noindex`: they are
+what the pages' copy buttons fetch, and the `.md` address is the one to cite. `pnpm dev` does not run `worker.js`.
 
 No workflow deploys the site. A maintainer deploys it after a build on Linux x64 (see "Run it"), at the repository
 root:
@@ -121,7 +142,8 @@ node scripts/check-live-headers.mjs https://lcp.integraledger.com
 ```
 
 It asks the site for a page as HTML and as Markdown, the page's `.md` address, `/icon.svg` and an address the site does
-not hold, and compares each response's status, `Content-Type` and headers with the rules `out/_headers` gives its
-address, and `Vary` with `Accept` where the Worker answers by it. It lists each response and exits 1 on any
+not hold, with and without `.md`, and compares each response's status, `Content-Type` and headers with the rules
+`out/_headers` gives its address, with the `Link` the Worker adds, and `Vary` with `Accept` where the Worker answers by
+it. It lists each response and exits 1 on any
 difference, naming it. `scripts/check-worker-headers.mjs` runs it against `worker.js` on a loopback port, so CI
 exercises it on every build.

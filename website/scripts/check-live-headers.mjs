@@ -3,10 +3,12 @@
 // asks the site, at the base URL given, for:
 // - a page, as HTML and as Markdown, and the page's .md address, which worker.js answers;
 // - a file that is not a page, /icon.svg, which the static assets serve without the Worker;
-// - an address the site does not hold, which worker.js answers with the 404 page;
+// - an address the site does not hold, which worker.js answers with the 404 page, and the same address with .md, which
+//   worker.js answers with a Markdown 404;
 // and compares each response with out/_headers, the rules the deployed build holds: its status, each header those
-// rules give the address, value for value (headers.mjs), and, where worker.js answers by the Accept header,
-// `Vary: Accept`. The page is the first of out/'s pages, other than the home page, that has a Markdown copy.
+// rules give the address, value for value (headers.mjs), with the Link worker.js adds after the rules' own (a page's
+// HTML names its Markdown address, a page's .md address names the page), and, where worker.js answers by the Accept
+// header, `Vary: Accept`. The page is the first of out/'s pages, other than the home page, that has a Markdown copy.
 // Each response is listed, and each difference named.
 //
 // Usage, from website/, with the deployed build in out/:
@@ -18,6 +20,21 @@ import { pagesOf } from "./serve-export.mjs";
 
 /** An address the site does not hold. */
 const MISSING = "/check-live-headers-missing";
+/** The site's canonical origin, `siteConfig.url` in src/lib/site.ts, which the Links worker.js adds name. */
+export const ORIGIN = /^ {2}url: "([^"]+)"/m.exec(readFileSync(new URL("../src/lib/site.ts", import.meta.url), "utf8"))?.[1];
+if (ORIGIN === undefined) throw new Error("src/lib/site.ts names no url");
+
+/** The Link worker.js adds to a page's HTML: the page's Markdown address. */
+export const alternateLink = (page) =>
+  `<${ORIGIN}${page === "/" ? "/index.md" : `${page}.md`}>; rel="alternate"; type="text/markdown"`;
+/** The Link worker.js adds to a page's Markdown at its .md address: the page. */
+export const canonicalLink = (page) => `<${ORIGIN}${page === "/" ? "" : page}>; rel="canonical"`;
+
+/** A header's value, with the Link worker.js adds after the rules' own. */
+export function withLink(headers, link) {
+  if (link === undefined) return headers;
+  return { ...headers, link: headers.link === undefined ? link : `${headers.link}, ${link}` };
+}
 /** A file that is not a page, served without the Worker (wrangler.toml). */
 const FILE = "/icon.svg";
 
@@ -27,11 +44,12 @@ export function requestsFor(out) {
   if (page === undefined) throw new Error(`${out} holds no page with a Markdown copy: run pnpm build in website/ first`);
   if (!existsSync(join(out, FILE.slice(1)))) throw new Error(`${out} holds no ${FILE}`);
   return [
-    { address: page, accept: "text/html", status: 200, type: "text/html", varies: true },
+    { address: page, accept: "text/html", status: 200, type: "text/html", varies: true, link: alternateLink(page) },
     { address: page, accept: "text/markdown", status: 200, type: "text/markdown", varies: true },
-    { address: `${page}.md`, accept: null, status: 200, type: "text/markdown", varies: false },
+    { address: `${page}.md`, accept: null, status: 200, type: "text/markdown", varies: false, link: canonicalLink(page) },
     { address: FILE, accept: null, status: 200, type: "image/svg+xml", varies: false },
     { address: MISSING, accept: "text/html", status: 404, type: "text/html", varies: true },
+    { address: `${MISSING}.md`, accept: null, status: 404, type: "text/markdown", varies: false },
   ];
 }
 
@@ -43,7 +61,7 @@ export async function checkLiveHeaders(base, out = "out") {
   const rules = parseHeaders(readFileSync(join(out, "_headers"), "utf8"));
   const lines = [];
   const failures = [];
-  for (const { address, accept, status, type, varies } of requestsFor(out)) {
+  for (const { address, accept, status, type, varies, link } of requestsFor(out)) {
     const at = `${address}${accept === null ? "" : ` (Accept: ${accept})`}`;
     const response = await fetch(new URL(address, base), {
       headers: accept === null ? {} : { accept },
@@ -55,7 +73,7 @@ export async function checkLiveHeaders(base, out = "out") {
     if (!(response.headers.get("content-type") ?? "").startsWith(type)) {
       differ.push(`Content-Type ${JSON.stringify(response.headers.get("content-type"))}, not ${type}`);
     }
-    for (const [name, value] of Object.entries(headersFor(rules, address))) {
+    for (const [name, value] of Object.entries(withLink(headersFor(rules, address), link))) {
       const got = response.headers.get(name);
       if (got !== value) differ.push(`${name} ${JSON.stringify(got)}, not ${JSON.stringify(value)}`);
     }

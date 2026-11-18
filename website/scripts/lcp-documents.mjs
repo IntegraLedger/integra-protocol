@@ -1,7 +1,7 @@
-// The LCP documents this site publishes: each one's address on the site, the file in lcp/profiles/ that holds it, and
-// the type it is served as. Run after `next build` (`pnpm build` does), this module writes each document into out/,
-// byte for byte, and gives its address its headers in out/_headers. `scripts/check-lcp-documents.mjs`, at the
-// repository root, checks the export and the live site against lcp/profiles/.
+// The LCP documents this site publishes, listed in src/lib/lcp-documents.ts: each one's address on the site, the file in
+// lcp/profiles/ that holds it, and the type it is served as. Run after `next build` (`pnpm build` does), this module
+// writes each document into out/, byte for byte, and gives its address its headers in out/_headers.
+// `scripts/check-lcp-documents.mjs`, at the repository root, checks the export and the live site against lcp/profiles/.
 //
 // A profile's address can also be the folder of its schema (`/ucp/x402/2026-10-02` and
 // `/ucp/x402/2026-10-02/schema.json`), and one name cannot be both a file and a folder. Such a profile is written as
@@ -10,26 +10,9 @@
 import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
+import { CACHE_CONTROL, DOCUMENTS, MARKDOWN, ORIGIN, SCHEMA } from "../src/lib/lcp-documents.ts";
 
-/** The site's origin, `siteConfig.url` in src/lib/site.ts. */
-export const ORIGIN = "https://lcp.integraledger.com";
-
-/** A profile, served in the Markdown it is written in. */
-export const MARKDOWN = "text/markdown; charset=utf-8";
-
-/** A JSON Schema, as json-schema.org serves its own meta-schemas; RFC 6839's `+json` suffix makes it JSON. */
-export const SCHEMA = "application/schema+json";
-
-/** Public, and cacheable for a day: UCP's hosting rule for a schema a profile references asks at least 60 seconds. */
-export const CACHE_CONTROL = "public, max-age=86400";
-
-export const DOCUMENTS = [
-  // UCP's x402 payment handler, com.integraledger.lcp.x402: its specification and its schema.
-  { path: "/ucp/x402/2026-10-02", source: "lcp/profiles/ucp-payment-handler-x402.md", type: MARKDOWN },
-  { path: "/ucp/x402/2026-10-02/schema.json", source: "lcp/profiles/ucp-payment-handler-x402.schema.json", type: SCHEMA },
-  // LCP's A2A extension: its URI, where A2A says an extension's specification is hosted.
-  { path: "/a2a/legal-context/v1", source: "lcp/profiles/a2a-legal-context-v1.md", type: MARKDOWN },
-];
+export { CACHE_CONTROL, DOCUMENTS, MARKDOWN, ORIGIN, SCHEMA };
 
 const ROOT = fileURLToPath(new URL("../../", import.meta.url));
 

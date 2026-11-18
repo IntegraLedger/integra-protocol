@@ -5,7 +5,7 @@ import { source } from "@/lib/source";
 type DocPage = ReturnType<typeof source.getPages>[number];
 
 export interface OrderedPage {
-  /** The sidebar section the page sits under, from its nearest separator. */
+  /** The section the page sits under: its nearest separator's name, or its folder's (the API pages: "API"). */
   section: string | undefined;
   page: DocPage;
 }
@@ -15,8 +15,9 @@ function label(name: unknown): string | undefined {
 }
 
 /**
- * Every documentation page in sidebar order, with the section it sits under. Pages that no
- * `meta.json` lists follow at the end.
+ * Every documentation page in sidebar order, with the section it sits under. A folder the sidebar shows as a folder
+ * (the API pages, under Reference) is a section of its own, named as the folder is. Pages that no `meta.json` lists
+ * follow at the end.
  */
 export function orderedPages(): OrderedPage[] {
   const byUrl = new Map(source.getPages().map((page) => [page.url, page]));
@@ -37,8 +38,9 @@ export function orderedPages(): OrderedPage[] {
         current = label(node.name) ?? current;
       } else if (node.type === "folder") {
         const folder: Folder = node;
-        if (folder.index) push(folder.index.url, current);
-        walk(folder.children, current);
+        const name = label(folder.name) ?? current;
+        if (folder.index) push(folder.index.url, name);
+        walk(folder.children, name);
       } else if (!node.external) {
         push(node.url, current);
       }
@@ -49,6 +51,39 @@ export function orderedPages(): OrderedPage[] {
   walk(root.children, undefined);
   for (const page of source.getPages()) push(page.url, undefined);
   return out;
+}
+
+/** The heading `/llms.txt` gives a section: the pages before the first separator are where to start. */
+export function sectionHeading(section: string | undefined): string {
+  if (section === undefined) return "Start here";
+  return section === "API" ? "API reference" : section;
+}
+
+/**
+ * The sections whose pages are also served as one file, at `<path>/llms-full.txt`, each by its route under
+ * src/app/<path>/llms-full.txt/. Every page of a section sits under its path; the build stops when one does not.
+ */
+export const SECTION_FILES: ReadonlyArray<{ section: string; path: string }> = [
+  { section: "Concepts", path: "/concepts" },
+  { section: "Guides", path: "/guides" },
+  { section: "Reference", path: "/reference" },
+  { section: "API", path: "/reference/api" },
+];
+
+/** The pages of the section served at `<path>/llms-full.txt`, in sidebar order. */
+export function sectionPages(path: string): DocPage[] {
+  const file = SECTION_FILES.find((f) => f.path === path);
+  if (file === undefined) throw new Error(`no section is served at ${path}/llms-full.txt`);
+  const pages = orderedPages()
+    .filter(({ section }) => section === file.section)
+    .map(({ page }) => page);
+  if (pages.length === 0) throw new Error(`the section ${file.section} has no page`);
+  for (const page of pages) {
+    if (page.url !== path && !page.url.startsWith(`${path}/`)) {
+      throw new Error(`${page.url}, in the section ${file.section}, is not under ${path}: move SECTION_FILES with it`);
+    }
+  }
+  return pages;
 }
 
 /** Where the build writes a page's Markdown copy: `/md/<path>.md`, and `/md/index.md` for the home page. */
@@ -65,10 +100,48 @@ export function markdownUrl(url: string): string {
   return url === "/" ? "/index.md" : `${url}.md`;
 }
 
+/** The site's address for a profile or vector file that a page links on GitHub, and its folder on GitHub. */
+const COPIES = [
+  { github: "lcp/profiles", site: "/profiles", ext: ".md" },
+  { github: "lcp/vectors", site: "/vectors", ext: ".json" },
+] as const;
+
+const escape = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/**
+ * Links that keep an agent in Markdown: a link to a page of this site names the page's Markdown address, a link to a
+ * profile or vector file in the repository names the site's copy of it (/profiles/, /vectors/, served from the commit
+ * the site is built from), and a link to either folder names its index there. Only link targets change: the text of
+ * the page, its code and its other links are left as written.
+ */
+function agentLinks(text: string): string {
+  const pages = new Set(source.getPages().map((p) => p.url));
+  const target = (url: string): string => {
+    const at = url.indexOf("#");
+    const address = at === -1 ? url : url.slice(0, at);
+    const hash = at === -1 ? "" : url.slice(at);
+    if (address === siteConfig.url || address.startsWith(`${siteConfig.url}/`)) {
+      const path = address.slice(siteConfig.url.length) || "/";
+      return pages.has(path) ? `${siteConfig.url}${markdownUrl(path)}${hash}` : url;
+    }
+    for (const copy of COPIES) {
+      const folder = `${siteConfig.githubUrl}/tree/main/${copy.github}`;
+      if (address === folder || address === `${folder}/`) return `${siteConfig.url}${copy.site}/llms.txt`;
+      const file = new RegExp(`^${escape(`${siteConfig.githubUrl}/blob/main/${copy.github}/`)}([\\w.-]+${escape(copy.ext)})$`).exec(address);
+      if (file?.[1]) return `${siteConfig.url}${copy.site}/${file[1]}${hash}`;
+    }
+    return url;
+  };
+  return text
+    .replace(/\]\((<?)(https:\/\/[^)\s>]+)(>?)(?=[)\s])/g, (_, open: string, url: string, close: string) => `](${open}${target(url)}${close}`)
+    .replace(/^(\[[^\]]+\]:\s*)(https:\/\/\S+)/gm, (_, lead: string, url: string) => `${lead}${target(url)}`);
+}
+
 /**
  * A page's body as portable Markdown: its authored Markdown with the edits the remark plugins make
- * through `replaceSource()` (the leading title and raw anchors removed, links rewritten to site and
- * repository URLs), numeric character references decoded and root-relative links made absolute.
+ * through `replaceSource()` (the leading title removed, links rewritten to site and repository URLs),
+ * numeric character references decoded, root-relative links made absolute, and links kept in Markdown
+ * (`agentLinks`).
  */
 export async function pageMarkdown(page: DocPage): Promise<string> {
   const processed = await page.data.getText("processed");
@@ -78,18 +151,64 @@ export async function pageMarkdown(page: DocPage): Promise<string> {
     )
     .replace(/\]\(\/(?=[^)]*\))/g, `](${siteConfig.url}/`)
     .replace(/^(\[[^\]]+\]:\s*)\/(?=\S)/gm, `$1${siteConfig.url}/`);
-  return `${text.trim()}\n`;
+  return `${agentLinks(text).trim()}\n`;
 }
 
-/** A page as a standalone Markdown document: title, description, canonical URL, body. */
-export async function pageDocument(page: DocPage): Promise<string> {
-  const body = await pageMarkdown(page);
+/** The facts a reader needs beside a page: what it documents, and where every other page is listed. */
+export interface PageFacts {
+  /** The packages and versions the pages document, as one phrase. */
+  versions: string;
+}
+
+/**
+ * A page as a standalone Markdown document: title, description, canonical URL, the date the page last changed and
+ * the versions it documents, the index of every page, then the body. In a file of many pages (`inFile`), the index
+ * line is left to the file's header, and each link to a fragment of the page names the page, so that a fragment two
+ * pages share points at one.
+ */
+export async function pageDocument(page: DocPage, facts: PageFacts, { inFile = false } = {}): Promise<string> {
+  let body = await pageMarkdown(page);
+  const markdown = `${siteConfig.url}${markdownUrl(page.url)}`;
+  if (inFile) {
+    body = body
+      .replace(/\]\(#([^)\s]+)\)/g, `](${markdown}#$1)`)
+      .replace(/^(\[[^\]]+\]:\s*)#(\S+)/gm, `$1${markdown}#$2`);
+  }
+  const updated = page.data.lastModified ? `Updated ${page.data.lastModified.toISOString().slice(0, 10)}. ` : "";
   return [
     `# ${page.data.title}`,
     "",
     ...(page.data.description ? [`> ${page.data.description}`, ""] : []),
     `Source: ${new URL(page.url, siteConfig.url).toString()}`,
     "",
+    `${updated}Documents ${facts.versions}.${inFile ? "" : ` Every page of this site is listed in ${siteConfig.url}/llms.txt.`}`,
+    "",
     body,
   ].join("\n");
+}
+
+/** Pages as one Markdown file: a header, then each page, in the order given. */
+export async function pagesFile(header: string[], pages: DocPage[], facts: PageFacts): Promise<string> {
+  const documents = await Promise.all(pages.map((page) => pageDocument(page, facts, { inFile: true })));
+  return `${header.join("\n")}\n\n${documents.map((d) => d.trim()).join("\n\n---\n\n")}\n`;
+}
+
+/**
+ * A file's size an agent can plan by: its bytes, and its tokens estimated at 4 bytes a token, rounded ("1.5 MB, about
+ * 380,000 tokens").
+ */
+export function sizeOf(text: string): string {
+  const bytes = new TextEncoder().encode(text).length;
+  const size = bytes >= 1e6 ? `${(bytes / 1e6).toFixed(1)} MB` : `${Math.max(1, Math.round(bytes / 1e3))} KB`;
+  const step = bytes >= 40_000 ? 1000 : 100;
+  const tokens = Math.max(step, Math.round(bytes / 4 / step) * step);
+  return `${size}, about ${tokens.toLocaleString("en-US")} tokens`;
+}
+
+/** A description cut to at most `max` characters, at a word, for a line of an index. */
+export function brief(text: string, max = 300): string {
+  const flat = text.replace(/\s+/g, " ").trim();
+  if (flat.length <= max) return flat;
+  const cut = flat.lastIndexOf(" ", max - 1);
+  return `${flat.slice(0, cut > 0 ? cut : max - 1).replace(/[\s,;:]+$/, "")}…`;
 }

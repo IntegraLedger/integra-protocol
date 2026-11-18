@@ -1,4 +1,5 @@
 import { markdownPath, pageDocument } from "@/lib/llms";
+import { pageFacts } from "@/lib/llms-files";
 import { source } from "@/lib/source";
 
 export const dynamic = "force-static";
@@ -16,7 +17,7 @@ export async function GET(_request: Request, context: { params: Promise<{ slug: 
   const path = `/md/${slug.join("/")}`;
   const page = source.getPages().find((p) => markdownPath(p.url) === path);
   if (!page) return new Response("not found", { status: 404 });
-  return new Response(await pageDocument(page), {
+  return new Response(await pageDocument(page, pageFacts), {
     headers: { "content-type": "text/markdown; charset=utf-8" },
   });
 }
