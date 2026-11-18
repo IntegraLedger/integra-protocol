@@ -275,7 +275,8 @@ search of the buyer's acts, `getEvents` on every contract for the buyer's SEP-41
 reference's `fromLedger`, the ledger recorded at issue, through the latest closed ledger, which `getLatestLedger` gives
 first, each candidate transaction read whole with `getTransaction`. A page whose `latestLedger` is below that first
 read leaves the search not read through, and the answer gives the position the next call resumes at. It settles on a
-transaction that consumed the entry's nonce under the five checks of the profile `x402-exact-stellar-precondition`.
+transaction that consumed the entry's nonce under the five checks of the profile
+[`x402-exact-stellar-precondition`](../../lcp/profiles/x402-exact-stellar-precondition.md).
 The value is read lapsed where the latest closed ledger is above the entry's expiration ledger, but no run has yet
 shown that an event search with no contract named holds every act of the buyer, so every answer the read decides but
 `before-position` is `pending`, `search-incomplete`. The reader's `events` takes `fromLedger` through `toLedger`, both
@@ -342,8 +343,8 @@ node that answers, before the lookup, and must pin one node to name it; a reader
 On TON, `status` counts only a Jetton transfer that a run of the payer's W5 wallet sent, since W5 checks the
 signature before it sends anything; an equal transfer body executed any other way never settles. A request the wallet
 has run stays pending `search-incomplete`, held at its transaction, until its Jetton transfer lands, however
-late, because an internal message carries no expiry. Its lapse is the expiry read of the profile `x402-exact-tvm`
-(rule 6): the wallet's state, its transactions linked back to the position, and the index's statement of the blocks it
+late, because an internal message carries no expiry. Its lapse is the expiry read of the profile
+[`x402-exact-tvm`](../../lcp/profiles/x402-exact-tvm.md) (rule 6): the wallet's state, its transactions linked back to the position, and the index's statement of the blocks it
 holds. That an index lists whole is not yet shown by a run, so until it is the expiry read releases nothing: no answer
 but `before-position` is `failed`.
 
