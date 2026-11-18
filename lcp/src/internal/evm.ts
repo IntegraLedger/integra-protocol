@@ -162,8 +162,10 @@ type HederaNetwork = "hedera:mainnet" | "hedera:testnet" | "hedera:previewnet" |
 
 /**
  * Bounded, read-only calls against one network's endpoint. Every failure rejects, for example with `ReaderError`; a
- * rejected `receipt`, `transaction` or `call` reads as unreadable, and a rejected `blockNumber` counts as a mark not
- * reached.
+ * rejected `receipt`, `transaction` or `call` reads as unreadable. A rejected `blockNumber` counts as a mark not
+ * reached where a read places a receipt it has read against the marks; where a read takes the marks before anything
+ * else, as the x402 reads on eip155 do with a reader that has no `block`, a rejected `finalized` mark is unreadable and
+ * a rejected `safe` mark reads as the final one.
  */
 export interface EvmReader {
   readonly network: Eip155 | HederaNetwork;

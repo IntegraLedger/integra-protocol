@@ -487,10 +487,11 @@ export function expiresOf(checked: Checked): number | Refusal {
  * Checks a challenge as issued (no LCP member in `opaque`) and names its pairings, in the order they are offered. An
  * `expires` that is present must be an RFC 3339 date-time, else `mpp/expires-required`. Without `expires`, the pairings
  * whose `build` writes it into what the payer signs, and the NEAR Intents and XRP Ledger charges, whose drafts require
- * it, are left out, and a challenge left with no pairing is `mpp/expires-required`. These checks are each pairing's one
- * filter: they include every check its `build`, `bound` and `reference` make on the challenge alone, and those take
- * only a challenge `pairingsOfPlaced` names for the pairing, refusing any other with the code these checks give it
- * (`mpp/not-this-pairing` where they name only other pairings).
+ * it, are left out, and a challenge left with no pairing is `mpp/expires-required`; a `charge` on the `lcp` method whose
+ * `rail` is `hedera` or `stellar` is `mpp/expires-required` without it, by the method's own filter. These checks are
+ * each pairing's one filter: they include every check its `build`, `bound` and `reference` make on the challenge alone,
+ * and those take only a challenge `pairingsOfPlaced` names for the pairing, refusing any other with the code these
+ * checks give it (`mpp/not-this-pairing` where they name only other pairings).
  */
 export function pairingsOf(c: MppChallenge): readonly MppPairingId[] | Refusal {
   const checked = checkChallenge(c, false);

@@ -4,9 +4,11 @@
  * stays on chain in the transaction's input list. Settlement is read by the transaction digest, which the signed
  * bytes fix before any money moves. BCS decoding uses @mysten/sui, loaded once when this module is, and decoding a
  * transaction's bytes is the one step that needs it: without it a function refuses `sui/peer-missing` only when it
- * reaches that step, after the checks that need no peer, `build` gives the request it gives with it, and `status` reads
- * as it does with it, pending `unreadable` only there. A digest is base58, read and written with the package's own
- * dependency @scure/base, so it is checked without the peer.
+ * reaches that step, after the checks that need no peer; `build` gives the request it gives with it; and `status` reads
+ * as it does with it until it meets a transaction's bytes, where the transaction the digest names is unreadable
+ * `unparseable`, and each transaction of the sender's that the search passes is an item it could not decode, at which
+ * the search is held. A digest is base58, read and written with the package's own dependency @scure/base, so it is
+ * checked without the peer.
  *
  * @module
  */

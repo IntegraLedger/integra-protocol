@@ -598,10 +598,11 @@ function isX402Method(o: unknown): o is X402Method {
 /**
  * The read keys of the x402 credential the merchant received, against the method it answers: the keys
  * `x402/exact/eip155/eip3009`'s `reference` gives for the same authorization under an option of that network, token and
- * payee (the network in CAIP-2, the token, `validBefore`, the digest of `from`, `to` and `value`, the token's
- * `AuthorizationUsed` and `Transfer` logs and the search by the nonce), the authorization's nonce standing where that
- * pairing has H; the payee the method's `address`; and the authorization's members as presented. None is judged against
- * the method.
+ * payee (the network in CAIP-2, the token, the payer `from`, `validBefore` and the members presented), the
+ * authorization's nonce standing where that pairing has H; the payee the method's `address`; the same authorization's
+ * keys as an `EvmRef` names them (the digest of `from`, `to` and `value`, the token's `AuthorizationUsed` and `Transfer`
+ * logs and the search by the nonce) and as `authorization` (the token that records its use, its nonce and
+ * `validBefore`); and the authorization's members as presented. None is judged against the method.
  */
 async function referenceX402(presented: unknown, option: X402Method): Promise<X402Ref | Refusal> {
   if (!isJsonObject(presented)) return refusal("ap2/mandate-malformed");

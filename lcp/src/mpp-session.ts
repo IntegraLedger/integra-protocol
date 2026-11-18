@@ -368,11 +368,10 @@ const MAX_WIRE = 65_536;
 /** `open(address,address,uint128,bytes32,address)`: the selector and five words. */
 const OPEN_CALL_BYTES = 164;
 /**
- * The calldata an opening's read decodes, at most 128 KiB, go-ethereum's transaction pool maximum for a whole
- * transaction (`core/txpool/legacypool/legacypool.go`, `txMaxSize = 4 * txSlotSize // 128KB`). A transaction with
- * longer calldata is not an opening the read decodes: `status` answers it pending `open-call-not-found`, as any other
- * transaction, and `recover` refuses it `evm/no-open-call`, since the calldata is the transaction's own and every read
- * gives the same.
+ * The calldata the EVM session's `recover` decodes, at most 128 KiB, go-ethereum's transaction pool maximum for a whole
+ * transaction (`core/txpool/legacypool/legacypool.go`, `txMaxSize = 4 * txSlotSize // 128KB`). `recover` refuses a
+ * transaction with longer calldata `evm/no-open-call`, since the calldata is the transaction's own and every read gives
+ * the same. `status` reads the opening by its funding and takes no bound from this one.
  */
 const MAX_CALLDATA = 131_072;
 const U96 = 1n << 96n;
