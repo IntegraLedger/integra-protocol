@@ -1,10 +1,13 @@
 # @integraledger/profile-facilitator
 
-The settler: an x402 facilitator for the x402 pairings that
-[`@integraledger/lcp`](https://www.npmjs.com/package/@integraledger/lcp) ships. A resource server calls it over x402's
-facilitator API, one HTTP surface: `GET /supported`, `POST /verify` and `POST /settle`. It checks each payment against
-its pairing's profile and the requirements it answers, submits what the payer signed, records each payment once in
-Postgres, and answers what the chain shows.
+The settler: an x402 facilitator that holds each payment to its pairing's LCP profile (hence the package name), for
+the x402 pairings that [`@integraledger/lcp`](https://www.npmjs.com/package/@integraledger/lcp) ships. A resource server
+calls it over x402's facilitator API, one HTTP surface: `GET /supported`, `POST /verify` and `POST /settle`. It checks
+each payment against its pairing's profile and the requirements it answers, submits what the payer signed, records each
+payment once in Postgres, and answers what the chain shows.
+
+This page is for the operator who runs it: at the end you can install it, configure each module with its keys, nodes
+and database, put it behind TLS, and read every answer it gives.
 
 ## What it is
 
@@ -60,10 +63,11 @@ or legal logic beyond that.
 npm install @integraledger/profile-facilitator @integraledger/lcp
 ```
 
-It needs Node.js `>=24.22.1`, Postgres (the tests run on Postgres 18), and, for each network it serves, the node its module
-reads. It is ESM only. `@integraledger/lcp` is its peer dependency: install it with the settler. A module that holds a
-key takes it as the signer object of x402's class for that chain; make it with that chain's x402 package at 2.31.0, the
-release the settler's classes are pinned to (`@x402/evm`, `@x402/svm`, `@x402/avm`, and so on).
+It needs Node.js `>=24.22.1`, Postgres 11 or later ([The database](#the-database)), and, for each network it serves,
+the node its module reads. It is ESM only. `@integraledger/lcp` is its peer dependency, at `~0.6.0`: install it with
+the settler ([Versions](#versions)). A module that holds a key takes it as the signer object of x402's class for that
+chain; make it with that chain's x402 package at 2.31.0, the release the settler's classes are pinned to
+(`@x402/evm`, `@x402/svm`, `@x402/avm`, and so on).
 
 Two packages in its dependency tree have install scripts that it runs without: `protobufjs` (through `@hiero-ledger/sdk`
 and `@concordium/web-sdk`) and `secp256k1` (through `@x402/near`). This repository installs with both denied, and runs
@@ -168,8 +172,10 @@ await settler.close();
 
 ## Run it as a service
 
-The package exports one function that starts the server; it has no command-line entry. A service is a short module
-that reads its configuration, makes the signer objects its keyed modules take, and stops cleanly on a signal. This one
+The package exports one function that starts the server; it has no command-line entry. It reads no environment
+variable and no file: every setting is a member of the configuration, and the variable names in these samples are the
+samples' own. A service is a short module that reads its configuration, makes the signer objects its keyed modules
+take, and stops cleanly on a signal. This one
 serves x402's `exact` scheme on Base Sepolia through the `evm` module, whose key, the seller's gas key, sends each
 transaction and pays its gas:
 
@@ -188,16 +194,20 @@ if (credential === undefined || gasKey === undefined) throw new Error("set SETTL
 // The seller's gas key, as x402's EVM classes take it.
 const account = privateKeyToAccount(gasKey);
 const client = createWalletClient({ account, chain: baseSepolia, transport: http(rpc) }).extend(publicActions);
-const signer = toFacilitatorEvmSigner({
-  address: account.address,
-  getCode: (a) => client.getCode(a),
-  readContract: (a) => client.readContract({ ...a, args: a.args ?? [] } as never),
-  verifyTypedData: (a) => client.verifyTypedData(a as never),
-  writeContract: (a) => client.writeContract({ ...a, args: a.args ?? [] } as never),
-  sendTransaction: (a) => client.sendTransaction(a as never),
-  waitForTransactionReceipt: (a) => client.waitForTransactionReceipt(a) as never,
-  simulateCalls: (a) => client.simulateCalls(a as never) as never,
-});
+const signer = toFacilitatorEvmSigner(
+  {
+    address: account.address,
+    getCode: (a) => client.getCode(a),
+    readContract: (a) => client.readContract({ ...a, args: a.args ?? [] } as never),
+    verifyTypedData: (a) => client.verifyTypedData(a as never),
+    writeContract: (a) => client.writeContract({ ...a, args: a.args ?? [] } as never),
+    sendTransaction: (a) => client.sendTransaction(a as never),
+    waitForTransactionReceipt: (a) => client.waitForTransactionReceipt(a) as never,
+    simulateCalls: (a) => client.simulateCalls(a as never) as never,
+  },
+  // Below settleWaitMs, so /settle answers settlement_pending instead of waiting up to x402's default 180 s.
+  { confirmationTimeoutMs: 25_000 },
+);
 
 const listen = process.env.LISTEN ?? "127.0.0.1:4021";
 const settler = await serveProfileFacilitator({
@@ -246,7 +256,8 @@ Run it with `node settler.ts`: Node.js 26 runs TypeScript directly. Every call m
 
 `close()` stops accepting requests, closes open connections, closes what each module opened (the Polkadot nodes'
 connections among them), stops the sweep and closes the Postgres pool. If the settler cannot start, it closes what it
-opened and rejects with the error that stopped it, such as the listen's `EADDRINUSE` or a configuration it refuses.
+opened and rejects with the error that stopped it, such as the listen's `EADDRINUSE` or a configuration it refuses
+([What stops the start](#what-stops-the-start)).
 
 ## Configuration
 
@@ -258,38 +269,58 @@ the deployment starts, named for the module. A module whose member is absent is 
 | Member | Type | Meaning |
 |---|---|---|
 | `listen` | `string` | `"host:port"`; an IPv6 host may be written in brackets. |
-| `store` | `{ url: string }` | The Postgres connection string. Postgres holds the record, the fee count and the modules' durable state; the settler creates its tables at start where they do not exist. |
+| `store` | `{ url: string }` | The Postgres connection string. Postgres holds the record, the fee count and the modules' durable state; the settler creates its tables at start where they do not exist ([The database](#the-database)). |
 | `settleWaitMs` | `number` | How long `/settle` waits for the chain before it answers `settlement_pending`. A value that is not a positive finite number means 30 000. |
 | `credential` | `string`, optional | The credential every call must present as `Authorization: Bearer <credential>`; required where a configured module holds a key ([The credential](#the-credential)). Its characters are those RFC 6750 admits in a bearer token: letters, digits and `-._~+/`, then any `=`. |
 | `feeBudgets` | `{ network, amount, periodSeconds }[]`, optional | At most one per network, each on a network a configured module serves ([The fee budget](#the-fee-budget)). `amount` is in the smallest unit of the network's fee asset, a `bigint` or its decimal digits, and positive; `periodSeconds` is a positive whole number. |
 | `operatorLog` | `(entry, cause?) => void`, optional | Receives every entry for the operator ([Bounds and logs](#bounds-and-logs)). The default writes one JSON line per entry on standard error. |
 
+### The database
+
+The settler needs Postgres 11 or later: nothing it runs is newer than `hashtextextended`, which Postgres 11 added. Its
+tests run on Postgres 18. At every start it runs `CREATE TABLE IF NOT EXISTS` and `CREATE INDEX IF NOT EXISTS` for its
+three tables and two indexes ([Storage](#storage)), so the role in `store.url` needs `CREATE` on the schema they live
+in and owns them. From Postgres 15, the schema `public` grants `CREATE` to no role but its owner by default: grant it,
+or create a schema named for the role and owned by it, which Postgres's default `search_path` (`"$user", public`) puts
+first. The role then reads and writes only those tables, and takes transaction-level advisory locks. Each process holds
+at most 10 connections.
+
+Every settler process that may settle the same payments uses the same database: the record is what keeps one payment
+submitted once and answered success once. Do not truncate or replace its tables while payments they hold can still
+land, and back them up as you back up payment records.
+
 ### The modules
 
 Each module's member lists the networks it serves. Its keys reach it inside that member, as the signer objects its
-classes take; the settler reads no key material of its own. The network is the CAIP-2 id lcp's type for the chain
-names (`eip155:<chain id>`, `solana:<genesis hash prefix>`, and so on).
+classes take; the settler reads no key material of its own. A network is the CAIP-2 id lcp's type for the chain
+names, and the table gives the ones each module takes.
 
-| Member | Chain | Scheme: pairings | `extra.key` | `extra.acceptsZero` | Facilitator |
-|---|---|---|---|---|---|
-| `algorand` | Algorand | `exact`: `x402/exact/algorand` | `fee-payer` | `true` | `@x402/avm`'s class; the settler's own path for a rekeyed payer signing with one key and a Falcon-key payer |
-| `aptos` | Aptos | `exact`: `x402/exact/aptos` | `fee-payer`, or `none` with `sponsor: false` | `false` | `@x402/aptos`'s class |
-| `cardano` | Cardano | `exact`: `x402/exact/cardano`, `x402/exact/cardano/lock` | `none` | `false` | `@x402/cardano`'s class |
-| `casper` | Casper | `exact`: `x402/exact/casper` | `relayer` | `false` | `@x402/casper`'s class |
-| `concordium` | Concordium | `exact`: `x402/exact/ccd` | `fee-payer` | `true` | `@x402/concordium`'s class |
-| `evm` | EVM | `exact`: `x402/exact/eip155/eip3009`, `x402/exact/eip155/permit2`; `upto`: `x402/upto/eip155/permit2`; `auth-capture`: `x402/auth-capture/eip155/eip3009`, `x402/auth-capture/eip155/permit2`; `batch-settlement`: `x402/batch-settlement/eip155` | `relayer` | `false` | `@x402/evm`'s classes |
-| `erc7710` | EVM | `exact` with `erc7710`: `x402/exact/eip155/erc7710`, `x402/exact/eip155/erc7710-salt` | `relayer` | `false` | the settler's own, behind the `evm` module's `exact` |
-| `hedera` | Hedera | `exact`: `x402/exact/hedera` | `fee-payer` | `false` | `@x402/hedera`'s class |
-| `lnbtc` | Lightning | `exact`: `x402/exact/lnbtc/payment-hash` | `none` | `false` | the settler's own |
-| `near` | NEAR | `exact`: `x402/exact/near` | `relayer` | `false` | `@x402/near`'s class |
-| `polkadot` | Polkadot Asset Hub | `exact`: `x402/exact/polkadot/lcp-assets-remark` | `none` | `false` | the settler's own |
-| `solana` | Solana | `exact`: `x402/exact/solana`; `upto`: `x402/upto/solana`; `batch-settlement`: `x402/batch-settlement/solana` | `fee-payer` | `true` on `exact`, `false` on the others | `@x402/svm`'s classes |
-| `starknet` | Starknet | `exact`: `x402/exact/starknet` | `relayer` | `false` | the settler's own |
-| `stellar` | Stellar | `exact` with `lcp-precondition`: `x402/exact/stellar/precondition` | `relayer` | `true` | the settler's own |
-| `sui` | Sui | `exact`: `x402/exact/sui` | `none` | `false` | the settler's own |
-| `ton` | TON | `exact`: `x402/exact/tvm` | `relayer` | `true` | `@x402/tvm`'s class |
-| `tron` | Tron | `exact`: `x402/exact/tron/lcp-trc20-memo` | `none` | `false` | the settler's own |
-| `xrpl` | XRP Ledger | `exact`: `x402/exact/xrpl`; `upto`: `x402/upto/xrpl` | `none` | `false` | `@x402/xrpl`'s class for a payer signing with one key; the settler's own for a multisigned payer and for `upto` |
+| Member | Chain | Networks | Scheme: pairings (`confirmed`) | `extra.key` | `extra.acceptsZero` | Facilitator |
+|---|---|---|---|---|---|---|
+| `algorand` | Algorand | `algorand:<genesis hash prefix>` | `exact`: `x402/exact/algorand` (yes) | `fee-payer` | `true` | `@x402/avm`'s class; the settler's own path for a rekeyed payer signing with one key and a Falcon-key payer |
+| `aptos` | Aptos | `aptos:<chain id>` | `exact`: `x402/exact/aptos` (yes) | `fee-payer`, or `none` with `sponsor: false` | `false` | `@x402/aptos`'s class |
+| `cardano` | Cardano | `cardano:mainnet`, `cardano:preprod`, `cardano:preview` | `exact`: `x402/exact/cardano` (yes), `x402/exact/cardano/lock` (no) | `none` | `false` | `@x402/cardano`'s class |
+| `casper` | Casper | `casper:casper-test` | `exact`: `x402/exact/casper` (no) | `relayer` | `false` | `@x402/casper`'s class |
+| `concordium` | Concordium | `ccd:<genesis hash prefix>` | `exact`: `x402/exact/ccd` (no) | `fee-payer` | `true` | `@x402/concordium`'s class |
+| `evm` | EVM | `eip155:<chain id>` | `exact`: `x402/exact/eip155/eip3009` (yes), `x402/exact/eip155/permit2` (no); `upto`: `x402/upto/eip155/permit2` (no); `auth-capture`: `x402/auth-capture/eip155/eip3009` (no), `x402/auth-capture/eip155/permit2` (no); `batch-settlement`: `x402/batch-settlement/eip155` (no) | `relayer` | `false` | `@x402/evm`'s classes |
+| `erc7710` | EVM | `eip155:<chain id>`, where `evm` registers `exact` | `exact` with `erc7710`: `x402/exact/eip155/erc7710` (no), `x402/exact/eip155/erc7710-salt` (no) | `relayer` | `false` | the settler's own, behind the `evm` module's `exact` |
+| `hedera` | Hedera | `hedera:mainnet`, `hedera:testnet`, `hedera:previewnet`, `hedera:devnet` | `exact`: `x402/exact/hedera` (yes) | `fee-payer` | `false` | `@x402/hedera`'s class |
+| `lnbtc` | Lightning | `lnbtc:000000000019d6689c085ae165831e93`, `lnbtc:000000000933ea01ad0ee984209779ba` | `exact`: `x402/exact/lnbtc/payment-hash` (yes) | `none` | `false` | the settler's own |
+| `near` | NEAR | `near:mainnet`, `near:testnet` | `exact`: `x402/exact/near` (yes) | `relayer` | `false` | `@x402/near`'s class |
+| `polkadot` | Polkadot Asset Hub | `polkadot:68d56f15f85d3136970ec16946040bc1`, `polkadot:67f9723393ef76214df0118c34bbbd3d` | `exact`: `x402/exact/polkadot/lcp-assets-remark` (yes) | `none` | `false` | the settler's own |
+| `solana` | Solana | `solana:<genesis hash prefix>`; `upto` and `batch-settlement` not on `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` | `exact`: `x402/exact/solana` (yes); `upto`: `x402/upto/solana` (no); `batch-settlement`: `x402/batch-settlement/solana` (no) | `fee-payer` | `true` on `exact`, `false` on the others | `@x402/svm`'s classes |
+| `starknet` | Starknet | `starknet:SN_MAIN`, `starknet:SN_SEPOLIA` | `exact`: `x402/exact/starknet` (yes) | `relayer` | `false` | the settler's own |
+| `stellar` | Stellar | `stellar:pubnet`, `stellar:testnet` | `exact` with `lcp-precondition`: `x402/exact/stellar/precondition` (yes) | `relayer` | `true` | the settler's own |
+| `sui` | Sui | `sui:mainnet`, `sui:testnet`, `sui:devnet` | `exact`: `x402/exact/sui` (yes) | `none` | `false` | the settler's own |
+| `ton` | TON | `tvm:-239`, `tvm:-3` | `exact`: `x402/exact/tvm` (yes) | `relayer` | `true` | `@x402/tvm`'s class |
+| `tron` | Tron | `tron:<chain id in decimal>` | `exact`: `x402/exact/tron/lcp-trc20-memo` (yes) | `none` | `false` | the settler's own |
+| `xrpl` | XRP Ledger | `xrpl:<NetworkID>` | `exact`: `x402/exact/xrpl` (yes); `upto`: `x402/upto/xrpl` (no) | `none` | `false` | `@x402/xrpl`'s class for a payer signing with one key; the settler's own for a multisigned payer and for `upto` |
+
+`confirmed` is lcp's registry's: whether something outside lcp has shown the form as its profile defines it
+([the pairing registry](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/reference/pairings.md)). The
+settler serves the forms marked `no` as their profiles define them, but no recorded run outside lcp has yet shown one.
+The `casper` and `concordium` modules serve only such forms: run them on a test network, and do not offer those forms
+to buyers until the registry says `yes`.
 
 Each member, one entry per network unless it says otherwise:
 
@@ -309,11 +340,11 @@ Each member, one entry per network unless it says otherwise:
   names one of the key's addresses.
 - **`cardano`**: `network`; `signer`, the chain-query object `@x402/cardano`'s class takes over the seller's provider (a
   provider's project id is its configuration, not a key); `reader`, lcp's `CardanoReader` over the seller's indexer. The
-  class broadcasts the transaction the buyer signed, whose fee the buyer pays. The class reads a transaction's confirmations from Blockfrost
-  alone: over Koios alone it sees none, so an option it settles there states `extra.confirmationPolicy` as
-  `{ "l1Confirmations": 0 }`, and an option that states none, whose default asks one confirmation, is refused at `/verify`
-  (`@x402/cardano` 2.31.0, `dist/esm/index.mjs:483-492`, `dist/esm/chunk-C7JT2R6E.mjs:38`, `:116-117`). A provider with a
-  Blockfrost project serves an option that asks confirmations. `/settle` answers success where the class does, and
+  class broadcasts the transaction the buyer signed, whose fee the buyer pays. `@x402/cardano` 2.31.0 reads a
+  transaction's confirmations from Blockfrost alone: over Koios alone it sees none, so an option it settles there
+  states `extra.confirmationPolicy` as `{ "l1Confirmations": 0 }`, and an option that states none, whose default asks
+  one confirmation, is refused at `/verify`. A provider with a Blockfrost project serves an option that asks
+  confirmations. `/settle` answers success where the class does, and
   otherwise once lcp's read through `reader` shows the transaction final, at the ledger's security parameter of
   confirmations (2160 on mainnet and Preprod, some 12 hours); until then it answers `settlement_pending` naming the
   transaction. Over Koios alone the class's settle gives no success, so a payment is answered at that mark. Its guard
@@ -415,6 +446,45 @@ Each member, one entry per network unless it says otherwise:
   `settlementTransaction`, a `PaymentChannelClaim` its `payTo` key signed for the actual charge with `tfClose`, which the
   module checks and submits unchanged; `/verify` refuses a payload that already carries one, as the scheme requires.
 
+The `cardano`, `concordium` and `ton` modules take an lcp reader in `reader` rather than a node's URL, and lcp ships
+the interface but no implementation: `CardanoReader` of `@integraledger/lcp/cardano`, `CcdReader` of
+`@integraledger/lcp/ccd` and `TvmReader` of `@integraledger/lcp/tvm`, each documented member by member on its API page
+([`cardano`](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/reference/api/cardano.md),
+[`ccd`](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/reference/api/ccd.md),
+[`tvm`](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/reference/api/tvm.md)), with the calls each
+makes in
+[Rails: reading settlement](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/guides/rails.md#reading-settlement).
+Write one over your own indexer or node. Its `network` is the module's `network`: the module refuses to start where
+they differ. Each call is read-only and bounded by your own timeout and byte limit, and
+rejects on any failure, with lcp's `ReaderError` (`@integraledger/lcp/evm`) where the kind is known: a rejection reads
+as `unreadable`, never as absence. An item the endpoint does not hold is answered only in the form the interface names
+for it (`null`, or `{ notFound: true, ... }` with the point the interface asks for), and only where the endpoint
+answered in the form it documents for a missing item. lcp makes no other call, so the endpoint, its credentials, its
+timeouts and its retries are yours.
+
+### What stops the start
+
+`serveProfileFacilitator` rejects with the first of these it meets, in this order, having closed what it opened; each
+message starts as shown:
+
+| The configuration | The message |
+|---|---|
+| `listen` is not `host:port` | `listen must be "host:port"` |
+| `credential` holds a character RFC 6750 does not admit | `credential must be a bearer token` |
+| A fee budget whose amount is not a positive integer, or whose period is not a positive whole number of seconds | `the fee budget of <network>: its amount is not a positive integer`, `the fee budget of <network>: its period is not a positive number of seconds` |
+| Two fee budgets on one network | `<network> has two fee budgets` |
+| Postgres cannot be reached, or the tables cannot be created ([The database](#the-database)) | the driver's own error |
+| A module's member it refuses, the modules taken in the order of their names | `casper on <network>: not served` (`casper:casper`), `casper on <network>: the signer reads`, `casper on <network>: the signer's speculative execution goes to`, `casper on <network>: the signer names the chain`; `the Cardano reader serves`; `the Concordium signer and reader must serve`; `lnbtc: <network> is not an lnbtc network`; `not a Starknet network`, `the executor's address is not an account address`; `not a Stellar network`, `the source account's address is not an account strkey`, `the fee ceiling must be positive, and the inclusion fee at least 100 stroops`; `not a Sui network`; `the TON reader serves` |
+| An `erc7710` network where the `evm` module does not register `exact` | `an own module is offered to exact on <network>, which no module registers` |
+| A module's class that states `pairings`, `key`, `acceptsZero` or `feeBudget` in its `extra` | `<network>: a module's facilitator states` |
+| Two registrations of one scheme on one network | `two registrations of <scheme> <network>` |
+| Two modules behind one registration whose keys sign for different purposes | `<scheme> on <network>: its modules' keys sign for` |
+| A fee budget on a network no module serves | `the fee budget of <network>: no module serves it` |
+| A fee budget on a network where a keyed module neither counts nor shows its fees (`ton`, `concordium`) | `the fee budget of <network>: the <module> module's key pays fees it neither meters nor shows` |
+| A keyed module, and no `credential` | `a module holds a key (<scheme> on <network>, ...): credential is required` |
+
+Any other rejection is the error of a call the start makes, such as the listen's `EADDRINUSE`.
+
 ## Keys
 
 `extra.key` states what the module's key signs, by one of three values:
@@ -438,6 +508,17 @@ settler would spend the seller's money on payments between other parties. A depl
 `Authorization: Bearer <credential>`; the settler compares the SHA-256 of what is presented with that of the credential
 in constant time, and answers a call without it `401` `{"error":"unauthorized"}` with `WWW-Authenticate: Bearer`,
 before it reads the body, closing the connection. A keyless deployment may set one too, with the same effect.
+
+## Security
+
+The settler serves plain HTTP (`node:http`, no TLS option): the credential and every payment cross the network in clear
+unless TLS is in front of it. Bind `listen` to loopback or a private interface and terminate TLS in a proxy before it,
+or run the settler on the resource server's own host. The credential is its only gate: anyone who holds it can have a
+keyed module pay fees for payments between other parties, up to the fee budget ([The fee budget](#the-fee-budget)), so
+keep it as you keep the keys, and set a budget on each network whose fees a key pays. The keys live in the operator's
+process, as the signer objects passed in; the settler reads no key material itself, and names a node in an error by
+its origin alone. It does not check that H is the one the resource server issued, nor that the resource
+server has not accepted it before ([What it is](#what-it-is)): those checks are the resource server's.
 
 ## What `/supported` states
 
@@ -515,8 +596,8 @@ await settler.close();
    `unsupported_scheme`. Where an own module claims the payment (by a member of the option, or by what the payment
    holds), it goes to that module, else to the registration's class. On `lnbtc` the answer is `unsupported_scheme`.
 3. lcp's checks of the pairing, from the payment and its requirements alone. A refusal carries x402's reason and, on
-   the `algorand`, `aptos`, `hedera`, `solana`, `starknet` and `sui` modules, lcp's refusal code as `invalidMessage`
-   (on `starknet` and `sui`, the module's own code where its own check refused).
+   the `algorand`, `aptos`, `casper`, `hedera`, `solana`, `starknet` and `sui` modules, lcp's refusal code as
+   `invalidMessage` (on `starknet` and `sui`, the module's own code where its own check refused).
 4. The record: a payment it holds, claimed or final, is refused `invalid_transaction_state`, since `isValid: true`
    tells the caller that a settle may follow.
 5. What the kind declares: an amount of zero where it does not take zero, and a form outside the pairings of the module
@@ -532,20 +613,21 @@ The answer is `{isValid: true, payer}` or `{isValid: false, invalidReason, inval
 ### `/settle`
 
 1. Steps 1 to 3 of `/verify`, with `errorMessage` for `invalidMessage`; `lnbtc` is served here.
-2. The record. A final row is answered `invalid_transaction_state` naming the transaction it holds, never a second
-   success. A claim another settle holds, or one whose hold has ended, is answered as
-   [the record](#the-record-and-what-a-repeat-answers) says.
+2. The record: a final row is answered `invalid_transaction_state` naming the transaction it holds, never a second
+   success.
 3. What the kind declares, as `/verify` checks it.
-4. The class's verify. Where it refuses, lcp's read of the chain: a payment the chain shows landed, or whose value
+4. A claim the record holds that is not final, which another settle holds or whose hold has ended: it is answered as
+   [the record](#the-record-and-what-a-repeat-answers) says, and no step below is made.
+5. The class's verify. Where it refuses, lcp's read of the chain: a payment the chain shows landed, or whose value
    another act consumed, is stored final and answered `invalid_transaction_state` naming its transaction; otherwise the
    class's refusal is the answer, nothing is stored, and a repeat is checked again.
-5. Where the module's read searches from a position no x402 call carries (a ledger, a slot, a block), the chain's
+6. Where the module's read searches from a position no x402 call carries (a ledger, a slot, a block), the chain's
    position, read just before the claim, which the row keeps for every later read.
-6. The claim: one conditional insert of the payment's row, held by this settle for `settleWaitMs`, so that of two
+7. The claim: one conditional insert of the payment's row, held by this settle for `settleWaitMs`, so that of two
    settles of one payment only one submits.
-7. The fee budget, where the module's key pays the fee: a spent budget answers `fee_budget_spent`, sends nothing, and
+8. The fee budget, where the module's key pays the fee: a spent budget answers `fee_budget_spent`, sends nothing, and
    leaves the claim, not final.
-8. The class's settle, which submits what the payer signed. A success that names a transaction is stored final, then
+9. The class's settle, which submits what the payer signed. A success that names a transaction is stored final, then
    answered `{success: true, transaction, network, payer}`. Anything else is classified by lcp's read: a payment the
    chain shows final is stored final and answered (success only where the read shows a transaction this settler sent,
    or the payment it presented, settled); one still live is answered `settlement_pending` naming the transaction sent,
@@ -728,7 +810,9 @@ CREATE TABLE IF NOT EXISTS module_state (
 - Each node call the settler makes itself has a timeout of at most 5 seconds and an answer of at most 4 MiB, except
   Polkadot's block reads, bounded by the runtime's `System.BlockLength` (at most 4 of them at once in a process). A
   published class's calls are bounded by the class, and its settle takes no deadline: `settleWaitMs` bounds the
-  settler's own reads and store calls, and a class's settle runs on its own bounds.
+  settler's own reads and store calls, and a class's settle runs on its own bounds. x402's EVM signer waits up to
+  180 s for a receipt unless `toFacilitatorEvmSigner`'s `confirmationTimeoutMs` is set: set it below `settleWaitMs`,
+  as the service above does, or a `/settle` can outlast its wait.
 - `/settle`'s reads and submission end a second before `settleWaitMs` (a quarter of a shorter wait), the time kept for
   storing the answer. The server's request timeout is `settleWaitMs` plus 60 seconds.
 - An error names a node by its origin alone, since a URL's path or query can hold an API key.
@@ -743,10 +827,44 @@ CREATE TABLE IF NOT EXISTS module_state (
   and `fee-not-counted`. Each module adds its own, such as `node-call-failed` and `settlement-failed`. Every
   `unexpected_verify_error` and `unexpected_settle_error` has an entry that names why, written when it is first given.
 
-## Tests and the test database
+## Versions
 
-The tests feed lcp's vectors for each module's pairings through the settler's `/verify` and `/settle`, against local
-node stubs that replay recorded node answers (`test/fixtures/tron-mainnet-answers.json`, Polkadot Asset Hub's runtime
+0.5.0 takes `@integraledger/lcp` `~0.6.0` as its peer dependency: install `@integraledger/lcp@~0.6.0` beside it. A
+later lcp minor release needs a settler release that names it. While both packages are 0.x, a minor release may change
+the configuration, the answers or the storage; [the CHANGELOG](./CHANGELOG.md) lists what each release changes. It
+needs Node.js 24.22.1 or later.
+
+### Upgrading from 0.4.0
+
+0.4.0 served the `tron` and `polkadot` modules alone. 0.5.0 takes `listen`, `store`, `settleWaitMs`, `operatorLog`,
+`tron` and `polkadot` unchanged, and needs `@integraledger/lcp` `~0.6.0` (0.4.0 took `~0.5.0`) and Node.js 24.22.1.
+
+0.4.0 kept its record in the table `settlement`. 0.5.0 creates `instrument`, `fee` and `module_state` beside it, never
+reads or writes `settlement`, and does not fill `instrument` from it, so it does not know the payments 0.4.0 answered.
+A repeated `/settle` of one of them is judged afresh, by the module's checks and lcp's read of the chain:
+
+- **A payment 0.4.0 answered success is never answered success again.** On Tron, the module's checks refuse a
+  transaction id the node holds in its blocks or pending pool, and an expiration already passed; on Polkadot, the node
+  no longer answers the extrinsic valid once its nonce is used. The answer is `invalid_transaction_state` naming the
+  transaction, stored, where lcp's read shows the payment final, and otherwise the check's refusal, with nothing stored.
+- **A payment 0.4.0 answered `settlement_pending` is answered the same way once its transaction is in a block, and so
+  is never answered success by 0.5.0, though it landed.** The one exception is a Polkadot extrinsic still in the
+  node's pool, not yet in a block, when the repeat arrives: it passes the checks, 0.5.0 claims it, the node refuses
+  its submission as already seen, and 0.5.0 answers success once lcp's read shows it final.
+- **A payment 0.4.0 claimed and never sent** is new to 0.5.0, which settles it.
+
+Neither rail lets one signed payment land twice: a Tron transaction id and a Polkadot account nonce are each used once.
+Before you switch, call `/settle` on 0.4.0 again for each payment it left pending, until each has a final answer (its
+rows in `settlement` whose `answer` is null or whose `answer->>'errorReason'` is `settlement_pending`), or read those
+payments with lcp's `status` after the switch. Do not run 0.4.0 and 0.5.0 at once for the same payments: each keeps its
+own record, so each can submit a payment and answer it success. `settlement` can be dropped once no payment it holds
+can still land.
+
+## Tests (in a clone of this repository)
+
+The package ships no tests: they run in a clone of [the repository](https://github.com/IntegraLedger/integra-protocol).
+They feed lcp's vectors for each module's pairings through the settler's `/verify` and `/settle`, against local node
+stubs that replay recorded node answers (`test/fixtures/tron-mainnet-answers.json`, Polkadot Asset Hub's runtime
 metadata in `test/fixtures/polkadot-asset-hub-2005000.json.gz`) or answers derived from the pairing's profile. They
 need Postgres: set `INTEGRA_DATABASE_URL` to a connection string whose user may create databases. Each test file makes
 and drops its own database, so test runs share one server. CI runs them against a Postgres 18 service.
