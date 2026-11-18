@@ -16,7 +16,7 @@ these pages, does not run them.
 ## Install
 
 ```sh
-npm install @integraledger/profile-facilitator @integraledger/lcp
+npm install @integraledger/profile-facilitator @integraledger/lcp@~0.6.0
 ```
 
 It needs Node.js `>=24.22.1`, Postgres 11 or later ([The database](#the-database)), and, for each network it serves,
