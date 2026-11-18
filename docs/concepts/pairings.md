@@ -10,13 +10,17 @@ from the protocol outward: the surface (`x402`), the scheme or intent (`exact`),
 (`eip155`, `eip3009`). Each pairing is one frozen object that carries the whole binding for that combination, on both
 sides of the payment.
 
-The package holds 58 pairings on eight surfaces: `x402`, `mpp`, `acp`, `ucp`, `ap2`, `ack`, `card` and `spend-permissions`. The
-[pairings reference](../reference/pairings.md) lists each one, generated from the registry.
+The package holds the pairings of eight surfaces: `x402`, `mpp`, `acp`, `ucp`, `ap2`, `ack`, `card` and
+`spend-permissions`. The [pairings reference](../reference/pairings.md) lists each one, and their count, generated from
+the registry.
 
 ## The members
 
-Every pairing has these members, except that `mpp/charge/nearintents` has no `build`: the buyer's deposit carries
-nothing of that pairing. The types differ per surface; the roles do not.
+Every pairing has these members, except `build`, which is absent where the payer's own client builds the payment and
+the package builds nothing: on `mpp/charge/nearintents`, `mpp/charge/tempo/split-memo`,
+`mpp/charge/tempo/split-memo/push`, `mpp/session/hedera/stock`, `mpp/session/solana/stock`, `mpp/session/xrpl/stock`,
+`mpp/subscription/solana` and `x402/upto/xrpl`. Check that `build` is defined before you call it on a pairing taken
+from `BINDINGS`. The types differ per surface; the roles do not.
 
 | Member | Side | What it does |
 |---|---|---|
@@ -26,31 +30,33 @@ nothing of that pairing. The types differ per surface; the roles do not.
 | `claims` | seller | `true` when what the buyer presents carries a value bound to H that `bound` reads; `false` when it does not, and a seller has nothing in the payment itself to match. |
 | `unplaced(option)` | seller | The option as the seller issued it, before the pairing's carrier was placed in it. |
 | `tie(...)` | seller | The ATR's binding slot: `[slot, value]`, the values that tie the record to this payment. |
-| `advertise(doc, h, link, offer, agreementUrl?)` | seller | A copy of the challenge or checkout with H, the link and, where the pairing has one, the carrier placed. |
+| `advertise(doc, h, link, offer, ...rest)` | seller | A copy of the challenge or checkout with H, the link and, where the pairing has one, the carrier placed. `rest` is the surface's: `agreementUrl?` on x402 and the checkout and card pairings; `position, act?, agreementUrl?` on MPP; `coinsPerUtxoByte, agreementUrl?` on `x402/exact/cardano`; `error?` on `spend-permissions/eip155`. |
 | `read(doc)` | buyer | H, the link, the agreement URL when one is present, and the options from an advertised document: on x402, those this pairing can pay; on MPP, every challenge, whatever its method, and `build` refuses another method's challenge. |
-| `build(choice, h)` | buyer | What the buyer's signer signs, with H in its place, and a `complete` that turns the signature into the payment. |
-| `bound(presented)` | seller | H as it appears in what the buyer presented. |
+| `build(choice, h, act?)` | buyer | What the buyer's signer signs, with H in its place, and a `complete` that turns the signature into the payment. For the act `"agreement"`, on a pairing whose single-use value is H itself or H's low bits, the agreement's own value, [`agreementValue(h)`](./atr-hash.md#the-agreements-own-value), takes H's place. |
+| `bound(presented, given?)` | seller | H as it appears in what the buyer presented. Given `{ act: "agreement", h }` on such a pairing, it checks that the agreement's own value stands in H's place, and gives H where it does. |
 | `broadcaster(presented)` | seller | Who broadcasts what the buyer presented: `"payer"`, which sent it before presenting it, or `"payee"`, which sends or executes it after ([Who broadcasts](#who-broadcasts)). |
 
 Pairings that settle on a rail the package can read also have:
 
 | Member | What it does |
 |---|---|
-| `reference(presented, option)` | The read keys of a payment: its network, the payer and the single-use value the payer signed, by which a read finds the payer's own act, and the option's payee, taken from `option`, the x402 option or MPP challenge the payment answers. The payee is the key of the read's two party tests, never a search key. |
+| `reference(presented, option, given?)` | The read keys of a payment: its network, the payer and the single-use value the payer signed, by which a read finds the payer's own act, and the option's payee, taken from `option`, the x402 option or MPP challenge the payment answers. The payee is the key of the read's two party tests, never a search key. Given `{ act: "agreement", h }` on a pairing whose agreement has its own value, the single-use value it names is that value. |
 | `status(ref, reader, query)` | The read of the act `query` asks about, `payment` or `agreement`, through a bounded reader you supply, at the finality `query` asks for; `query` also takes, where you have them, a final position the transaction must come after (`after`), the search position an earlier answer returned (`search`), and other acts under the same H (`others`). It answers `settled`, `pending`, `failed` or `unreadable`, with one reason of a closed list, what it read, and the foreign items it met: transactions that carry H and are not the act, each with its reason. The [read-status profile](../../lcp/profiles/read-status.md) states the answers, their reasons and the rules that choose them. |
 | `recover({ network, tx, option }, reader)` | H read back from a landed transaction, for any holder of an ATR and a transaction id; `option` is the x402 option or MPP challenge the ATR's binding slot holds, from which the read takes what it needs. |
 | `authorizer(presented)` | On an EVM pull pairing, the account whose signature authorises the pull. With the reference's `authorization`, it lets a reader ask the chain whether the authorization executed before any transaction is named. |
 
-The Lightning pairings and `x402/exact/eip155/erc7710` have `reference` without `status`.
+These pairings have `reference` without `status`: the Lightning pairings (`mpp/charge/lightning`,
+`mpp/session/lightning` and `x402/exact/lnbtc/payment-hash`), `mpp/charge/nearintents`, and the seller's charge
+reference of `acp/checkout/undelegated`, `card/seller-reference` and `ucp/checkout/unsigned`.
 
 Some pairings carry members for their own shape of payment:
 
 | Member | Where | What it does |
 |---|---|---|
 | `channel` | channels, sessions and subscriptions | `kind` classifies a later payment as the opening, a payment within, or the close; `ref` names the channel; `boundWithin` reads H from a payment within, where one carries it; `until` gives the channel's end, where it has one. |
-| `buildWithin` | channels and sessions | Builds a later payment within an open channel. |
-| `closeRef` | the MPP sessions other than `mpp/session/lightning`, and `mpp/subscription/tempo` | The read keys of the channel's close. |
-| `landedTx`, `fetchPresented` | `mpp/charge/solana` and `mpp/charge/xrpl`; `mpp/session/evm` has `landedTx` only, for an opening the payer broadcast. Other pairings whose payer broadcasts have neither; see [Who broadcasts](#who-broadcasts) | The transaction a credential names, and the credential completed with that landed transaction, written under the member `FETCHED` keys, the only one `bound` and `reference` read it from; `fetchPresented` refuses a landed transaction that failed. |
+| `buildWithin` | `mpp/session/evm`, `mpp/session/tempo`, `mpp/session/xrpl`, `x402/batch-settlement/eip155` and `x402/batch-settlement/solana` | Builds a later payment within an open channel. |
+| `closeRef` | `mpp/session/evm`, `mpp/session/tempo`, `mpp/session/xrpl` and `mpp/subscription/tempo` | The read keys of the channel's close. |
+| `landedTx`, `fetchPresented` | `mpp/charge/solana`, `mpp/charge/solana/unsponsored`, `mpp/charge/xrpl`, `mpp/charge/lcp/hedera`, `mpp/charge/tempo/split-memo/push` and `mpp/session/solana/stock`. Other pairings whose payer broadcasts, `mpp/session/evm` among them, have neither; see [Who broadcasts](#who-broadcasts) | The transaction a credential names, and the credential completed with that landed transaction, written under the member `FETCHED` keys, the only one `bound` and `reference` read it from; `fetchPresented` refuses a landed transaction that failed. |
 | `keySearch`, `keyProves` | `mpp/subscription/tempo` | The read keys of a transfer made under the subscription's access key, from the receipt that registered the key, and what the record proves for that transfer. |
 | `advertiseBeforeCarrier` | pairings whose carrier the seller writes after H | `advertise`'s checks and placement, without the checks on that carrier. |
 

@@ -6,8 +6,8 @@ description: Every refusal is a value with a code.
 # Refusals
 
 Failures are values. A function in this package whose type carries a refusal returns its result, or a **refusal**: a
-plain object that names what is wrong with its input. A `status` answers a pending state instead, and the writers that
-only encode a value you supply throw ([What throws](#what-throws)).
+plain object that names what is wrong with its input. A `status` answers a state and its reason instead
+([Readers](#readers)), and the writers that only encode a value you supply throw ([What throws](#what-throws)).
 
 ```ts no-check
 type Refusal = { refused: true; code: string };
@@ -69,7 +69,8 @@ A writer encodes a value you supply, and its type carries no refusal: it throws 
 its type. In the core, `hash` rejects with one when its argument is not a `Uint8Array`: a `Buffer` or a `Uint8Array`
 from another realm is hashed, and a string, an array, an `ArrayBuffer`, another typed array or a Proxy is not.
 `toLcpString`, `toLegalContext` and `toRawBytes` throw when the hash is not 32 bytes, and `toLegalContext` also when
-the link is not an `https` URL. Their `from…` counterparts return `null` instead of throwing.
+the link is not an `https` URL. Their `from…` counterparts return `null` instead of throwing. `agreementValue`, which is
+asynchronous, rejects when the hash is not 32 bytes.
 
 The rails' writers throw the same way (`x402InvoiceId` and `svmDigest`, which are asynchronous, reject):
 
@@ -85,21 +86,22 @@ The rails' writers throw the same way (`x402InvoiceId` and `svmDigest`, which ar
   is not one;
 - on a network other than `starknet:SN_MAIN` and `starknet:SN_SEPOLIA`: `chainIdFelt`.
 
-Every other function answers a caller's input with a value, never a throw: a refusal, a pending state, `false` or
+Every other function answers a caller's input with a value, never a throw: a refusal, a `status` answer, `false` or
 `{ complete: false }` from a read, or, for `unplaced`, its argument itself when that is not an option.
 
 ## Readers
 
 The functions that read a rail (`status`, `recover`, `fetchPresented`) take a reader you supply, so the network calls
-are yours. A reader that fails or times out is never a failed payment: a rejected read of the transaction makes `status`
-return a pending state with the reason `unreadable`, and a later read can settle it; a rejected read of a finality mark
-counts as that mark not reached. A reader that declares a network other than the one the reference names is never a
-failed payment either, and nothing is read through it: `status` returns pending `unreadable` on every read, so no later
-read settles it, and `recover` refuses `<namespace>/wrong-reader`. A ref or reader that is not an object is read the
-same way, with nothing read: `status` is pending `unreadable`, and `recover` refuses with the code it gives a reader for
+are yours. `status` refuses nothing: it answers `settled`, `pending`, `failed` or `unreadable`, each with a reason, as
+the [read-status profile](../../lcp/profiles/read-status.md) states them. A reader that fails or times out is never a
+failed payment: a read that did not complete answers `unreadable` with the reason `transport`, and a later read can
+settle it. A reader that declares a network other than the one the reference names is never a failed payment either,
+and nothing is read through it: `status` answers `unreadable` with the reason `chain-mismatch` on every read, so no
+later read settles it, and `recover` refuses `<namespace>/wrong-reader`. A ref or reader that is not an object is
+answered with nothing read: `status` answers `unreadable`, and `recover` refuses with the code it gives a reader for
 another network. So does a `recover` given a ref whose transaction id is not in its rail's form, which can name no
-transaction. Check `reader.network` against
-the reference's network before you poll, and give every polling loop a deadline of its own.
+transaction. Check `reader.network` against the reference's network before you poll, and give every polling loop a
+deadline of its own.
 
 ## Reads to repeat
 
@@ -111,9 +113,9 @@ yet), and the codes of a transaction that is not final yet: `casper/not-executed
 `xrpl/not-validated`, `evm/not-final` (a revert, or a receipt without what the read looks for, above the reader's
 `finalized` mark), `polkadot/not-final` (an extrinsic not dispatched as the payment, in a block above
 the finalized height), `stacks/not-final` (a failure in a block fewer than two tenures below the tip),
-`starknet/not-final` (a revert, or no single matching transfer, in a pre-confirmed block), `svm/not-final` (an error at
-Solana's `confirmed`, with the transaction not found at `finalized`) and `tempo/not-final` (as `evm/not-final`, on
-Tempo). The [refusal code reference](../reference/refusals.md) marks each of them.
+`starknet/not-final` (a revert, or no single matching transfer, in a pre-confirmed block), `svm/not-final` (a
+transaction the read at Solana's `confirmed` holds and the read at `finalized` does not, with an error or none) and
+`tempo/not-final` (as `evm/not-final`, on Tempo). The [refusal code reference](../reference/refusals.md) marks each of them.
 
 Every other code is false. A verdict, such as `evm/reverted`, gives the same answer on every read. A call you must change
 before it can succeed gives the same answer too, so it is not a read to repeat: `<rail>/wrong-reader` (a reader for

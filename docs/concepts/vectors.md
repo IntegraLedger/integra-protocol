@@ -22,9 +22,10 @@ its specification leaves to the implementation. Each file's `about` names its so
 |---|---|---|
 | The core | `core-vectors.json` | The ATR's exact bytes and hash for given inputs, the https-link rule, the JSON nesting cap, and the `assemble` refusals its rows name. |
 | The buyer gate | `buyer.json` | What a buyer does with an advertised challenge: when it signs, and each decline. |
-| Each pairing | `x402-*.json`, `mpp-*.json`, `acp-checkout.json`, `ucp.json`, `ap2-checkout-mandate.json`, `ack-payment-request.json`, `card.json` | The placed challenge, what the payer signs with H in it, H read back from the payment, and the settlement read. |
+| Each pairing | `x402-*.json`, `mpp-*.json`, `acp-checkout.json`, `ucp.json`, `ucp-checkout-agent-signed.json`, `ap2-checkout-mandate.json`, `ap2-checkout-mandate-x402.json`, `ack-payment-request.json`, `card.json`, `spend-permissions-eip155.json` | The placed challenge, what the payer signs with H in it, H read back from the payment, and the settlement read. |
 | Who broadcasts | `broadcaster.json` | Each pairing's `broadcaster` answer: one for every payment it takes, or by the kind of payment, with a credential of each kind; and payments of a type, kind or shape the pairing does not take, each refused with `bound`'s code. |
 | Shared readers | `sd-jwt.json`, `decoder-caps.json`, `discovery.json`, `a2a-legal-context.json` | The SD-JWT reader, the decoders' limits, the discovery document and the A2A extension. |
+| Shared reads and encodings | `read-status.json`, `charge-reference.json`, `legal-context-return.json`, `base64-platform.json`, `stellar-position.json`, `svm-read.json` | The cases common to every pairing's read (the [read-status profile](../../lcp/profiles/read-status.md)), the seller's charge reference, the return after an agreement, base64 on every platform, the Stellar position, and the Solana read. |
 
 The [vector files reference](../reference/vectors.md) lists every file with its `about`.
 
@@ -58,10 +59,9 @@ V3 true
 
 The package's own test suite runs every file. A `buyer` row, in `buyer.json` or in another file, describes a buyer gate,
 which this package does not contain: the suite runs the parts of those rows the package implements (hashing, `read`,
-`bound` and the builds the rows name). The buyer packages in
-[`integra-agentic-terms`](https://github.com/IntegraLedger/integra-agentic-terms) run those rows whole, every row of
-`buyer.json` and the `buyer` rows of every other file, from TypeScript and from Python, at the version of this package
-they pin.
+`bound` and the builds the rows name). The [buyer packages](https://agenticterms.integraledger.com) run those rows
+whole, every row of `buyer.json` and the `buyer` rows of every other file, from TypeScript and from Python, at the
+version of this package they pin.
 
 ## Plants
 

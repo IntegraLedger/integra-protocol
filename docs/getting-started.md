@@ -188,16 +188,36 @@ What each step did:
 | e | buyer | `build`, `complete` | EIP-712 typed data whose `nonce` is H, and the x402 payment around the buyer's signature. |
 | f | seller | `bound` | H read back from the signed authorization. |
 
-On a live network, the buyer sends `payment` in x402's `PAYMENT-SIGNATURE` header, the seller's facilitator verifies
-and settles it, and the token contract's `AuthorizationUsed` event carries H on chain. The
-[seller guide](./guides/seller.md) continues from step f to the settlement read.
+## On a live network
+
+The program stops at a signed payment in memory. On a live network the same calls run on the two sides of an HTTP
+exchange, and a facilitator settles the payment. Every name below is exported by `@integraledger/lcp/x402`:
+
+1. **The seller answers `402`.** It sends the advertised challenge in the `PAYMENT-REQUIRED` header,
+   `encodeHeader(advertised)`. The buyer reads it with `decodePaymentRequired(header)` and runs steps d and e on what
+   that returns ([the headers](./guides/x402.md#the-headers)).
+2. **The buyer pays.** It sends the request again with the payment in the `PAYMENT-SIGNATURE` header,
+   `encodeHeader(payment)`. The seller reads it with `decodePaymentSignature(header)` and runs step f: the H that
+   `bound` reads must be one it issued for this request, and not one it has already accepted.
+3. **A facilitator settles.** The seller sends the payment, with the option it answers, to its facilitator's `/verify`
+   and `/settle`, which submits the authorization; the token contract's `AuthorizationUsed` event then carries H on
+   chain. This repository's [settler](./concepts/settler.md) is such a facilitator ([run it](./guides/settler.md)). The
+   settle answer names the transaction, and the seller can return it to the buyer in the `PAYMENT-RESPONSE` header,
+   `encodeHeader(settlement)`.
+4. **The seller reads the settlement.** `exactEip3009.reference(payment, option)` gives the read keys. With the
+   transaction the settle answer names added as `transaction`, `exactEip3009.status(ref, reader, { act: "payment",
+   finality: "finalized" })` reads it through an `EvmReader` you write over your own RPC endpoint, and answers
+   `settled` once the transaction is this payment's at that mark ([reading settlement](./guides/rails.md#reading-settlement)).
+
+To run this on Base Sepolia with the option above, the payer's key needs test USDC at the option's `asset`, the
+facilitator's key needs Base Sepolia ETH for the gas of the transaction it submits, and the reader needs an RPC
+endpoint for `eip155:84532`. The [seller guide](./guides/seller.md) walks the seller's side.
 
 ## Next
 
 - **Building a seller?** Read [Seller](./guides/seller.md), then [x402](./guides/x402.md) or [MPP](./guides/mpp.md).
-- **Building a buyer?** Read [Buyer](./guides/buyer.md) and [the buyer gate](./concepts/buyer-gate.md). The buyer
-  packages in [`integra-agentic-terms`](https://github.com/IntegraLedger/integra-agentic-terms) give you the gate
-  ready-made.
+- **Building a buyer?** Read [Buyer](./guides/buyer.md) and [the buyer gate](./concepts/buyer-gate.md). The
+  [buyer packages](https://agenticterms.integraledger.com) give you the gate ready-made.
 - **Paying on another rail?** [Rails](./guides/rails.md) gives the field H rides in on each chain and network.
 - **Want the details?** [The ATR](./concepts/atr.md), [the ATR hash](./concepts/atr-hash.md) and
   [binding](./concepts/binding.md) explain each rule the program above relies on.

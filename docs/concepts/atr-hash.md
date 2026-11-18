@@ -66,6 +66,28 @@ false. It compares every byte, whatever the first difference.
 
 Compare with `hashEquals`, never with `===`: a hash that arrives in upper case is the same hash.
 
+## The agreement's own value
+
+On some pairings the buyer pays twice under one H: first an agreement payment, then the full payment
+([the agreement URL](./buyer-gate.md#the-agreement-url)). Where a pairing's single-use value is H itself or H's low
+bits, such as the EIP-3009 and Permit2 `nonce`, the two payments cannot both carry H, so the agreement carries its own
+value instead: `agreementValue(h)`, SHA-256 over the 16 ASCII bytes `lcp-agreement-v1` followed by H's 32 bytes,
+written as H is, or that value's low bits where the pairing takes H's low bits. A pairing's `build(choice, h,
+"agreement")` writes it, and `bound(presented, { act: "agreement", h })` checks it. A holder of the ATR compares it with
+what `recover` reads from an agreement's transaction, since a digest is not read back to H. `agreementValue` rejects
+with a `TypeError` when `h` is not a 32-byte hash.
+
+```ts
+import { agreementValue, hash } from "@integraledger/lcp";
+
+const h = await hash(new TextEncoder().encode("abc"));
+console.log(await agreementValue(h));
+```
+
+```text
+0x424524a7e791dcf7c2e6980bc94582ae2b436d6184873563d03539e97d36a434
+```
+
 ## The link
 
 The link beside H is an `https` URL that serves the ATR's exact bytes. `isHttpsLink` is the one rule every pairing
@@ -88,15 +110,18 @@ runtime's `URL`, so `isHttpsLink` and `isOtherSchemeLink` give one answer on eve
 (`parseHost`) reads a domain with the Standard's domain parser (`domainToAscii`): an ASCII domain is lowercased, and any
 other is read by UTS #46 ToASCII with the flags the Standard sets, over the Unicode 17.0.0 data the package carries,
 with its own normalization, Punycode, ContextJ and bidi rule. The path, query and fragment never fail the parse.
+`readUrl(input)` gives that reading of a string, `{ scheme, host, credentials, port }`: the scheme, lowercased; the
+serialized host, or null for a URL with no authority; whether it has a non-empty username or password; and the port,
+or null where it names none or its scheme's default. It gives null where the parser fails.
 
 ## The core alone
 
 A Worker that needs only the core imports `@integraledger/lcp/core`. It exports the core functions the package root
-exports, each the root's own function: `assemble`, `newAtrId`, `hash`, `hashEquals`, the forms of H and their readers,
-`isHttpsLink`, `isOtherSchemeLink`, `parseHost`, `domainToAscii`, `canonicalJson`, `digestJson`, `parseJson`,
-`fromBase64`, `base64Bytes`, `toBase64`, `fromBase64Url`, `base64UrlBytes`, `toBase64Url`, `isRefusal` and
-`readToRepeat`. It imports no pairing,
-no rail and no optional peer, so the Worker's bundle holds the core alone.
+exports, each the root's own function: `assemble`, `newAtrId`, `hash`, `hashEquals`, `agreementValue`, the forms of H
+and their readers, `isHttpsLink`, `isOtherSchemeLink`, `readUrl`, `parseHost`, `domainToAscii`, `canonicalJson`,
+`digestJson`, `parseJson`, `fromBase64`, `base64Bytes`, `toBase64`, `fromBase64Url`, `base64UrlBytes`, `toBase64Url`,
+`isRefusal` and `readToRepeat`. It imports no pairing, no rail and no optional peer, so the Worker's bundle holds the
+core alone.
 
 ```ts
 import { hash, hashEquals, toLcpString } from "@integraledger/lcp/core";

@@ -70,10 +70,14 @@ false
 
 ## The gate as a package
 
-This package gives the gate's pieces: `read`, `hash`, `hashEquals`, `build` and `bound`. The buyer packages in
-[`integra-agentic-terms`](https://github.com/IntegraLedger/integra-agentic-terms) assemble them into one gate with a
-bounded fetch and named declines, for TypeScript, Python and MCP clients. They follow the rows of
-[`vectors/buyer.json`](../../lcp/vectors/buyer.json), which this package ships:
+This package gives the gate's pieces: `read`, `hash`, `hashEquals`, `build` and `bound`. The
+[buyer packages](https://agenticterms.integraledger.com) assemble them into one gate with a bounded fetch and named
+declines, for TypeScript, Python and MCP clients. They follow the rows of
+[`vectors/buyer.json`](../../lcp/vectors/buyer.json), which this package ships.
+
+The function names in this table (`transact`, `agree`, `confirm`, `within`, `finish`) are the buyer packages' gate
+functions, not this package's; the ids in parentheses are the `name`s of the rows in `vectors/buyer.json` that fix each
+case.
 
 | Row outcome | When |
 |---|---|
@@ -93,9 +97,13 @@ bounded fetch and named declines, for TypeScript, Python and MCP clients. They f
 ## The agreement URL
 
 Where the pairing's `data.coverage` is `none`, the seller advertises an **agreement URL** (`legalContextAgreementUrl`)
-beside the link; the buyer gate declines such an offer without one. The buyer first pays that URL, whose payment carries
-H publicly, and pays the full payment only after its `200` receipt names the same H. Where the chosen pairing's payment
-is itself a public proof of H (`data.coverage` is `full`), the buyer does not pay the agreement URL.
+beside the link; the buyer gate declines such an offer without one. The buyer first pays that URL. That payment is
+itself a public proof of H: it carries H or, on a pairing whose single-use value is H itself or H's low bits (the
+EIP-3009 and Permit2 `nonce` among them), [the agreement's own value](./atr-hash.md#the-agreements-own-value),
+`agreementValue(h)`, so the agreement and the full payment never share a single-use value. The pairing's
+`build(choice, h, "agreement")` writes it, and `bound(presented, { act: "agreement", h })` checks it. The buyer pays
+the full payment only after the agreement's `200` receipt names the same H. Where the chosen pairing's payment is
+itself a public proof of H (`data.coverage` is `full`), the buyer does not pay the agreement URL.
 
 The agreement payment is a payment like any other, so the buyer's agent approves it before anything is signed:
 

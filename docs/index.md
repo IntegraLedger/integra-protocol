@@ -15,6 +15,14 @@ implementation, for TypeScript and JavaScript. It assembles the record, hashes i
 payment, or beside it in an agreement payment, on the x402, MPP, checkout and card pairings it implements: on EVM
 chains, Solana, the XRP Ledger and every other rail the [rails guide](./guides/rails.md) lists.
 
+```sh
+npm install @integraledger/lcp
+```
+
+It needs Node.js `>=24.22.1` (or Cloudflare Workers) and an ESM project. [Getting started](./getting-started.md) runs a
+first payment in one program, and [Upgrading](./upgrading.md) says what a release may change and what changed in
+0.6.0.
+
 ## How it works
 
 ```mermaid
@@ -58,9 +66,12 @@ These pages use each term in one sense:
 | **Legal Context Protocol (LCP)** | The pattern this package implements: H bound into the payment, so that where the payment the buyer approves carries H, that approval is the buyer's acceptance of that exact record; where it does not, the pairing's `data.proves` says so. |
 | **Pairing** | A payment protocol, scheme and rail combination, such as `x402/exact/eip155/eip3009`. |
 | **Binding** | How H rides in a pairing's payment: the field its specification defines. |
+| **Binding slot** | The ATR member, written by the pairing's `tie`, that records the payment's values (the options and the request); `assemble`'s `binding` argument. |
+| **`Binding`, `BINDINGS`** | In the API, a pairing object is typed `Binding`, and `BINDINGS` holds every pairing. |
 | **Buyer gate** | The buyer-side check that compares the served bytes with H before anything is signed. |
 | **Seller** | The party serving the resource. |
 | **Facilitator** | The x402 role that verifies and settles. |
+| **Settler** | This repository's x402 facilitator, `@integraledger/profile-facilitator`. |
 | **Vectors** | The shared test cases that fix the rules byte for byte across languages. |
 
 ## Where to start
@@ -74,7 +85,8 @@ These pages use each term in one sense:
 | Working on one protocol | [x402](./guides/x402.md), [MPP](./guides/mpp.md), or [agentic checkouts](./guides/checkouts.md) for ACP, UCP, AP2, ACK, card networks and A2A. |
 | Working on one chain | [Rails](./guides/rails.md): the field H rides in on each chain and on Lightning. |
 | Publishing your terms | [Discovery](./guides/discovery.md): the document at `/.well-known/legal-context.json`. |
-| Running an x402 facilitator | [The settler](./concepts/settler.md) and [Run the settler](./guides/settler.md): this repository's facilitator for its x402 pairings. |
+| Running an x402 facilitator | [The settler](./concepts/settler.md) and [Run the settler](./guides/settler.md): this repository's facilitator for the x402 pairings it settles. |
+| Upgrading from an earlier release | [Upgrading](./upgrading.md): what a 0.x release may change, and each change a caller of 0.5.x makes for 0.6.0. |
 | Implementing LCP in another language | [Vectors](./concepts/vectors.md) and the [vector files](./reference/vectors.md). |
 
 ## The documentation
@@ -100,11 +112,12 @@ against what the page shows, except the settler's, which need a Postgres databas
 ## For AI agents
 
 The documentation site publishes [`llms.txt`](https://lcp.integraledger.com/llms.txt), an index of every page,
-[`llms-full.txt`](https://lcp.integraledger.com/llms-full.txt), every page in one file, and each page as Markdown
-under `/md/`, such as [`/md/getting-started.md`](https://lcp.integraledger.com/md/getting-started.md).
+[`llms-full.txt`](https://lcp.integraledger.com/llms-full.txt), every page in one file, and each page as Markdown at
+its address with `.md` added, such as [`/getting-started.md`](https://lcp.integraledger.com/getting-started.md), or at
+its own address for a request whose `Accept` header prefers `text/markdown`.
 
 ## Source and license
 
 The source is at [github.com/IntegraLedger/integra-protocol](https://github.com/IntegraLedger/integra-protocol),
 under the [Apache-2.0](https://github.com/IntegraLedger/integra-protocol/blob/main/LICENSE) license. The buyer
-packages are in [`integra-agentic-terms`](https://github.com/IntegraLedger/integra-agentic-terms).
+packages are documented at [agenticterms.integraledger.com](https://agenticterms.integraledger.com).
