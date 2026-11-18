@@ -7,9 +7,11 @@ description: The ATR hash as the MPP challenge id, the opaque members, and the M
 
 MPP, the Machine Payments Protocol, carries payment in HTTP authentication, as the
 [Payment HTTP authentication scheme](https://paymentauth.org) defines it: the seller answers with one or more
-`WWW-Authenticate: Payment` challenges, each naming a `method` (such as `evm`, `tempo`, `solana` or `stripe`) and an
-`intent` (`charge`, `session` or `subscription`), and the buyer answers with a credential that echoes the challenge
-it pays. Import the MPP pieces from `@integraledger/lcp/mpp`.
+`WWW-Authenticate: Payment` challenges, each naming a `method` (such as `evm`, `tempo`, `solana`, `stripe` or `lcp`)
+and an `intent` (`charge`, `session` or `subscription`), and the buyer answers with a credential that echoes the
+challenge it pays. Import the MPP pieces from `@integraledger/lcp/mpp`. This page is for a seller or a buyer on MPP: it
+gives where H rides in a challenge, how to place and read it, every MPP pairing, the checks a resource server makes
+before money moves, and how to answer the buyer.
 
 ## Where H rides
 
@@ -46,7 +48,11 @@ object of its members, as `mppx` releases before 0.6.4 write it, is read by thos
 
 `place(doc, h, link, option, position, act?, agreementUrl?)` is the seller's placement over a list of challenges: the
 challenge whose bound members equal `option` gets the id derived from H at `position` and an `opaque` holding the
-seller's own map plus the LCP members. `act` is `"payment"`, the default, or `"agreement"`. The seller gives each
+seller's own map plus the LCP members. `place` writes only the id and `opaque`. On a method whose request carries H in
+a member that `CARRIER` names, such as `externalId` on Solana, `methodDetails.invoiceId` on the XRP Ledger,
+`methodDetails.splits` on Tempo and `methodDetails.metadata.legal_context` on Stripe, use the pairing's `advertise`,
+which writes that member too.
+`act` is `"payment"`, the default, or `"agreement"`. The seller gives each
 challenge of a sale its own position, 0 to 31, its charge challenges and its agreement challenges together, since an
 agreement challenge is sent in a response of its own; a Tempo `subscription` challenge takes `null`. A position that another challenge of the list already carries is
 `mpp/position-taken`. `place`, and so each pairing's `advertise`, which takes the same arguments, refuses a list holding
@@ -60,7 +66,8 @@ A challenge's `expires`, when present, is an RFC 3339 date-time, else `mpp/expir
 SHOULD for servers. A pairing needs it where its `build` writes it into what the payer signs: the EVM `authorization`
 and `permit2` charges, the `usdc` EVM charge and the EVM and Tempo sessions; the NEAR Intents and XRP Ledger charge
 drafts require it too. Without `expires` those pairings are left out of what `pairingsOf`, `advertise`, `build`, `bound`
-and `reference` take, and a challenge left with no pairing is `mpp/expires-required`.
+and `reference` take, and a challenge left with no pairing is `mpp/expires-required`. The `lcp` method's filter also
+refuses a charge challenge without it (`mpp/charge/lcp/hedera`).
 
 ```ts
 import { hash, isRefusal } from "@integraledger/lcp";
@@ -113,19 +120,31 @@ Payment scheme's problem type and HTTP status for a refusal code this package re
 
 ## The MPP pairings
 
-| Method | Pairings | Where H rides in what the payer signs or lands |
-|---|---|---|
-| `evm` | `mpp/charge/evm/authorization`, `mpp/charge/evm/permit2` | The signed nonce, or the witness's `challengeHash`: keccak256 of the challenge id and realm (`challengeHash`). |
-| `evm` | `mpp/charge/evm/transaction`, `mpp/charge/evm/hash` | Nothing signed or landed; H is in the challenge. On `transaction`, `build`'s `complete` takes an EIP-1559 transaction, else `mpp/credential-malformed`, signed for the challenge's `methodDetails.chainId`, else `evm/chain-mismatch`, as draft-evm-charge-00's transaction verification reads it. |
-| `solana` | `mpp/charge/solana` | The one LCP-form Memo instruction, holding H's LCP string (the request's `externalId`); other Memo instructions, such as split labels, are not read. |
-| `xrpl` | `mpp/charge/xrpl` | The Payment's `InvoiceID`: H itself (the request's `methodDetails.invoiceId`), in a Payment the payer signs with a single key. The Payment carries no `NetworkID`: each network the challenge names has an id of at most 1024, where rippled refuses one, so a blob that carries it is `xrpl/network-mismatch`, which `build`'s `complete`, reading the blob as `bound` does, also gives. |
-| `lightning` | `mpp/charge/lightning` | The BOLT11 invoice's description hash `h`, which the seller's node signs. |
-| `usdc` | `mpp/charge/usdc/evm`, `mpp/charge/usdc/gateway` | The EIP-3009 nonce, or the Gateway burn intent's salt: `usdc`'s derivation over the challenge id. |
-| `usdc` | `mpp/charge/usdc/solana`, `mpp/charge/usdc/stacks` | The signed LCP-form Memo instruction (H's LCP string), or the SIP-010 `transfer` memo (H's 32 bytes). The Stacks transaction is signed for the challenge's `chainId`, which `build`'s request names, at that network's version, 0x00 on chain 1 (mainnet) and 0x80 on any other, as a Stacks node requires, else `stacks/chain-mismatch`, which `build`'s `complete` also gives it. |
-| `nearintents` | `mpp/charge/nearintents` | The request's `externalId`; the deposit carries nothing. |
-| `card`, `stripe` | `mpp/charge/card`, `mpp/charge/stripe`, `mpp/subscription/stripe` | The request's `externalId`, or `methodDetails.metadata.legal_context`, which on a `stripe` charge the seller's server copies into the PaymentIntent it creates at settlement; MPP's Stripe subscription method does not say where the metadata goes. The buyer's card or token signs nothing that carries H. |
-| sessions | `mpp/session/evm`, `mpp/session/tempo`, `mpp/session/xrpl`, `mpp/session/lightning` | Where the channel opens. See [Channels, sessions and subscriptions](./sessions.md). |
-| subscription | `mpp/subscription/tempo` | The key authorization the payer's root key signs, whose witness is H. |
+Every MPP pairing in the registry. `Confirmed` is `yes` where something outside this package has shown the form as its
+profile defines it, and `no` where nothing has yet.
+
+| Method | Pairings | Where H rides in what the payer signs or lands | Confirmed |
+|---|---|---|---|
+| `evm` | `mpp/charge/evm/authorization` | The EIP-3009 nonce: keccak256 of the challenge id and realm (`challengeHash`). | yes |
+| `evm` | `mpp/charge/evm/permit2` | The Permit2 witness's `challengeHash`, keccak256 of the challenge id and realm. | no |
+| `evm` | `mpp/charge/evm/transaction`, `mpp/charge/evm/hash` | Nothing signed or landed; H is in the challenge. On `transaction`, `build`'s `complete` takes an EIP-1559 transaction, else `mpp/credential-malformed`, signed for the challenge's `methodDetails.chainId`, else `evm/chain-mismatch`, as draft-evm-charge-00's transaction verification reads it. | no |
+| `tempo` | `mpp/charge/tempo/split-memo` | The memo of the one `transferWithMemo` call to `currency` whose memo is H: the split `{recipient, amount: "1", memo: H}` that the pairing's `advertise` appends to `methodDetails.splits`, and that the stock client copies into the transaction the payer signs. The resource server's settler broadcasts it. | yes |
+| `tempo` | `mpp/charge/tempo/split-memo/push` | As on `mpp/charge/tempo/split-memo`, in a transaction the payer broadcasts and names by its hash, which `fetchPresented` reads. | no |
+| `solana` | `mpp/charge/solana`, `mpp/charge/solana/unsponsored` | The one LCP-form Memo instruction, holding H's LCP string (the request's `externalId`); other Memo instructions, such as split labels, are not read. The first pairing is a challenge whose `methodDetails.feePayer` is `true`, the second any other. | no |
+| `xrpl` | `mpp/charge/xrpl` | The Payment's `InvoiceID`: H itself (the request's `methodDetails.invoiceId`), in a Payment the payer signs with a single key. The Payment carries no `NetworkID`: each network the challenge names has an id of at most 1024, where rippled refuses one, so a blob that carries it is `xrpl/network-mismatch`, which `build`'s `complete`, reading the blob as `bound` does, also gives. | no |
+| `lightning` | `mpp/charge/lightning` | The BOLT11 invoice's description hash `h`, which the seller's node signs. | no |
+| `usdc` | `mpp/charge/usdc/evm`, `mpp/charge/usdc/gateway` | The EIP-3009 nonce, or the Gateway burn intent's salt: `usdc`'s derivation over the challenge id. | no |
+| `usdc` | `mpp/charge/usdc/solana`, `mpp/charge/usdc/stacks` | The signed LCP-form Memo instruction (H's LCP string), or the SIP-010 `transfer` memo (H's 32 bytes). The Stacks transaction is signed for the challenge's `chainId`, which `build`'s request names, at that network's version, 0x00 on chain 1 (mainnet) and 0x80 on any other, as a Stacks node requires, else `stacks/chain-mismatch`, which `build`'s `complete` also gives it. | no |
+| `nearintents` | `mpp/charge/nearintents` | The request's `externalId`; the deposit carries nothing. | no |
+| `lcp` | `mpp/charge/lcp/hedera` | The memo of the `TransferTransaction` body the buyer signs, H's LCP string, on the method's `hedera` rail. `methodDetails.supportedModes` must be `["pull"]` (`mpp/modes-not-pull`), and the challenge must state `expires`; the LCP profile [`mpp/method/lcp`](../../lcp/profiles/mpp-method-lcp.md) states the rules. | no |
+| `card`, `stripe` | `mpp/charge/card`, `mpp/charge/stripe`, `mpp/subscription/stripe` | The request's `externalId`, or `methodDetails.metadata.legal_context`, which on a `stripe` charge the seller's server copies into the PaymentIntent it creates at settlement; MPP's Stripe subscription method does not say where the metadata goes. The buyer's card or token signs nothing that carries H. | no |
+| sessions | `mpp/session/evm`, `mpp/session/tempo`, `mpp/session/xrpl`, `mpp/session/lightning`, `mpp/session/solana/memo` | Where the channel opens. See [Channels, sessions and subscriptions](./sessions.md). | no |
+| sessions | `mpp/session/xrpl/stock`, `mpp/session/solana/stock`, `mpp/session/hedera/stock` | Nothing: the stock client opens the channel, so the session is served only after an agreement on its own network (coverage `none`), and `bound` refuses `mpp/no-signed-place`. | no |
+| subscription | `mpp/subscription/tempo` | The key authorization the payer's root key signs, whose witness is H. | no |
+| subscription | `mpp/subscription/solana` | The Memo instruction of the activation, H's LCP string (the request's `externalId`). | no |
+
+On `mpp/charge/nearintents`, both Tempo charges, the three stock sessions and `mpp/subscription/solana`, the payer's own
+client builds the payment, and the pairing has no `build`.
 
 `challengeHash` is keccak256 of the UTF-8 of `JSON.stringify([id, realm])`: the id and realm framed as a JSON array of
 two strings, as the `mppx` SDK computes it from 0.13.1, so that no two pairs share a preimage (`"ab"` and `"c"`, `"a"`
@@ -138,10 +157,12 @@ challenge whose `realm` is not a well-formed string is `mpp/challenge-malformed`
 and in every `bound`, and in each `reference` and `fetchPresented` that reads H from a credential's echoed challenge. An
 `id` that is not a well-formed string derives from no H: every `bound`, and every `build`, refuses it `mpp/id-not-ours`.
 
-Each pairing's `build(choice, h)` takes the chosen challenge (`MppChoice`) and returns what the buyer signs; on card and
-Stripe, where nothing the buyer signs can carry H, it refuses `mpp/no-signed-place`. Its `bound(credential)` reads H
-from the echoed challenge and, where the payer signs a value that carries it, checks that value; where nothing signed
-carries H, the card, Stripe and EVM `transaction` and `hash` pairings refuse `mpp/no-signed-place`. `reference` and
+Each pairing that this package builds for has a `build(choice, h)`, which takes the chosen challenge (`MppChoice`) and
+returns what the buyer signs; on card and Stripe, where nothing the buyer signs can carry H, it refuses
+`mpp/no-signed-place`. Its `bound(credential)` reads H from the echoed challenge and, where the payer signs a value that
+carries it, checks that value; where nothing signed carries H, the card, Stripe and EVM `transaction` and `hash`
+pairings and the three stock sessions (`mpp/session/solana/stock`, `mpp/session/xrpl/stock` and
+`mpp/session/hedera/stock`) refuse `mpp/no-signed-place`. `reference` and
 `status` read the settlement where the method lands on a chain. In push mode, where the buyer broadcasts and presents
 only the transaction's hash or signature, `fetchPresented(credential, reader)` reads the landed transaction first, and
 refuses one that failed: `svm/err` on Solana, which it gives only once a read at `finalized` holds the transaction with
@@ -162,6 +183,26 @@ carries a symbol-keyed member: `JSON.parse` makes none, and `JSON.stringify` and
 seller keeps the object `fetchPresented` returned, or a spread or `Object.assign` copy of it, both of which copy the
 member; a copy made through JSON or `structuredClone` is read as a credential `fetchPresented` has not read. Calling
 `bound` first, and `fetchPresented` when it answers `<rail>/read-first`, reads only what the seller's reader read.
+
+`mpp/charge/evm/authorization`, `mpp/charge/evm/permit2` and `mpp/charge/usdc/evm` are pull pairings: the payer signs
+an authorization that the server executes later. Each gives `authorizer(credential)`, the account whose signature
+authorises the pull, and its reference's `authorization` names the nonce the payer signed (the challenge-derived value,
+not H), the deadline, the token and the contract that records the nonce's use, for `authorizationUsed` in
+`@integraledger/lcp/evm`. `status` on `mpp/charge/evm/permit2` counts a Permit2 witness transfer of the payer's, found
+at any byte offset of the transaction's input, that carries that nonce or the challenge's witness word, where the
+receipt holds its `Transfer`s and the payer's bit for the nonce is set at the receipt's block and unset at the block
+before, as on x402's Permit2 pairings.
+
+`reference(credential, challenge)` and `status(ref, reader, query)` take and answer as on x402: `status` answers
+`settled`, `pending`, `failed` or `unreadable`, with one reason of the closed list
+[the x402 guide](./x402.md#reading-the-payment) gives. On the EVM and `usdc` EVM charges, it answers `failed`
+(`transaction-failed`, `instrument-consumed`, `instrument-unused` or `before-position`) only from a read at the
+reader's `finalized` mark and, where the payer's signed act carries H, only once the search is whole. A failed result
+read above that mark is pending `below-mark` ([Reading settlement](./rails.md#reading-settlement)).
+
+The LCP profile [`mpp/charge`](../../lcp/profiles/mpp-charge.md) states where each charge carries H.
+
+### How the pairings hold a challenge and a credential
 
 `bound`, `reference` and `fetchPresented` start from the echoed challenge's H, require its intent and method to be the
 pairing's, and hold the echoed challenge to the pairing's filter: `pairingsOf`'s checks over it as placed, which must
@@ -205,29 +246,15 @@ credentials in a channel too: a `buildWithin`'s `complete` measures the in-chann
 session pairing's `channel.kind`, `channel.ref` and `channel.boundWithin` measure the payment they are given before they
 read it, with the same bound and code, except the Stripe subscription's, which read only the activation receipt.
 
-`mpp/charge/evm/authorization`, `mpp/charge/evm/permit2` and `mpp/charge/usdc/evm` are pull pairings: the payer signs
-an authorization that the server executes later. Each gives `authorizer(credential)`, the account whose signature
-authorises the pull, and its reference's `authorization` names the nonce the payer signed (the challenge-derived value,
-not H), the deadline, the token and the contract that records the nonce's use, for `authorizationUsed` in
-`@integraledger/lcp/evm`. `status` on `mpp/charge/evm/permit2` requires the named transaction to carry that nonce as
-32 bytes anywhere in its input, and reads that record set at the receipt's block and unset at the block before, as on
-x402's Permit2 pairings.
-
-On the EVM and `usdc` EVM charges, `status` answers failed, such as `reverted`, `binding-log-not-found`,
-`transfer-not-found`, `receive-policy-blocked` or `nonce-not-used`, only once the receipt's block is at or below the
-reader's `finalized` mark. Above that mark, where the block can be replaced, or where the mark cannot be read, it
-answers pending with the same reason ([Reading settlement](./rails.md#reading-settlement)).
-
-The LCP profile [`mpp/charge`](../../lcp/profiles/mpp-charge.md) states where each charge carries H.
-
 ## The server's order
 
 A resource server makes two checks a stock MPP server does not make, and makes them before anything can move money
-(`mpp-charge.md`, rule 10):
+([`mpp/charge`](../../lcp/profiles/mpp-charge.md), rule 10):
 
-1. **The challenge belongs to this agreement.** `challengeBound(credential, recorded)` gives H where the echoed
-   challenge's id and `opaque` name it and the id is, whole, `recorded`, the id the server recorded when it issued that
-   challenge (else `mpp/id-not-ours`); and `issuedDigest` of the echoed challenge equals the digest the server recorded
+1. **The challenge belongs to this agreement.** `challengeBound(credential, recorded)` gives `{ h, request }`, H and
+   the echoed challenge's decoded request, where the echoed challenge's id and `opaque` name H and the id is, whole,
+   `recorded`, the id the server recorded when it issued that challenge (else `mpp/id-not-ours`; a `recorded` that is
+   not such an id is `mpp/input-malformed`); and `issuedDigest` of the echoed challenge equals the digest the server recorded
    for H: from the ATR's binding slot (`tie`), or, for an agreement challenge, which no slot holds, the digest it
    recorded for its agreement option. `place(doc, h, link, option, position, "agreement", agreementUrl)`, and each
    pairing's `advertise` given the same arguments, composes an agreement challenge only where it states `expires` (else
@@ -236,8 +263,9 @@ A resource server makes two checks a stock MPP server does not make, and makes t
 2. **The payment carries H.** The pairing's `bound`, which checks how the credential carries H, or its link, and never
    what the payment pays. For a credential whose payer already broadcast the payment, `fetchPresented` reads the landed
    transaction first, and `bound` refuses `<rail>/read-first` until then. Where the payer signs nothing that carries H
-   (`card`, `stripe`, an EVM `transaction` or `hash`), `bound` refuses `mpp/no-signed-place`, and the second check is
-   the pairing's `link` and the server's own record that the agreement for this H is recorded.
+   (`card`, `stripe`, an EVM `transaction` or `hash`, and the three stock sessions, `mpp/session/solana/stock`,
+   `mpp/session/xrpl/stock` and `mpp/session/hedera/stock`), `bound` refuses `mpp/no-signed-place`, and the second
+   check is the pairing's `link` and the server's own record that the agreement for this H is recorded.
 
 Then validation that moves nothing, where the method's library separates it; then the server's own record that this H's
 agreement or payment is now taken, once for each H and act; and only then any call that can move money. The vectors are
@@ -245,7 +273,7 @@ agreement or payment is now taken, once for each H and act; and only then any ca
 
 `toX402(credential, token, issued)` maps an `evm` `authorization` credential or a `usdc` EVM credential to x402's
 `exact` EIP-3009 `PaymentPayload` and `PaymentRequirements`, so a resource server that already runs an x402 facilitator
-settles it there as step 4 (`mpp-charge.md`, rule 12). `token` is the token's EIP-712 `{name, version}`, which no MPP
+settles it there as step 4 ([`mpp/charge`](../../lcp/profiles/mpp-charge.md), rule 12). `token` is the token's EIP-712 `{name, version}`, which no MPP
 challenge carries, and `issued` the Unix second at which the server issued the challenge: `maxTimeoutSeconds` is the
 challenge's `expires` less `issued`. Any other credential is `mpp/no-x402-twin`; a challenge with no `expires` is
 `mpp/expires-required`.
@@ -260,7 +288,7 @@ challenge's `expires` less `issued`. Any other credential is `mpp/no-x402-twin`;
 | `mpp/credential-malformed`, `mpp/request-malformed`, `mpp/opaque-malformed` | 402 | `malformed-credential` |
 | `mpp/id-not-ours` | 402 | `invalid-challenge` |
 | A read to repeat, a code `readToRepeat` answers true for: each rail's `<rail>/not-found` and `<rail>/unreadable` (such as `tempo/not-found` and `svm/unreadable`), `casper/not-executed`, `ccd/not-finalized`, `xrpl/not-validated`, `evm/not-final`, `polkadot/not-final`, `stacks/not-final`, `starknet/not-final`, `svm/not-final` and `tempo/not-final` | 500 | `internal-payment-error` |
-| A call that cannot read the payment: `tempo/wrong-reader`, `svm/wrong-reader`, `xrpl/wrong-reader`, `hedera/wrong-reader`, `svm/read-first`, `xrpl/read-first` | 500 | `internal-payment-error` |
+| A call that cannot read the payment: `tempo/wrong-reader`, `svm/wrong-reader`, `xrpl/wrong-reader`, `hedera/wrong-reader`, `tempo/read-first`, `svm/read-first`, `xrpl/read-first`, `hedera/read-first` | 500 | `internal-payment-error` |
 | Every other code this package returns | 402 | `verification-failed` |
 | A code this package does not return | 500 | `internal-payment-error` |
 
