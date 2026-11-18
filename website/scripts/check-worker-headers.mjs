@@ -22,7 +22,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { extname, join, resolve } from "node:path";
 import { headersFor, parseHeaders } from "../headers.mjs";
-import { alternateLink, canonicalLink, checkLiveHeaders, ORIGIN, withLink } from "./check-live-headers.mjs";
+import { alternateLink, canonicalLink, checkLiveHeaders, ORIGIN as SITE, withLink } from "./check-live-headers.mjs";
 import { fileFor, pagesOf, TYPES } from "./serve-export.mjs";
 import { MODULE, moduleOf } from "./worker-headers.mjs";
 
@@ -48,12 +48,12 @@ const MARKDOWN_404 = "the Markdown 404";
 /** What a .md address that names no page is answered with: Markdown that names the index of every page. */
 const isMarkdown404 = (bytes) => {
   const text = bytes.toString("utf8");
-  return text.startsWith("# Page not found\n") && text.includes(`${ORIGIN}/llms.txt`);
+  return text.startsWith("# Page not found\n") && text.includes(`${SITE}/llms.txt`);
 };
 
 const text = readFileSync(join(OUT, "_headers"), "utf8");
-if (!readFileSync("worker.js", "utf8").includes(`const ORIGIN = "${ORIGIN}";`)) {
-  console.error(`worker.js does not name ${ORIGIN}, src/lib/site.ts's url, as its ORIGIN`);
+if (!readFileSync("worker.js", "utf8").includes(`const ORIGIN = "${SITE}";`)) {
+  console.error(`worker.js does not name ${SITE}, src/lib/site.ts's url, as its ORIGIN`);
   process.exit(1);
 }
 if (!existsSync(MODULE) || readFileSync(MODULE, "utf8") !== moduleOf(text)) {
@@ -178,7 +178,8 @@ if (failures.length > 0) {
 }
 console.log(
   `${asked} requests to worker.js over ${pages.length} pages, ${ACCEPTS.length} Accept headers and ${MISSING.length} ` +
-    `missing addresses (${each}): each response carries exactly the headers out/_headers gives its address, and ` +
-    "Vary: Accept wherever the Accept header decides the answer; check-live-headers.mjs finds no difference at the " +
+    `missing addresses (${each}): each response carries exactly the headers out/_headers gives its address, the ` +
+    "Worker's Link to the page's Markdown or to the page, and Vary: Accept wherever the Accept header decides the " +
+    "answer; a .md address with no page is the Markdown 404; check-live-headers.mjs finds no difference at the " +
     "Worker's loopback port",
 );
