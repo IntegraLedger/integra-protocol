@@ -24,9 +24,10 @@ places the hash in the payment and reads it back.
 - [Quickstart](#quickstart)
 - [Guides](#guides)
 - [API](#api)
-- [Supported pairings](#supported-pairings)
+- [Pairings](#pairings)
 - [What it guarantees, and what it does not](#what-it-guarantees-and-what-it-does-not)
 - [Vectors and conformance](#vectors-and-conformance)
+- [Versions and upgrading](#versions-and-upgrading)
 - [Requirements](#requirements)
 
 ## Key concepts
@@ -38,9 +39,12 @@ places the hash in the payment and reads it back.
 | **Legal Context Protocol (LCP)** | The pattern this package implements: H bound into the payment, so that where the payment the buyer approves carries H, that approval is the buyer's acceptance of that exact record; where it does not, the pairing's `data.proves` says so. |
 | **Pairing** | A payment protocol, scheme and rail combination, such as `x402/exact/eip155/eip3009`. |
 | **Binding** | How H rides in a pairing's payment: the field its specification defines. |
+| **Binding slot** | The ATR member, written by the pairing's `tie`, that records the payment's values (the options and the request); `assemble`'s `binding` argument. |
+| **`Binding`, `BINDINGS`** | In the API, a pairing object is typed `Binding`, and `BINDINGS` holds every pairing. |
 | **Buyer gate** | The buyer-side check that compares the served bytes with H before anything is signed. |
 | **Seller** | The party serving the resource. |
 | **Facilitator** | The x402 role that verifies and settles. |
+| **Settler** | This repository's x402 facilitator, `@integraledger/profile-facilitator`. |
 | **Vectors** | The shared test cases that fix the rules byte for byte across languages. |
 
 A citation `LCP §N` names section N of the published
@@ -71,21 +75,24 @@ The package is ESM only, with type declarations for every entry point. Its three
 `@noble/hashes` and `@scure/base`.
 
 Some rails parse or write their wire formats with the rail's own library. Those libraries are optional peer
-dependencies: install the one for each rail you use, at a version in the range the package names.
+dependencies: install the one for each rail you use, in the range the package names. Two ranges are narrow:
+`ripple-binary-codec` takes 2.11.x only and `@ton/core` 0.63.x only, so install them with the range, as below.
 
 | Rail | Install | Used by |
 |---|---|---|
-| Solana | `@solana/kit` | the Solana pairings on x402 and MPP |
-| Stellar | `@stellar/stellar-sdk` | the `stellar` entry point's transaction and event decoding |
-| XRP Ledger | `ripple-binary-codec` | the XRPL pairings on x402 and MPP |
-| Sui | `@mysten/sui` | `x402/exact/sui` |
-| NEAR | `borsh` | `x402/exact/near` |
-| TON | `@ton/core` and its peer `@ton/crypto` | `x402/exact/tvm` |
-| Algorand | `algosdk` | `x402/exact/algorand` |
+| Solana | `npm install @solana/kit@^8.3.0` | the Solana pairings on x402 and MPP |
+| Stellar | `npm install @stellar/stellar-sdk@^17.1.0` | `x402/exact/stellar/precondition`, and the `stellar` entry point's transaction and event decoding |
+| XRP Ledger | `npm install ripple-binary-codec@~2.11.0` | the XRPL pairings on x402 and MPP |
+| Sui | `npm install @mysten/sui@^2.31.3` | `x402/exact/sui` |
+| NEAR | `npm install borsh@^2.0.0` | `x402/exact/near` |
+| TON | `npm install @ton/core@^0.63.1` (npm adds its peer `@ton/crypto`) | `x402/exact/tvm` |
+| Algorand | `npm install algosdk@^3.8.0` | `x402/exact/algorand` |
 
 Without its peer, a rail's function that returns refusals gives `<rail>/peer-missing` only when it reaches the one
-step that must decode or write with the peer, after every check that needs none, and a `status` reads as it does with
-the peer, pending `unreadable` only there. Every other rail, and every protocol surface, needs nothing more.
+step that must decode or write with the peer, after every check that needs none. A `status` reads as it does with the
+peer, except that it cannot decode a transaction only the peer decodes, and answers as for any item it cannot decode:
+`unreadable` (`unparseable`) for the transaction it names, `pending` (`search-incomplete`) for one its search meets.
+Every other rail, and every protocol surface, needs nothing more.
 
 ## Quickstart
 
@@ -196,6 +203,7 @@ Each entry point is imported by its subpath. The core:
 | `newAtrId()` | A random RFC 9562 version 4 UUID for the ATR's `id`. |
 | `hash(bytes)` | SHA-256 over the bytes as given, as `0x` and lowercase hex. |
 | `hashEquals(a, b)` | True when both are 32-byte hashes, in either case, with the same bytes. |
+| `agreementValue(h)` | The agreement's own value for H: SHA-256 over the 16 ASCII bytes `lcp-agreement-v1` and H's 32 bytes. An agreement carries it where a payment carries H, on a pairing whose single-use value is H itself or its low bits. |
 | `isRefusal(v)` | True only for a refusal a copy of this package made, whichever installed copy made it: how a caller tells a refusal from a result. |
 | `readToRepeat(code)` | True when a refusal code is a read to repeat: its answer rests on a read of the rail that may answer differently later, with nothing the caller must change, so the caller asks again later. |
 | `toLcpString(h)`, `fromLcpString(s)` | H as `lcp:sha256:0x…` (`LCP §8.1`), and back. |
@@ -203,6 +211,7 @@ Each entry point is imported by its subpath. The core:
 | `toRawBytes(h)`, `fromRawBytes(b)` | H as 32 raw bytes, and back. |
 | `isHttpsLink(s)` | The one rule every link to an ATR meets. |
 | `isOtherSchemeLink(s)` | True for a link of at most 2048 characters that parses as an absolute URL whose scheme is not `https`. |
+| `readUrl(input)` | The scheme, host, port and whether credentials are present, as the link rules read them, or null. |
 | `parseHost(input, isOpaque?)` | The WHATWG URL Standard's host parser: the serialized host (a domain, IPv4, IPv6 or opaque host), or null for failure. The link rules read a URL's host with it, so they answer alike on every runtime. |
 | `domainToAscii(domain, beStrict?)` | The URL Standard's domain parser: UTS #46 ToASCII with the Standard's flags, over Unicode 17.0.0 data, giving the ASCII domain or null. |
 | `digestJson(v)`, `canonicalJson(v)` | SHA-256 over the RFC 8785 form of a JSON value, and that form. Each takes a value of any type and refuses one that is not JSON (`core/content-not-json`). |
@@ -213,7 +222,8 @@ Each entry point is imported by its subpath. The core:
 | `pairingOf(option)` | The x402 pairing that serves an x402 option. |
 
 A Worker that needs only the core imports `@integraledger/lcp/core`. It exports every name in the table but `BINDINGS`
-and `pairingOf`, each the root's own function, and the types `AtrHash`, `CoreRefusal`, `Json` and `Refusal`. It
+and `pairingOf`, each the root's own function, and the types `AtrHash`, `CoreRefusal`, `Json`, `Refusal` and
+`UrlAuthority`. It
 imports no pairing, no rail and no optional peer, so the Worker's bundle holds the core alone.
 
 The protocol and rail entry points:
@@ -222,11 +232,12 @@ The protocol and rail entry points:
 |---|---|
 | `@integraledger/lcp/x402` | x402 documents, the `legalContext` extension, the request commitment, and the EVM `exact`, `upto` and `auth-capture` pairings. |
 | `@integraledger/lcp/x402-batch-settlement` | x402 `batch-settlement` on EVM, Solana and Cloudflare: one ATR per channel. |
-| `@integraledger/lcp/x402-exact-solana`, `…/x402-upto-solana`, `…/x402-exact-xrpl` | The x402 pairings on Solana and the XRP Ledger. |
-| `@integraledger/lcp/x402-exact-stellar` | The `Broadcaster` type, and no pairing. |
+| `@integraledger/lcp/x402-exact-solana`, `…/x402-upto-solana`, `…/x402-exact-xrpl`, `…/x402-upto-xrpl` | The x402 pairings on Solana and the XRP Ledger. |
+| `@integraledger/lcp/x402-exact-stellar` | The Stellar x402 pairing `exactStellarPrecondition` (`x402/exact/stellar/precondition`), its `StellarPreconditionChoice` type, and the `Broadcaster` type. |
 | `@integraledger/lcp/mpp` | MPP challenges, H as the challenge id, and every MPP charge, session and subscription pairing. |
 | `@integraledger/lcp/acp`, `…/ucp`, `…/ap2`, `…/ack` | Agentic checkouts: ACP, UCP, AP2 and ACK. |
-| `@integraledger/lcp/card` | Visa TAP, Mastercard Verifiable Intent and the plain card checkout. |
+| `@integraledger/lcp/card` | Visa TAP, Visa Intelligent Commerce, Mastercard Agent Pay, Mastercard Verifiable Intent and the plain card checkout. |
+| `@integraledger/lcp/spend-permissions` | `spend-permissions/eip155`: an account's Spend Permission whose `salt` is H, as the sale's agreement, with the `Spend-Permission` header and the read of the approval. |
 | `@integraledger/lcp/a2a` | H and the link in an A2A Task's `metadata`. |
 | `@integraledger/lcp/discovery` | The discovery document at `/.well-known/legal-context.json` (`LCP §2`). |
 | `@integraledger/lcp/evm`, `…/tempo`, `…/svm`, `…/stellar`, `…/xrpl`, `…/hedera`, `…/avm`, `…/aptos`, `…/cardano`, `…/casper`, `…/ccd`, `…/near`, `…/polkadot`, `…/starknet`, `…/sui`, `…/tron`, `…/tvm`, `…/lightning`, `…/stacks` | Each rail's pieces and pairings: its signed form, where H rides, and the settlement read. |
@@ -235,17 +246,20 @@ The [entry point reference](https://github.com/IntegraLedger/integra-protocol/bl
 lists every export of every entry point, and the
 [API reference](https://github.com/IntegraLedger/integra-protocol/tree/main/docs/reference/api) gives each signature.
 
-Every pairing has these members, except that `mpp/charge/nearintents` has no `build`: `id`, `pattern` (its binding
-record, which on `x402/exact/starknet` names no binding pattern), `data` (its data, typed `PairingData`, with `data.proves`, what a
-payment through it proves), `claims` (whether what the buyer presents carries a value bound to H), `unplaced` (the
+Every pairing has these members: `id`, `pattern` (its binding record, which on `x402/exact/starknet` names no binding
+pattern), `data` (its data, typed `PairingData`, with `data.proves`, what a payment through it proves), `claims` (whether what the buyer presents carries a value bound to H), `unplaced` (the
 option as the seller issued it), `tie` (the ATR's binding slot), `advertise` and `read` (H into and out of the
 challenge), `build` (what the buyer signs, with H in its place), `bound` (H back out of the payment), and `broadcaster`
 (who broadcasts what the buyer presents: `"payer"`, which sent it before presenting it, or `"payee"`, which sends or
-executes it after; a payment of a type, kind or shape the pairing does not take gets `bound`'s refusal). Pairings that
-settle on a readable rail add `reference`, `status` and, where the rail keeps H, `recover`. EVM pull pairings add
-`authorizer`, the account whose signature authorises the pull.
+executes it after; a payment of a type, kind or shape the pairing does not take gets `bound`'s refusal). `build` is
+absent where the payer's own client builds the payment and the package builds nothing: on `mpp/charge/nearintents`,
+`mpp/charge/tempo/split-memo`, `mpp/charge/tempo/split-memo/push`, `mpp/session/hedera/stock`,
+`mpp/session/solana/stock`, `mpp/session/xrpl/stock`, `mpp/subscription/solana` and `x402/upto/xrpl`; check that it
+is defined before you call it on a pairing taken from `BINDINGS`. Pairings that settle on a readable rail add
+`reference`, `status` and, where the rail keeps H, `recover`. EVM pull pairings add `authorizer`, the account whose
+signature authorises the pull.
 
-## Supported pairings
+## Pairings
 
 Generated from `BINDINGS` by `scripts/docs-reference.mjs`, which CI runs to check this list against the registry.
 
@@ -264,9 +278,11 @@ Generated from `BINDINGS` by `scripts/docs-reference.mjs`, which CI runs to chec
 | `x402` (31) | `x402/auth-capture/eip155/eip3009`, `x402/auth-capture/eip155/permit2`, `x402/batch-settlement/cloudflare`, `x402/batch-settlement/eip155`, `x402/batch-settlement/solana`, `x402/exact/algorand`, `x402/exact/aptos`, `x402/exact/cardano`, `x402/exact/cardano/lock`, `x402/exact/casper`, `x402/exact/ccd`, `x402/exact/eip155/eip3009`, `x402/exact/eip155/erc7710`, `x402/exact/eip155/erc7710-salt`, `x402/exact/eip155/gateway-batched`, `x402/exact/eip155/permit2`, `x402/exact/hedera`, `x402/exact/hedera/transfer-executor`, `x402/exact/lnbtc/payment-hash`, `x402/exact/near`, `x402/exact/polkadot/lcp-assets-remark`, `x402/exact/solana`, `x402/exact/starknet`, `x402/exact/stellar/precondition`, `x402/exact/sui`, `x402/exact/tron/lcp-trc20-memo`, `x402/exact/tvm`, `x402/exact/xrpl`, `x402/upto/eip155/permit2`, `x402/upto/solana`, `x402/upto/xrpl` |
 <!-- pairings:end -->
 
-The [pairings reference](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/reference/pairings.md)
-gives each one's coverage, binding pattern, whether the binding is visible on a public ledger, and the sentence its
-record states about what the payment proves.
+Each pairing follows its LCP profile. Its `data.confirmed` says whether anything outside this package has yet shown
+the form as the profile defines it; most pairings are not yet confirmed, `x402/exact/ccd` and `x402/exact/casper`
+among them. The [pairings reference](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/reference/pairings.md)
+gives each one's coverage, whether it is confirmed, its binding pattern, whether the binding is visible on a public
+ledger, and the sentence its record states about what the payment proves.
 
 ## What it guarantees, and what it does not
 
@@ -276,8 +292,8 @@ record states about what the payment proves.
 - compare hashes by their 32 bytes, in either case;
 - place H, and the link to the seller's copy, where each pairing's specification provides a place;
 - build what the buyer signs with H in its place, and read H back from what was signed;
-- read settlement through a reader you supply, with a bounded number of calls, and treat a failed read as pending,
-  never as failed;
+- read settlement through a reader you supply, with a bounded number of calls, and answer a read that did not
+  complete `unreadable`, never `failed`;
 - state, for every pairing, what a payment through it proves, and never claim more. Where the buyer's approval does
   not sign H, the record says so.
 
@@ -301,17 +317,29 @@ packages. The buyer packages in
 [`integra-agentic-terms`](https://github.com/IntegraLedger/integra-agentic-terms) run every row of `buyer.json` and the
 `buyer` rows of every other vector file, from TypeScript and from Python, at the version of this package they pin.
 
-`profiles/` holds the LCP profiles, one Markdown file per profile, each stating its binding's rules. The profile of
-UCP's x402 payment handler, `ucp-payment-handler-x402.md` with its schema, is a specification with no code in this
-package.
+`profiles/` ([on GitHub](https://github.com/IntegraLedger/integra-protocol/tree/main/lcp/profiles)) holds the LCP
+profiles, one Markdown file per profile, each stating its binding's rules. The profile of UCP's x402 payment handler,
+[`ucp-payment-handler-x402.md`](https://lcp.integraledger.com/ucp/x402/2026-10-02) with its schema, is a
+specification with no code in this package.
 The documents among them that have an address are served at it, byte for byte, on `lcp.integraledger.com`: the A2A
 extension at its URI, `https://lcp.integraledger.com/a2a/legal-context/v1`, and UCP's x402 payment handler at
 `https://lcp.integraledger.com/ucp/x402/2026-10-02`, with its schema at `/schema.json` beneath.
 
+## Versions and upgrading
+
+While the version is 0.x, a minor release (0.5 to 0.6) may remove or rename exports and pairing ids and change a
+function's arguments or answers; a patch release does not. Pin the package with a tilde range, such as `~0.6.0`, which
+takes patch releases only, and read the
+[changelog](https://github.com/IntegraLedger/integra-protocol/blob/main/lcp/CHANGELOG.md) before you move to the next
+minor. [Upgrading](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/upgrading.md) gives each change a
+caller of 0.5.x makes for 0.6.0. The settler, `@integraledger/profile-facilitator`, names this package as a peer
+dependency with such a range.
+
 ## Requirements
 
 - Node.js `>=24.22.1`. CI runs the package's tests on Node.js 24.22.1 as well as on the toolchain's 26.
-- ESM. TypeScript users need `"moduleResolution": "nodenext"` (or `"bundler"`) to resolve the subpath exports.
+- ESM. TypeScript users set `"module"` and `"moduleResolution"` to `"nodenext"` (or `"moduleResolution"` to
+  `"bundler"`) to resolve the subpath exports.
 - Cloudflare Workers, with or without the `nodejs_compat` flag, except the TON entry point, which needs it: it uses
   Node's `Buffer`. Workers turns the flag on by default from compatibility date 2026-08-04. A bundle needs none of the
   optional peer dependencies: the package loads each with `import()`, which wrangler's bundler leaves to run time when
@@ -324,6 +352,9 @@ extension at its URI, `https://lcp.integraledger.com/a2a/legal-context/v1`, and 
 
 - [`integra-agentic-terms`](https://github.com/IntegraLedger/integra-agentic-terms): the buyer gate as packages for
   TypeScript, Python and MCP clients.
+- [`@integraledger/profile-facilitator`](https://github.com/IntegraLedger/integra-protocol/tree/main/settler): the
+  settler, an x402 facilitator (`/supported`, `/verify`, `/settle`) for the x402 pairings this package implements,
+  except the two another party settles (`x402/exact/eip155/gateway-batched` and `x402/batch-settlement/cloudflare`).
 
 ## Contributing
 
