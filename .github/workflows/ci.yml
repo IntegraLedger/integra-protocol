@@ -73,14 +73,16 @@ jobs:
           mkdir "$RUNNER_TEMP/node"
           tar -xJf "$RUNNER_TEMP/node-v26.13.1-linux-x64.tar.xz" -C "$RUNNER_TEMP/node" --strip-components=1
           echo "$RUNNER_TEMP/node/bin" >> "$GITHUB_PATH"
-      - name: One-way imports (lcp depends on and names no other @integraledger package; the settler depends on and names only @integraledger/lcp, from this workspace; the site names only @integraledger/lcp), and each workspace package's scripts
+      - name: One-way imports (lcp depends on and names no other @integraledger package; the settler depends on and names only @integraledger/lcp, from this workspace; the site names only the packages this repository releases, @integraledger/lcp and the settler), and each workspace package's scripts
         run: |
           node - <<'EOF'
           const fs = require("node:fs");
           const path = require("node:path");
-          // The site documents @integraledger/lcp and may name it in its code, and the settler is built on it and names
-          // it; no other package's code names another @integraledger package.
-          const allowed = (dir) => (dir === "website" || dir === "settler" ? ["@integraledger/lcp"] : []);
+          // The site documents the packages this repository releases, @integraledger/lcp and the settler, and may name
+          // them in its code; the settler is built on lcp and names it; no other package's code names another
+          // @integraledger package.
+          const allowed = (dir) =>
+            dir === "website" ? ["@integraledger/lcp", "@integraledger/profile-facilitator"] : dir === "settler" ? ["@integraledger/lcp"] : [];
           // The settler's manifest depends on @integraledger/lcp from this workspace, by a workspace: specifier; no other
           // manifest, the site's included, depends on another @integraledger package.
           const depends = (dir) => (dir === "settler" ? ["@integraledger/lcp"] : []);
