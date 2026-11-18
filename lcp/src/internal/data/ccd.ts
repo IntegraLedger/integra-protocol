@@ -30,7 +30,7 @@ export const CCD = /* @__PURE__ */ freeze({
       "The payer signed a Concordium transaction one of whose transfers carries this ATR's hash, in LCP string " +
       "form, as its memo. The chain accepted the transaction only with the sender's valid signature, and the " +
       "memo is on chain in the finalized transfer event. Where the transfer moved an amount, zero included, the " +
-      "payer paid it to the account the transfer names. As an agreement, it shows that this account signed the " +
-      "transfer carrying the hash. It does not show that amount, token or timing match the ATR's content.",
+      "payer paid it to the account the transfer names. It does not show that amount, token or timing match the " +
+      "ATR's content.",
   },
 });
