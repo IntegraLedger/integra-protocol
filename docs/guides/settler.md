@@ -229,9 +229,12 @@ Each member, one entry per network unless it says otherwise:
   alone: over Koios alone it sees none, so an option it settles there states `extra.confirmationPolicy` as
   `{ "l1Confirmations": 0 }`, and an option that states none, whose default asks one confirmation, is refused at `/verify`
   (`@x402/cardano` 2.31.0, `dist/esm/index.mjs:483-492`, `dist/esm/chunk-C7JT2R6E.mjs:38`, `:116-117`). A provider with a
-  Blockfrost project serves an option that asks confirmations. Its guard against broadcasting one
-  transaction twice is kept in the settler's database, so a repeat after a restart resumes observing what was
-  broadcast.
+  Blockfrost project serves an option that asks confirmations. `/settle` answers success where the class does, and
+  otherwise once lcp's read through `reader` shows the transaction final, at the ledger's security parameter of
+  confirmations (2160 on mainnet and Preprod, some 12 hours); until then it answers `settlement_pending` naming the
+  transaction. Over Koios alone the class's settle gives no success, so a payment is answered at that mark. Its guard
+  against broadcasting one transaction twice is kept in the settler's database, so a repeat after a restart resumes
+  observing what was broadcast.
 - **`casper`**: `network`, `casper:casper-test` (the settler does not start on `casper:casper`: see *What it does not
   serve*); `signer`, the seller's key as `@x402/casper`'s class takes it (`FacilitatorCasperSigner`, made with its
   `toFacilitatorCasperSigner` and an `rpcUrlConfig` that names `rpc` for the network), which sends the transaction that
