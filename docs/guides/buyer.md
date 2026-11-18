@@ -9,7 +9,7 @@ The buyer's side of the binding is the [buyer gate](../concepts/buyer-gate.md): 
 finish. This guide writes it with this package's pieces on x402 with `x402/exact/eip155/eip3009`; at the end you have
 a program that reads a seller's `402`, compares the served bytes with H, and signs a payment that carries it. For a
 ready-made gate with the fetch bounds and declines already in place, use the
-[buyer gate packages](https://agenticterms.integraledger.com).
+[buyer gate packages](https://agenticterms.integraledger.com/guides/pay-with-the-gate).
 
 ## 1. Compare
 

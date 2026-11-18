@@ -59,9 +59,10 @@ V3 true
 
 The package's own test suite runs every file. A `buyer` row, in `buyer.json` or in another file, describes a buyer gate,
 which this package does not contain: the suite runs the parts of those rows the package implements (hashing, `read`,
-`bound` and the builds the rows name). The [buyer packages](https://agenticterms.integraledger.com) run those rows
-whole, every row of `buyer.json` and the `buyer` rows of every other file, from TypeScript and from Python, at the
-version of this package they pin.
+`bound` and the builds the rows name). The
+[buyer packages](https://agenticterms.integraledger.com/reference/vectors) run those rows whole, every row of
+`buyer.json` and the `buyer` rows of every other file, from TypeScript and from Python, at the version of this
+package they pin.
 
 ## Plants
 

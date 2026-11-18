@@ -71,8 +71,8 @@ false
 ## The gate as a package
 
 This package gives the gate's pieces: `read`, `hash`, `hashEquals`, `build` and `bound`. The
-[buyer packages](https://agenticterms.integraledger.com) assemble them into one gate with a bounded fetch and named
-declines, for TypeScript, Python and MCP clients. They follow the rows of
+[buyer packages](https://agenticterms.integraledger.com/concepts) assemble them into one gate with a bounded fetch
+and named declines, for TypeScript, Python and MCP clients. They follow the rows of
 [`vectors/buyer.json`](../../lcp/vectors/buyer.json), which this package ships.
 
 The function names in this table (`transact`, `agree`, `confirm`, `within`, `finish`) are the buyer packages' gate

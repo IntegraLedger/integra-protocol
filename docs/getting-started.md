@@ -219,7 +219,7 @@ endpoint for `eip155:84532`. The [seller guide](./guides/seller.md) walks the se
 
 - **Building a seller?** Read [Seller](./guides/seller.md), then [x402](./guides/x402.md) or [MPP](./guides/mpp.md).
 - **Building a buyer?** Read [Buyer](./guides/buyer.md) and [the buyer gate](./concepts/buyer-gate.md). The
-  [buyer packages](https://agenticterms.integraledger.com) give you the gate ready-made.
+  [buyer packages](https://agenticterms.integraledger.com/getting-started) give you the gate ready-made.
 - **Paying on another rail?** [Rails](./guides/rails.md) gives the field H rides in on each chain and network.
 - **Want the details?** [The ATR](./concepts/atr.md), [the ATR hash](./concepts/atr-hash.md) and
   [binding](./concepts/binding.md) explain each rule the program above relies on.
