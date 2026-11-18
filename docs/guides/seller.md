@@ -8,8 +8,9 @@ description: Assemble the ATR, advertise its hash, check the payment, and read t
 The **seller** is the party serving the resource. Its side of the binding has four steps: assemble the ATR for this
 request, advertise H in the challenge, read H back from the payment it receives, and read the settlement from the
 rail. This guide walks them on x402 with `x402/exact/eip155/eip3009`. Every pairing has the same
-[members](../concepts/pairings.md#the-members), except that `mpp/charge/nearintents` has no `build`, so the shape is the
-same on every surface.
+[members](../concepts/pairings.md#the-members), except that eight have no `build`, because the payer's own client
+builds their payment ([On other surfaces](#on-other-surfaces) names them), so the shape is the same on every surface.
+At the end you have a program that runs the seller's whole side, and the exchanges an agreement-first sale adds.
 
 ```mermaid
 sequenceDiagram
@@ -30,7 +31,8 @@ sequenceDiagram
 ```
 
 The **facilitator** is the x402 role that verifies and settles. It is the seller's to choose; this package does not
-call it. This repository's [settler](../concepts/settler.md) is one, for the x402 pairings this package implements.
+call it. This repository's [settler](../concepts/settler.md) is one, for most of the x402 pairings this package
+implements; [What it does not serve](./settler.md#what-it-does-not-serve) lists the others.
 
 ## 1. Assemble the ATR for this request
 
@@ -61,9 +63,12 @@ option as they were.
 On pairings that carry H in the option itself, such as `x402/exact/solana` (`extra.memo`), it also places H there.
 A challenge, or an option in its `accepts`, that carries a `refused` member is refused as `x402/option-malformed`
 before anything is placed ([Refusals](../concepts/refusals.md#where-a-refusal-comes-from)).
+Send the result as `encodeHeader(advertised)` in the `PAYMENT-REQUIRED` header of the `402`
+([The headers](./x402.md#the-headers)).
 
 ## 4. Check the payment
 
+Read the payment from the retried request's `PAYMENT-SIGNATURE` header with `decodePaymentSignature(header)`.
 `bound(payment)` reads H from what the buyer presented: here, the EIP-3009 authorization's `nonce`. Match it with
 `hashEquals` against the H you issued for this request. The token contract verifies the signature when it executes
 the transfer; `bound` does not.
@@ -73,24 +78,28 @@ facts are your records, not this package's.
 
 ## 5. Read the settlement
 
-`reference(payment)` gives the keys for finding this payment on chain: the network, the token, the time bound, a
-digest of the transfer, the log that carries H, and `authorization`, the signed authorization as the token records its
-use. After the facilitator settles, `status` reads the settlement transaction through a reader you supply, and
-`recover` reads H back from that transaction alone.
+`reference(payment, option)` gives the keys for finding this payment on chain, with the payee of `option`, the option
+the payment answers: the network, the token (`asset`), the payer, `validBefore`, H (`h`) and `presented`, the
+authorization's members as presented. After the facilitator settles, add the transaction its settle answer names as
+`transaction`: `status` reads it beside its own search, and never needs it. `status(ref, reader, query)` then reads
+the act `query.act` names, `"payment"` here, through a reader you supply, at the finality `query.finality` asks for.
+Ask for `"finalized"`: a block above that mark can be replaced. `recover({ network, tx, option }, reader)` reads H back
+from the transaction alone.
 
-`status` settles a named transaction only when it is this payment's: its receipt must hold the token's
-`AuthorizationUsed` log whose nonce is H and the `Transfer` that same authorization produced, the one from the
-authorizer that log order pairs with it ([the x402 guide](./x402.md#a-named-transaction) gives the rule), whose payer,
-payee and value hash to the reference's digest. A transaction whose receipt the reader does not hold, where `receipt`
-answers `null`, is pending `not-found`, and a failed read is pending `unreadable`. Anything else is `failed`, with the
-reason, once the receipt's block is at or below the reader's `finalized` mark; above that mark, where the block can be
-replaced, or where the mark cannot be read, it is pending with the same reason. A `settled` answer at `latest` (EVM) or
-`head` (Polkadot, Tron) can be reorganised away; read it again until it is final: `finalized`, or `solidified` on Tron.
+`status` answers `settled`, `pending`, `failed` or `unreadable`, each with one reason from a closed list
+([the x402 guide](./x402.md#reading-the-payment) gives it). It settles on a transaction that carries H, was signed by
+the payment's payer and pays the option's payee, read at the finality asked for or above it; below it, the answer is
+pending `below-mark`. It never compares the amount: `presented` on a settled answer says whether the landed
+authorization is the one presented. A reader call that rejects, or a reader that declares another network, makes the
+answer `unreadable`, never `failed`. Each rail's marks are in [Reading settlement](./rails.md#reading-settlement).
 
-Before any transaction is named, `authorizer(payment)` gives the account whose signature authorises the transfer, and
-`authorizationUsed(ref, authorizer, block, reader)` asks the token whether that authorization had executed by a block.
-The authorization cannot execute in a block whose timestamp is at or after its `deadline`, so once a final block is
-past it, an unused authorization never moves money.
+Before any transaction is named, `status` reads whether the authorization has been used: at the final mark, and,
+through a reader that has `block`, at the latest head. It answers pending `instrument-live` while the authorization is
+unused at both and still valid. `authorizer(payment)` gives the account whose signature authorises the transfer, and
+`authorizationUsed({ network, authorization }, authorizer, block, reader)` asks the token whether that authorization
+had executed by a given block, with `authorization` built from the reference as the program below builds it. The
+authorization cannot execute in a block whose timestamp is at or after its `validBefore`, so once a final block is past
+that time, an unused authorization never moves money.
 
 ## The whole flow
 
@@ -107,6 +116,9 @@ import {
   type Hex,
 } from "@integraledger/lcp/evm";
 import {
+  decodePaymentRequired,
+  decodePaymentSignature,
+  encodeHeader,
   exactEip3009,
   requestCommitment,
   tie,
@@ -150,15 +162,23 @@ console.log("advertised:", JSON.stringify(advertised.extensions?.["legalContext"
   value: atr.atrHash,
   legalContextUrl: link,
 }));
+const paymentRequired = encodeHeader(advertised); // the 402's PAYMENT-REQUIRED header
+if (isRefusal(paymentRequired)) throw new Error(paymentRequired.code);
 
 // The buyer's side, in brief: see the buyer guide.
+const required = decodePaymentRequired(paymentRequired);
+if (isRefusal(required)) throw new Error(required.code);
 const payer = privateKeyToAccount(generatePrivateKey());
-const unsigned = await exactEip3009.build({ required: advertised, accepted: option, from: payer.address, now: 1790000000 }, atr.atrHash);
+const unsigned = await exactEip3009.build({ required, accepted: option, from: payer.address, now: 1790000000 }, atr.atrHash);
 if (isRefusal(unsigned)) throw new Error(unsigned.code);
-const payment = unsigned.complete(await payer.signTypedData(unsigned.typedData as TypedDataDefinition));
-if (isRefusal(payment)) throw new Error(payment.code);
+const signed = unsigned.complete(await payer.signTypedData(unsigned.typedData as TypedDataDefinition));
+if (isRefusal(signed)) throw new Error(signed.code);
+const paymentSignature = encodeHeader(signed); // the retried request's PAYMENT-SIGNATURE header
+if (isRefusal(paymentSignature)) throw new Error(paymentSignature.code);
 
 // 4. Check the payment.
+const payment = decodePaymentSignature(paymentSignature);
+if (isRefusal(payment)) throw new Error(payment.code);
 const h = await exactEip3009.bound(payment);
 if (typeof h !== "string") throw new Error(h.code);
 console.log("bound to the issued H:", hashEquals(h, atr.atrHash), storage.has(link));
@@ -188,12 +208,13 @@ const reader: EvmReader = {
   call: async () => word("1"),
 };
 // Ask about the act "payment" at the final mark; the answer names the reason where it is not settled.
-const status = await exactEip3009.status({ ...ref, transaction, h }, reader, { act: "payment", finality: "finalized" });
+const status = await exactEip3009.status({ ...ref, transaction }, reader, { act: "payment", finality: "finalized" });
 console.log("status:", status.state, status.state === "settled" ? status.finality : status.reason);
 const authorizer = await exactEip3009.authorizer(payment);
 if (typeof authorizer !== "string") throw new Error(authorizer.code);
-// The authorization as the token records its use: the token, the nonce the payer signed, and its validBefore.
-const authorization = { scheme: "eip3009", at: ref.asset, nonce: h, deadline: ref.validBefore, asset: ref.asset } as const;
+// The authorization as the token records its use, from the reference: the token, the nonce the payer signed (H), and
+// its validBefore.
+const authorization = { scheme: "eip3009", at: ref.asset, nonce: ref.h, deadline: ref.validBefore, asset: ref.asset } as const;
 console.log("authorization used by block 100:", await authorizationUsed({ network: ref.network, authorization }, authorizer, 100n, reader));
 const recovered = await exactEip3009.recover({ network: ref.network, tx: transaction, option }, reader);
 console.log("recovered from the chain alone:", typeof recovered === "string" && hashEquals(recovered, atr.atrHash));
@@ -232,10 +253,74 @@ challenge that advertises the link.
 Answer in the identity coding: the buyer asks with `Accept-Encoding: identity` and declines any other
 `Content-Encoding` (`BE2`). [The agreement URL](../concepts/buyer-gate.md#the-agreement-url) gives the buyer's side.
 
+## Serving the return
+
+Once the agreement is recorded, the buyer's agent repeats its request for the charge. The LCP profile
+[`legal-context-return`](../../lcp/profiles/legal-context-return.md) states the rules; the seller's part is this:
+
+1. **The first response** carries H, the link and the agreement URL, and no charge option the payer could pay before
+   the agreement.
+2. **Each agreement option names the charges it serves**, each `x402/<i>` or `mpp/<i>`: the option at index `i` of
+   the ATR's binding slot of that name, so a buyer pays an agreement that serves the charge it means to pay. On x402
+   the member is `extra.legalContextServes` (`LEGAL_CONTEXT_SERVES`), an array of those names; on MPP it is the
+   `opaque` member of that name, the names joined by one space. It is part of the option as issued, so write it before
+   you record the option's digest. `servesOf(option)` reads it, and refuses a malformed one `return/serves-malformed`.
+3. **A return value**, where the charge is paid by a bearer value such as a Lightning preimage: draw 32 random bytes
+   for the sale, keep them in your own record, never in the ATR, and send them with H in a `Legal-Context` response
+   header, which `toLegalContextHeader(h, returnValue)` writes.
+4. **The check.** On the returning request, `checkLegalContextReturn(value, record)` takes the `Legal-Context` request
+   header's value and your own record for the request, `{ h, returnValue? }`. Serve the charge only where it answers
+   `true`. It refuses a value that does not parse (`return/header-malformed`), another H (`return/not-this-sale`), and
+   a return value that differs from the record's, one given where the record holds none included
+   (`return/value-mismatch`). Over MCP, the same value arrives in the tool call's `params._meta` under
+   `LEGAL_CONTEXT_META`, `com.integraledger.lcp/legal-context`.
+
+```ts
+import {
+  checkLegalContextReturn,
+  hash,
+  isRefusal,
+  LEGAL_CONTEXT_HEADER,
+  RETURN_VALUE_BYTES,
+  servesOf,
+  toLegalContextHeader,
+} from "@integraledger/lcp";
+
+const h = await hash(new TextEncoder().encode("the ATR's bytes"));
+
+// The agreement option serves the charge at index 0 of the ATR's x402 slot.
+const agreementOption = {
+  scheme: "exact",
+  network: "eip155:84532",
+  amount: "1",
+  asset: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+  payTo: "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+  maxTimeoutSeconds: 60,
+  extra: { name: "USDC", version: "2", legalContextServes: ["x402/0"] },
+};
+console.log(servesOf(agreementOption));
+
+// The first response: a return value drawn for this sale, kept in the seller's record, sent with H.
+const record = { h, returnValue: crypto.getRandomValues(new Uint8Array(RETURN_VALUE_BYTES)) };
+const sent = toLegalContextHeader(record.h, record.returnValue);
+if (isRefusal(sent)) throw new Error(sent.code);
+
+// The return: the buyer's agent repeats the request with the same value.
+const request = new Request("https://api.seller.example/v1/quote", { headers: { [LEGAL_CONTEXT_HEADER]: sent } });
+console.log(checkLegalContextReturn(request.headers.get(LEGAL_CONTEXT_HEADER), record));
+console.log(checkLegalContextReturn(toLegalContextHeader(h), record));
+```
+
+```text
+[ 'x402/0' ]
+true
+{ refused: true, code: 'return/value-mismatch' }
+```
+
 ## What the seller keeps
 
-Keep H, the link and the reference for each payment, and the ATR's bytes in your storage after the link expires; the
-buyer keeps its own copy.
+Keep H, the link and the reference for each payment, the return value of a sale that has one, and the ATR's bytes in
+your storage after the link expires; the buyer keeps its own copy.
 
 ## What this package does not do
 
@@ -246,8 +331,11 @@ input.
 
 ## On other surfaces
 
-The members are the same everywhere, except that `mpp/charge/nearintents` has no `build`; what `tie`, `advertise` and
-`bound` handle differs:
+The members are the same everywhere, except `build`, which is absent where the payer's own client builds the payment
+and the package builds nothing: on `mpp/charge/nearintents`, `mpp/charge/tempo/split-memo`,
+`mpp/charge/tempo/split-memo/push`, `mpp/session/hedera/stock`, `mpp/session/solana/stock`, `mpp/session/xrpl/stock`,
+`mpp/subscription/solana` and `x402/upto/xrpl`. Check that `build` is defined before calling it on a pairing taken
+from `BINDINGS`. What `tie`, `advertise` and `bound` handle differs:
 
 - [x402](./x402.md): the `legalContext` extension, and every x402 pairing.
 - [MPP](./mpp.md): H as the challenge id.
