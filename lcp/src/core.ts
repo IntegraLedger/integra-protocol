@@ -6,6 +6,8 @@
  * written, `isRefusal` and `readToRepeat`. It imports no pairing, no rail and no optional peer, so a bundle of it holds
  * these functions and nothing else. The package root exports the same functions: each is one function, reached by
  * either path.
+ *
+ * @module
  */
 export {
   agreementValue,

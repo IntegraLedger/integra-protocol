@@ -2,6 +2,8 @@
  * Tron: the transaction pieces (protobuf for the fields the profile uses, base58check addresses, the transaction id)
  * and the pairing `x402/exact/tron/lcp-trc20-memo`, whose payer-signed TRC-20 transfer carries the ATR hash as its
  * memo, `raw_data.data`, in LCP string form. Settlement is read by transaction id through a bounded reader.
+ *
+ * @module
  */
 import { sha256 } from "@noble/hashes/sha2.js";
 import { createBase58check } from "@scure/base";

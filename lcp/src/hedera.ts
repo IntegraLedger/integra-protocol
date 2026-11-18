@@ -4,6 +4,8 @@
  * `x402/exact/hedera/transfer-executor` (the hash advertised in the challenge only); the escrow channel pieces
  * `hederaChannelId` and `hederaVoucher`; and `FETCHED`, the key under which a pairing's `fetchPresented` writes the
  * seller's read onto a credential.
+ *
+ * @module
  */
 import { canonicalJson, fromLcpString, fromLegalContext, hash, toLcpString, type AtrHash, type Json } from "./core.js";
 import type { Hex } from "./evm.js";

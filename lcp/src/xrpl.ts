@@ -2,6 +2,8 @@
  * XRP Ledger rail pieces: the signed blob, its `InvoiceID` or memo carrying the ATR hash in each scheme's form, the
  * transaction hash computed from the blob, the reads of a payment, an opening, a channel and a close through a
  * bounded reader, and the payment channel's id and claim.
+ *
+ * @module
  */
 export { decodeBlob, mppInvoiceId, x402InvoiceId, XRPL_MAX_BLOB_BYTES, XRPL_MAX_DEPTH } from "./internal/xrpl.js";
 export type {

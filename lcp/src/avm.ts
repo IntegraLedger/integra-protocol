@@ -5,6 +5,8 @@
  * addresses and the payment entries are read without it, so the option filter, `advertise`, `read`, `bound`,
  * `reference` and `avmCarrier` need no peer, and `build` refuses `avm/peer-missing` only after every check that needs
  * none.
+ *
+ * @module
  */
 import type * as Algosdk from "algosdk";
 import { fromLcpString, toLcpString, type AtrHash } from "./core.js";

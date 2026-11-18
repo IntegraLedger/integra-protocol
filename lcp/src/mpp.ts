@@ -1,9 +1,12 @@
 /**
  * The `mpp` entry point: MPP's challenge pieces and its pairings. The charge pairings here are EVM `authorization` (the
  * signed nonce is keccak256 of the JSON array [id, realm]), EVM `permit2` (the signed witness carries that value), and
- * EVM `transaction` and `hash` (nothing signed carries H). The card, Stripe, Solana, XRP Ledger, NEAR Intents, `usdc`
- * and `lcp` charges, and the session and subscription pairings other than Lightning's, are re-exported from their
- * modules. `FETCHED` is the key under which a pairing's `fetchPresented` writes the seller's read onto a credential.
+ * EVM `transaction` and `hash` (nothing signed carries H). The card, Stripe, Solana, XRP Ledger, NEAR Intents, `usdc`,
+ * `lcp` and Tempo split-memo charges, and the session and subscription pairings other than Lightning's, are re-exported
+ * from their modules. `FETCHED` is the key under which a pairing's `fetchPresented` writes the seller's read onto a
+ * credential.
+ *
+ * @module
  */
 import { hashEquals, type AtrHash, type Json } from "./core.js";
 import { addressWord, bytes32Word, bytesOf, concat, hexOf, keccak, keccakHex, sameBytes, uintWord, type Hex } from "./evm-abi.js";

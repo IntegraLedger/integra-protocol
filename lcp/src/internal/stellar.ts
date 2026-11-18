@@ -617,9 +617,7 @@ export function readSourceTransfer(xdrB64: string, network: StellarNetwork): Sou
  * (another entry, a delegate, the footprint, another operation), which is decoded whatever its depth, so its nesting
  * does not refuse the envelope. `preimageHash` is SHA-256 of that entry's `HashIDPreimage` under the network's
  * passphrase: the V1 form, or for V2 the form with the address. An entry with source-account credentials is not one:
- * without an address entry of `from` the envelope is `stellar/no-address-auth`. Only `stellarStatus` and
- * `stellarLocate`, on a ref without `authDigest`, read a payer that authorized the transfer as the transaction's source
- * account.
+ * without an address entry of `from` the envelope is `stellar/no-address-auth`.
  */
 export function decodeStellarTx(xdrB64: string, network: StellarNetwork): StellarPayment | Refusal {
   const p = readSignedTransfer(xdrB64, network, false);

@@ -5,6 +5,8 @@
  * presented alone, or last in AP2's chain after the open mandate. In AP2's push funding, where the payer's side sends
  * the funds, the presentation also carries the confirmation of funds sent, `payment_receipt`. Nothing here verifies a
  * signature, a `cnf` delegation or a link between hops.
+ *
+ * @module
  */
 import {
   canonicalJson,
@@ -60,6 +62,10 @@ export type Jws = string;
 export type Payload = { [k: string]: Json };
 /** The checkout's own `id`, 1–256 characters. */
 export type CheckoutOption = { checkout: string };
+/**
+ * The offer `read` gives, and the buyer's input to `build`: the merchant's `checkout_jwt` (`checkoutJwt`), its decoded
+ * payload, and the checkout's own `id` (`checkout`).
+ */
 export interface Ap2Offer {
   checkoutJwt: Jws;
   payload: Payload;

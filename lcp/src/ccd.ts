@@ -6,6 +6,8 @@
  * The signed transaction is read in x402's wire form, the JSON-serialized V1 sponsored transaction: with
  * `@concordium/web-sdk`, `JSON.parse(Transaction.toJSONString(tx))`. Any other value, such as the SDK's object
  * before serialization, whose header holds bigints, is `ccd/transaction-malformed`.
+ *
+ * @module
  */
 import { canonicalJson, type AtrHash, type Json } from "./core.js";
 import type { Hex } from "./evm.js";

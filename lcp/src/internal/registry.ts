@@ -113,6 +113,15 @@ interface DataMembers {
 /**
  * A pairing's data. At coverage `full` it has no `link` and no `agreementOn`; at coverage `none` it has a `link` and
  * no `agreement`, since only a payment that is itself a public proof of H can be an agreement.
+ *
+ * Every pairing's data also has `carrier` (`Carrier`), where H rides; `source`, who writes H: lcp's client, or a stock
+ * client and release, with the member it copies H from; `nonce`, whether the identical instrument can land more than
+ * once (`single-use`, `reusable`, or `unshown` until a vector or a run shows single use); `broadcasts`, the answers the
+ * codec's `broadcaster` can give over every credential type the pairing takes; `confirmed`, whether something outside
+ * lcp has shown the form as its profile defines it (`yes` or `no`); and `proves`, what the read establishes of a
+ * payment through the pairing. Where a public ledger records the payment it has `read` (`ReadData`), what a read of
+ * the pairing needs; and, where the pairing's entry states them, `destination`, `asset` and `payer`: how the account
+ * the act names, the asset and the payer are identified in the landed transaction.
  */
 export type PairingData = DataMembers &
   (
@@ -196,7 +205,15 @@ export type ChannelKind = "open" | "within" | "close";
  * payment uses H; on every other pairing the act changes nothing. `status` takes the act in its query.
  */
 export interface Codec<Presented, Ref, Reader, F extends Family> {
+  /**
+   * The buyer's reading of the advertised document: H, the link, the agreement URL where the document carries one, and
+   * the offer this pairing serves in it (on x402, an `X402Offer`: the document and the options the pairing serves).
+   */
   readonly read: (doc: F["doc"]) => F["offered"] | Refusal;
+  /**
+   * The seller's placement: a copy of the document with H and the link placed for `offer` as this pairing places
+   * them, and the agreement URL where one is given; the arguments after `offer` are the family's (`F["rest"]`).
+   */
   readonly advertise: (
     doc: F["placedIn"],
     h: AtrHash,
@@ -222,6 +239,10 @@ export interface Codec<Presented, Ref, Reader, F extends Family> {
    * it checks that what was presented carries that value in H's place, and gives H where it does.
    */
   readonly bound: (presented: Presented, given?: { readonly act: Act; readonly h: AtrHash }) => Promise<AtrHash | Refusal>;
+  /**
+   * Who broadcasts what the payer presents: `"payer"` or `"payee"` (`Broadcaster`). A payment of a type or kind the
+   * pairing does not take gets the refusal `bound` gives it.
+   */
   readonly broadcaster: (presented: Presented) => Promise<Broadcaster | Refusal>;
   /**
    * The read keys of a presented payment, with the payee of the option it answers; given the act `agreement` and H on
@@ -242,9 +263,16 @@ export interface Codec<Presented, Ref, Reader, F extends Family> {
   readonly recover?: (input: RecoverInput<F["network"], F["option"]>, reader: Reader) => Promise<AtrHash | Refusal>;
   /** For a channel, a session or a subscription. */
   readonly channel?: {
+    /** Whether the presented payment opens the channel, pays within it, or closes it (`ChannelKind`). */
     readonly kind: (presented: Presented) => ChannelKind | Refusal;
+    /** The network and channel the presented payment belongs to; a payment `kind` refuses gets `kind`'s refusal. */
     readonly ref: (presented: Presented) => Promise<{ network: string; channel: string } | Refusal>;
+    /**
+     * H as a payment within the channel carries it. A pairing whose payments within the channel carry no hash refuses
+     * every one (on MPP, `mpp/not-bound-within`).
+     */
     readonly boundWithin: (presented: Presented) => Promise<AtrHash | Refusal>;
+    /** The time, in Unix seconds, after which the channel takes no payment, where the payment states one. */
     readonly until: (presented: Presented) => number | undefined;
   };
   /** For a form its payer broadcasts: the presented payment completed with the landed transaction it names. */

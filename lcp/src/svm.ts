@@ -2,6 +2,8 @@
  * Solana rail pieces: the wire transaction, its one Memo instruction carrying the ATR hash in LCP string form, the
  * digest of the message the payer signed, settlement read through a bounded reader, and the payment-channels program's
  * pieces: its instructions and PDAs, the voucher, the session proof, and the channel's status read.
+ *
+ * @module
  */
 export {
   ATA_PROGRAM,

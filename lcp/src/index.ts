@@ -1,3 +1,13 @@
+/**
+ * The package root: the core functions `@integraledger/lcp/core` exports (assembling an ATR and hashing its exact
+ * bytes, comparing hashes, the hash's string and structured forms, the https-link rule, `isRefusal` and
+ * `readToRepeat`); the registry of every pairing (`BINDINGS`, `pairingOf`) and its types; the return after an agreement
+ * (the `Legal-Context` header, its check, and the charge options an agreement option serves); MPP's challenge id and
+ * its hash (`challengeId`, `challengeH`, `challengeHash`); the package's size bounds; and `FETCHED`, the key under
+ * which a pairing's `fetchPresented` writes the seller's read onto a credential.
+ *
+ * @module
+ */
 import { toLegalContext, type AtrHash, type Json } from "./core.js";
 import { isRefusal, type Refusal } from "./refusal.js";
 
@@ -173,9 +183,11 @@ export interface CarrierAfterH {
 }
 /**
  * The optional member of a pull pairing whose payer signs an authorization that the chain executes later: the account
- * whose signature authorises the pull, from the presented payment, as lowercase hex. With the pairing's `reference`,
- * whose `authorization` names the nonce, the deadline and the token, it is what a settlement reader needs to read the
- * authorization's use before any transaction is named.
+ * whose signature authorises the pull, from the presented payment, as lowercase hex. With a `reference` that records
+ * the authorization as `authorization` (its scheme, the contract that records its use, its nonce, deadline and token),
+ * as the MPP EVM `authorization` and `permit2` charges' and the `usdc` EVM charge's do, it is what `authorizationUsed`
+ * (`@integraledger/lcp/evm`) needs to read the authorization's use before any transaction is named. The x402 pull
+ * pairings' references record no `authorization`.
  */
 export interface Authorizer {
   authorizer?(presented: unknown): Promise<string | Refusal>;
@@ -205,6 +217,7 @@ export type Binding = (
   PushMode &
   CarrierAfterH &
   Authorizer;
+/** The id of a pairing this package implements: the `id` of an entry of `BINDINGS`. */
 export type PairingId = Binding["id"];
 type SurfaceOf<I> = I extends `${infer S}/${string}` ? S : never;
 /** The surfaces: each pairing id's first "/" segment. */

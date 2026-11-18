@@ -3,6 +3,8 @@
  * extrinsic whose call is `utility.batch_all([assets.transfer_keep_alive, system.remark_with_event])` with the ATR
  * hash's LCP string as the remark; the settlement is read by the signer's account nonce through polkadot-rest-api. SCALE is encoded and
  * decoded here for these shapes only.
+ *
+ * @module
  */
 import { blake2b } from "@noble/hashes/blake2.js";
 import { base58 } from "@scure/base";

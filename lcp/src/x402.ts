@@ -4,6 +4,8 @@
  * Gateway's batched domain. The ATR hash is
  * advertised in the challenge's `extensions.legalContext`; each pairing's `pattern` record states how the pairing binds
  * it.
+ *
+ * @module
  */
 import { agreementValue, canonicalJson, digestJson, fromLegalContext, hash, type AtrHash, type Json } from "./core.js";
 import {
@@ -108,6 +110,11 @@ export {
   type SettlementResponse,
 } from "./x402-headers.js";
 
+/**
+ * An x402 v2 payment option, one entry of a `PaymentRequired` document's `accepts`: the scheme, the CAIP-2 network,
+ * the amount in the asset's base units, the asset, the payee (`payTo`), the longest the payment may take in seconds
+ * (`maxTimeoutSeconds`), and the scheme's `extra` members.
+ */
 export type PaymentRequirements = {
   scheme: string;
   network: string;
@@ -118,6 +125,11 @@ export type PaymentRequirements = {
   extra?: { [k: string]: Json };
 };
 
+/**
+ * An x402 v2 402 document, as the `PAYMENT-REQUIRED` header carries it: the resource, the options it accepts and its
+ * extensions. A pairing's `advertise` places the ATR hash and link in `extensions.legalContext`, and its `read` reads
+ * them from there.
+ */
 export type PaymentRequired = {
   x402Version: 2;
   error?: string;
@@ -152,6 +164,10 @@ type X402SchemePayload =
   | { signature: Hex; authorization: Eip3009Authorization; salt: string; saltNonce?: string }
   | { signature: Hex; permit2Authorization: Permit2Authorization; salt: string; saltNonce?: string };
 
+/**
+ * An x402 v2 payment, as the `PAYMENT-SIGNATURE` header carries it: the option it answers (`accepted`), the scheme's
+ * payload, and the resource and extensions echoed from the document.
+ */
 export type PaymentPayload = {
   x402Version: 2;
   resource?: PaymentRequired["resource"];
@@ -215,11 +231,20 @@ export type LcpPattern = {
   forwardIndexable: boolean;
 };
 
+/**
+ * The offer an x402 pairing's `read` gives: the document read (`required`), and the options of its `accepts` that the
+ * pairing serves, through its option filter, in document order.
+ */
 export interface X402Offer {
   required: PaymentRequired;
   options: readonly PaymentRequirements[];
 }
 
+/**
+ * The buyer's inputs to the `build` of an x402 pairing on an eip155 chain: the document (`required`), the option chosen
+ * from its `accepts` (`accepted`), the payer's address (`from`), and the current time in Unix seconds (`now`); the
+ * authorization's deadline is `now` plus the option's `maxTimeoutSeconds`.
+ */
 export interface X402Choice {
   required: PaymentRequired;
   accepted: PaymentRequirements;
@@ -227,6 +252,11 @@ export interface X402Choice {
   now: number;
 }
 
+/**
+ * What `exactEip3009.build` gives: the EIP-712 typed data the payer signs (`typedData`), and `complete`, which takes
+ * the payer's signature and gives the `PaymentPayload` to present, or `x402/signature-malformed` for a signature that
+ * is not one.
+ */
 export interface Unsigned {
   typedData: Eip3009TypedData;
   complete(signature: Hex): PaymentPayload | Refusal;
@@ -443,10 +473,10 @@ function acceptedIs(presented: unknown, option: PaymentRequirements): Refusal | 
 }
 
 /**
- * The read keys for finding this payment on chain later: network, token, `validBefore` and the transfer's digest, and
- * the same keys as an `EvmRef`: the `AuthorizationUsed` log carrying H, the transfer's identity, the nonce search, and
- * the authorization as the token records its use (nonce H, deadline `validBefore`); and the payee of `option`, the
- * issued option the payment answers (`x402Payee`). A refusal of the payment comes first, then the option's.
+ * The read keys for finding this payment on chain later, as `eip3009Keys` gives them: the network, the token, the payer
+ * (`from`), `validBefore`, H, and the members of the payment presented, which `status` compares with what landed; and
+ * the payee of `option`, the issued option the payment answers (`x402Payee`). A refusal of the payment comes first,
+ * then the option's, then a presented `accepted` that is not `option` (`x402/accepted-not-option`).
  */
 async function reference(
   presented: unknown,

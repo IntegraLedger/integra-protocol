@@ -2,6 +2,8 @@
  * The `x402/upto/xrpl` pairing: x402's `upto` scheme on the XRP Ledger, at coverage `none`. The payer opens a payment
  * channel to the option's `payTo` itself and presents the channel and its own account, so nothing it signs carries the
  * ATR hash; the payment follows an agreement on the same network. Settlement is read from the channel's create.
+ *
+ * @module
  */
 import { canonicalJson, type AtrHash } from "./core.js";
 import { isObject } from "./fields.js";

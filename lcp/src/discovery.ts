@@ -3,11 +3,15 @@
  * members in the order of LCP §2.4–§2.5's tables, absent members omitted, no whitespace, UTF-8. Both check the members
  * LCP §2.4–§2.5 define, with these bounds: each string member non-empty, `terms` an https URL, at most 65,536 bytes,
  * and JSON nested at most 64 levels. Neither throws or does I/O.
+ *
+ * @module
  */
 import { fromRawBytes, isHttpsLink, parseJson, toRawBytes, type AtrHash } from "./core.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
 
+/** The path at which the discovery document is served (LCP §2). */
 export const WELL_KNOWN_PATH = "/.well-known/legal-context.json";
+/** The largest discovery document `parse` reads and `emit` writes, in bytes. */
 export const MAX_DOCUMENT_BYTES = 65_536;
 
 /** LCP §2.4–§2.5; members in the order of their tables. */

@@ -2,6 +2,8 @@
  * Stacks rail pieces: the transaction id, the reader a read goes through, the read of a payment by its origin and the
  * nonce the origin signed with the search for H over the origin's nonces, and the zero-party recovery of the ATR hash
  * from a mined transaction. The profile `mpp/charge/usdc/stacks` states the read.
+ *
+ * @module
  */
 import { sha512_256 } from "@noble/hashes/sha2.js";
 import { fromRawBytes, type AtrHash } from "./core.js";

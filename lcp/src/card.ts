@@ -12,6 +12,8 @@
  *   payment and places it in its processor reference.
  *
  * Pure: no I/O, no state. WebCrypto supplies SHA-256 and ES256. No function throws.
+ *
+ * @module
  */
 import { fromLegalContext, hashEquals, isHttpsLink, toLcpString, type AtrHash, type Json } from "./core.js";
 import { jsonBytes, normalHash, sameJson } from "./fields.js";

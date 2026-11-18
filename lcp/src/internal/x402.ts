@@ -21,8 +21,13 @@ import { AGREEMENT_URL, agreementIn, agreementUrlFault } from "./agreement.js";
 import { broadcastsWithin, type Broadcaster } from "./broadcaster.js";
 import { MAX_LINK_LENGTH, MAX_OPTIONS } from "./bounds.js";
 
+/** The key of the x402 extension that carries the ATR hash and link, in a document's or payment's `extensions`. */
 export const LEGAL_CONTEXT = "legalContext";
 
+/**
+ * The JSON Schema `advertise` writes as the `schema` of the `legalContext` extension: an object whose `type` is
+ * `"sha256"`, whose `value` is H as `0x` and 64 lowercase hex digits, and whose `legalContextUrl` is an `https` URL.
+ */
 export const LEGAL_CONTEXT_SCHEMA: Json = deepFreeze({
   $schema: "https://json-schema.org/draft/2020-12/schema",
   type: "object",

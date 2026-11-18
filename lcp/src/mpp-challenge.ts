@@ -66,6 +66,10 @@ export interface MppChallenge {
   opaque?: string;
 }
 
+/**
+ * An MPP credential, as the buyer presents it: the challenge it answers, echoed with its `id`; an optional `source`
+ * naming the payer, where the method writes one; and the method's `payload`.
+ */
 export interface MppCredential {
   challenge: MppChallenge & { id: string };
   source?: string;
@@ -83,6 +87,10 @@ export interface MppForms {
   readonly option: MppChallenge;
 }
 
+/**
+ * The MPP payment methods this package knows a challenge's `method` as: the methods of a checked challenge
+ * (`Checked.method`) and the keys of `CARRIER`.
+ */
 export type MppMethod =
   | "evm"
   | "tempo"
@@ -1561,8 +1569,8 @@ const CANNOT_READ = [
  * - 500 `internal-payment-error`: a call that cannot read the payment, which gives the same code until the seller
  *   changes the call: a reader that is not for the network the challenge or reference names, or a ref `recover`
  *   cannot read (`tempo/wrong-reader`, `svm/wrong-reader`, `xrpl/wrong-reader` and `hedera/wrong-reader`), and `bound`
- *   or `reference` on a push credential before `fetchPresented` has read it (`svm/read-first`, `xrpl/read-first` and
- *   `hedera/read-first`);
+ *   or `reference` on a push credential before `fetchPresented` has read it (`svm/read-first`, `xrpl/read-first`,
+ *   `hedera/read-first` and `tempo/read-first`);
  * - 402 `verification-failed`: every other code this package returns;
  * - 500 `internal-payment-error`: a code this package does not return. The caller answers its own codes itself.
  *

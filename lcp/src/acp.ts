@@ -3,6 +3,8 @@
  * `acp/checkout/undelegated`: the ATR hash as the checkout session's `id`, with the link beside it in the session's
  * `metadata.legal_context`, and, where the handler requires `delegate_payment`, as the allowance's
  * `checkout_session_id`. Pure; no I/O. Nothing here signs or verifies a signature.
+ *
+ * @module
  */
 import {
   canonicalJson,
@@ -27,6 +29,7 @@ import type { Entry, NoRead, PairingData } from "./internal/registry.js";
 export type { ChargePresented, ChargeRef } from "./internal/charge-reference.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 
+/** The member of a CheckoutSession's `metadata` that carries the ATR hash and link. */
 export const METADATA_KEY = "legal_context";
 
 /** A CheckoutSession. Every member other than `id` and `metadata.legal_context` is carried untouched. */
@@ -62,6 +65,7 @@ export interface Unsigned {
   complete(request: Presented): Presented | Refusal;
 }
 
+/** The shape of an ACP pairing: its id, data, binding record and codec. */
 export interface AcpBinding<Id extends string> {
   id: Id;
   data: PairingData;

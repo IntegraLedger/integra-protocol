@@ -5,6 +5,8 @@
  * the resource server's checks, the permission's hash as the manager computes it, and the read of the approval by that
  * hash, as the profile `spend-permissions/eip155` states them. No key is held, nothing is signed, and nothing is read
  * but through the reader a caller supplies.
+ *
+ * @module
  */
 import { hashEquals, isHttpsLink, isOtherSchemeLink, toLegalContext, type AtrHash } from "./core.js";
 import { hexOf, type Hex } from "./evm-abi.js";

@@ -3,6 +3,8 @@
  * channel id commits to and every signature signs; on Solana it is the opening transaction's seller Memo instruction
  * (`extra.memo`), beside x402's receiver-authorizer binding memo; on Cloudflare it rides the echoed
  * `extensions.legalContext` of each request, with no channel.
+ *
+ * @module
  */
 import { base58 } from "@scure/base";
 import { toLcpString, type AtrHash, type Json } from "./core.js";

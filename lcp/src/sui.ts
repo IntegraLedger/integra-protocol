@@ -7,6 +7,8 @@
  * reaches that step, after the checks that need no peer, `build` gives the request it gives with it, and `status` reads
  * as it does with it, pending `unreadable` only there. A digest is base58, read and written with the package's own
  * dependency @scure/base, so it is checked without the peer.
+ *
+ * @module
  */
 import { blake2b } from "@noble/hashes/blake2.js";
 import { base58 } from "@scure/base";

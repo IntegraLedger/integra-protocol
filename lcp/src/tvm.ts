@@ -3,6 +3,8 @@
  * comment holding its LCP string. The payer's W5 wallet signs a request whose one Jetton transfer carries that
  * payload; settlement is read from the W5 wallet's transaction with that request and the Jetton wallets' transactions
  * it led to, through a bounded reader.
+ *
+ * @module
  */
 import { sha256 } from "@noble/hashes/sha2.js";
 import type * as TonCore from "@ton/core";
@@ -284,9 +286,9 @@ export const MAX_TVM_CELLS = 512;
 /** The deepest a bag of cells the pairing reads may be: lcp's own resource bound, as above. */
 export const MAX_TVM_DEPTH = 32;
 /**
- * The most nanotons `build` attaches above the option's forward TON amount: the stock settler refuses a request whose
- * attached value is above `forwardTonAmount` plus this (`@x402/tvm` 2.30.0, `src/exact/facilitator/scheme.ts:326-329`,
- * `DEFAULT_JETTON_WALLET_MESSAGE_AMOUNT` in `src/constants.ts:14`).
+ * The most nanotons `build` attaches above the option's forward TON amount: x402's TON facilitator (`@x402/tvm`)
+ * refuses a request whose attached value is above `forwardTonAmount` plus this (`@x402/tvm` 2.30.0,
+ * `src/exact/facilitator/scheme.ts:326-329`, `DEFAULT_JETTON_WALLET_MESSAGE_AMOUNT` in `src/constants.ts:14`).
  */
 export const MAX_TVM_ATTACHED_ABOVE_FORWARD = 30_000_000n;
 /**
@@ -354,10 +356,10 @@ const CONFIGURATIONS: ReadonlyMap<string, TonConfiguration> = new Map([
   ["tvm:-3", TESTNET],
 ]);
 /**
- * The send modes the scheme admits for the request's one action, 1 (`PAY_FEES_SEPARATELY`) and 3 (with
- * `IGNORE_ERRORS`) (`scheme_exact_ton.md:170` at `x402-foundation/x402@88b66dd4`); the stock settler's codec admits the
- * same two (`@x402/tvm` 2.30.0 `src/exact/codec.ts:66-72`). TON's other modes include those that remove the sending
- * account once its balance reaches zero, and with it the sequence number the read rests on.
+ * The send modes the scheme admits for the request's one action, 1 (`PAY_FEES_SEPARATELY`) and 3 (with `IGNORE_ERRORS`)
+ * (`scheme_exact_ton.md:170` at `x402-foundation/x402@88b66dd4`); x402's TON facilitator's codec admits the same two
+ * (`@x402/tvm` 2.30.0 `src/exact/codec.ts:66-72`). TON's other modes include those that remove the sending account once
+ * its balance reaches zero, and with it the sequence number the read rests on.
  */
 const SCHEME_SEND_MODES: ReadonlySet<number> = new Set([1, 3]);
 const COINS_LIMIT = 1n << 120n;
@@ -2012,7 +2014,7 @@ function isRawAddress(s: unknown): s is string {
 /**
  * The pairing's option filter: the option's scheme, network, asset, `payTo` and `extra`, the amount as a Jetton amount
  * below 2^120, `"0"` among them (the agreement's floor is zero: the scheme asks the transfer to equal the amount with no
- * floor, and the stock settler and the standard Jetton wallet take a zero), a forward TON amount below 2^120 − 1 (`build` attaches more TON than it, and the attached value is a
+ * floor, and x402's TON facilitator and the standard Jetton wallet take a zero), a forward TON amount below 2^120 − 1 (`build` attaches more TON than it, and the attached value is a
  * `Grams`, below 2^120), and `maxTimeoutSeconds` a positive integer below 2^32, which `build` writes into the request
  * (the wallet message's `valid_until`, a `uint32`, is `now` plus `maxTimeoutSeconds`). The network is
  * one of the two the pairing serves, `tvm:-239` (mainnet) and `tvm:-3` (testnet), whose configuration the messages are
@@ -2114,15 +2116,15 @@ function workchainOf(s: string): number {
 
 /**
  * The W5 request for the chosen option: one Jetton transfer whose forward payload is the hash's comment. Every check
- * that needs no peer comes first: H; the form of the choice's wallets, `walletId`, `seqno`, `now` and
- * `attachNanotons`, each `x402/option-malformed`, and of a state init given as a BoC, its bytes (`bagOf`); its document
- * and option (`chosen`, whose filter needs no peer); the option's forward payload's bytes (`bagOf`, else
- * `tvm/carrier-mismatch`); the wallets' workchains and `now` with the option's timeout, each `x402/option-malformed`;
- * and the attached value against the option's forward amount, which it must be above (`tvm/value-too-low`) by at most
- * `MAX_TVM_ATTACHED_ABOVE_FORWARD`, the stock settler's cap (`tvm/value-too-high`). Then @ton/core decodes the forward
- * payload, which must be the hash's comment cell, and the state init, and writes the request's cells: without it the
- * choice is `tvm/peer-missing` only there. A state init given as an object waits for @ton/core, which alone tells its
- * `Cell`. The state init's fields and hash against the wallet come last.
+ * that needs no peer comes first: H; the form of the choice's wallets, `walletId`, `seqno`, `now` and `attachNanotons`,
+ * each `x402/option-malformed`, and of a state init given as a BoC, its bytes (`bagOf`); its document and option
+ * (`chosen`, whose filter needs no peer); the option's forward payload's bytes (`bagOf`, else `tvm/carrier-mismatch`);
+ * the wallets' workchains and `now` with the option's timeout, each `x402/option-malformed`; and the attached value
+ * against the option's forward amount, which it must be above (`tvm/value-too-low`) by at most
+ * `MAX_TVM_ATTACHED_ABOVE_FORWARD`, the cap of x402's TON facilitator (`tvm/value-too-high`). Then @ton/core decodes
+ * the forward payload, which must be the hash's comment cell, and the state init, and writes the request's cells:
+ * without it the choice is `tvm/peer-missing` only there. A state init given as an object waits for @ton/core, which
+ * alone tells its `Cell`. The state init's fields and hash against the wallet come last.
  */
 async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
   const nh = normalHash(h);

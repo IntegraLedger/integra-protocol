@@ -4,6 +4,8 @@
  * before any transaction is named; the ERC-7710 permission-context decoder and MetaMask's DelegationManager address;
  * the commerce-payments escrow's payment hash and the salt commitment to a receiver authorizer and policy; and x402's
  * Permit2 proxy addresses.
+ *
+ * @module
  */
 import {
   AUTHORIZATION_STATE_SELECTOR,

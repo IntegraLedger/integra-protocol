@@ -4,6 +4,8 @@
  * is of that nonce on the payer's account, as state, and of the asset's `Transfer` events, receipts and traces, through
  * a bounded reader. The chain holds 250 of the hash's bits, so a holder of the ATR confirms the hash from it but nothing
  * recovers the hash.
+ *
+ * @module
  */
 import { fromLegalContext, hash, hashEquals, type AtrHash, type Json } from "./core.js";
 import type { Hex } from "./evm.js";

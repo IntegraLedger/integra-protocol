@@ -21,6 +21,7 @@ export type AtrHash = `0x${string}`;
  */
 export type Json = string | number | boolean | null | readonly Json[] | { readonly [k: string]: Json };
 
+/** A refusal of the core, `assemble` and the JSON checks under it: one of the `core/` codes. */
 export type CoreRefusal = {
   refused: true;
   code:

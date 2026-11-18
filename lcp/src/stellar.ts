@@ -3,6 +3,8 @@
  * position P of a transaction and the muxed address `M(payee, P)`; the 40-byte payload of the signed-payload
  * precondition over H; the events that show what moved; the search for a buyer's acts; and the read of the agreement
  * `x402/exact/stellar/precondition`, through a bounded reader.
+ *
+ * @module
  */
 export {
   MAX_CANDIDATES,

@@ -3,6 +3,8 @@
  * carries the ATR hash, so the hash is advertised in the challenge, read back from the echoed extension, and tied to
  * the payment by the seller's claim. The settlement is found by the payer's sender and sequence number, and identified
  * by a digest of the transfer the payer signed and by the expiry it signed.
+ *
+ * @module
  */
 import { digestJson, parseJson, type AtrHash } from "./core.js";
 import type { Hex } from "./evm.js";

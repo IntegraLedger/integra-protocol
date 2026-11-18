@@ -4,6 +4,8 @@
  * ATR hash as a CIP-20 message (metadata label 674) that the payer's signed body commits to through
  * `auxiliary_data_hash`. The transaction id is the Blake2b-256 of the body as received, so a payment is named by an id
  * fixed before any money moves, and its single-use value is the input `payload.nonce` names, which the body spends.
+ *
+ * @module
  */
 import { bech32 } from "@scure/base";
 import { blake2b } from "@noble/hashes/blake2.js";

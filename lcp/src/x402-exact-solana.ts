@@ -1,6 +1,8 @@
 /**
  * The `x402/exact/solana` pairing: the ATR hash placed as the option's `extra.memo` in LCP string form, written by the
  * payer as the transaction's one Memo instruction, read back from the signed message, and read from the settlement.
+ *
+ * @module
  */
 import { toLcpString, type AtrHash } from "./core.js";
 import {
