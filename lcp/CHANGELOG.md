@@ -5,7 +5,7 @@ Every release of `@integraledger/lcp`, newest first. The format follows
 rename exports and pairing ids and change a function's arguments or answers; a patch release does not.
 [Upgrading](../docs/upgrading.md) gives each change a caller of 0.5.x makes for 0.6.0.
 
-## [Unreleased]
+## [0.6.1] - 2026-11-18
 
 ### Added
 
@@ -192,6 +192,7 @@ rename exports and pairing ids and change a function's arguments or answers; a p
 
 - The earliest release tagged in this repository. Versions before it have no tag and are not recorded here.
 
+[0.6.1]: https://github.com/IntegraLedger/integra-protocol/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/IntegraLedger/integra-protocol/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/IntegraLedger/integra-protocol/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/IntegraLedger/integra-protocol/compare/v0.4.2...v0.5.0
