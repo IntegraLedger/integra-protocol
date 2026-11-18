@@ -296,9 +296,9 @@ A read to repeat is a code `readToRepeat` answers true for, such as what a `fetc
 its read fails, cannot yet read the landed payment, or reads a revert, an error or a verdict that is not final yet:
 the seller asks again later ([Reads to repeat](../concepts/refusals.md#reads-to-repeat)). A call that cannot read the
 payment is the seller's own call: a reader that is not
-for the network the challenge or reference names, or a ref `recover` cannot read: one that is not an object, one
-whose `transaction` is not in its rail's form (a 32-byte hash on Tempo, a signature, base58 of 64 bytes, on Solana, 64
-hex digits on XRPL) (`<rail>/wrong-reader`), or `bound` or `reference` on a push credential before `fetchPresented` has
+for the network the challenge or reference names, or an input `recover({ network, tx, option }, reader)` cannot read:
+one that is not an object, or whose `tx` is not in its rail's form (a 32-byte hash on Tempo, a signature, base58 of 64
+bytes, on Solana, 64 hex digits on XRPL) (`<rail>/wrong-reader`), or `bound` or `reference` on a push credential before `fetchPresented` has
 read it (`<rail>/read-first`). The same call gives the same code until the
 seller changes it. In both, the payment may already have moved, so the seller sends no fresh challenge the buyer could
 pay a second time. Answer a 402 with a fresh challenge and a 500 with none: a challenge goes out only with a 402, and
