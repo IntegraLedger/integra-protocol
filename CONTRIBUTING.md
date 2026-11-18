@@ -1,8 +1,8 @@
 # Contributing to integra-protocol
 
 Thank you for helping. This repository holds `@integraledger/lcp`, the reference implementation of the Legal Context
-Protocol, its documentation and its shared test vectors. Bug reports, fixes, new rails and clearer documentation are
-all welcome.
+Protocol; the settler, `@integraledger/profile-facilitator`, an x402 facilitator for its pairings; their documentation;
+and the shared test vectors. Bug reports, fixes, new rails and clearer documentation are all welcome.
 
 ## Before you start
 
@@ -49,8 +49,6 @@ node scripts/idna/idna-data.mjs --check
 node scripts/docs-samples.mjs
 node scripts/docs-reference.mjs --check
 node --test scripts/
-node scripts/check-public-package.mjs
-node scripts/check-public-units.mjs
 ```
 
 - The settler's tests need Postgres: set `INTEGRA_DATABASE_URL` to a connection string whose user may create
@@ -82,6 +80,62 @@ node scripts/check-public-units.mjs
 - `node --test scripts/` runs the tests of the scripts. Those of `check-public-package.mjs` make a list of dummy items
   under a key of their own, and check that the scan finds each form of an item it is to match, on its line, and no
   text it is not to match.
+
+A maintainer also runs `node scripts/check-public-package.mjs` and `node scripts/check-public-units.mjs`, which need a
+key contributors do not hold ([the public-package checks](#the-public-package-checks)). A change to the site in
+`website/` is built and checked as [the documentation site](#the-documentation-site) describes.
+
+## The rules the code follows
+
+- **One owner per rule.** Assembly, hashing and hash comparison live in the core (`lcp/src/internal/core.ts`), which the
+  package root and `@integraledger/lcp/core` export. Each pairing's binding lives in its own module. Reuse them;
+  never write a second version.
+- **Hash the bytes delivered.** Never parse, re-serialise or canonicalise an ATR before hashing it.
+- **Failures are values.** Return a refusal rather than throwing on a caller's input, with its `<namespace>/<reason>`
+  code written out as a string literal in `refusal("…")`. Keep
+  [`docs/reference/refusals.md`](./docs/reference/refusals.md) listing every code the package returns, and run
+  `node scripts/docs-reference.mjs` and commit what it writes: `lcp/src/internal/codes.ts`, the set of those codes
+  that MPP's `problem` reads. Class each new code: a read to repeat, whose answer rests on a read that may answer
+  differently later with nothing the caller must change, goes in `lcp/src/internal/reads-to-repeat.ts`, and
+  `lcp/test/refusal-classes.ts` gives every code its class.
+- **Bounded.** Every reader call, decoded value and loop has a limit.
+- **No business or legal logic.** The package checks the binding; it never judges amount, payee, asset, timing or
+  payer against the ATR's content.
+- **State what a binding proves, and no more.** A pairing's `data.proves` says what its payment shows and what it
+  does not.
+- **Expected values come from outside the code.** A test or vector takes its expected value from a specification's
+  example, a standard test value, a live network read or an independent tool, and names the source. It never
+  snapshots the package's own output.
+- **Comments say what the code does.**
+
+## Commits and the Developer Certificate of Origin
+
+Every commit is signed off under the [Developer Certificate of Origin 1.1](https://developercertificate.org). The
+sign-off certifies that you wrote the change, or otherwise have the right to submit it under this project's license.
+Add it with `git commit -s`, which appends:
+
+```text
+Signed-off-by: Your Name <you@example.com>
+```
+
+using the name and email of your git configuration. On every push to `main`, CI reads every commit in `main`'s history,
+except one merge commit exempt by its sha, and fails if a commit has no `Signed-off-by:` trailer, or if its message
+contains, anywhere and in any case, one of the strings the commit-message step in `.github/workflows/ci.yml` lists:
+`co-authored-by`, `generated with` (so "regenerated with" too) and a few product names. Name a human co-author in the
+pull request's description, not in a `Co-authored-by:` trailer. The check runs after the merge and cannot hold a
+commit back, so check your messages and sign off every commit before you open a pull request. To sign off commits you
+already made, run `git rebase --signoff origin/main` and force-push your branch.
+
+## Pull requests
+
+- Keep a pull request to one change, with a title that says what it does.
+- Describe what changed and how you checked it: the commands and what they printed.
+- Update the documentation and the vectors in the same pull request as the code they describe.
+
+## For maintainers
+
+### The public-package checks
+
 - `check-public-package.mjs` reads every file git lists, its content and its path, and fails on any item of a list of
   names, phrases and refusal-code namespaces that have no place in this repository. It holds the list as HMAC-SHA-256
   digests under a 32-byte key that this repository does not hold, and compares the digest of every sequence of one to
@@ -96,6 +150,9 @@ node scripts/check-public-units.mjs
   anyone using the protocol and names the specification or profile that fixes it, and the file passes
   `check-public-package.mjs`, with the same key, so with no key it exits 2 when it finds no other problem. `--root
   <dir>` reads the packages from `<dir>/lcp` and `<dir>/settler`, such as packages installed from their tarballs.
+
+### The documentation site
+
 - The site in `website/` builds with `pnpm install --frozen-lockfile && pnpm run browser && pnpm build` inside that
   folder, on Linux x64. `pnpm run browser` fetches, retrying a failed download five times, the browser build the
   Mermaid diagrams are drawn in, Chrome Headless Shell, which `website/scripts/browser.mjs` pins by version and by the
@@ -157,9 +214,11 @@ node scripts/check-public-units.mjs
   first=$(mktemp -d) && pnpm build && mv out "$first/out" && rm -rf .next && pnpm build && diff -r --brief "$first/out" out
   ```
 
-CI runs the commands in the block above, other than `node --test scripts/`, `check-public-package.mjs` and
-`check-public-units.mjs`, and the rest of `.github/workflows/ci.yml` on every push to `main`, when dispatched by hand,
-and from the publish workflow before it packs. Its other steps check:
+### What CI checks
+
+CI runs the commands under [Checking your change](#checking-your-change), other than `node --test scripts/`, and the
+rest of `.github/workflows/ci.yml` on every push to `main`, when dispatched by hand, and from the publish workflow
+before it packs. Its other steps check:
 
 - **Node.js:** every job that runs a step fetches the Node.js `.node-version` names, checked against one SHA-256, in one
   step, byte for byte the same in every job, before its first other step that runs. The `floor` job then fetches the
@@ -216,58 +275,14 @@ and from the publish workflow before it packs. Its other steps check:
 No workflow runs on `pull_request`, and no check is required before a merge, so CI reads a change once it is on
 `main`.
 
-## The rules the code follows
-
-- **One owner per rule.** Assembly, hashing and hash comparison live in the core (`lcp/src/internal/core.ts`), which the
-  package root and `@integraledger/lcp/core` export. Each pairing's binding lives in its own module. Reuse them;
-  never write a second version.
-- **Hash the bytes delivered.** Never parse, re-serialise or canonicalise an ATR before hashing it.
-- **Failures are values.** Return a refusal rather than throwing on a caller's input, with its `<namespace>/<reason>`
-  code written out as a string literal in `refusal("…")`. Keep
-  [`docs/reference/refusals.md`](./docs/reference/refusals.md) listing every code the package returns, and run
-  `node scripts/docs-reference.mjs` and commit what it writes: `lcp/src/internal/codes.ts`, the set of those codes
-  that MPP's `problem` reads. Class each new code: a read to repeat, whose answer rests on a read that may answer
-  differently later with nothing the caller must change, goes in `lcp/src/internal/reads-to-repeat.ts`, and
-  `lcp/test/refusal-classes.ts` gives every code its class.
-- **Bounded.** Every reader call, decoded value and loop has a limit.
-- **No business or legal logic.** The package checks the binding; it never judges amount, payee, asset, timing or
-  payer against the ATR's content.
-- **State what a binding proves, and no more.** A pairing's `pattern.proves` says what its payment shows and what it
-  does not.
-- **Expected values come from outside the code.** A test or vector takes its expected value from a specification's
-  example, a standard test value, a live network read or an independent tool, and names the source. It never
-  snapshots the package's own output.
-- **Comments say what the code does.**
-
-## Commits and the Developer Certificate of Origin
-
-Every commit is signed off under the [Developer Certificate of Origin 1.1](https://developercertificate.org). The
-sign-off certifies that you wrote the change, or otherwise have the right to submit it under this project's license.
-Add it with `git commit -s`, which appends:
-
-```text
-Signed-off-by: Your Name <you@example.com>
-```
-
-using the name and email of your git configuration. On every push to `main`, CI reads every commit in `main`'s history
-except one merge commit, exempt by its sha, and fails if a commit has no `Signed-off-by:` trailer or its message matches
-the agent pattern in `.github/workflows/ci.yml` (`Co-authored-by`, `generated with` and the names it lists, in upper or
-lower case). It runs after the push and cannot hold a commit back, so sign off every commit before you open a pull
-request. To sign off commits you already made, run `git rebase --signoff origin/main` and force-push your branch.
-
-## Pull requests
-
-- Keep a pull request to one change, with a title that says what it does.
-- Describe what changed and how you checked it: the commands and what they printed.
-- Update the documentation and the vectors in the same pull request as the code they describe.
-
 ## Releases
 
 Each release of `@integraledger/lcp` is the annotated tag `v<version>`, and each release of the settler,
 `@integraledger/profile-facilitator`, the annotated tag `settler-v<version>`, on the commit on `main` that sets that
 version, made in this order:
 
-1. A pull request sets the version in `lcp/package.json` or `settler/package.json`.
+1. A pull request sets the version in `lcp/package.json` or `settler/package.json`, and, for lcp, adds the release's
+   entry to [`lcp/CHANGELOG.md`](./lcp/CHANGELOG.md).
 2. It is merged to `main`.
 3. A maintainer tags that commit with an annotated tag, `v<version>` for lcp (`git tag -a v<version> -m v<version>
    <commit>`) or `settler-v<version>` for the settler, and pushes the tag.
