@@ -302,8 +302,9 @@ of [Processing payments](#processing-payments). Every other rule holds.
    extension.
 5. **The checkout mandate binds H.** The business reads H from the checkout mandate's closed hop, its last SD-JWT, and
    the `checkout_jwt` it discloses, as `ucp/checkout/ap2-mandate`'s `bound` reads them: `checkout_hash` is the
-   base64url SHA-256 of `checkout_jwt`, and H is the title of that checkout's `legal_context` link. It is the
-   checkout's current H: a checkout mandate over an earlier state of the checkout is `mandate_scope_mismatch`.
+   base64url SHA-256 of `checkout_jwt`, and H is the hash the title of that checkout's `legal_context` link names
+   (`lcp:sha256:` + H). It is the checkout's current H: a checkout mandate over an earlier state of the checkout is
+   `mandate_scope_mismatch`.
 6. **The agreement step comes first.** The business settles the payment only once the agreement step's payment,
    carrying H, has settled. Until then it answers `agreement_payment_required`, and nothing is taken.
 

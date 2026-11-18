@@ -12,17 +12,17 @@
 
    The signature is the payer's secp256k1 signature over SHA-256 of the serialized `raw_data`. `build`'s `tron-txid` request carries, beside `txid`, `rawBytes`: the serialized `raw_data` whose SHA-256 is `txid`, which `tronRequest` reads back to that id and to every field the payer signs.
 4. The payer pays every fee: energy, bandwidth and the network's memo fee. Nothing in this profile sponsors them.
-5. A facilitator's `/verify` MUST:
-   - decode the transaction, and require rule 3's shape on `asset`, for `transfer(payTo, amount)` exactly;
-   - require `data` to be an LCP `sha256` string;
-   - require signatures that the owner's permission accepts;
-   - require `expiration` to be in the future and no later than now + `maxTimeoutSeconds`.
+5. A facilitator's `/verify`:
+   - decodes the transaction, and requires rule 3's shape on `asset`, for `transfer(payTo, amount)` exactly;
+   - requires `data` to be an LCP `sha256` string;
+   - requires signatures that the owner's permission accepts;
+   - requires `expiration` to be in the future and no later than now + `maxTimeoutSeconds`.
 
-   It SHOULD simulate with `/wallet/triggerconstantcontract`. Its `/settle` MUST:
-   - repeat `/verify`;
-   - broadcast with `/wallet/broadcasthex`;
-   - deduplicate settlements by transaction id, atomically, until `expiration` passes;
-   - answer `success: true`, with `transaction` = the id in hex and `payer` = the owner, only when a node reports the transaction in a block with receipt result `SUCCESS` and H in `raw_data.data`, the owner being the payer. The `Transfer` logs the receipt holds whose sender is the owner are what the transaction moved, recorded as observed; a transaction whose receipt holds no `Transfer` log moved nothing, save a signed `transfer(to, 0)` of a token that logs nothing for zero, a transfer of zero to its `to`. A transaction is the payment only where one of those names `payTo`; one that names no account pays no one.
+   It should also simulate with `/wallet/triggerconstantcontract`, a recommendation and not a requirement. Its `/settle`:
+   - repeats `/verify`;
+   - broadcasts with `/wallet/broadcasthex`;
+   - deduplicates settlements by transaction id, atomically, until `expiration` passes;
+   - answers `success: true`, with `transaction` = the id in hex and `payer` = the owner, only when a node reports the transaction in a block with receipt result `SUCCESS` and H in `raw_data.data`, the owner being the payer. The `Transfer` logs the receipt holds whose sender is the owner are what the transaction moved, recorded as observed; a transaction whose receipt holds no `Transfer` log moved nothing, save a signed `transfer(to, 0)` of a token that logs nothing for zero, a transfer of zero to its `to`. A transaction is the payment only where one of those names `payTo`; one that names no account pays no one.
 6. The resource server refuses a payment whose `data` does not decode to an H that it issued for that request and has not seen claimed.
 7. Declarations for x402's facilitator-submitted family:
    - fee payer: the payer, self-funded;
@@ -40,3 +40,5 @@
    - **The gate.** The link shows the chain of headers, not that a block's answer lists every transaction of its block. Until a run on a test network shows that, at each level, a complete search proves no absence: a failed receipt, a receipt that names no payee's account, a transaction the payee owns and a lapse each answer `pending`, `search-incomplete`, with the search's position, and no `failed` but `before-position` is answered.
    - **Cases that cannot arise.** The read kit's cases that cannot arise on this ledger, each named by its reason or the opening words of its text: `not-found`, since the read always holds the value; *a value read consumed whose transaction the search has not found*, *a value unconsumed at the final mark and consumed at the latest head* and *a value whose validity passed, unconsumed at the final mark and consumed at the latest head*, since the value is the transaction id, read consumed only by the lookup that returns its transaction; *a read with no means to read the single-use value*, *search-incomplete is answered before not-found* and *a read that did not read the value at the latest head*, since the read holds the id and looks it up at the solidified level and at the head; *the settled act's answer names every foreign item*, *instrument-live is answered before search-incomplete* and *instrument-live is answered before an item the search could not decode*, since the search is made only before a `failed`; *an act the read cannot place against the position given* (its three cases) and *an item the search could not decode that gives no position*, since the search reads blocks by number; *the validity passed with the value unconsumed, read below the final mark*, since `expiration` is compared with the solidified head alone; and, until the run the gate names, the cases at coverage `full` whose answer is `instrument-unused`, `instrument-consumed` or `transaction-failed`.
 9. **The agreement.** The payment form is also offered as an agreement, at the floor: 1 base unit, held per network and contract; rule 1 admits `"0"` only once a run on a network and contract shows that its `transfer(to, 0)` succeeds and logs a `Transfer`, and no contract is so shown yet. The buyer pays every fee (rule 4); another party can only delegate resources to the payer's account in advance, which pays no one sale's fee. The transaction must succeed (rule 8); a transaction the option's payee owns is no agreement and no proof, on either act. A transaction included with a failed result is no agreement; it consumed the id, and the buyer signs again.
+10. **What a record proves**, as each pairing's `data.proves` states it:
+    - `x402/exact/tron/lcp-trc20-memo`: The payer, the transaction's owner, signed a Tron transaction whose memo is this ATR's hash in LCP string form, and whose one contract calls transfer on the token. The network verified the signature, which covers the memo through the transaction id, and the receipt's result is SUCCESS, at the finality recorded. Where the receipt holds Transfer logs from the owner, the transaction paid, with each recipient and what moved; where it holds no Transfer log and the signed call is a transfer of zero, it paid zero to that call's recipient; where it holds neither, the payer signed, and no account is named. The owner is named as the signer, and its Permission_id as the authority. This does not show that amount, token or timing match the ATR's content.
