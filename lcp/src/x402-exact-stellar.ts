@@ -1,8 +1,10 @@
 /**
  * Stellar on x402: the pairing `x402/exact/stellar/precondition` (`exactStellarPrecondition`), an agreement in which
- * the buyer signs a Soroban authorization of `transfer(buyer, payTo, amount)` and the 40-byte payload of H and that
- * authorization's nonce, which the transaction carries as a signed-payload precondition; its choice type
- * `StellarPreconditionChoice`; and the `Broadcaster` type, which every pairing's `broadcaster` answers.
+ * the buyer signs a Soroban authorization of `transfer(buyer, payTo, amount)` and a 40-byte payload of H and that
+ * authorization's nonce.
+ *
+ * The transaction carries that payload as a signed-payload precondition. The entry point also exports the pairing's
+ * choice type `StellarPreconditionChoice`, and the `Broadcaster` type, which every pairing's `broadcaster` answers.
  *
  * @module
  */

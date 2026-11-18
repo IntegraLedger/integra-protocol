@@ -1,8 +1,10 @@
 /**
- * Stellar rail pieces: the payer-signed Soroban `transfer` and the digest of the authorization entry that signs it; the
- * position P of a transaction and the muxed address `M(payee, P)`; the 40-byte payload of the signed-payload
- * precondition over H; the events that show what moved; the search for a buyer's acts; and the read of the agreement
- * `x402/exact/stellar/precondition`, through a bounded reader.
+ * Stellar rail pieces: the payer-signed Soroban `transfer` and the digest of its authorization entry, the
+ * signed-payload precondition over H, the search for a buyer's acts, and the read of the agreement
+ * `x402/exact/stellar/precondition`.
+ *
+ * It also holds the position P of a transaction and the muxed address `M(payee, P)`; the precondition's 40-byte
+ * payload; and the events that show what moved. Every read goes through a bounded reader.
  *
  * @module
  */

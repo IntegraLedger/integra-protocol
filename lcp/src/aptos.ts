@@ -1,8 +1,9 @@
 /**
  * Aptos, and the `x402/exact/aptos` pairing, served at the seller-tied level: no field of a standard Aptos transfer
- * carries the ATR hash, so the hash is advertised in the challenge, read back from the echoed extension, and tied to
- * the payment by the seller's claim. The settlement is found by the payer's sender and sequence number, and identified
- * by a digest of the transfer the payer signed and by the expiry it signed.
+ * carries the ATR hash, so the hash is advertised in the challenge and tied to the payment by the seller's claim.
+ *
+ * The hash is read back from the echoed extension. The settlement is found by the payer's sender and sequence number,
+ * and identified by a digest of the transfer the payer signed and by the expiry it signed.
  *
  * @module
  */

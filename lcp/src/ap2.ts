@@ -1,10 +1,12 @@
 /**
  * AP2 v0.2 checkouts and closed Checkout Mandates, and the `ap2/checkout-mandate` pairing: the ATR hash as the
- * `legalContext` member of the merchant-signed `checkout_jwt` payload, committed to by the buyer's closed Checkout
- * Mandate through `checkout_hash`, and read back from the checkout JWT presented beside the mandate. The mandate is
- * presented alone, or last in AP2's chain after the open mandate. In AP2's push funding, where the payer's side sends
- * the funds, the presentation also carries the confirmation of funds sent, `payment_receipt`. Nothing here verifies a
- * signature, a `cnf` delegation or a link between hops.
+ * `legalContext` member of the merchant-signed `checkout_jwt` payload, which the buyer's closed Checkout Mandate
+ * commits to through `checkout_hash`.
+ *
+ * The hash is read back from the checkout JWT presented beside the mandate. The mandate is presented alone, or last in
+ * AP2's chain after the open mandate. In AP2's push funding, where the payer's side sends the funds, the presentation
+ * also carries the confirmation of funds sent, `payment_receipt`. Nothing here verifies a signature, a `cnf` delegation
+ * or a link between hops.
  *
  * @module
  */

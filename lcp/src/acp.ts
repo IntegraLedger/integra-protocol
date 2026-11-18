@@ -1,8 +1,10 @@
 /**
  * ACP checkout sessions and delegate-payment allowances, and the pairings `acp/checkout/delegated` and
- * `acp/checkout/undelegated`: the ATR hash as the checkout session's `id`, with the link beside it in the session's
- * `metadata.legal_context`, and, where the handler requires `delegate_payment`, as the allowance's
- * `checkout_session_id`. Pure; no I/O. Nothing here signs or verifies a signature.
+ * `acp/checkout/undelegated`: the ATR hash as the checkout session's `id`.
+ *
+ * The link rides beside it in the session's `metadata.legal_context`, and, where the handler requires
+ * `delegate_payment`, the hash is also the allowance's `checkout_session_id`. Pure; no I/O. Nothing here signs or
+ * verifies a signature.
  *
  * @module
  */

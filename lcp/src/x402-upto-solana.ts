@@ -1,7 +1,9 @@
 /**
  * The `x402/upto/solana` pairing: the ATR hash placed as the option's `extra.memo` in LCP string form, written by the
- * payer as the one Memo instruction of the transaction that opens a one-request payment channel escrowing the signed
- * maximum; read back from that transaction, and settlement read from the opening.
+ * payer as the one Memo instruction of the transaction that opens a one-request payment channel.
+ *
+ * The channel escrows the signed maximum. The hash is read back from that transaction, and settlement is read from the
+ * opening.
  *
  * @module
  */

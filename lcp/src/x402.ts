@@ -1,9 +1,10 @@
 /**
  * x402 v2 documents, the request commitment, and the x402 pairings on eip155 chains: `exact` over EIP-3009, Permit2 and
  * ERC-7710 (with its salt level), `upto` over Permit2, `auth-capture` over EIP-3009 and Permit2, and `exact` in Circle
- * Gateway's batched domain. The ATR hash is
- * advertised in the challenge's `extensions.legalContext`; each pairing's `pattern` record states how the pairing binds
- * it.
+ * Gateway's batched domain.
+ *
+ * The ATR hash is advertised in the challenge's `extensions.legalContext`; each pairing's `pattern` record states how
+ * the pairing binds it.
  *
  * @module
  */

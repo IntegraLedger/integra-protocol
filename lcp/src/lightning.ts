@@ -1,7 +1,9 @@
 /**
- * BOLT11 invoices and the Lightning pairings. On x402 (`x402/exact/lnbtc/payment-hash`) the ATR commits the option's
- * `extra.paymentHash`, the payment hash of the invoice the seller's node issues after the agreement. On MPP the
- * seller's node writes the ATR hash as the invoice's description hash `h`. The payer signs nothing; it pays the invoice.
+ * BOLT11 invoices and the Lightning pairings: on x402 (`x402/exact/lnbtc/payment-hash`) the ATR commits the option's
+ * `extra.paymentHash`, and on MPP the seller's node writes the ATR hash as the invoice's description hash `h`.
+ *
+ * The payment hash is that of the invoice the seller's node issues after the agreement. The payer signs nothing; it
+ * pays the invoice.
  *
  * @module
  */

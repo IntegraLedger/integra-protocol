@@ -1,7 +1,8 @@
 /**
  * Stacks rail pieces: the transaction id, the reader a read goes through, the read of a payment by its origin and the
- * nonce the origin signed with the search for H over the origin's nonces, and the zero-party recovery of the ATR hash
- * from a mined transaction. The profile `mpp/charge/usdc/stacks` states the read.
+ * nonce the origin signed, and the zero-party recovery of the ATR hash from a mined transaction.
+ *
+ * The read searches for H over the origin's nonces. The profile `mpp/charge/usdc/stacks` states the read.
  *
  * @module
  */

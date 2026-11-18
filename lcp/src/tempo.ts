@@ -1,7 +1,9 @@
 /**
  * Tempo rail pieces: the `0x76` transaction's calls, the TIP-20 `transferWithMemo` calldata, the TIP-20 channel
- * reserve's descriptor and ids, and the account keychain's key authorizations. Tempo serves eip155 JSON-RPC, so the
- * reader is `EvmReader`. Nothing here throws on a caller's value; refusals are values.
+ * reserve's descriptor and ids, and the account keychain's key authorizations.
+ *
+ * Tempo serves eip155 JSON-RPC, so the reader is `EvmReader`. Nothing here throws on a caller's value; refusals are
+ * values.
  *
  * @module
  */

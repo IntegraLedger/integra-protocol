@@ -1,9 +1,10 @@
 /**
  * ACK Payment Requests and receipts, and the pairing `ack/payment-request`: the ATR hash as the `id` of the
- * seller-signed Payment Request, in LCP's string form, with the link beside the request in the 402 body. ACK defines
- * no payer signature, so `build` and `bound` always refuse. The token is read under the name ACK's SDKs write from
- * 0.10.0, `paymentRequestToken`, and under `paymentToken`, the name they wrote before it, in the 402 body and in a
- * receipt's credential subject alike. Pure; no I/O. No token or receipt signature is verified here.
+ * seller-signed Payment Request, in LCP's string form, with the link beside the request in the 402 body.
+ *
+ * ACK defines no payer signature, so `build` and `bound` always refuse. The token is read under the name ACK's SDKs
+ * write from 0.10.0, `paymentRequestToken`, and under `paymentToken`, the name they wrote before it, in the 402 body
+ * and in a receipt's credential subject alike. Pure; no I/O. No token or receipt signature is verified here.
  *
  * @module
  */

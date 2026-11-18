@@ -1,8 +1,10 @@
 /**
- * The discovery document of LCP §2, served at `/.well-known/legal-context.json`. `parse` reads one; `emit` writes one,
- * members in the order of LCP §2.4–§2.5's tables, absent members omitted, no whitespace, UTF-8. Both check the members
- * LCP §2.4–§2.5 define, with these bounds: each string member non-empty, `terms` an https URL, at most 65,536 bytes,
- * and JSON nested at most 64 levels. Neither throws or does I/O.
+ * The discovery document of LCP §2, served at `/.well-known/legal-context.json`: `parse` reads one, and `emit` writes
+ * one.
+ *
+ * `emit` writes the members in the order of LCP §2.4–§2.5's tables, absent members omitted, no whitespace, UTF-8. Both
+ * check the members LCP §2.4–§2.5 define, with these bounds: each string member non-empty, `terms` an https URL, at
+ * most 65,536 bytes, and JSON nested at most 64 levels. Neither throws or does I/O.
  *
  * @module
  */

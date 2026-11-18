@@ -1,8 +1,9 @@
 /**
- * x402 `batch-settlement`: one ATR per channel. On EVM the ATR hash is the channel configuration's `salt`, which the
- * channel id commits to and every signature signs; on Solana it is the opening transaction's seller Memo instruction
- * (`extra.memo`), beside x402's receiver-authorizer binding memo; on Cloudflare it rides the echoed
- * `extensions.legalContext` of each request, with no channel.
+ * x402 `batch-settlement`: one ATR per channel, its hash the EVM channel configuration's `salt`, the Solana opening
+ * transaction's seller Memo instruction, or, on Cloudflare, the echoed `extensions.legalContext` of each request.
+ *
+ * On EVM the channel id commits to the `salt`, and every signature signs it; on Solana the seller Memo instruction
+ * (`extra.memo`) sits beside x402's receiver-authorizer binding memo; on Cloudflare there is no channel.
  *
  * @module
  */

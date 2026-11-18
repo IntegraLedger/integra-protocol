@@ -1,9 +1,10 @@
 /**
- * Starknet: the pairing `x402/exact/starknet`. The payer signs a SNIP-12 `OutsideExecution` (SNIP-9 v2) authorizing
- * one token `transfer`; its `Nonce` is the ATR hash's low 250 bits, or on an agreement the agreement value's. The read
- * is of that nonce on the payer's account, as state, and of the asset's `Transfer` events, receipts and traces, through
- * a bounded reader. The chain holds 250 of the hash's bits, so a holder of the ATR confirms the hash from it but nothing
- * recovers the hash.
+ * Starknet: the pairing `x402/exact/starknet`. The payer signs a SNIP-12 `OutsideExecution` (SNIP-9 v2) authorizing one
+ * token `transfer`; its `Nonce` is the ATR hash's low 250 bits, or on an agreement the agreement value's.
+ *
+ * The read is of that nonce on the payer's account, as state, and of the asset's `Transfer` events, receipts and
+ * traces, through a bounded reader. The chain holds 250 of the hash's bits, so a holder of the ATR confirms the hash
+ * from it but nothing recovers the hash.
  *
  * @module
  */

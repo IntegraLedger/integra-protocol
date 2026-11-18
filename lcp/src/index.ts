@@ -1,10 +1,12 @@
 /**
- * The package root: the core functions `@integraledger/lcp/core` exports (assembling an ATR and hashing its exact
- * bytes, comparing hashes, the hash's string and structured forms, the https-link rule, `isRefusal` and
- * `readToRepeat`); the registry of every pairing (`BINDINGS`, `pairingOf`) and its types; the return after an agreement
- * (the `Legal-Context` header, its check, and the charge options an agreement option serves); MPP's challenge id and
- * its hash (`challengeId`, `challengeH`, `challengeHash`); the package's size bounds; and `FETCHED`, the key under
- * which a pairing's `fetchPresented` writes the seller's read onto a credential.
+ * The package root of `@integraledger/lcp`: the core functions of `@integraledger/lcp/core`, the registry of every
+ * pairing (`BINDINGS`, `pairingOf`) and its types, and the return after an agreement.
+ *
+ * The core functions assemble an ATR and hash its exact bytes, compare hashes, give the hash's string and structured
+ * forms, and hold the https-link rule, `isRefusal` and `readToRepeat`. The return after an agreement is the
+ * `Legal-Context` header, its check, and the charge options an agreement option serves. The root also exports MPP's
+ * challenge id and its hash (`challengeId`, `challengeH`, `challengeHash`); the package's size bounds; and `FETCHED`,
+ * the key under which a pairing's `fetchPresented` writes the seller's read onto a credential.
  *
  * @module
  */

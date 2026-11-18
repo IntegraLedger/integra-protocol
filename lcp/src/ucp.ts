@@ -1,11 +1,12 @@
 /**
  * UCP checkouts and bookings, and five pairings, each of which carries the ATR hash and link as one `links[]` entry of
- * type `legal_context` in the checkout response. The `ap2-mandate` pairings read the hash from the checkout JWT
- * presented beside the buyer's checkout mandate, after AP2's `checkout_hash` check, the mandate presented alone or last
- * in AP2's chain after the open mandate; `ucp/checkout/agent-signed` reads it from the `legal_context` member of the
- * platform's signed request, once the request's `Content-Digest` matches its body; the `unsigned` pairings have nothing
- * signed to read. Nothing here takes a key, signs, or verifies a signature, a `cnf` delegation or a link between
- * chained mandates.
+ * type `legal_context` in the checkout response.
+ *
+ * The `ap2-mandate` pairings read the hash from the checkout JWT presented beside the buyer's checkout mandate, after
+ * AP2's `checkout_hash` check, the mandate presented alone or last in AP2's chain after the open mandate;
+ * `ucp/checkout/agent-signed` reads it from the `legal_context` member of the platform's signed request, once the
+ * request's `Content-Digest` matches its body; the `unsigned` pairings have nothing signed to read. Nothing here takes
+ * a key, signs, or verifies a signature, a `cnf` delegation or a link between chained mandates.
  *
  * @module
  */

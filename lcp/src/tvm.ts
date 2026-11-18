@@ -1,8 +1,9 @@
 /**
- * TON: the pairing `x402/exact/tvm`. The ATR hash rides in the scheme's `extra.forwardPayload` as a TEP-74 text
- * comment holding its LCP string. The payer's W5 wallet signs a request whose one Jetton transfer carries that
- * payload; settlement is read from the W5 wallet's transaction with that request and the Jetton wallets' transactions
- * it led to, through a bounded reader.
+ * TON: the pairing `x402/exact/tvm`. The ATR hash rides in the scheme's `extra.forwardPayload` as a TEP-74 text comment
+ * holding its LCP string.
+ *
+ * The payer's W5 wallet signs a request whose one Jetton transfer carries that payload; settlement is read from the W5
+ * wallet's transaction with that request and the Jetton wallets' transactions it led to, through a bounded reader.
  *
  * @module
  */

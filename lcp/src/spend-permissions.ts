@@ -1,10 +1,11 @@
 /**
  * The Spend Permission exchange and the pairing `spend-permissions/eip155`: an account's approval, on the
- * SpendPermissionManager, of a Spend Permission whose `salt` is the ATR hash, as the sale's agreement. The offer in a
- * `402` body, the typed data the account signs or the `approve` call it makes, the `Spend-Permission` return header,
- * the resource server's checks, the permission's hash as the manager computes it, and the read of the approval by that
- * hash, as the profile `spend-permissions/eip155` states them. No key is held, nothing is signed, and nothing is read
- * but through the reader a caller supplies.
+ * SpendPermissionManager, of a Spend Permission whose `salt` is the ATR hash, as the sale's agreement.
+ *
+ * The offer in a `402` body, the typed data the account signs or the `approve` call it makes, the `Spend-Permission`
+ * return header, the resource server's checks, the permission's hash as the manager computes it, and the read of the
+ * approval by that hash, as the profile `spend-permissions/eip155` states them. No key is held, nothing is signed, and
+ * nothing is read but through the reader a caller supplies.
  *
  * @module
  */

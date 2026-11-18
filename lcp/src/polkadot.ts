@@ -1,8 +1,10 @@
 /**
  * Polkadot Asset Hub: the profile pairing `x402/exact/polkadot/lcp-assets-remark`, in which the payer signs one
- * extrinsic whose call is `utility.batch_all([assets.transfer_keep_alive, system.remark_with_event])` with the ATR
- * hash's LCP string as the remark; the settlement is read by the signer's account nonce through polkadot-rest-api. SCALE is encoded and
- * decoded here for these shapes only.
+ * extrinsic that transfers an asset and remarks the ATR hash's LCP string.
+ *
+ * Its call is `utility.batch_all([assets.transfer_keep_alive, system.remark_with_event])`, the remark the hash's LCP
+ * string; the settlement is read by the signer's account nonce through polkadot-rest-api. SCALE is encoded and decoded
+ * here for these shapes only.
  *
  * @module
  */

@@ -1,9 +1,12 @@
 /**
  * Cardano, and its two pairings: `x402/exact/cardano`, x402's address-to-address method, and `x402/exact/cardano/lock`,
- * its two lock methods (`masumi` and `script`), told apart by the option's `extra.assetTransferMethod`. Each carries the
- * ATR hash as a CIP-20 message (metadata label 674) that the payer's signed body commits to through
- * `auxiliary_data_hash`. The transaction id is the Blake2b-256 of the body as received, so a payment is named by an id
- * fixed before any money moves, and its single-use value is the input `payload.nonce` names, which the body spends.
+ * its two lock methods (`masumi` and `script`). Each carries the ATR hash as a CIP-20 message that the payer's signed
+ * body commits to.
+ *
+ * The two are told apart by the option's `extra.assetTransferMethod`. The message has metadata label 674, and the body
+ * commits to it through `auxiliary_data_hash`. The transaction id is the Blake2b-256 of the body as received, so a
+ * payment is named by an id fixed before any money moves, and its single-use value is the input `payload.nonce` names,
+ * which the body spends.
  *
  * @module
  */
