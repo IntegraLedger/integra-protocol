@@ -247,17 +247,17 @@ lists every export of every entry point, and the
 [API reference](https://github.com/IntegraLedger/integra-protocol/tree/main/docs/reference/api) gives each signature.
 
 Every pairing has these members: `id`, `pattern` (its binding record, which on `x402/exact/starknet` names no binding
-pattern), `data` (its data, typed `PairingData`, with `data.proves`, what a payment through it proves), `claims` (whether what the buyer presents carries a value bound to H), `unplaced` (the
-option as the seller issued it), `tie` (the ATR's binding slot), `advertise` and `read` (H into and out of the
-challenge), `build` (what the buyer signs, with H in its place), `bound` (H back out of the payment), and `broadcaster`
-(who broadcasts what the buyer presents: `"payer"`, which sent it before presenting it, or `"payee"`, which sends or
-executes it after; a payment of a type, kind or shape the pairing does not take gets `bound`'s refusal). `build` is
-absent where the payer's own client builds the payment and the package builds nothing: on `mpp/charge/nearintents`,
-`mpp/charge/tempo/split-memo`, `mpp/charge/tempo/split-memo/push`, `mpp/session/hedera/stock`,
-`mpp/session/solana/stock`, `mpp/session/xrpl/stock`, `mpp/subscription/solana` and `x402/upto/xrpl`; check that it
-is defined before you call it on a pairing taken from `BINDINGS`. Pairings that settle on a readable rail add
-`reference`, `status` and, where the rail keeps H, `recover`. EVM pull pairings add `authorizer`, the account whose
-signature authorises the pull.
+pattern), `data` (its data, typed `PairingData`, with `data.proves`, what a payment through it proves), `claims`
+(whether what the buyer presents carries a value bound to H), `unplaced` (the option as the seller issued it), `tie`
+(the ATR's binding slot), `advertise` and `read` (H into and out of the challenge), `build` (what the buyer signs, with
+H in its place), `bound` (H back out of the payment), and `broadcaster` (who broadcasts what the buyer presents:
+`"payer"`, which sent it before presenting it, or `"payee"`, which sends or executes it after; a payment of a type, kind
+or shape the pairing does not take gets `bound`'s refusal). `build` is absent where the payer's own client builds the
+payment and the package builds nothing: on `mpp/charge/nearintents`, `mpp/charge/tempo/split-memo`,
+`mpp/charge/tempo/split-memo/push`, `mpp/session/hedera/stock`, `mpp/session/solana/stock`, `mpp/session/xrpl/stock`,
+`mpp/subscription/solana` and `x402/upto/xrpl`; check that it is defined before you call it on a pairing taken from
+`BINDINGS`. Pairings that settle on a readable rail add `reference`, `status` and, where the rail keeps H, `recover`.
+EVM pull pairings add `authorizer`, the account whose signature authorises the pull.
 
 ## Pairings
 
