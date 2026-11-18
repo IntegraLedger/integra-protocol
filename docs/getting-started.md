@@ -191,7 +191,8 @@ What each step did:
 ## On a live network
 
 The program stops at a signed payment in memory. On a live network the same calls run on the two sides of an HTTP
-exchange, and a facilitator settles the payment. Every name below is exported by `@integraledger/lcp/x402`:
+exchange, and a facilitator settles the payment. The functions below are exported by `@integraledger/lcp/x402`, and
+the `EvmReader` type by `@integraledger/lcp/evm`:
 
 1. **The seller answers `402`.** It sends the advertised challenge in the `PAYMENT-REQUIRED` header,
    `encodeHeader(advertised)`. The buyer reads it with `decodePaymentRequired(header)` and runs steps d and e on what
