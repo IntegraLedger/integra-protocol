@@ -38,7 +38,7 @@ export const POLKADOT = /* @__PURE__ */ freeze({
     payer:
       "the account the extrinsic's call runs as, its signer, a `proxy.proxy`'s `real` or an `as_multi_threshold_1`'s " +
       "multisig account, read from its signed bytes, against the signer lcp's reference names",
-    confirmed: "no",
+    confirmed: "yes",
     agreement: {
       floor: "1",
       fee: "the signer only: no other party can pay on Polkadot Asset Hub, and the seller has no option",

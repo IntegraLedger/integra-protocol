@@ -37,7 +37,7 @@ export const CARDANO = /* @__PURE__ */ freeze({
       "output names the payee's account where its address has the payee's payment credential, whatever its stake part",
     asset: "what the outputs carry, recorded as observed and compared with nothing",
     payer: "the payment credential that holds the input `payload.nonce` names",
-    confirmed: "no",
+    confirmed: "yes",
     agreement: {
       floor: "rule",
       fee: "the buyer, as a field of the body balanced against the buyer's own inputs; the published scheme sponsors no fee",

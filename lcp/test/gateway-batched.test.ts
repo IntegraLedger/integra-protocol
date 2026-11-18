@@ -268,7 +268,7 @@ describe("the registry entry", () => {
       "same-network",
       "unshown",
       "payee",
-      "no",
+      "yes",
       undefined,
     ]);
     const members = exactGatewayBatched as Record<string, unknown>;

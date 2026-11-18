@@ -68,7 +68,7 @@ export const SOLANA = /* @__PURE__ */ freeze({
       "where its owner per `meta.postTokenBalances` is the option's payee",
     asset: "the transfer's mint, recorded and compared with nothing",
     payer: "the buyer's account",
-    confirmed: "no",
+    confirmed: "yes",
     agreement: { floor: "0", fee: "the seller's settler (`extra.feePayer`)", succeeded: SUCCEEDED },
     proves: PAID,
   },

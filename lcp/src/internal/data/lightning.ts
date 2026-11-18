@@ -32,7 +32,7 @@ export const LIGHTNING = /* @__PURE__ */ freeze({
     asset: "BTC",
     payer: "none named",
     agreementOn: "any",
-    confirmed: "no",
+    confirmed: "yes",
     proves:
       AGREEMENT +
       "The ATR commits the payment hash of the BOLT11 invoice paid, whose signer is held to the option's payTo; the " +

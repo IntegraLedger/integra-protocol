@@ -53,7 +53,7 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
       "`to` compared on a charge with the option's `payTo`",
     asset: "that `Transfer`'s token, recorded as observed and compared with nothing",
     payer: "the authorization's `from` (the `authorizer`), the signer of H",
-    confirmed: "no",
+    confirmed: "yes",
     agreement: {
       floor: "0",
       fee: "the party that submits, always; the buyer needs a key, and no funds where the amount is zero",
@@ -341,7 +341,7 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     nonce: "unshown",
     broadcasts: "payee",
     agreementOn: "same-network",
-    confirmed: "no",
+    confirmed: "yes",
     proves:
       "Before this payment was reported, an account signed an agreement transaction carrying this ATR's hash on " +
       "<network>, recorded in <transaction>; this shows neither that the account is the payer nor when the payment " +
@@ -381,7 +381,7 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     destination: "the permission's `spender`, compared with nothing: the approval moves nothing and is held to no account",
     asset: "the permission's `token`, compared with nothing",
     payer: "the permission's `account`, the signer of H, never the transaction's sender",
-    confirmed: "no",
+    confirmed: "yes",
     agreement: {
       floor: "0",
       fee:

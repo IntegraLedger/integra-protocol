@@ -30,7 +30,7 @@ export const ALGORAND = /* @__PURE__ */ freeze({
     destination: "`arcv` (the Indexer's `receiver`), recorded as observed and compared with the option's payee",
     asset: "`xaid` (the Indexer's `asset-id`), recorded as observed and compared with nothing",
     payer: "`snd` (the Indexer's `sender`); the signer is `sgnr` (the Indexer's `auth-addr`) where set, else `snd`",
-    confirmed: "no",
+    confirmed: "yes",
     agreement: {
       floor: "0",
       fee: "the settler, by fee pooling, where the option names `extra.feePayer`, fixed in what the buyer signs; else the buyer",

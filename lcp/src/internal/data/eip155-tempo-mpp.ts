@@ -58,7 +58,7 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
       "its `to` compared on a charge with the challenge's `recipient`",
     asset: "that `Transfer`'s token, compared with nothing",
     payer: "the authorization's `from` (the authorizer)",
-    confirmed: "no",
+    confirmed: "yes",
     agreement: {
       floor: "0",
       fee: "the settler",
@@ -246,7 +246,7 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
       "of them goes to the challenge's `recipient`",
     asset: "each of those transfers' token, compared with nothing",
     payer: "the transaction's sender, recovered from the signed bytes in their `0x76` form, whether a `0x76` or a `0x78` envelope carried them",
-    confirmed: "no",
+    confirmed: "yes",
     agreement: {
       floor: "2",
       fee: "the resource server's settler under `feePayer: true`, the payer in the fee token under `feePayer: false`",

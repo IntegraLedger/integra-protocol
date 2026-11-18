@@ -36,7 +36,7 @@ export const HEDERA = /* @__PURE__ */ freeze({
       "option's payee",
     asset: "HBAR (0.0.0) from `transfers`, or the token id from `token_transfers`; recorded and compared with nothing",
     payer: "the one account the signed body debits (`is_approval` false), never the account the transaction id names (the settler's)",
-    confirmed: "no",
+    confirmed: "yes",
     agreement: {
       floor: "1",
       fee: "the seller's settler (the account the transaction id names)",

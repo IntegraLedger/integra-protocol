@@ -26,7 +26,7 @@ export const TVM = /* @__PURE__ */ freeze({
       "`get_wallet_address` for `payTo`)",
     asset: "the payer's Jetton wallet's master, compared with nothing",
     payer: "the W5 wallet, compared with the option's payee",
-    confirmed: "no",
+    confirmed: "yes",
     agreement: {
       floor: "0",
       fee: "the settler, always",

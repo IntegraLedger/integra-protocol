@@ -30,7 +30,7 @@ export const APTOS = /* @__PURE__ */ freeze({
     asset: "each deposit's asset, recorded as observed and compared with nothing",
     payer: "the sender",
     agreementOn: "any",
-    confirmed: "no",
+    confirmed: "yes",
     proves:
       "Before this payment was taken, an account signed an agreement transaction carrying this ATR's hash on <network>, " +
       "recorded in <transaction>; this shows neither that the account is the payer nor what the agreement moved. The " +

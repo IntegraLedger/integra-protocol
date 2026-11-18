@@ -28,7 +28,7 @@ export const SUI = /* @__PURE__ */ freeze({
       "or a SUI transfer whose change the payee's gas outweighs, the recipient the signed transfer names",
     asset: "the balance change's coin type, recorded as observed and compared with nothing",
     payer: "the sender, who signed the bytes carrying H",
-    confirmed: "no",
+    confirmed: "yes",
     agreement: {
       floor: "rule",
       fee:

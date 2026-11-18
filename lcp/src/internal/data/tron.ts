@@ -30,7 +30,7 @@ export const TRON = /* @__PURE__ */ freeze({
       "with `payTo` on a charge",
     asset: "each such `Transfer` log's emitter, compared with nothing",
     payer: "the transaction's owner, read from its signed bytes, against the payer lcp's reference names",
-    confirmed: "no",
+    confirmed: "yes",
     agreement: {
       floor: "1",
       fee: "the buyer; the seller has no option",

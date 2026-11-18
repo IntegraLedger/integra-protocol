@@ -44,7 +44,7 @@ export const XRPL = /* @__PURE__ */ freeze({
     destination: "the Payment's `Destination`, compared on a charge with the option's payee",
     asset: ASSET,
     payer: PAYER,
-    confirmed: "no",
+    confirmed: "yes",
     agreement: {
       floor: "1",
       fee: "the buyer, in the Payment it signs",

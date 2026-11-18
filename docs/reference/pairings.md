@@ -45,7 +45,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | Pairing | Export | Coverage | Confirmed | Pattern | Binding on chain | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
 | `mpp/charge/card` | `chargeCard` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no |  |
-| `mpp/charge/evm/authorization` | `evmAuthorization` from `@integraledger/lcp/mpp` | `full` | no | `id-reuse` | yes | no |  |
+| `mpp/charge/evm/authorization` | `evmAuthorization` from `@integraledger/lcp/mpp` | `full` | yes | `id-reuse` | yes | no |  |
 | `mpp/charge/evm/hash` | `evmHash` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no |  |
 | `mpp/charge/evm/permit2` | `evmPermit2` from `@integraledger/lcp/mpp` | `full` | no | `id-reuse` | yes | no |  |
 | `mpp/charge/evm/transaction` | `evmTransaction` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no |  |
@@ -55,7 +55,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `mpp/charge/solana` | `chargeSolana` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/solana`](../../lcp/profiles/mpp-charge-solana.md) |
 | `mpp/charge/solana/unsponsored` | `chargeSolanaUnsponsored` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/solana`](../../lcp/profiles/mpp-charge-solana.md) |
 | `mpp/charge/stripe` | `chargeStripe` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no |  |
-| `mpp/charge/tempo/split-memo` | `tempoSplitMemo` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | no | [`mpp/charge/tempo/split-memo`](../../lcp/profiles/mpp-charge-tempo-split-memo.md) |
+| `mpp/charge/tempo/split-memo` | `tempoSplitMemo` from `@integraledger/lcp/mpp` | `full` | yes | `native-field` | yes | no | [`mpp/charge/tempo/split-memo`](../../lcp/profiles/mpp-charge-tempo-split-memo.md) |
 | `mpp/charge/tempo/split-memo/push` | `tempoSplitMemoPush` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | no | [`mpp/charge/tempo/split-memo`](../../lcp/profiles/mpp-charge-tempo-split-memo.md) |
 | `mpp/charge/usdc/evm` | `chargeUsdcEvm` from `@integraledger/lcp/mpp` | `full` | no | `id-reuse` | yes | no |  |
 | `mpp/charge/usdc/gateway` | `chargeUsdcGateway` from `@integraledger/lcp/mpp` | `none` | no | `id-reuse` | yes | no |  |
@@ -78,7 +78,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 
 | Pairing | Export | Coverage | Confirmed | Pattern | Binding on chain | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
-| `spend-permissions/eip155` | `spendPermissionsEip155` from `@integraledger/lcp/spend-permissions` | `full` | no | `native-field` | yes | no | [`spend-permissions/eip155`](../../lcp/profiles/spend-permissions-eip155.md) |
+| `spend-permissions/eip155` | `spendPermissionsEip155` from `@integraledger/lcp/spend-permissions` | `full` | yes | `native-field` | yes | no | [`spend-permissions/eip155`](../../lcp/profiles/spend-permissions-eip155.md) |
 
 ## `ucp`
 
@@ -99,29 +99,29 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | `x402/batch-settlement/cloudflare` | `batchCloudflare` from `@integraledger/lcp/x402-batch-settlement` | `none` | no | `protocol-extension` | no | no |  |
 | `x402/batch-settlement/eip155` | `batchEvm` from `@integraledger/lcp/x402-batch-settlement` | `full` | no | `native-field` | yes | yes | [`x402/batch-settlement/eip155`](../../lcp/profiles/x402-batch-settlement-eip155.md) |
 | `x402/batch-settlement/solana` | `batchSvm` from `@integraledger/lcp/x402-batch-settlement` | `full` | no | `native-field` | yes | yes | [`x402/batch-settlement/solana`](../../lcp/profiles/x402-batch-settlement-solana.md) |
-| `x402/exact/algorand` | `exactAvm` from `@integraledger/lcp/avm` | `full` | no | `native-field` | yes | yes | [`x402/exact/algorand/note`](../../lcp/profiles/x402-exact-algorand-note.md) |
-| `x402/exact/aptos` | `exactAptos` from `@integraledger/lcp/aptos` | `none` | no | `http-advisory` | no | no |  |
-| `x402/exact/cardano` | `exactCardano` from `@integraledger/lcp/cardano` | `full` | no | `native-field` | yes | yes | [`x402/exact/cardano`](../../lcp/profiles/x402-exact-cardano.md) |
+| `x402/exact/algorand` | `exactAvm` from `@integraledger/lcp/avm` | `full` | yes | `native-field` | yes | yes | [`x402/exact/algorand/note`](../../lcp/profiles/x402-exact-algorand-note.md) |
+| `x402/exact/aptos` | `exactAptos` from `@integraledger/lcp/aptos` | `none` | yes | `http-advisory` | no | no |  |
+| `x402/exact/cardano` | `exactCardano` from `@integraledger/lcp/cardano` | `full` | yes | `native-field` | yes | yes | [`x402/exact/cardano`](../../lcp/profiles/x402-exact-cardano.md) |
 | `x402/exact/cardano/lock` | `exactCardanoLock` from `@integraledger/lcp/cardano` | `full` | no | `native-field` | yes | yes | [`x402/exact/cardano`](../../lcp/profiles/x402-exact-cardano.md) |
 | `x402/exact/casper` | `exactCasper` from `@integraledger/lcp/casper` | `full` | no | `native-field` | yes | yes | [`x402/exact/casper`](../../lcp/profiles/x402-exact-casper.md) |
 | `x402/exact/ccd` | `exactCcd` from `@integraledger/lcp/ccd` | `full` | no | `native-field` | yes | yes | [`x402/exact/ccd`](../../lcp/profiles/x402-exact-ccd.md) |
-| `x402/exact/eip155/eip3009` | `exactEip3009` from `@integraledger/lcp/x402` | `full` | no | `native-field` | yes | yes | [`x402/exact/eip155/eip3009`](../../lcp/profiles/x402-exact-eip155-eip3009.md) |
+| `x402/exact/eip155/eip3009` | `exactEip3009` from `@integraledger/lcp/x402` | `full` | yes | `native-field` | yes | yes | [`x402/exact/eip155/eip3009`](../../lcp/profiles/x402-exact-eip155-eip3009.md) |
 | `x402/exact/eip155/erc7710` | `exactErc7710` from `@integraledger/lcp/x402` | `none` | no | `http-advisory` | no | no |  |
 | `x402/exact/eip155/erc7710-salt` | `exactErc7710Salt` from `@integraledger/lcp/x402` | `full` | no | `native-field` | yes | yes | [`x402/exact/eip155/erc7710-salt`](../../lcp/profiles/x402-exact-eip155-erc7710-salt.md) |
-| `x402/exact/eip155/gateway-batched` | `exactGatewayBatched` from `@integraledger/lcp/x402` | `none` | no | `native-field` | no | no | [`x402/exact/eip155/gateway-batched`](../../lcp/profiles/x402-exact-eip155-gateway-batched.md) |
+| `x402/exact/eip155/gateway-batched` | `exactGatewayBatched` from `@integraledger/lcp/x402` | `none` | yes | `native-field` | no | no | [`x402/exact/eip155/gateway-batched`](../../lcp/profiles/x402-exact-eip155-gateway-batched.md) |
 | `x402/exact/eip155/permit2` | `exactPermit2` from `@integraledger/lcp/x402` | `full` | no | `native-field` | yes | yes | [`x402/exact/eip155/permit2`](../../lcp/profiles/x402-exact-eip155-permit2.md) |
-| `x402/exact/hedera` | `exactHedera` from `@integraledger/lcp/hedera` | `full` | no | `native-field` | yes | yes | [`x402/exact/hedera`](../../lcp/profiles/x402-exact-hedera.md) |
+| `x402/exact/hedera` | `exactHedera` from `@integraledger/lcp/hedera` | `full` | yes | `native-field` | yes | yes | [`x402/exact/hedera`](../../lcp/profiles/x402-exact-hedera.md) |
 | `x402/exact/hedera/transfer-executor` | `exactHederaExecutor` from `@integraledger/lcp/hedera` | `none` | no | `http-advisory` | no | no |  |
-| `x402/exact/lnbtc/payment-hash` | `exactLnbtcPaymentHash` from `@integraledger/lcp/lightning` | `none` | no | `native-field` | no | no |  |
-| `x402/exact/near` | `exactNear` from `@integraledger/lcp/near` | `full` | no | `native-field` | yes | yes | [`x402/exact/near/memo`](../../lcp/profiles/x402-exact-near-memo.md) |
-| `x402/exact/polkadot/lcp-assets-remark` | `exactPolkadotRemark` from `@integraledger/lcp/polkadot` | `full` | no | `native-field` | yes | yes | [`x402/exact/polkadot/lcp-assets-remark`](../../lcp/profiles/x402-exact-polkadot-lcp-assets-remark.md) |
-| `x402/exact/solana` | `exactSvm` from `@integraledger/lcp/x402-exact-solana` | `full` | no | `native-field` | yes | yes | [`x402/exact/solana`](../../lcp/profiles/x402-exact-solana.md) |
-| `x402/exact/starknet` | `exactStarknet` from `@integraledger/lcp/starknet` | `full` | no |  | yes | no | [`x402/exact/starknet`](../../lcp/profiles/x402-exact-starknet.md) |
-| `x402/exact/stellar/precondition` | `exactStellarPrecondition` from `@integraledger/lcp/x402-exact-stellar` | `full` | no | `native-field` | yes | yes | [`x402/exact/stellar/precondition`](../../lcp/profiles/x402-exact-stellar-precondition.md) |
-| `x402/exact/sui` | `exactSui` from `@integraledger/lcp/sui` | `full` | no | `native-field` | yes | yes | [`x402/exact/sui`](../../lcp/profiles/x402-exact-sui.md) |
-| `x402/exact/tron/lcp-trc20-memo` | `exactTronMemo` from `@integraledger/lcp/tron` | `full` | no | `native-field` | yes | yes | [`x402/exact/tron/lcp-trc20-memo`](../../lcp/profiles/x402-exact-tron-lcp-trc20-memo.md) |
-| `x402/exact/tvm` | `exactTvm` from `@integraledger/lcp/tvm` | `full` | no | `native-field` | yes | yes |  |
-| `x402/exact/xrpl` | `exactXrpl` from `@integraledger/lcp/x402-exact-xrpl` | `full` | no | `id-reuse` | yes | no | [`x402/exact/xrpl`](../../lcp/profiles/x402-exact-xrpl.md) |
+| `x402/exact/lnbtc/payment-hash` | `exactLnbtcPaymentHash` from `@integraledger/lcp/lightning` | `none` | yes | `native-field` | no | no |  |
+| `x402/exact/near` | `exactNear` from `@integraledger/lcp/near` | `full` | yes | `native-field` | yes | yes | [`x402/exact/near/memo`](../../lcp/profiles/x402-exact-near-memo.md) |
+| `x402/exact/polkadot/lcp-assets-remark` | `exactPolkadotRemark` from `@integraledger/lcp/polkadot` | `full` | yes | `native-field` | yes | yes | [`x402/exact/polkadot/lcp-assets-remark`](../../lcp/profiles/x402-exact-polkadot-lcp-assets-remark.md) |
+| `x402/exact/solana` | `exactSvm` from `@integraledger/lcp/x402-exact-solana` | `full` | yes | `native-field` | yes | yes | [`x402/exact/solana`](../../lcp/profiles/x402-exact-solana.md) |
+| `x402/exact/starknet` | `exactStarknet` from `@integraledger/lcp/starknet` | `full` | yes |  | yes | no | [`x402/exact/starknet`](../../lcp/profiles/x402-exact-starknet.md) |
+| `x402/exact/stellar/precondition` | `exactStellarPrecondition` from `@integraledger/lcp/x402-exact-stellar` | `full` | yes | `native-field` | yes | yes | [`x402/exact/stellar/precondition`](../../lcp/profiles/x402-exact-stellar-precondition.md) |
+| `x402/exact/sui` | `exactSui` from `@integraledger/lcp/sui` | `full` | yes | `native-field` | yes | yes | [`x402/exact/sui`](../../lcp/profiles/x402-exact-sui.md) |
+| `x402/exact/tron/lcp-trc20-memo` | `exactTronMemo` from `@integraledger/lcp/tron` | `full` | yes | `native-field` | yes | yes | [`x402/exact/tron/lcp-trc20-memo`](../../lcp/profiles/x402-exact-tron-lcp-trc20-memo.md) |
+| `x402/exact/tvm` | `exactTvm` from `@integraledger/lcp/tvm` | `full` | yes | `native-field` | yes | yes |  |
+| `x402/exact/xrpl` | `exactXrpl` from `@integraledger/lcp/x402-exact-xrpl` | `full` | yes | `id-reuse` | yes | no | [`x402/exact/xrpl`](../../lcp/profiles/x402-exact-xrpl.md) |
 | `x402/upto/eip155/permit2` | `uptoPermit2` from `@integraledger/lcp/x402` | `full` | no | `native-field` | yes | yes | [`x402/upto/eip155/permit2`](../../lcp/profiles/x402-upto-eip155-permit2.md) |
 | `x402/upto/solana` | `uptoSvm` from `@integraledger/lcp/x402-upto-solana` | `full` | no | `native-field` | yes | yes | [`x402/upto/solana`](../../lcp/profiles/x402-upto-solana.md) |
 | `x402/upto/xrpl` | `uptoXrpl` from `@integraledger/lcp/x402-upto-xrpl` | `none` | no | `http-advisory` | no | no | [`x402/upto/xrpl`](../../lcp/profiles/x402-upto-xrpl.md) |

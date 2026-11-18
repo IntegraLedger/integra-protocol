@@ -34,7 +34,7 @@ export const NEAR = /* @__PURE__ */ freeze({
       "is the payee's account",
     asset: "the token the delegate's `ft_transfer` executes on, recorded as observed and compared with nothing",
     payer: "the delegate's sender and its key",
-    confirmed: "no",
+    confirmed: "yes",
     agreement: {
       floor: "1",
       fee: "the relayer, always",

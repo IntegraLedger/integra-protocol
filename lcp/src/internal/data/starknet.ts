@@ -33,7 +33,7 @@ export const STARKNET = /* @__PURE__ */ freeze({
       "`Transfer`; compared with `payTo` on a charge only",
     asset: "the `Transfer`'s emitting contract, compared with nothing",
     payer: "the account whose outside execution executed, compared with the option's payee on either act",
-    confirmed: "no",
+    confirmed: "yes",
     agreement: {
       floor: "rule",
       fee: "the seller's settler, always, through the named `Caller`",

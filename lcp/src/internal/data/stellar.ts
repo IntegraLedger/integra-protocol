@@ -31,7 +31,7 @@ export const STELLAR = /* @__PURE__ */ freeze({
     destination: "the event's `to` topic, its base account, with `to_muxed_id` where the event carries one, recorded as observed",
     asset: "the contract that emitted the event, recorded as observed and compared with nothing",
     payer: "the transfer's `from`, whose authorization entry the transaction consumed",
-    confirmed: "no",
+    confirmed: "yes",
     agreement: {
       floor: "0",
       fee: "the settler, as the transaction's source; the buyer needs a key, and no funds where the amount is zero",
