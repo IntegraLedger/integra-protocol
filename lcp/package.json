@@ -188,6 +188,7 @@
     "dist",
     "profiles",
     "vectors",
+    "CHANGELOG.md",
     "LICENSE",
     "LICENSE-UNICODE"
   ],
