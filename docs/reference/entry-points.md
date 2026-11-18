@@ -59,7 +59,7 @@ import { agreementValue, assemble, base64Bytes, … } from "@integraledger/lcp";
 
 **Values (50):** `agreementValue`, `assemble`, `base64Bytes`, `base64UrlBytes`, `BINDINGS`, `canonicalJson`, `challengeH`, `challengeHash`, `challengeId`, `checkLegalContextReturn`, `digestJson`, `domainToAscii`, `FETCHED`, `fromBase64`, `fromBase64Url`, `fromLcpString`, `fromLegalContext`, `fromLegalContextHeader`, `fromRawBytes`, `hash`, `hashEquals`, `isHttpsLink`, `isOtherSchemeLink`, `isRefusal`, `LEGAL_CONTEXT_HEADER`, `LEGAL_CONTEXT_META`, `LEGAL_CONTEXT_SERVES`, `MAX_CHALLENGE_DEPTH`, `MAX_CHALLENGES`, `MAX_CREDENTIAL_BYTES`, `MAX_HEADER_BYTES`, `MAX_JSON_DEPTH`, `MAX_LINK_LENGTH`, `MAX_OPTIONS`, `MAX_REQUEST_BYTES`, `MAX_SIGNATURE_BYTES`, `newAtrId`, `pairingOf`, `parseHost`, `parseJson`, `readToRepeat`, `readUrl`, `RETURN_VALUE_BYTES`, `servesOf`, `toBase64`, `toBase64Url`, `toLcpString`, `toLegalContext`, `toLegalContextHeader`, `toRawBytes`.
 
-**Types (37):** `Act`, `AgreementData`, `AtrHash`, `Authorizer`, `Binding`, `Broadcaster`, `Carrier`, `CarrierAfterH`, `Codec`, `CoreRefusal`, `Coverage`, `EndpointKind`, `Entry`, `FailedReason`, `Family`, `ForeignItem`, `ForeignReason`, `Json`, `LcpPattern`, `LegalContextRecord`, `LegalContextReturn`, `Life`, `Moved`, `MppBinding`, `OtherAct`, `PairingData`, `PairingId`, `PendingReason`, `Presented`, `ReadData`, `RecoverInput`, `Refusal`, `StatusAnswer`, `StatusQuery`, `UnreadableReason`, `UrlAuthority`, `X402Binding`.
+**Types (71):** `Act`, `AgreementData`, `AptosPaymentPayload`, `AtrHash`, `Authorizer`, `AvmPaymentPayload`, `BatchPaymentPayload`, `Binding`, `Broadcaster`, `CardanoPaymentPayload`, `Carrier`, `CarrierAfterH`, `CasperPaymentPayload`, `CcdPaymentPayload`, `ChannelKind`, `CloudflarePaymentPayload`, `Codec`, `CoreRefusal`, `Coverage`, `DataMembers`, `EndpointKind`, `Entry`, `ExecutorPayload`, `ExecutorPaymentPayload`, `FailedReason`, `Family`, `ForeignItem`, `ForeignReason`, `HederaPayload`, `HederaPaymentPayload`, `IsNever`, `Json`, `LcpPattern`, `LegalContextRecord`, `LegalContextReturn`, `Life`, `Moved`, `MppBinding`, `Named`, `NearPayment`, `NoneWhereNever`, `NonZeroDigit`, `OtherAct`, `PairingData`, `PairingId`, `PairingOn`, `PendingReason`, `PolkadotPayload`, `PolkadotPaymentPayload`, `Presented`, `PresentedOn`, `PushMode`, `ReadData`, `RecoverInput`, `Refusal`, `StarknetPayment`, `StatusAnswer`, `StatusQuery`, `StellarPaymentPayload`, `SuiPaymentPayload`, `Surface`, `SurfaceOf`, `SvmPaymentPayload`, `TronPayment`, `TvmPayment`, `UnreadableReason`, `UptoSvmPaymentPayload`, `UrlAuthority`, `X402Binding`, `X402Payment`, `XrplPaymentPayload`.
 
 ## `@integraledger/lcp/a2a`
 
@@ -113,7 +113,7 @@ import { CHECKOUT_VCT, checkoutBinding, checkoutJwtOf, … } from "@integraledge
 
 **Values (9):** `CHECKOUT_VCT`, `checkoutBinding`, `checkoutJwtOf`, `checkoutMandate`, `checkoutMandateX402`, `issuedDigest`, `jwsPayload`, `readMandate`, `tie`.
 
-**Types (13):** `Ap2Offer`, `Broadcaster`, `CheckoutOption`, `Jws`, `MandateContent`, `Payload`, `Presented`, `Unsigned`, `X402Authorization`, `X402Bundle`, `X402Method`, `X402Presented`, `X402Ref`.
+**Types (15):** `Ap2Offer`, `Broadcaster`, `CheckoutOption`, `EvmMark`, `EvmQuery`, `Jws`, `MandateContent`, `Payload`, `Presented`, `Unsigned`, `X402Authorization`, `X402Bundle`, `X402Method`, `X402Presented`, `X402Ref`.
 
 ## `@integraledger/lcp/aptos`
 
@@ -127,7 +127,7 @@ import { aptosIdDigest, aptosStatus, committedInstrument, … } from "@integrale
 
 **Values (7):** `aptosIdDigest`, `aptosStatus`, `committedInstrument`, `decodeAptosTx`, `exactAptos`, `MAX_APTOS_READ_ITEMS`, `MAX_APTOS_TX_BYTES`.
 
-**Types (9):** `AptosAccount`, `AptosCommitted`, `AptosInstrument`, `AptosNetwork`, `AptosReader`, `AptosRef`, `AptosStatus`, `AptosUnsigned`, `Broadcaster`.
+**Types (11):** `AptosAccount`, `AptosCommitted`, `AptosInstrument`, `AptosNetwork`, `AptosPaymentPayload`, `AptosReader`, `AptosRef`, `AptosStatus`, `AptosUnsigned`, `Broadcaster`, `X402Read`.
 
 ## `@integraledger/lcp/avm`
 
@@ -141,7 +141,7 @@ import { AVM_MAX_ENTRY, AVM_MAX_GROUP, AVM_MAX_LIFE, … } from "@integraledger/
 
 **Values (10):** `AVM_MAX_ENTRY`, `AVM_MAX_GROUP`, `AVM_MAX_LIFE`, `AVM_MAX_NOTE`, `AVM_SEARCH_PAGES`, `avmCarrier`, `avmRecover`, `avmStatus`, `exactAvm`, `MSGPACK_MAX_DEPTH`.
 
-**Types (12):** `AlgorandNetwork`, `AvmAssetTransfer`, `AvmIndexed`, `AvmPage`, `AvmParams`, `AvmPresented`, `AvmReader`, `AvmRef`, `AvmSearch`, `AvmStatus`, `AvmUnsigned`, `Broadcaster`.
+**Types (15):** `AlgorandNetwork`, `AvmAssetTransfer`, `AvmIndexed`, `AvmPage`, `AvmParams`, `AvmPaymentPayload`, `AvmPresented`, `AvmReader`, `AvmRef`, `AvmSearch`, `AvmStatus`, `AvmUnsigned`, `Broadcaster`, `X402Payment`, `X402Read`.
 
 ## `@integraledger/lcp/card`
 
@@ -169,7 +169,7 @@ import { auxiliaryData, CARDANO_MAX_TX_BYTES, CARDANO_SEARCH_BOUND, … } from "
 
 **Values (10):** `auxiliaryData`, `CARDANO_MAX_TX_BYTES`, `CARDANO_SEARCH_BOUND`, `cardanoFloor`, `cardanoRecover`, `cardanoStatus`, `decodeCardanoTx`, `exactCardano`, `exactCardanoLock`, `LCP_MARKER`.
 
-**Types (12):** `Broadcaster`, `CardanoMethod`, `CardanoNetwork`, `CardanoOnChain`, `CardanoOutput`, `CardanoPage`, `CardanoPayload`, `CardanoReader`, `CardanoRef`, `CardanoStatus`, `CardanoTx`, `CardanoUnsigned`.
+**Types (15):** `Broadcaster`, `CardanoMethod`, `CardanoNetwork`, `CardanoOnChain`, `CardanoOutput`, `CardanoPage`, `CardanoPayload`, `CardanoPaymentPayload`, `CardanoQuery`, `CardanoReader`, `CardanoRef`, `CardanoStatus`, `CardanoTx`, `CardanoUnsigned`, `X402Read`.
 
 ## `@integraledger/lcp/casper`
 
@@ -183,7 +183,7 @@ import { CASPER_DOMAIN_TYPEHASH, CASPER_MAX_NAME_LENGTH, CASPER_MAX_PAGE_CALLS, 
 
 **Values (12):** `CASPER_DOMAIN_TYPEHASH`, `CASPER_MAX_NAME_LENGTH`, `CASPER_MAX_PAGE_CALLS`, `CASPER_MAX_PAGES`, `CASPER_MAX_PROBES`, `CASPER_MAX_PUBLIC_KEY_HEX`, `CASPER_MAX_SIGNATURE_HEX`, `casperIdDigest`, `casperRecover`, `casperStatus`, `cep3009TypedData`, `exactCasper`.
 
-**Types (15):** `Broadcaster`, `CasperAddress`, `CasperAuthorization`, `CasperBlockCall`, `CasperBlockPage`, `CasperCall`, `CasperCursor`, `CasperHead`, `CasperNetwork`, `CasperReader`, `CasperRef`, `CasperStatus`, `CasperUnsigned`, `Cep3009TypedData`, `PackageHash`.
+**Types (20):** `Broadcaster`, `CasperAddress`, `CasperAuthorization`, `CasperBlockCall`, `CasperBlockPage`, `CasperCall`, `CasperChoice`, `CasperCursor`, `CasperHead`, `CasperNetwork`, `CasperPaymentPayload`, `CasperReader`, `CasperRef`, `CasperRefRead`, `CasperStatus`, `CasperUnsigned`, `Cep3009TypedData`, `PackageHash`, `X402Advertise`, `X402Read`.
 
 ## `@integraledger/lcp/ccd`
 
@@ -197,7 +197,7 @@ import { accountBytes, CCD_EXPIRY_MARGIN, CCD_MAX_ADDRESS, … } from "@integral
 
 **Values (13):** `accountBytes`, `CCD_EXPIRY_MARGIN`, `CCD_MAX_ADDRESS`, `CCD_MAX_MEMO`, `CCD_MAX_OPERATIONS`, `CCD_MAX_TRANSACTION`, `CCD_SEARCH_NUMBERS`, `ccdMemo`, `ccdRecover`, `ccdStatus`, `exactCcd`, `memoCarrier`, `pltMemo`.
 
-**Types (10):** `Broadcaster`, `CcdBlockItem`, `CcdItem`, `CcdNetwork`, `CcdReader`, `CcdRef`, `CcdSearch`, `CcdStatus`, `CcdTransfer`, `CcdUnsigned`.
+**Types (15):** `Broadcaster`, `CcdBlockItem`, `CcdChoice`, `CcdItem`, `CcdMark`, `CcdNetwork`, `CcdPaymentPayload`, `CcdReader`, `CcdRef`, `CcdSearch`, `CcdStatus`, `CcdTransfer`, `CcdUnsigned`, `X402Advertise`, `X402Read`.
 
 ## `@integraledger/lcp/core`
 
@@ -233,7 +233,7 @@ import { AUTHORIZATION_CANCELED_TOPIC, AUTHORIZATION_STATE_SELECTOR, AUTHORIZATI
 
 **Values (31):** `AUTHORIZATION_CANCELED_TOPIC`, `AUTHORIZATION_STATE_SELECTOR`, `AUTHORIZATION_USED_TOPIC`, `authorizationIdDigest`, `authorizationUsed`, `bindSalt`, `decodePermissionContext`, `DELEGATION_MANAGER`, `DELEGATION_MANAGER_CHAINS`, `eip3009Recover`, `eip3009Status`, `eip3009TypedData`, `ESCROW`, `evmStatus`, `EXACT_PERMIT2_PROXY`, `MAX_SEARCH_PAGES`, `NONCE_BITMAP_SELECTOR`, `PAYMENT_AUTHORIZED_TOPIC`, `PAYMENT_INFO_TYPEHASH`, `paymentHash`, `PERMIT2`, `permit2TypedData`, `ReaderError`, `REDEEMED_DELEGATION_TOPIC`, `SALT_BINDING_TYPEHASH`, `SEARCH_PAGE_BLOCKS`, `TRANSFER_TOPIC`, `TRANSFER_WITH_AUTHORIZATION_TYPEHASH`, `transferDigest`, `UNORDERED_NONCE_INVALIDATION_TOPIC`, `UPTO_PERMIT2_PROXY`.
 
-**Types (24):** `AuthCaptureRef`, `BatchEvmRef`, `Delegation`, `Eip155`, `Eip3009Ref`, `Eip3009TypedData`, `Erc7710Ref`, `EvmBreadthStatus`, `EvmLog`, `EvmLogEntry`, `EvmReader`, `EvmReceipt`, `EvmRef`, `EvmStatus`, `EvmTransaction`, `EvmTxRef`, `Field`, `Hex`, `PaymentInfo`, `Permit2Ref`, `Permit2TypedData`, `PullAuthorization`, `TransferIdentity`, `TransferLog`.
+**Types (30):** `AuthCaptureRef`, `BatchEvmRef`, `Delegation`, `Eip155`, `Eip3009Ref`, `Eip3009TypedData`, `Erc7710Ref`, `EvmBreadthStatus`, `EvmLog`, `EvmLogEntry`, `EvmMark`, `EvmQuery`, `EvmReader`, `EvmReadRefBase`, `EvmReceipt`, `EvmRef`, `EvmStatus`, `EvmTransaction`, `EvmTxRef`, `Field`, `HederaNetwork`, `Hex`, `PaymentInfo`, `Permit2Ref`, `Permit2TypedData`, `PullAuthorization`, `Signed`, `TransferIdentity`, `TransferLog`, `X402EvmRefBase`.
 
 ## `@integraledger/lcp/hedera`
 
@@ -247,7 +247,7 @@ import { CHANNEL_CLOSED_TOPIC, CHANNEL_OPENED_TOPIC, decodeHederaTx, … } from 
 
 **Values (13):** `CHANNEL_CLOSED_TOPIC`, `CHANNEL_OPENED_TOPIC`, `decodeHederaTx`, `exactHedera`, `exactHederaExecutor`, `executorStatus`, `FETCHED`, `hederaChannelId`, `hederaIdDigest`, `hederaStatus`, `hederaVoucher`, `txIdMirror`, `txIdText`.
 
-**Types (17):** `Broadcaster`, `ExecutorRef`, `HederaBody`, `HederaChannelConfig`, `HederaCloseRef`, `HederaNetwork`, `HederaPresented`, `HederaReader`, `HederaRef`, `HederaRow`, `HederaStatus`, `HederaTransfer`, `HederaTxId`, `HederaUnsigned`, `MirrorEntry`, `MirrorPage`, `MirrorRow`.
+**Types (23):** `Broadcaster`, `ExecutorPayload`, `ExecutorPaymentPayload`, `ExecutorRef`, `HederaBody`, `HederaChannelConfig`, `HederaCloseRef`, `HederaNetwork`, `HederaPresented`, `HederaQuery`, `HederaReader`, `HederaRef`, `HederaRow`, `HederaStatus`, `HederaTransfer`, `HederaTxId`, `HederaUnsigned`, `HederaVoucherTypedData`, `MirrorEntry`, `MirrorPage`, `MirrorRow`, `X402Payment`, `X402Read`.
 
 ## `@integraledger/lcp/lightning`
 
@@ -261,7 +261,7 @@ import { chargeLightning, checkPreimage, decodeBolt11, … } from "@integraledge
 
 **Values (7):** `chargeLightning`, `checkPreimage`, `decodeBolt11`, `exactLnbtcPaymentHash`, `invoiceH`, `sessionLightning`, `validateExactLnbtc`.
 
-**Types (13):** `Bolt11`, `Broadcaster`, `ExactLnbtcReason`, `ExactLnbtcValidation`, `LnbtcRequest`, `LnChoice`, `LnHeaderFields`, `LnMppChoice`, `LnMppUnsigned`, `LnNetwork`, `LnPaymentPayload`, `LnRef`, `LnUnsigned`.
+**Types (15):** `Bolt11`, `Broadcaster`, `ExactLnbtcReason`, `ExactLnbtcValidation`, `LnbtcRequest`, `LnChoice`, `LnHeaderFields`, `LnMppChoice`, `LnMppUnsigned`, `LnNetwork`, `LnPaymentPayload`, `LnRef`, `LnUnsigned`, `X402Advertise`, `X402Read`.
 
 ## `@integraledger/lcp/mpp`
 
@@ -275,7 +275,7 @@ import { attributionMemo, CARRIER, challengeBound, … } from "@integraledger/lc
 
 **Values (57):** `attributionMemo`, `CARRIER`, `challengeBound`, `challengeH`, `challengeHash`, `challengeId`, `chargeCard`, `chargeLcpHedera`, `chargeNearIntents`, `chargeSolana`, `chargeSolanaUnsponsored`, `chargeStripe`, `chargeUsdcEvm`, `chargeUsdcGateway`, `chargeUsdcSolana`, `chargeUsdcStacks`, `chargeXrpl`, `checkAttribution`, `evmAuthorization`, `evmChannelId`, `evmHash`, `evmPermit2`, `evmSessionAuthorizationNonce`, `evmTransaction`, `FETCHED`, `hederaStockStatus`, `issuedDigest`, `keySearch`, `LEGAL_CONTEXT_METADATA_KEY`, `MPP_BINDINGS`, `network`, `pairingsOf`, `pairingsOfPlaced`, `parseChallenges`, `place`, `problem`, `read`, `sessionEvm`, `sessionHederaStock`, `sessionResume`, `sessionSolanaMemo`, `sessionSolanaStock`, `sessionStatus`, `sessionTempo`, `sessionXrpl`, `sessionXrplStock`, `subscriptionSolana`, `subscriptionStripe`, `subscriptionTempo`, `tempoSplitMemo`, `tempoSplitMemoPush`, `tie`, `toX402`, `transferPresent`, `usdcGatewaySalt`, `usdcNonce`, `usdcRequestHash`.
 
-**Types (51):** `Broadcaster`, `EvmLogEntry`, `EvmMoved`, `EvmSearchReader`, `GatewayPreimage`, `GatewaySaltInput`, `HederaStockReader`, `HederaStockRef`, `HederaStockStatus`, `LandedCredential`, `LcpHederaChoice`, `LcpHederaLanded`, `LcpHederaRef`, `LcpHederaUnsigned`, `LcpRail`, `LcpValidation`, `MppChallenge`, `MppChoice`, `MppCredential`, `MppEip3009Ref`, `MppEvmReader`, `MppEvmStatus`, `MppMethod`, `MppNamedRef`, `MppPairingId`, `MppPermit2Ref`, `MppUnsigned`, `Presentation`, `RailSessionUnsigned`, `ReceiveTypedData`, `SessionChoice`, `SessionRef`, `SessionStatus`, `SessionUnsigned`, `SessionWithin`, `SolanaSessionChoice`, `SolanaSessionUnsigned`, `SolanaTablesCredential`, `StripeSubscriptionReceipt`, `TempoLandedCredential`, `TempoSplitLanded`, `TempoSplitQuery`, `TempoSplitRef`, `TempoSplitStatus`, `TokenDomain`, `UsdcUnsigned`, `VoucherTypedData`, `WithinSigningRequest`, `X402Mapped`, `XrplChargeChoice`, `XrplChargeUnsigned`.
+**Types (73):** `Broadcaster`, `ChannelKind`, `ChargeRefBase`, `EvmLogEntry`, `EvmMark`, `EvmMoved`, `EvmQuery`, `EvmSearchReader`, `GatewayChargeChoice`, `GatewayPreimage`, `GatewaySaltInput`, `HederaNetwork`, `HederaQuery`, `HederaSessionUnsigned`, `HederaStockReader`, `HederaStockRef`, `HederaStockStatus`, `HederaVoucherTypedData`, `LandedCredential`, `LcpHederaChoice`, `LcpHederaLanded`, `LcpHederaRef`, `LcpHederaUnsigned`, `LcpRail`, `LcpValidation`, `MppChallenge`, `MppChoice`, `MppCredential`, `MppEip3009Ref`, `MppEvmReader`, `MppEvmStatus`, `MppIntent`, `MppMethod`, `MppNamedRef`, `MppPairingId`, `MppPermit2Ref`, `MppSessionOpeningRef`, `MppUnsigned`, `NearIntentsRef`, `Presentation`, `RailSessionChoice`, `RailSessionUnsigned`, `ReceiveTypedData`, `Seen`, `SessionChoice`, `SessionRef`, `SessionStatus`, `SessionUnsigned`, `SessionWithin`, `SessionWithinUnsigned`, `Signed`, `SolanaChargeChoice`, `SolanaChargeUnsigned`, `SolanaSessionChoice`, `SolanaSessionUnsigned`, `SolanaTablesCredential`, `StacksChargeChoice`, `StockQuery`, `StripeSubscriptionReceipt`, `TempoLandedCredential`, `TempoSplitLanded`, `TempoSplitQuery`, `TempoSplitRef`, `TempoSplitStatus`, `TokenDomain`, `UsdcUnsigned`, `VoucherTypedData`, `WithinSigningRequest`, `X402Mapped`, `XrplChargeChoice`, `XrplChargeUnsigned`, `XrplQuery`, `XrplSessionUnsigned`.
 
 ## `@integraledger/lcp/near`
 
@@ -289,7 +289,7 @@ import { exactNear, FT_TRANSFER_GAS, ftTransferArgs, … } from "@integraledger/
 
 **Values (10):** `exactNear`, `FT_TRANSFER_GAS`, `ftTransferArgs`, `MAX_FT_TRANSFER_ARGS_BYTES`, `MAX_SIGNED_DELEGATE_BASE64`, `nearCarrier`, `nearRecover`, `nearRequest`, `nearStatus`, `NEP461_DELEGATE`.
 
-**Types (12):** `Broadcaster`, `NearFunctionCall`, `NearKeyChange`, `NearKeyChanges`, `NearMark`, `NearNetwork`, `NearOutcome`, `NearQuery`, `NearReader`, `NearRef`, `NearStatus`, `NearUnsigned`.
+**Types (17):** `Answer`, `Broadcaster`, `NearChoice`, `NearFunctionCall`, `NearKeyChange`, `NearKeyChanges`, `NearMark`, `NearNetwork`, `NearOutcome`, `NearPayment`, `NearQuery`, `NearReader`, `NearRef`, `NearStatus`, `NearUnsigned`, `X402Payment`, `X402Read`.
 
 ## `@integraledger/lcp/polkadot`
 
@@ -303,7 +303,7 @@ import { CALL, decodeProfileCall, encodeProfileCall, … } from "@integraledger/
 
 **Values (11):** `CALL`, `decodeProfileCall`, `encodeProfileCall`, `exactPolkadotRemark`, `extrinsicHash`, `LCP_ASSETS_REMARK`, `POLKADOT_BOUNDS`, `polkadotRecover`, `polkadotStatus`, `splitSigned`, `ss58Decode`.
 
-**Types (12):** `Broadcaster`, `PolkadotCursor`, `PolkadotEra`, `PolkadotExtrinsic`, `PolkadotLanded`, `PolkadotNetwork`, `PolkadotQuery`, `PolkadotReader`, `PolkadotRef`, `PolkadotStatus`, `PolkadotUnsigned`, `ProfileCall`.
+**Types (17):** `Broadcaster`, `PolkadotCursor`, `PolkadotEra`, `PolkadotExtrinsic`, `PolkadotLanded`, `PolkadotMark`, `PolkadotNetwork`, `PolkadotPayload`, `PolkadotPaymentPayload`, `PolkadotQuery`, `PolkadotReader`, `PolkadotRef`, `PolkadotStatus`, `PolkadotUnsigned`, `ProfileCall`, `X402Payment`, `X402Read`.
 
 ## `@integraledger/lcp/spend-permissions`
 
@@ -317,7 +317,7 @@ import { APPROVE_SELECTOR, APPROVE_WITH_SIGNATURE_SELECTOR, approvedIn, … } fr
 
 **Values (16):** `APPROVE_SELECTOR`, `APPROVE_WITH_SIGNATURE_SELECTOR`, `approvedIn`, `checkReturn`, `decodeSpendPermissionHeader`, `encodeSpendPermissionHeader`, `IS_APPROVED_SELECTOR`, `IS_REVOKED_SELECTOR`, `permissionHash`, `SPEND_PERMISSION_APPROVED_TOPIC`, `SPEND_PERMISSION_DOMAIN`, `SPEND_PERMISSION_HEADER`, `SPEND_PERMISSION_REVOKED_TOPIC`, `SPEND_PERMISSION_TYPEHASH`, `spendPermissionsEip155`, `tie`.
 
-**Types (13):** `Broadcaster`, `OfferedPermission`, `SpendPermission`, `SpendPermissionBody`, `SpendPermissionChoice`, `SpendPermissionError`, `SpendPermissionOffer`, `SpendPermissionOfferInput`, `SpendPermissionRef`, `SpendPermissionReturn`, `SpendPermissionRoute`, `SpendPermissionTypedData`, `SpendPermissionUnsigned`.
+**Types (16):** `Broadcaster`, `EvmMark`, `EvmQuery`, `EvmReadRefBase`, `OfferedPermission`, `SpendPermission`, `SpendPermissionBody`, `SpendPermissionChoice`, `SpendPermissionError`, `SpendPermissionOffer`, `SpendPermissionOfferInput`, `SpendPermissionRef`, `SpendPermissionReturn`, `SpendPermissionRoute`, `SpendPermissionTypedData`, `SpendPermissionUnsigned`.
 
 ## `@integraledger/lcp/stacks`
 
@@ -343,7 +343,7 @@ import { ANY_CALLER, chainIdFelt, EVENT_TRANSFER, … } from "@integraledger/lcp
 
 **Values (22):** `ANY_CALLER`, `chainIdFelt`, `EVENT_TRANSFER`, `exactStarknet`, `FELT_P`, `MASK_250`, `outsideExecution`, `SELECTOR_EXECUTE_FROM_OUTSIDE_V2`, `SELECTOR_TRANSFER`, `snNonce`, `STARKNET_MAX_CANDIDATES`, `STARKNET_MAX_CONTINUATION`, `STARKNET_MAX_EVENT_PAGES`, `STARKNET_MAX_EVENTS`, `STARKNET_MAX_SIGNATURE_FELTS`, `STARKNET_MAX_TRACE_DEPTH`, `STARKNET_MAX_TRACE_INVOCATIONS`, `STARKNET_MAX_TYPED_DATA_BYTES`, `starknetIdDigest`, `starknetLandedNonce`, `starknetRecover`, `starknetStatus`.
 
-**Types (20):** `Broadcaster`, `Felt`, `Field`, `OutsideExecutionTypedData`, `StarknetCall`, `StarknetCursor`, `StarknetEmittedEvent`, `StarknetEvent`, `StarknetEventPage`, `StarknetEventQuery`, `StarknetHead`, `StarknetInvocation`, `StarknetMark`, `StarknetNetwork`, `StarknetOutsideExecution`, `StarknetReader`, `StarknetReceipt`, `StarknetRef`, `StarknetStatus`, `StarknetUnsigned`.
+**Types (24):** `Broadcaster`, `Felt`, `Field`, `OutsideExecutionTypedData`, `StarknetCall`, `StarknetCursor`, `StarknetEmittedEvent`, `StarknetEvent`, `StarknetEventPage`, `StarknetEventQuery`, `StarknetHead`, `StarknetInvocation`, `StarknetMark`, `StarknetNetwork`, `StarknetOutsideExecution`, `StarknetPayment`, `StarknetReader`, `StarknetReceipt`, `StarknetRef`, `StarknetRefRead`, `StarknetStatus`, `StarknetUnsigned`, `X402Payment`, `X402Read`.
 
 ## `@integraledger/lcp/stellar`
 
@@ -355,7 +355,7 @@ import { decodeStellarTx, MAX_CANDIDATES, MAX_ORDER, … } from "@integraledger/
 
 **Values (17):** `decodeStellarTx`, `MAX_CANDIDATES`, `MAX_ORDER`, `MAX_PAGES`, `muxedFor`, `parseStellarPosition`, `PASSPHRASE`, `PAYLOAD_BYTES`, `readSignedPayload`, `SCVAL_MAX_DEPTH`, `signedPayload`, `stellarLocate`, `stellarPosition`, `stellarRecover`, `stellarStatus`, `transferEventOf`, `transferEventTopics`.
 
-**Types (14):** `PayloadSigner`, `StellarCandidate`, `StellarEvent`, `StellarEventRow`, `StellarLanded`, `StellarMark`, `StellarNetwork`, `StellarPayment`, `StellarQuery`, `StellarReader`, `StellarRef`, `StellarSearch`, `StellarStatus`, `StellarUnsigned`.
+**Types (15):** `PayloadSigner`, `StellarCandidate`, `StellarEvent`, `StellarEventRow`, `StellarLanded`, `StellarMark`, `StellarNetwork`, `StellarPayment`, `StellarPaymentPayload`, `StellarQuery`, `StellarReader`, `StellarRef`, `StellarSearch`, `StellarStatus`, `StellarUnsigned`.
 
 ## `@integraledger/lcp/sui`
 
@@ -369,7 +369,7 @@ import { decodeSuiTx, exactSui, MAX_SUI_BALANCE_CHANGES, … } from "@integraled
 
 **Values (8):** `decodeSuiTx`, `exactSui`, `MAX_SUI_BALANCE_CHANGES`, `MAX_SUI_COIN_TYPE_LENGTH`, `MAX_SUI_SEARCH_PAGES`, `suiCarrier`, `suiRecover`, `suiStatus`.
 
-**Types (14):** `Broadcaster`, `SuiBalanceChange`, `SuiExecuted`, `SuiFound`, `SuiNetwork`, `SuiPage`, `SuiPayload`, `SuiReader`, `SuiRef`, `SuiSearchRange`, `SuiStatus`, `SuiTransfer`, `SuiTx`, `SuiUnsigned`.
+**Types (17):** `Broadcaster`, `SuiBalanceChange`, `SuiExecuted`, `SuiFound`, `SuiMark`, `SuiNetwork`, `SuiPage`, `SuiPayload`, `SuiPaymentPayload`, `SuiReader`, `SuiRef`, `SuiSearchRange`, `SuiStatus`, `SuiTransfer`, `SuiTx`, `SuiUnsigned`, `X402Read`.
 
 ## `@integraledger/lcp/svm`
 
@@ -381,7 +381,7 @@ import { ATA_PROGRAM, buildChannelMessage, buildSvmMessage, … } from "@integra
 
 **Values (32):** `ATA_PROGRAM`, `buildChannelMessage`, `buildSvmMessage`, `channelInstruction`, `channelPda`, `channelVoucherMessage`, `COMPUTE_BUDGET`, `decodeSvmTx`, `findPda`, `isKey`, `MEMO_V3`, `MEMO_V4`, `OPEN_DISCRIMINATOR`, `openInstructionData`, `openOf`, `PAYMENT_CHANNELS`, `RENT_SYSVAR`, `SEAL_DISCRIMINATOR`, `sessionProof`, `SETTLE_AND_SEAL_DISCRIMINATOR`, `solanaVoucher`, `SVM_MAX_CANDIDATES`, `SVM_SEARCH_SHOWN`, `svmCarrier`, `svmChannelStatus`, `svmDigest`, `svmOpeningStatus`, `svmRecover`, `svmStatus`, `SYSTEM`, `TOKEN`, `TOKEN_2022`.
 
-**Types (21):** `ChannelBuildInput`, `ChannelIx`, `ChannelStatus`, `SolanaNetwork`, `SvmBuildInput`, `SvmCloseRef`, `SvmCloseStatus`, `SvmCommitment`, `SvmCursor`, `SvmInner`, `SvmLanded`, `SvmMark`, `SvmNonce`, `SvmQuery`, `SvmReader`, `SvmRef`, `SvmSignature`, `SvmStatus`, `SvmTokenBalance`, `SvmTx`, `SvmV1Header`.
+**Types (22):** `ChannelBuildInput`, `ChannelIx`, `ChannelStatus`, `SolanaNetwork`, `SvmBuildInput`, `SvmCloseRef`, `SvmCloseStatus`, `SvmCommitment`, `SvmCursor`, `SvmInner`, `SvmInstruction`, `SvmLanded`, `SvmMark`, `SvmNonce`, `SvmQuery`, `SvmReader`, `SvmRef`, `SvmSignature`, `SvmStatus`, `SvmTokenBalance`, `SvmTx`, `SvmV1Header`.
 
 ## `@integraledger/lcp/tempo`
 
@@ -407,7 +407,7 @@ import { decodeTronTx, encodeTronRaw, exactTronMemo, … } from "@integraledger/
 
 **Values (14):** `decodeTronTx`, `encodeTronRaw`, `exactTronMemo`, `LCP_TRC20_MEMO`, `TRANSFER_SELECTOR`, `TRANSFER_TOPIC`, `TRIGGER_SMART_CONTRACT`, `TRIGGER_URL`, `TRON_BOUNDS`, `tronAddress`, `tronCarrier`, `tronRecover`, `tronRequest`, `tronStatus`.
 
-**Types (13):** `Broadcaster`, `TronBlock`, `TronCursor`, `TronInfo`, `TronLevel`, `TronNetwork`, `TronNow`, `TronQuery`, `TronRaw`, `TronReader`, `TronRef`, `TronStatus`, `TronUnsigned`.
+**Types (18):** `Broadcaster`, `TronBlock`, `TronChoice`, `TronCursor`, `TronInfo`, `TronLevel`, `TronMark`, `TronNetwork`, `TronNow`, `TronPayment`, `TronQuery`, `TronRaw`, `TronReader`, `TronRef`, `TronStatus`, `TronUnsigned`, `X402Payment`, `X402Read`.
 
 ## `@integraledger/lcp/tvm`
 
@@ -421,7 +421,7 @@ import { exactTvm, lcpComment, MAX_TVM_ATTACHED_ABOVE_FORWARD, … } from "@inte
 
 **Values (14):** `exactTvm`, `lcpComment`, `MAX_TVM_ATTACHED_ABOVE_FORWARD`, `MAX_TVM_BOC_BYTES`, `MAX_TVM_CELLS`, `MAX_TVM_DEPTH`, `MAX_TVM_LISTED`, `OP`, `TVM_EXPIRY_MARGIN`, `tvmCarrier`, `tvmRecover`, `tvmRequest`, `tvmStatus`, `W5R1_CODE_HASH`.
 
-**Types (15):** `Broadcaster`, `TonAccountState`, `TonAccountStatus`, `TonCell`, `TonIndexed`, `TonLink`, `TonOutMsg`, `TonTx`, `TonWalletState`, `TvmNetwork`, `TvmReader`, `TvmRef`, `TvmSearch`, `TvmStatus`, `TvmUnsigned`.
+**Types (20):** `Broadcaster`, `TonAccountState`, `TonAccountStatus`, `TonCell`, `TonIndexed`, `TonLink`, `TonOutMsg`, `TonTx`, `TonWalletState`, `TvmChoice`, `TvmMark`, `TvmNetwork`, `TvmPayment`, `TvmReader`, `TvmRef`, `TvmSearch`, `TvmStatus`, `TvmUnsigned`, `X402Payment`, `X402Read`.
 
 ## `@integraledger/lcp/ucp`
 
@@ -435,7 +435,7 @@ import { agentSigned, ap2Mandate, bookingAp2Mandate, … } from "@integraledger/
 
 **Values (10):** `agentSigned`, `ap2Mandate`, `bookingAp2Mandate`, `bookingUnsigned`, `checkoutJwt`, `issuedDigest`, `legalContextLink`, `LINK_TYPE`, `tie`, `unsigned`.
 
-**Types (12):** `AgentSignedPresented`, `AgentSignedUnsigned`, `BookingOption`, `Broadcaster`, `ChargePresented`, `ChargeRef`, `Checkout`, `CheckoutOption`, `Link`, `UcpBinding`, `UcpOffer`, `Unsigned`.
+**Types (13):** `AgentSignedPresented`, `AgentSignedUnsigned`, `BookingOption`, `Broadcaster`, `ChargePresented`, `ChargeRef`, `Checkout`, `CheckoutOption`, `Link`, `Option`, `UcpBinding`, `UcpOffer`, `Unsigned`.
 
 ## `@integraledger/lcp/x402`
 
@@ -449,7 +449,7 @@ import { authCaptureEip3009, authCapturePermit2, decodePaymentRequired, … } fr
 
 **Values (22):** `authCaptureEip3009`, `authCapturePermit2`, `decodePaymentRequired`, `decodePaymentResponse`, `decodePaymentSignature`, `encodeHeader`, `exactEip3009`, `exactErc7710`, `exactErc7710Salt`, `exactGatewayBatched`, `exactPermit2`, `issuedDigest`, `LEGAL_CONTEXT`, `LEGAL_CONTEXT_SCHEMA`, `pairingOfPayment`, `PAYMENT_REQUIRED`, `PAYMENT_RESPONSE`, `PAYMENT_SIGNATURE`, `requestCommitment`, `tie`, `toolCallCommitment`, `uptoPermit2`.
 
-**Types (22):** `Broadcaster`, `Eip3009Payment`, `Eip3009TypedData`, `GatewayBatchedChoice`, `GatewayBatchedPayment`, `GatewayBatchedTypedData`, `GatewayBatchedUnsigned`, `HeaderDigest`, `HeaderFields`, `HttpRequest`, `LcpPattern`, `PaymentPayload`, `PaymentRequired`, `PaymentRequirements`, `RequestCommitment`, `SettlementResponse`, `ToolCall`, `ToolCallCommitment`, `Unsigned`, `X402Choice`, `X402Offer`, `X402Unsigned`.
+**Types (34):** `BatchedAuthorization`, `BreadthBase`, `BreadthId`, `Broadcaster`, `Eip3009Authorization`, `Eip3009Payment`, `Eip3009TypedData`, `EvmMark`, `EvmQuery`, `GatewayBatchedChoice`, `GatewayBatchedPayment`, `GatewayBatchedTypedData`, `GatewayBatchedUnsigned`, `HeaderDigest`, `HeaderFields`, `HttpRequest`, `LcpPattern`, `Pairings`, `PaymentPayload`, `PaymentRequired`, `PaymentRequirements`, `Permit2Authorization`, `RequestCommitment`, `SettlementResponse`, `ToolCall`, `ToolCallCommitment`, `Unsigned`, `X402Advertise`, `X402Choice`, `X402Offer`, `X402PairingId`, `X402Read`, `X402SchemePayload`, `X402Unsigned`.
 
 ## `@integraledger/lcp/x402-batch-settlement`
 
@@ -463,7 +463,7 @@ import { BATCH_SETTLEMENT, batchChannelCreated, batchChannelId, … } from "@int
 
 **Values (13):** `BATCH_SETTLEMENT`, `batchChannelCreated`, `batchChannelId`, `batchCloudflare`, `batchEvm`, `batchSvm`, `CHANNEL_CONFIG_TYPEHASH`, `CHANNEL_CREATED_TOPIC`, `DEPOSITED_TOPIC`, `ERC3009_DEPOSIT_COLLECTOR`, `erc3009DepositNonce`, `PERMIT2_DEPOSIT_COLLECTOR`, `VOUCHER_TYPEHASH`.
 
-**Types (9):** `BatchEvmOpen`, `BatchSvmOpen`, `BatchUnsigned`, `BatchWithin`, `Broadcaster`, `ChannelConfig`, `ChannelMembers`, `Eip712Request`, `SigningRequest`.
+**Types (15):** `BatchEvmOpen`, `BatchPaymentPayload`, `BatchSvmOpen`, `BatchUnsigned`, `BatchWithin`, `Broadcaster`, `ChannelConfig`, `ChannelMembers`, `CloudflarePaymentPayload`, `Eip712Request`, `EvmMark`, `EvmQuery`, `SigningRequest`, `X402Advertise`, `X402Read`.
 
 ## `@integraledger/lcp/x402-exact-solana`
 
@@ -477,7 +477,7 @@ import { exactSvm } from "@integraledger/lcp/x402-exact-solana";
 
 **Values (1):** `exactSvm`.
 
-**Types (2):** `Broadcaster`, `SvmUnsigned`.
+**Types (5):** `Broadcaster`, `SvmChoice`, `SvmPaymentPayload`, `SvmUnsigned`, `X402Read`.
 
 ## `@integraledger/lcp/x402-exact-stellar`
 
@@ -491,7 +491,7 @@ import { exactStellarPrecondition } from "@integraledger/lcp/x402-exact-stellar"
 
 **Values (1):** `exactStellarPrecondition`.
 
-**Types (2):** `Broadcaster`, `StellarPreconditionChoice`.
+**Types (3):** `Broadcaster`, `StellarPreconditionChoice`, `X402Read`.
 
 ## `@integraledger/lcp/x402-exact-xrpl`
 
@@ -505,7 +505,7 @@ import { exactXrpl } from "@integraledger/lcp/x402-exact-xrpl";
 
 **Values (1):** `exactXrpl`.
 
-**Types (1):** `Broadcaster`.
+**Types (5):** `Broadcaster`, `X402Read`, `XrplChoice`, `XrplPaymentPayload`, `XrplQuery`.
 
 ## `@integraledger/lcp/x402-upto-solana`
 
@@ -519,7 +519,7 @@ import { uptoSvm } from "@integraledger/lcp/x402-upto-solana";
 
 **Values (1):** `uptoSvm`.
 
-**Types (3):** `Broadcaster`, `UptoSvmChoice`, `UptoSvmPayload`.
+**Types (5):** `Broadcaster`, `UptoSvmChoice`, `UptoSvmPayload`, `UptoSvmPaymentPayload`, `X402Read`.
 
 ## `@integraledger/lcp/x402-upto-xrpl`
 
@@ -533,7 +533,7 @@ import { uptoXrpl } from "@integraledger/lcp/x402-upto-xrpl";
 
 **Values (1):** `uptoXrpl`.
 
-**Types (3):** `Broadcaster`, `UptoXrplPayload`, `UptoXrplPaymentPayload`.
+**Types (4):** `Broadcaster`, `UptoXrplPayload`, `UptoXrplPaymentPayload`, `X402Read`.
 
 ## `@integraledger/lcp/xrpl`
 
@@ -545,5 +545,5 @@ import { decodeBlob, mppInvoiceId, x402InvoiceId, … } from "@integraledger/lcp
 
 **Values (12):** `decodeBlob`, `mppInvoiceId`, `x402InvoiceId`, `XRPL_MAX_BLOB_BYTES`, `XRPL_MAX_DEPTH`, `XRPL_MAX_PAGES`, `xrplChannelId`, `xrplChannelStatus`, `xrplChargeStatus`, `xrplClaim`, `xrplOpenStatus`, `xrplStatus`.
 
-**Types (18):** `XrplAmount`, `XrplChannelEntry`, `XrplChannelRef`, `XrplCloseRef`, `XrplCloseStatus`, `XrplLanded`, `XrplLedgerName`, `XrplMark`, `XrplNetwork`, `XrplPage`, `XrplReached`, `XrplReader`, `XrplRef`, `XrplServer`, `XrplSigned`, `XrplStatus`, `XrplTxJson`, `XrplUnsigned`.
+**Types (19):** `XrplAmount`, `XrplChannelEntry`, `XrplChannelRef`, `XrplCloseRef`, `XrplCloseStatus`, `XrplLanded`, `XrplLedgerName`, `XrplMark`, `XrplNetwork`, `XrplPage`, `XrplQuery`, `XrplReached`, `XrplReader`, `XrplRef`, `XrplServer`, `XrplSigned`, `XrplStatus`, `XrplTxJson`, `XrplUnsigned`.
 

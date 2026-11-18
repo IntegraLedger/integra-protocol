@@ -173,6 +173,28 @@ The checkout's own `id`, 1–256 characters.
 
 ***
 
+### EvmMark
+
+> **EvmMark** = `"latest"` \| `"safe"` \| `"finalized"`
+
+The marks of an EVM read, from the lowest: the block at the head, at or below `safe`, at or below `finalized`.
+
+***
+
+### EvmQuery
+
+> **EvmQuery**\<`Ref`\> = [`StatusQuery`](index.md#statusquery)\<`Ref`, `bigint`, [`EvmMark`](#evmmark)\>
+
+What an EVM `status` takes beside the reference and the reader.
+
+#### Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Ref` |
+
+***
+
 ### Jws
 
 > **Jws** = `string`
@@ -237,7 +259,7 @@ before the merchant saw them. Nothing here reads the payment. A value outside `b
 
 ### checkoutMandateX402
 
-> `const` **checkoutMandateX402**: `Readonly`\<\{ `advertise`: (`payload`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`Payload`](#payload); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`offer`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Unsigned`](#unsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"ap2/checkout-mandate/x402"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: [`Ap2Offer`](#ap2offer); \}; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`X402Ref`](#x402ref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`StatusAnswer`](index.md#statusanswer)\<`bigint`, `EvmMark`\>\>; `tie`: (`options`) => \[`"ap2"`, \{ `options`: readonly [`CheckoutOption`](#checkoutoption)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`CheckoutOption`](#checkoutoption); \}\>
+> `const` **checkoutMandateX402**: `Readonly`\<\{ `advertise`: (`payload`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`Payload`](#payload); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`offer`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Unsigned`](#unsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"ap2/checkout-mandate/x402"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: [`Ap2Offer`](#ap2offer); \}; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`X402Ref`](#x402ref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`StatusAnswer`](index.md#statusanswer)\<`bigint`, [`EvmMark`](#evmmark)\>\>; `tie`: (`options`) => \[`"ap2"`, \{ `options`: readonly [`CheckoutOption`](#checkoutoption)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`CheckoutOption`](#checkoutoption); \}\>
 
 `ap2/checkout-mandate/x402`. The payee broadcasts (`broadcaster` answers `"payee"`): the merchant forwards AP2's x402
 credential to its payment processor, which submits the authorization. `status` reads it by this pairing's

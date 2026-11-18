@@ -154,7 +154,7 @@ The reference the `auth-capture` reads take.
 
 #### Extends
 
-- `X402EvmRefBase`
+- [`X402EvmRefBase`](#x402evmrefbase)
 
 #### Properties
 
@@ -164,15 +164,15 @@ The reference the `auth-capture` reads take.
 | <a id="property-escrow"></a> `escrow` | `readonly` | `` `0x${string}` `` | The escrow deployment and the event of the option's flow. | - |
 | <a id="property-event"></a> `event` | `readonly` | `` `0x${string}` `` | - | - |
 | <a id="property-expiry"></a> `expiry` | `readonly` | `string` | `preApprovalExpiry`, in decimal. | - |
-| <a id="property-h"></a> `h` | `readonly` | `` `0x${string}` `` | - | `X402EvmRefBase.h` |
-| <a id="property-network"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | `X402EvmRefBase.network` |
-| <a id="property-payee"></a> `payee` | `readonly` | `string` | - | `X402EvmRefBase.payee` |
+| <a id="property-h"></a> `h` | `readonly` | `` `0x${string}` `` | - | [`X402EvmRefBase`](#x402evmrefbase).[`h`](#property-h-5) |
+| <a id="property-network"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | [`X402EvmRefBase`](#x402evmrefbase).[`network`](#property-network-9) |
+| <a id="property-payee"></a> `payee` | `readonly` | `string` | - | [`X402EvmRefBase`](#x402evmrefbase).[`payee`](#property-payee-8) |
 | <a id="property-payer"></a> `payer` | `readonly` | `` `0x${string}` `` | The escrow's `PaymentInfo.payer`, the token authorization's signer. | - |
 | <a id="property-paymentid"></a> `paymentId` | `readonly` | `` `0x${string}` `` | The escrow's payment hash of the presented `PaymentInfo`, and that hash with payer zero, the signed nonce. | - |
 | <a id="property-salt"></a> `salt` | `readonly` | `` `0x${string}` `` | `PaymentInfo.salt`: H, or the commitment to the receiver authorizer, the policy and H. | - |
 | <a id="property-scheme"></a> `scheme` | `readonly` | `"eip3009"` \| `"permit2"` | - | - |
 | <a id="property-signaturenonce"></a> `signatureNonce` | `readonly` | `` `0x${string}` `` | - | - |
-| <a id="property-transaction"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search; never needed. | `X402EvmRefBase.transaction` |
+| <a id="property-transaction"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search; never needed. | [`X402EvmRefBase`](#x402evmrefbase).[`transaction`](#property-transaction-7) |
 
 ***
 
@@ -185,7 +185,7 @@ nonce, its bound and the amount it moves.
 
 #### Extends
 
-- `X402EvmRefBase`
+- [`X402EvmRefBase`](#x402evmrefbase)
 
 #### Properties
 
@@ -194,10 +194,10 @@ nonce, its bound and the amount it moves.
 | <a id="property-amount"></a> `amount` | `readonly` | `string` | - | - |
 | <a id="property-asset-1"></a> `asset` | `readonly` | `` `0x${string}` `` | The channel's token. | - |
 | <a id="property-channel"></a> `channel` | `readonly` | `` `0x${string}` `` | The channel id, and the config's other members. | - |
-| <a id="property-h-1"></a> `h` | `readonly` | `` `0x${string}` `` | - | `X402EvmRefBase.h` |
-| <a id="property-network-1"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | `X402EvmRefBase.network` |
+| <a id="property-h-1"></a> `h` | `readonly` | `` `0x${string}` `` | - | [`X402EvmRefBase`](#x402evmrefbase).[`h`](#property-h-5) |
+| <a id="property-network-1"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | [`X402EvmRefBase`](#x402evmrefbase).[`network`](#property-network-9) |
 | <a id="property-nonce"></a> `nonce` | `readonly` | `` `0x${string}` `` | The deposit authorization's nonce, a 32-byte word: keccak256(abi.encode(channelId, authSalt)) on ERC-3009, the permit's nonce on Permit2. | - |
-| <a id="property-payee-1"></a> `payee` | `readonly` | `string` | - | `X402EvmRefBase.payee` |
+| <a id="property-payee-1"></a> `payee` | `readonly` | `string` | - | [`X402EvmRefBase`](#x402evmrefbase).[`payee`](#property-payee-8) |
 | <a id="property-payer-1"></a> `payer` | `readonly` | `` `0x${string}` `` | The channel's payer, the deposit authorization's signer. | - |
 | <a id="property-payerauthorizer"></a> `payerAuthorizer` | `readonly` | `` `0x${string}` `` | - | - |
 | <a id="property-receiver"></a> `receiver` | `readonly` | `` `0x${string}` `` | - | - |
@@ -206,7 +206,7 @@ nonce, its bound and the amount it moves.
 | <a id="property-salt-1"></a> `salt` | `readonly` | `` `0x${string}` `` | - | - |
 | <a id="property-scheme-1"></a> `scheme` | `readonly` | `"eip3009"` \| `"permit2"` | - | - |
 | <a id="property-settleby"></a> `settleBy` | `readonly` | `string` | The deposit authorization's `validBefore` or `deadline`, and the deposit's amount, in decimal. | - |
-| <a id="property-transaction-1"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search; never needed. | `X402EvmRefBase.transaction` |
+| <a id="property-transaction-1"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search; never needed. | [`X402EvmRefBase`](#x402evmrefbase).[`transaction`](#property-transaction-7) |
 | <a id="property-withdrawdelay"></a> `withdrawDelay` | `readonly` | `number` | - | - |
 
 ***
@@ -232,19 +232,19 @@ The reference the `exact` EIP-3009 read takes.
 
 #### Extends
 
-- `X402EvmRefBase`
+- [`X402EvmRefBase`](#x402evmrefbase)
 
 #### Properties
 
 | Property | Modifier | Type | Description | Inherited from |
 | ------ | ------ | ------ | ------ | ------ |
 | <a id="property-asset-2"></a> `asset` | `readonly` | `` `0x${string}` `` | The token under whose domain the authorization is signed, the option's `asset`. | - |
-| <a id="property-h-2"></a> `h` | `readonly` | `` `0x${string}` `` | - | `X402EvmRefBase.h` |
-| <a id="property-network-2"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | `X402EvmRefBase.network` |
-| <a id="property-payee-2"></a> `payee` | `readonly` | `string` | - | `X402EvmRefBase.payee` |
+| <a id="property-h-2"></a> `h` | `readonly` | `` `0x${string}` `` | - | [`X402EvmRefBase`](#x402evmrefbase).[`h`](#property-h-5) |
+| <a id="property-network-2"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | [`X402EvmRefBase`](#x402evmrefbase).[`network`](#property-network-9) |
+| <a id="property-payee-2"></a> `payee` | `readonly` | `string` | - | [`X402EvmRefBase`](#x402evmrefbase).[`payee`](#property-payee-8) |
 | <a id="property-payer-2"></a> `payer` | `readonly` | `` `0x${string}` `` | The authorization's `from`, the signer of H. | - |
-| <a id="property-presented"></a> `presented` | `readonly` | `Signed` | The members of the payment presented: the token, `from`, `to`, `value` and `nonce`, lowercase, value in decimal. | - |
-| <a id="property-transaction-2"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search; never needed. | `X402EvmRefBase.transaction` |
+| <a id="property-presented"></a> `presented` | `readonly` | [`Signed`](#signed) | The members of the payment presented: the token, `from`, `to`, `value` and `nonce`, lowercase, value in decimal. | - |
+| <a id="property-transaction-2"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search; never needed. | [`X402EvmRefBase`](#x402evmrefbase).[`transaction`](#property-transaction-7) |
 | <a id="property-validbefore"></a> `validBefore` | `readonly` | `string` | The authorization's `validBefore`, in decimal: the lapse's deadline, no member compared. | - |
 
 ***
@@ -280,19 +280,19 @@ The reference the ERC-7710 reads take.
 
 #### Extends
 
-- `X402EvmRefBase`
+- [`X402EvmRefBase`](#x402evmrefbase)
 
 #### Properties
 
 | Property | Modifier | Type | Description | Inherited from |
 | ------ | ------ | ------ | ------ | ------ |
 | <a id="property-asset-3"></a> `asset` | `readonly` | `` `0x${string}` `` | - | - |
-| <a id="property-h-3"></a> `h` | `readonly` | `` `0x${string}` `` | - | `X402EvmRefBase.h` |
-| <a id="property-network-3"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | `X402EvmRefBase.network` |
-| <a id="property-payee-3"></a> `payee` | `readonly` | `string` | - | `X402EvmRefBase.payee` |
+| <a id="property-h-3"></a> `h` | `readonly` | `` `0x${string}` `` | - | [`X402EvmRefBase`](#x402evmrefbase).[`h`](#property-h-5) |
+| <a id="property-network-3"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | [`X402EvmRefBase`](#x402evmrefbase).[`network`](#property-network-9) |
+| <a id="property-payee-3"></a> `payee` | `readonly` | `string` | - | [`X402EvmRefBase`](#x402evmrefbase).[`payee`](#property-payee-8) |
 | <a id="property-payer-3"></a> `payer` | `readonly` | `` `0x${string}` `` | The payment's `delegator`: at the salt level the root delegator, whose account the transfer comes from. | - |
 | <a id="property-presented-1"></a> `presented?` | `readonly` | `Readonly`\<`Record`\<`string`, `string`\>\> | The payment presented: `delegation`, the EIP-712 hash of the leaf delegation its permission context encodes (`delegationHash`), which covers the leaf's caveats and, through its `authority`, every delegation above it, and which `status` compares with the leaf a `RedeemedDelegation` log carries. Absent where the context does not decode as the reference manager's: the read then shows no member, and `presented` is `unshown`. | - |
-| <a id="property-transaction-3"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search; never needed. | `X402EvmRefBase.transaction` |
+| <a id="property-transaction-3"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search; never needed. | [`X402EvmRefBase`](#x402evmrefbase).[`transaction`](#property-transaction-7) |
 
 ***
 
@@ -330,7 +330,7 @@ a rejected `safe` mark reads as the final one.
 
 | Property | Modifier | Type |
 | ------ | ------ | ------ |
-| <a id="property-network-4"></a> `network` | `readonly` | `` `eip155:${string}` `` \| `HederaNetwork` |
+| <a id="property-network-4"></a> `network` | `readonly` | `` `eip155:${string}` `` \| [`HederaNetwork`](#hederanetwork) |
 
 #### Methods
 
@@ -444,6 +444,25 @@ none.
 
 ***
 
+### EvmReadRefBase
+
+The reference every read over `statusOf` takes: the network, the option's payee, and a named transaction as a hint.
+
+#### Extended by
+
+- [`X402EvmRefBase`](#x402evmrefbase)
+- [`SpendPermissionRef`](spend-permissions.md#spendpermissionref)
+
+#### Properties
+
+| Property | Modifier | Type | Description |
+| ------ | ------ | ------ | ------ |
+| <a id="property-network-5"></a> `network` | `readonly` | `` `eip155:${string}` `` | - |
+| <a id="property-payee-4"></a> `payee` | `readonly` | `string` | - |
+| <a id="property-transaction-4"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search; never needed. |
+
+***
+
 ### EvmReceipt
 
 #### Properties
@@ -470,8 +489,8 @@ The read keys for a later settlement read of an EVM payment, and nothing else.
 | ------ | ------ | ------ |
 | <a id="property-authorization"></a> `authorization?` | [`PullAuthorization`](#pullauthorization) | The signed pull authorization and where the chain records its use, where the pairing's reference records one. |
 | <a id="property-bindinglog"></a> `bindingLog?` | \{ address: \`0x$\{string\}\`; topic0: \`0x$\{string\}\`; value: \`0x$\{string\}\`; \} & (\{ index: 2 \| 1 \| 3; \} \| \{ dataWord: number; \}) | The log carrying H or its commitment: in topic `index`, or in 32-byte data word `dataWord`. |
-| <a id="property-network-5"></a> `network` | `` `eip155:${string}` `` \| `HederaNetwork` | - |
-| <a id="property-payee-4"></a> `payee` | `string` | The option's payee, which `reference` takes from the option the payment answers. |
+| <a id="property-network-6"></a> `network` | `` `eip155:${string}` `` \| [`HederaNetwork`](#hederanetwork) | - |
+| <a id="property-payee-5"></a> `payee` | `string` | The option's payee, which `reference` takes from the option the payment answers. |
 | <a id="property-search"></a> `search?` | `object` | The log filter that finds the transaction when none is named; absent, only a named transaction is read. |
 | `search.address` | `` `0x${string}` `` | - |
 | `search.topics` | readonly (`` `0x${string}` `` \| `null`)[] | - |
@@ -503,9 +522,9 @@ The reference an EIP-3009 `status` reads: the network, the token, the transactio
 | Property | Type |
 | ------ | ------ |
 | <a id="property-asset-4"></a> `asset` | `` `0x${string}` `` |
-| <a id="property-network-6"></a> `network` | `` `eip155:${string}` `` |
-| <a id="property-payee-5"></a> `payee` | `string` |
-| <a id="property-transaction-4"></a> `transaction` | `` `0x${string}` `` |
+| <a id="property-network-7"></a> `network` | `` `eip155:${string}` `` |
+| <a id="property-payee-6"></a> `payee` | `string` |
+| <a id="property-transaction-5"></a> `transaction` | `` `0x${string}` `` |
 
 ***
 
@@ -547,7 +566,7 @@ The reference the Permit2 reads take.
 
 #### Extends
 
-- `X402EvmRefBase`
+- [`X402EvmRefBase`](#x402evmrefbase)
 
 #### Properties
 
@@ -555,12 +574,12 @@ The reference the Permit2 reads take.
 | ------ | ------ | ------ | ------ | ------ |
 | <a id="property-asset-5"></a> `asset` | `readonly` | `` `0x${string}` `` | - | - |
 | <a id="property-deadline"></a> `deadline` | `readonly` | `string` | The permit's `deadline`, in decimal. | - |
-| <a id="property-h-4"></a> `h` | `readonly` | `` `0x${string}` `` | - | `X402EvmRefBase.h` |
-| <a id="property-network-7"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | `X402EvmRefBase.network` |
-| <a id="property-payee-6"></a> `payee` | `readonly` | `string` | - | `X402EvmRefBase.payee` |
+| <a id="property-h-4"></a> `h` | `readonly` | `` `0x${string}` `` | - | [`X402EvmRefBase`](#x402evmrefbase).[`h`](#property-h-5) |
+| <a id="property-network-8"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | [`X402EvmRefBase`](#x402evmrefbase).[`network`](#property-network-9) |
+| <a id="property-payee-7"></a> `payee` | `readonly` | `string` | - | [`X402EvmRefBase`](#x402evmrefbase).[`payee`](#property-payee-8) |
 | <a id="property-payer-5"></a> `payer` | `readonly` | `` `0x${string}` `` | The permit's owner, the signer of H. | - |
-| <a id="property-presented-2"></a> `presented` | `readonly` | `Signed` | The members of the payment presented: the permit's `token`, `amount`, `nonce` and `deadline`, its `spender`, the `owner`, and the witness's `to` and `validAfter`, with `facilitator` on `upto`. | - |
-| <a id="property-transaction-5"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search; never needed. | `X402EvmRefBase.transaction` |
+| <a id="property-presented-2"></a> `presented` | `readonly` | [`Signed`](#signed) | The members of the payment presented: the permit's `token`, `amount`, `nonce` and `deadline`, its `spender`, the `owner`, and the witness's `to` and `validAfter`, with `facilitator` on `upto`. | - |
+| <a id="property-transaction-6"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search; never needed. | [`X402EvmRefBase`](#x402evmrefbase).[`transaction`](#property-transaction-7) |
 
 ***
 
@@ -622,6 +641,33 @@ A token transfer, identified by the core's `hash` over the fields `identity` nam
 | <a id="property-identity"></a> `identity` | [`TransferIdentity`](#transferidentity) |
 | <a id="property-topic0"></a> `topic0` | `` `0x${string}` `` |
 
+***
+
+### X402EvmRefBase
+
+The reference every x402 eip155 read takes: `EvmReadRefBase` and H.
+
+#### Extends
+
+- [`EvmReadRefBase`](#evmreadrefbase)
+
+#### Extended by
+
+- [`AuthCaptureRef`](#authcaptureref)
+- [`BatchEvmRef`](#batchevmref)
+- [`Eip3009Ref`](#eip3009ref)
+- [`Erc7710Ref`](#erc7710ref)
+- [`Permit2Ref`](#permit2ref)
+
+#### Properties
+
+| Property | Modifier | Type | Description | Inherited from |
+| ------ | ------ | ------ | ------ | ------ |
+| <a id="property-h-5"></a> `h` | `readonly` | `` `0x${string}` `` | - | - |
+| <a id="property-network-9"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | [`EvmReadRefBase`](#evmreadrefbase).[`network`](#property-network-5) |
+| <a id="property-payee-8"></a> `payee` | `readonly` | `string` | - | [`EvmReadRefBase`](#evmreadrefbase).[`payee`](#property-payee-4) |
+| <a id="property-transaction-7"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search; never needed. | [`EvmReadRefBase`](#evmreadrefbase).[`transaction`](#property-transaction-4) |
+
 ## Type Aliases
 
 ### Eip155
@@ -634,7 +680,7 @@ CAIP-2 for EVM chains; the reference is the decimal chain id.
 
 ### EvmBreadthStatus
 
-> **EvmBreadthStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `EvmMark`\>
+> **EvmBreadthStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, [`EvmMark`](ap2.md#evmmark)\>
 
 What the EVM breadth pairings' `status` answers, in the same terms as `EvmStatus`.
 
@@ -658,15 +704,31 @@ A log as `eth_getLogs` gives it: the log, the transaction that emitted it, its b
 
 ### EvmStatus
 
-> **EvmStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `EvmMark`\>
+> **EvmStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, [`EvmMark`](ap2.md#evmmark)\>
 
 What an EVM `status` answers: its positions are block numbers, its marks `EvmMark`.
+
+***
+
+### HederaNetwork
+
+> **HederaNetwork** = `"hedera:mainnet"` \| `"hedera:testnet"` \| `"hedera:previewnet"` \| `"hedera:devnet"`
+
+Hedera's CAIP-2 networks, read through their JSON-RPC relay with the same reader shape.
 
 ***
 
 ### Hex
 
 > **Hex** = `` `0x${string}` ``
+
+***
+
+### Signed
+
+> **Signed** = `Readonly`\<`Record`\<`string`, `string`\>\>
+
+The members of what the payer signed, as read from a landed act or as presented, each a lowercase string.
 
 ***
 
@@ -719,7 +781,7 @@ The chain ids on which an `erc7710` payment through `DELEGATION_MANAGER` is read
 
 ### eip3009Status
 
-> `const` **eip3009Status**: (`ref`, `reader`, `query`) => `Promise`\<[`StatusAnswer`](index.md#statusanswer)\<`bigint`, `EvmMark`\>\>
+> `const` **eip3009Status**: (`ref`, `reader`, `query`) => `Promise`\<[`StatusAnswer`](index.md#statusanswer)\<`bigint`, [`EvmMark`](ap2.md#evmmark)\>\>
 
 `status` of `x402/exact/eip155/eip3009`.
 
@@ -729,11 +791,11 @@ The chain ids on which an `erc7710` payment through `DELEGATION_MANAGER` is read
 | ------ | ------ |
 | `ref` | [`Eip3009Ref`](#eip3009ref) |
 | `reader` | [`EvmReader`](#evmreader) |
-| `query` | `EvmQuery`\<`unknown`\> |
+| `query` | [`EvmQuery`](ap2.md#evmquery)\<`unknown`\> |
 
 #### Returns
 
-`Promise`\<[`StatusAnswer`](index.md#statusanswer)\<`bigint`, `EvmMark`\>\>
+`Promise`\<[`StatusAnswer`](index.md#statusanswer)\<`bigint`, [`EvmMark`](ap2.md#evmmark)\>\>
 
 ***
 
@@ -1011,7 +1073,7 @@ query that is not one `status` takes, `unparseable`, with nothing read for a ref
 | ------ | ------ |
 | `ref` | [`EvmRef`](#evmref) & `object` |
 | `reader` | [`EvmReader`](#evmreader) |
-| `query` | `EvmQuery`\<[`EvmRef`](#evmref) & `object`\> |
+| `query` | [`EvmQuery`](ap2.md#evmquery)\<[`EvmRef`](#evmref) & `object`\> |
 
 #### Returns
 
@@ -1092,3 +1154,15 @@ big-endian uint256. `authorizationIdDigest(from, to, value)` equals `transferDig
 #### Returns
 
 `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
+
+## References
+
+### EvmMark
+
+Re-exports [EvmMark](ap2.md#evmmark)
+
+***
+
+### EvmQuery
+
+Re-exports [EvmQuery](ap2.md#evmquery)

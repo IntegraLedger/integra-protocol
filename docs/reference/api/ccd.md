@@ -15,6 +15,18 @@ before serialization, whose header holds bigints, is `ccd/transaction-malformed`
 
 ## Interfaces
 
+### CcdChoice
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-accepted"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
+| <a id="property-now"></a> `now` | `number` |
+| <a id="property-required"></a> `required` | [`PaymentRequired`](x402.md#paymentrequired) |
+
+***
+
 ### CcdReader
 
 Bounded, read-only calls against one network's node (gRPC v2). Every failure rejects, for example with
@@ -180,7 +192,7 @@ One transfer an item's effects or events list: CCD, its amount in microCCD (conc
 
 ##### complete()
 
-> **complete**(`signedTransaction`): [`Refusal`](index.md#refusal) \| `CcdPaymentPayload`
+> **complete**(`signedTransaction`): [`Refusal`](index.md#refusal) \| [`CcdPaymentPayload`](index.md#ccdpaymentpayload)
 
 Takes the sender-signed V1 sponsored transaction in x402's wire form: with `@concordium/web-sdk`,
 `JSON.parse(Transaction.toJSONString(tx))`. A value that is not a JSON object is `ccd/transaction-malformed`.
@@ -193,7 +205,7 @@ Takes the sender-signed V1 sponsored transaction in x402's wire form: with `@con
 
 ###### Returns
 
-[`Refusal`](index.md#refusal) \| `CcdPaymentPayload`
+[`Refusal`](index.md#refusal) \| [`CcdPaymentPayload`](index.md#ccdpaymentpayload)
 
 ## Type Aliases
 
@@ -220,6 +232,14 @@ with `GetBlockInfo` and `GetBlockItems` on that block; `status` takes an item a 
 
 ***
 
+### CcdMark
+
+> **CcdMark** = `"committed"` \| `"finalized"`
+
+The marks of a block item in a block, ascending: `committed`, below the one mark, and `finalized`.
+
+***
+
 ### CcdNetwork
 
 > **CcdNetwork** = `` `ccd:${string}` ``
@@ -230,7 +250,7 @@ CAIP-2: `ccd:` and the first 32 lowercase hex digits of the genesis block hash.
 
 ### CcdStatus
 
-> **CcdStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `CcdMark`, [`CcdSearch`](#ccdsearch)\>
+> **CcdStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, [`CcdMark`](#ccdmark), [`CcdSearch`](#ccdsearch)\>
 
 The answer of `ccdStatus`. Positions are finalized block heights; the one mark is `finalized`, and an item read
 above the last finalized block is at `committed`, below it; the search's position is `CcdSearch`.
@@ -291,7 +311,7 @@ call, and an answer that stops there carries the next number to locate, from whi
 
 ### exactCcd
 
-> `const` **exactCcd**: `Readonly`\<\{ `advertise`: `X402Advertise`; `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CcdUnsigned`](#ccdunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/ccd"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CcdRef`](#ccdref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`CcdStatus`](#ccdstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactCcd**: `Readonly`\<\{ `advertise`: [`X402Advertise`](casper.md#x402advertise); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CcdUnsigned`](#ccdunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/ccd"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](aptos.md#x402read); `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CcdRef`](#ccdref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`CcdStatus`](#ccdstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/ccd`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator, the sponsor,
 signs and submits the sponsored transaction the payer signed; `status` reads the finalized transfer.
@@ -422,3 +442,21 @@ CBOR tag 24 around a byte string holding `ccdMemo(h)`: `d8 18 58 4f` and the 79 
 ### Broadcaster
 
 Re-exports [Broadcaster](index.md#broadcaster)
+
+***
+
+### CcdPaymentPayload
+
+Re-exports [CcdPaymentPayload](index.md#ccdpaymentpayload)
+
+***
+
+### X402Advertise
+
+Re-exports [X402Advertise](casper.md#x402advertise)
+
+***
+
+### X402Read
+
+Re-exports [X402Read](aptos.md#x402read)

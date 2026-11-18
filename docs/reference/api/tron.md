@@ -30,6 +30,23 @@ header's `raw_data`, and the `raw_data_hex` of each of its `transactions`, in or
 
 ***
 
+### TronChoice
+
+#### Properties
+
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-accepted"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) | - |
+| <a id="property-feelimit"></a> `feeLimit` | `bigint` | In sun, from 1 to 15,000,000,000. |
+| <a id="property-now"></a> `now` | `bigint` | Milliseconds since the epoch. |
+| <a id="property-payer"></a> `payer` | `string` | The payer's base58check address. |
+| <a id="property-refblock"></a> `refBlock` | `object` | A recent block from the buyer's FullNode. |
+| `refBlock.id` | `` `0x${string}` `` | - |
+| `refBlock.number` | `bigint` | - |
+| <a id="property-required"></a> `required` | [`PaymentRequired`](x402.md#paymentrequired) | - |
+
+***
+
 ### TronCursor
 
 The search's position: the last block it linked, by its number and `blockID`, at or below the solidified head. A
@@ -90,7 +107,7 @@ any backing.
 | <a id="property-contractaddress"></a> `contractAddress` | `Uint8Array`\<`B`\> |
 | <a id="property-data"></a> `data` | `Uint8Array`\<`B`\> |
 | <a id="property-expiration"></a> `expiration` | `bigint` |
-| <a id="property-feelimit"></a> `feeLimit` | `bigint` |
+| <a id="property-feelimit-1"></a> `feeLimit` | `bigint` |
 | <a id="property-owner"></a> `owner` | `Uint8Array`\<`B`\> |
 | <a id="property-refblockbytes"></a> `refBlockBytes` | `Uint8Array`\<`B`\> |
 | <a id="property-refblockhash"></a> `refBlockHash` | `Uint8Array`\<`B`\> |
@@ -220,7 +237,7 @@ is the payment presented; `txid` its SHA-256, the single-use value; `asset` the 
 | <a id="property-expiration-1"></a> `expiration` | `string` |
 | <a id="property-network-1"></a> `network` | `` `tron:${number}` `` |
 | <a id="property-payee"></a> `payee` | `string` |
-| <a id="property-payer"></a> `payer` | `string` |
+| <a id="property-payer-1"></a> `payer` | `string` |
 | <a id="property-raw"></a> `raw` | `string` |
 | <a id="property-txid"></a> `txid` | `` `0x${string}` `` |
 
@@ -241,7 +258,7 @@ is the payment presented; `txid` its SHA-256, the single-use value; `asset` the 
 
 ##### complete()
 
-> **complete**(`signature`): [`Refusal`](index.md#refusal) \| `TronPayment`
+> **complete**(`signature`): [`Refusal`](index.md#refusal) \| [`TronPayment`](index.md#tronpayment)
 
 Takes the 65-byte secp256k1 signature `r ‖ s ‖ v`, v in {0, 1, 27, 28}.
 
@@ -253,7 +270,7 @@ Takes the 65-byte secp256k1 signature `r ‖ s ‖ v`, v in {0, 1, 27, 28}.
 
 ###### Returns
 
-[`Refusal`](index.md#refusal) \| `TronPayment`
+[`Refusal`](index.md#refusal) \| [`TronPayment`](index.md#tronpayment)
 
 ## Type Aliases
 
@@ -262,6 +279,12 @@ Takes the 65-byte secp256k1 signature `r ‖ s ‖ v`, v in {0, 1, 27, 28}.
 > **TronLevel** = `"solid"` \| `"head"`
 
 The level a read goes through: the full node's `/walletsolidity` API ("solid") or its `/wallet` API ("head").
+
+***
+
+### TronMark
+
+> **TronMark** = `"head"` \| `"solidified"`
 
 ***
 
@@ -275,7 +298,7 @@ CAIP-2 with the decimal chain id: tron:728126428 mainnet, tron:3448148188 Nile, 
 
 ### TronQuery
 
-> **TronQuery** = [`StatusQuery`](index.md#statusquery)\<[`TronRef`](#tronref), `bigint`, `TronMark`, [`TronCursor`](#troncursor)\>
+> **TronQuery** = [`StatusQuery`](index.md#statusquery)\<[`TronRef`](#tronref), `bigint`, [`TronMark`](#tronmark), [`TronCursor`](#troncursor)\>
 
 The query `tronStatus` takes: the profile `read-status`'s, its search position a `TronCursor`.
 
@@ -283,7 +306,7 @@ The query `tronStatus` takes: the profile `read-status`'s, its search position a
 
 ### TronStatus
 
-> **TronStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `TronMark`, [`TronCursor`](#troncursor)\>
+> **TronStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, [`TronMark`](#tronmark), [`TronCursor`](#troncursor)\>
 
 The answer of `tronStatus`, as the profile `read-status` gives it. Its marks are `head` and `solidified`, in that
 order, its position the block number and its search position a `TronCursor`. A `settled` answer states `presented`:
@@ -295,7 +318,7 @@ contract's `Permission_id`, as `Permission_id 0`, 0 where the transaction names 
 
 ### exactTronMemo
 
-> `const` **exactTronMemo**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TronUnsigned`](#tronunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/tron/lcp-trc20-memo"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TronRef`](#tronref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`TronStatus`](#tronstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactTronMemo**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TronUnsigned`](#tronunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/tron/lcp-trc20-memo"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](aptos.md#x402read); `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TronRef`](#tronref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`TronStatus`](#tronstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/tron/lcp-trc20-memo`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator
 broadcasts the TRC-20 transfer the payer signed; `status` reads it by transaction id.
@@ -526,3 +549,21 @@ another network `chain-mismatch`; a read that rejects `transport`; one block ove
 ### Broadcaster
 
 Re-exports [Broadcaster](index.md#broadcaster)
+
+***
+
+### TronPayment
+
+Re-exports [TronPayment](index.md#tronpayment)
+
+***
+
+### X402Payment
+
+Re-exports [X402Payment](index.md#x402payment)
+
+***
+
+### X402Read
+
+Re-exports [X402Read](aptos.md#x402read)

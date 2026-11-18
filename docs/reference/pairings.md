@@ -44,35 +44,35 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 
 | Pairing | Export | Coverage | Confirmed | Pattern | Binding on chain | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
-| [`mpp/charge/card`](#mppchargecard) | `chargeCard` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no |  |
-| [`mpp/charge/evm/authorization`](#mppchargeevmauthorization) | `evmAuthorization` from `@integraledger/lcp/mpp` | `full` | yes | `id-reuse` | yes | no |  |
-| [`mpp/charge/evm/hash`](#mppchargeevmhash) | `evmHash` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no |  |
-| [`mpp/charge/evm/permit2`](#mppchargeevmpermit2) | `evmPermit2` from `@integraledger/lcp/mpp` | `full` | no | `id-reuse` | yes | no |  |
-| [`mpp/charge/evm/transaction`](#mppchargeevmtransaction) | `evmTransaction` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no |  |
+| [`mpp/charge/card`](#mppchargecard) | `chargeCard` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
+| [`mpp/charge/evm/authorization`](#mppchargeevmauthorization) | `evmAuthorization` from `@integraledger/lcp/mpp` | `full` | yes | `id-reuse` | yes | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
+| [`mpp/charge/evm/hash`](#mppchargeevmhash) | `evmHash` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
+| [`mpp/charge/evm/permit2`](#mppchargeevmpermit2) | `evmPermit2` from `@integraledger/lcp/mpp` | `full` | no | `id-reuse` | yes | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
+| [`mpp/charge/evm/transaction`](#mppchargeevmtransaction) | `evmTransaction` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
 | [`mpp/charge/lcp/hedera`](#mppchargelcphedera) | `chargeLcpHedera` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/method/lcp`](../../lcp/profiles/mpp-method-lcp.md) |
 | [`mpp/charge/lightning`](#mppchargelightning) | `chargeLightning` from `@integraledger/lcp/lightning` | `none` | no | `native-field` | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
 | [`mpp/charge/nearintents`](#mppchargenearintents) | `chargeNearIntents` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no | [`mpp/charge/nearintents`](../../lcp/profiles/mpp-charge-nearintents.md) |
 | [`mpp/charge/solana`](#mppchargesolana) | `chargeSolana` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/solana`](../../lcp/profiles/mpp-charge-solana.md) |
 | [`mpp/charge/solana/unsponsored`](#mppchargesolanaunsponsored) | `chargeSolanaUnsponsored` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/solana`](../../lcp/profiles/mpp-charge-solana.md) |
-| [`mpp/charge/stripe`](#mppchargestripe) | `chargeStripe` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no |  |
+| [`mpp/charge/stripe`](#mppchargestripe) | `chargeStripe` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
 | [`mpp/charge/tempo/split-memo`](#mppchargetemposplit-memo) | `tempoSplitMemo` from `@integraledger/lcp/mpp` | `full` | yes | `native-field` | yes | no | [`mpp/charge/tempo/split-memo`](../../lcp/profiles/mpp-charge-tempo-split-memo.md) |
 | [`mpp/charge/tempo/split-memo/push`](#mppchargetemposplit-memopush) | `tempoSplitMemoPush` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | no | [`mpp/charge/tempo/split-memo`](../../lcp/profiles/mpp-charge-tempo-split-memo.md) |
-| [`mpp/charge/usdc/evm`](#mppchargeusdcevm) | `chargeUsdcEvm` from `@integraledger/lcp/mpp` | `full` | no | `id-reuse` | yes | no |  |
-| [`mpp/charge/usdc/gateway`](#mppchargeusdcgateway) | `chargeUsdcGateway` from `@integraledger/lcp/mpp` | `none` | no | `id-reuse` | yes | no |  |
+| [`mpp/charge/usdc/evm`](#mppchargeusdcevm) | `chargeUsdcEvm` from `@integraledger/lcp/mpp` | `full` | no | `id-reuse` | yes | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
+| [`mpp/charge/usdc/gateway`](#mppchargeusdcgateway) | `chargeUsdcGateway` from `@integraledger/lcp/mpp` | `none` | no | `id-reuse` | yes | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
 | [`mpp/charge/usdc/solana`](#mppchargeusdcsolana) | `chargeUsdcSolana` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/usdc/solana`](../../lcp/profiles/mpp-charge-usdc-solana.md) |
 | [`mpp/charge/usdc/stacks`](#mppchargeusdcstacks) | `chargeUsdcStacks` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/usdc/stacks`](../../lcp/profiles/mpp-charge-usdc-stacks.md) |
 | [`mpp/charge/xrpl`](#mppchargexrpl) | `chargeXrpl` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/xrpl`](../../lcp/profiles/mpp-charge-xrpl.md) |
 | [`mpp/session/evm`](#mppsessionevm) | `sessionEvm` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/evm-tempo`](../../lcp/profiles/mpp-session-evm-tempo.md) |
-| [`mpp/session/hedera/stock`](#mppsessionhederastock) | `sessionHederaStock` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | yes | no | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
+| [`mpp/session/hedera/stock`](#mppsessionhederastock) | `sessionHederaStock` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
 | [`mpp/session/lightning`](#mppsessionlightning) | `sessionLightning` from `@integraledger/lcp/lightning` | `none` | no | `native-field` | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
 | [`mpp/session/solana/memo`](#mppsessionsolanamemo) | `sessionSolanaMemo` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
 | [`mpp/session/solana/stock`](#mppsessionsolanastock) | `sessionSolanaStock` from `@integraledger/lcp/mpp` | `none` | no | `native-field` | no | no | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
 | [`mpp/session/tempo`](#mppsessiontempo) | `sessionTempo` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/evm-tempo`](../../lcp/profiles/mpp-session-evm-tempo.md) |
 | [`mpp/session/xrpl`](#mppsessionxrpl) | `sessionXrpl` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
-| [`mpp/session/xrpl/stock`](#mppsessionxrplstock) | `sessionXrplStock` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | yes | no | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
+| [`mpp/session/xrpl/stock`](#mppsessionxrplstock) | `sessionXrplStock` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
 | [`mpp/subscription/solana`](#mppsubscriptionsolana) | `subscriptionSolana` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/subscription/solana`](../../lcp/profiles/mpp-subscription-solana.md) |
 | [`mpp/subscription/stripe`](#mppsubscriptionstripe) | `subscriptionStripe` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no | [`mpp/subscription/stripe`](../../lcp/profiles/mpp-subscription-stripe.md) |
-| [`mpp/subscription/tempo`](#mppsubscriptiontempo) | `subscriptionTempo` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes |  |
+| [`mpp/subscription/tempo`](#mppsubscriptiontempo) | `subscriptionTempo` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/evm-tempo`](../../lcp/profiles/mpp-session-evm-tempo.md) |
 
 ## `spend-permissions`
 
@@ -112,7 +112,7 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | [`x402/exact/eip155/permit2`](#x402exacteip155permit2) | `exactPermit2` from `@integraledger/lcp/x402` | `full` | no | `native-field` | yes | yes | [`x402/exact/eip155/permit2`](../../lcp/profiles/x402-exact-eip155-permit2.md) |
 | [`x402/exact/hedera`](#x402exacthedera) | `exactHedera` from `@integraledger/lcp/hedera` | `full` | yes | `native-field` | yes | yes | [`x402/exact/hedera`](../../lcp/profiles/x402-exact-hedera.md) |
 | [`x402/exact/hedera/transfer-executor`](#x402exacthederatransfer-executor) | `exactHederaExecutor` from `@integraledger/lcp/hedera` | `none` | no | `http-advisory` | no | no | [`x402/exact/hedera`](../../lcp/profiles/x402-exact-hedera.md) |
-| [`x402/exact/lnbtc/payment-hash`](#x402exactlnbtcpayment-hash) | `exactLnbtcPaymentHash` from `@integraledger/lcp/lightning` | `none` | yes | `native-field` | no | no |  |
+| [`x402/exact/lnbtc/payment-hash`](#x402exactlnbtcpayment-hash) | `exactLnbtcPaymentHash` from `@integraledger/lcp/lightning` | `none` | yes | `native-field` | no | no | [`x402/exact/lnbtc/payment-hash`](../../lcp/profiles/x402-exact-lnbtc-payment-hash.md) |
 | [`x402/exact/near`](#x402exactnear) | `exactNear` from `@integraledger/lcp/near` | `full` | yes | `native-field` | yes | yes | [`x402/exact/near/memo`](../../lcp/profiles/x402-exact-near-memo.md) |
 | [`x402/exact/polkadot/lcp-assets-remark`](#x402exactpolkadotlcp-assets-remark) | `exactPolkadotRemark` from `@integraledger/lcp/polkadot` | `full` | yes | `native-field` | yes | yes | [`x402/exact/polkadot/lcp-assets-remark`](../../lcp/profiles/x402-exact-polkadot-lcp-assets-remark.md) |
 | [`x402/exact/solana`](#x402exactsolana) | `exactSvm` from `@integraledger/lcp/x402-exact-solana` | `full` | yes | `native-field` | yes | yes | [`x402/exact/solana`](../../lcp/profiles/x402-exact-solana.md) |
@@ -422,7 +422,7 @@ For each pairing, where H rides, from its data's `carrier`: `signed`, the field 
 
 **Where H rides:** nothing the payer signs carries H.
 
-**What it proves:** Before this payment was taken, an account signed an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>; this shows neither that the account is the payer nor what the agreement moved. The request whose payment echoed this ATR's hash in the legalContext entry of x402's extensions was signed with an HTTP message signature key registered with Cloudflare, which Cloudflare verifies, billing that key's registered identity off chain; no public ledger records the payment. This does not show that amount, asset or timing match the ATR's content.
+**What it proves:** The request whose payment echoed this ATR's hash in the legalContext entry of x402's extensions was signed with an HTTP message signature key registered with Cloudflare, which Cloudflare verifies, billing that key's registered identity off chain. The echoed hash only locates the sale: the pairing follows no agreement, and no public ledger records the payment. This does not show that amount, asset or timing match the ATR's content.
 
 ### `x402/batch-settlement/eip155`
 

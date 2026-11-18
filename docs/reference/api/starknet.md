@@ -342,7 +342,7 @@ answers, and the outside execution as presented, for `presented`.
 
 ##### complete()
 
-> **complete**(`signature`): [`Refusal`](index.md#refusal) \| `StarknetPayment`
+> **complete**(`signature`): [`Refusal`](index.md#refusal) \| [`StarknetPayment`](index.md#starknetpayment)
 
 Takes the signature as 1 to 32 felts.
 
@@ -354,7 +354,7 @@ Takes the signature as 1 to 32 felts.
 
 ###### Returns
 
-[`Refusal`](index.md#refusal) \| `StarknetPayment`
+[`Refusal`](index.md#refusal) \| [`StarknetPayment`](index.md#starknetpayment)
 
 ## Type Aliases
 
@@ -377,6 +377,21 @@ The read's marks, lowest first: `ACCEPTED_ON_L2`, the newest block (`latest`), a
 ### StarknetNetwork
 
 > **StarknetNetwork** = `"starknet:SN_MAIN"` \| `"starknet:SN_SEPOLIA"`
+
+***
+
+### StarknetRefRead
+
+> **StarknetRefRead** = [`StarknetRef`](#starknetref) & `object`
+
+The reference `status` reads with: the read keys, H, which the caller adds, and the transaction a settler named.
+
+#### Type Declaration
+
+| Name | Type |
+| ------ | ------ |
+| `h` | [`AtrHash`](index.md#atrhash) |
+| `transaction?` | [`Felt`](#felt) |
 
 ***
 
@@ -410,7 +425,7 @@ sn_keccak("Transfer"): the first key of a SNIP-2 token's `Transfer` event.
 
 ### exactStarknet
 
-> `const` **exactStarknet**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`, `given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`, `act?`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`StarknetUnsigned`](#starknetunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/starknet"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`, `given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`StarknetRef`](#starknetref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`StarknetStatus`](#starknetstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactStarknet**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`, `given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`, `act?`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`StarknetUnsigned`](#starknetunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/starknet"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](aptos.md#x402read); `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`, `given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`StarknetRef`](#starknetref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`StarknetStatus`](#starknetstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/starknet`. The payee broadcasts (`broadcaster` answers `"payee"`): the settler executes the outside
 execution the payer signed as its named `Caller`; `status` reads the nonce on the payer's account and finds the
@@ -674,9 +689,9 @@ On `settled` the answer states `presented`.
 
 | Parameter | Type |
 | ------ | ------ |
-| `ref` | `StarknetRefRead` |
+| `ref` | [`StarknetRefRead`](#starknetrefread) |
 | `reader` | [`StarknetReader`](#starknetreader) |
-| `query` | [`StatusQuery`](index.md#statusquery)\<`StarknetRefRead`, `bigint`, [`StarknetMark`](#starknetmark), [`StarknetCursor`](#starknetcursor)\> |
+| `query` | [`StatusQuery`](index.md#statusquery)\<[`StarknetRefRead`](#starknetrefread), `bigint`, [`StarknetMark`](#starknetmark), [`StarknetCursor`](#starknetcursor)\> |
 
 #### Returns
 
@@ -687,3 +702,21 @@ On `settled` the answer states `presented`.
 ### Broadcaster
 
 Re-exports [Broadcaster](index.md#broadcaster)
+
+***
+
+### StarknetPayment
+
+Re-exports [StarknetPayment](index.md#starknetpayment)
+
+***
+
+### X402Payment
+
+Re-exports [X402Payment](index.md#x402payment)
+
+***
+
+### X402Read
+
+Re-exports [X402Read](aptos.md#x402read)

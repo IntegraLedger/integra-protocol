@@ -139,6 +139,24 @@ A wallet's state as the index holds it (`walletStates`): status, code hash, sequ
 
 ***
 
+### TvmChoice
+
+#### Properties
+
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-accepted"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) | - |
+| <a id="property-attachnanotons"></a> `attachNanotons` | `bigint` | The value attached to the outgoing message, above `forwardTonAmount`. |
+| <a id="property-jettonwallet"></a> `jettonWallet` | `string` | The payer's Jetton wallet for `asset`, raw (`get_wallet_address` on the master), on a workchain as `wallet` is. |
+| <a id="property-now"></a> `now` | `number` | Seconds since the epoch. |
+| <a id="property-required"></a> `required` | [`PaymentRequired`](x402.md#paymentrequired) | - |
+| <a id="property-seqno-1"></a> `seqno` | `number` | - |
+| <a id="property-stateinit"></a> `stateInit?` | `string` \| [`TonCell`](#toncell) | The wallet's state init, for a wallet not yet deployed: a cell, or a base64 BoC of one root cell. It must be exactly one `StateInit`, as TON reads a message's state init: no bit or reference after its fields, at most 1,024 cells read, and at most two Merkle proofs or updates nested in it. It must be one TON deploys a wallet from at the configuration of the option's network: no libraries dictionary (global version 15), a fixed prefix length of at most ConfigParam 43's `max_acc_fixed_prefix_length`, 8 (global version 10), and a representation hash that is `wallet`'s 256-bit address, except the first fixed-prefix-length bits, which may differ, since TON deploys an account only from a state init whose hash is its address (`check_in_msg_state_hash`). Else `x402/option-malformed`. The settlement message carries it as its `init` exactly as given. |
+| <a id="property-wallet"></a> `wallet` | `string` | The payer's W5 wallet, raw, on a workchain TON's configuration holds (-1 or 0; else `x402/option-malformed`). |
+| <a id="property-walletid"></a> `walletId` | `number` | `get_subwallet_id`. |
+
+***
+
 ### TvmReader
 
 Bounded, read-only calls against one network's TON Center v3 endpoint. Every failure rejects, for example with
@@ -306,15 +324,15 @@ the option the payment answers, for both party tests and no search key. It names
 | ------ | ------ | ------ |
 | <a id="property-codehash-1"></a> `codeHash?` | `` `0x${string}` `` | The representation hash of the code in the state init the payment carries; absent where it carries none. |
 | <a id="property-h"></a> `h` | `` `0x${string}` `` | H, which the request's Jetton transfer carries: the search for H looks for it in every run of the wallet. |
-| <a id="property-jettonwallet"></a> `jettonWallet` | `string` | The payer's Jetton wallet, raw: the address TON sends the W5 request's one message to. |
+| <a id="property-jettonwallet-1"></a> `jettonWallet` | `string` | The payer's Jetton wallet, raw: the address TON sends the W5 request's one message to. |
 | <a id="property-network-1"></a> `network` | `` `tvm:${number}` `` | - |
 | <a id="property-payee"></a> `payee` | `string` | - |
 | <a id="property-requestbodyhash"></a> `requestBodyHash` | `` `0x${string}` `` | The representation hash of the signed W5 request: the whole body of the message to the payer's wallet, its signature and any bit or reference after `has_other_actions` 0, which W5 does not read, included. |
-| <a id="property-seqno-1"></a> `seqno` | `number` | The sequence number the request was signed against: the single-use value. |
+| <a id="property-seqno-2"></a> `seqno` | `number` | The sequence number the request was signed against: the single-use value. |
 | <a id="property-signedhash"></a> `signedHash` | `` `0x${string}` `` | The representation hash of the W5 request with its signature removed, its last 512 bits: the hash the wallet's key signs. It holds the members of the payment presented, the request the payer signed, whole, its signature apart. |
 | <a id="property-transferbodyhash"></a> `transferBodyHash` | `` `0x${string}` `` | The representation hash of the Jetton transfer body the W5 request sends. |
 | <a id="property-validuntil"></a> `validUntil` | `number` | - |
-| <a id="property-wallet"></a> `wallet` | `string` | The payer's W5 wallet, raw: the address TON sends the settlement message to. |
+| <a id="property-wallet-1"></a> `wallet` | `string` | The payer's W5 wallet, raw: the address TON sends the settlement message to. |
 
 ***
 
@@ -349,7 +367,7 @@ between were read.
 
 ##### complete()
 
-> **complete**(`signature`): [`Refusal`](index.md#refusal) \| `TvmPayment`
+> **complete**(`signature`): [`Refusal`](index.md#refusal) \| [`TvmPayment`](index.md#tvmpayment)
 
 Takes the 64-byte Ed25519 signature.
 
@@ -361,7 +379,7 @@ Takes the 64-byte Ed25519 signature.
 
 ###### Returns
 
-[`Refusal`](index.md#refusal) \| `TvmPayment`
+[`Refusal`](index.md#refusal) \| [`TvmPayment`](index.md#tvmpayment)
 
 ## Type Aliases
 
@@ -370,6 +388,12 @@ Takes the 64-byte Ed25519 signature.
 > **TonAccountStatus** = `"active"` \| `"uninit"` \| `"nonexist"` \| `"frozen"`
 
 An account's status as TON Center v3 states it.
+
+***
+
+### TvmMark
+
+> **TvmMark** = `"confirmed"` \| `"finalized"`
 
 ***
 
@@ -383,7 +407,7 @@ tvm:<global_id>: tvm:-239 mainnet, tvm:-3 testnet.
 
 ### TvmStatus
 
-> **TvmStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `TvmMark`, [`TvmSearch`](#tvmsearch)\>
+> **TvmStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, [`TvmMark`](#tvmmark), [`TvmSearch`](#tvmsearch)\>
 
 The answer of `tvmStatus`, as the profile `read-status` gives it: each transfer of what moved named by the W5
 transaction and, as its `place`, the hash of the Jetton `transfer` message that made it. Its marks are
@@ -394,7 +418,7 @@ block's sequence number, and the search position a `TvmSearch`.
 
 ### exactTvm
 
-> `const` **exactTvm**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TvmUnsigned`](#tvmunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/tvm"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TvmRef`](#tvmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`TvmStatus`](#tvmstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactTvm**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TvmUnsigned`](#tvmunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/tvm"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](aptos.md#x402read); `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TvmRef`](#tvmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`TvmStatus`](#tvmstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/tvm`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator sends the request
 the payer's W5 wallet signed; `status` reads the wallet's transaction and the Jetton transfers it led to.
@@ -631,7 +655,7 @@ not passed.
 | ------ | ------ |
 | `ref` | [`TvmRef`](#tvmref) |
 | `reader` | [`TvmReader`](#tvmreader) |
-| `query` | [`StatusQuery`](index.md#statusquery)\<[`TvmRef`](#tvmref), `bigint`, `TvmMark`, [`TvmSearch`](#tvmsearch)\> |
+| `query` | [`StatusQuery`](index.md#statusquery)\<[`TvmRef`](#tvmref), `bigint`, [`TvmMark`](#tvmmark), [`TvmSearch`](#tvmsearch)\> |
 
 #### Returns
 
@@ -642,3 +666,21 @@ not passed.
 ### Broadcaster
 
 Re-exports [Broadcaster](index.md#broadcaster)
+
+***
+
+### TvmPayment
+
+Re-exports [TvmPayment](index.md#tvmpayment)
+
+***
+
+### X402Payment
+
+Re-exports [X402Payment](index.md#x402payment)
+
+***
+
+### X402Read
+
+Re-exports [X402Read](aptos.md#x402read)

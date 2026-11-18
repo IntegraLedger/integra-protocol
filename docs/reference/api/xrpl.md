@@ -425,7 +425,7 @@ The read of `mpp/charge/xrpl`: `xrplPaymentStatus` of MPP's `InvoiceID`, H itsel
 | ------ | ------ |
 | `ref` | [`XrplRef`](#xrplref) |
 | `reader` | [`XrplReader`](#xrplreader) |
-| `query` | `XrplQuery`\<[`XrplRef`](#xrplref)\> |
+| `query` | [`XrplQuery`](mpp.md#xrplquery)\<[`XrplRef`](#xrplref)\> |
 
 #### Returns
 
@@ -445,7 +445,7 @@ The read of an in-band opening, `mpp/session/xrpl`: `xrplPaymentStatus` of the o
 | ------ | ------ |
 | `ref` | [`XrplRef`](#xrplref) |
 | `reader` | [`XrplReader`](#xrplreader) |
-| `query` | `XrplQuery`\<[`XrplRef`](#xrplref)\> |
+| `query` | [`XrplQuery`](mpp.md#xrplquery)\<[`XrplRef`](#xrplref)\> |
 
 #### Returns
 
@@ -465,7 +465,7 @@ The read of `x402/exact/xrpl`: `xrplPaymentStatus` of x402's `InvoiceID`, the SH
 | ------ | ------ |
 | `ref` | [`XrplRef`](#xrplref) |
 | `reader` | [`XrplReader`](#xrplreader) |
-| `query` | `XrplQuery`\<[`XrplRef`](#xrplref)\> |
+| `query` | [`XrplQuery`](mpp.md#xrplquery)\<[`XrplRef`](#xrplref)\> |
 
 #### Returns
 
@@ -584,7 +584,7 @@ channel's entry, so on every `settled` answer.
 | ------ | ------ |
 | `ref` | [`XrplChannelRef`](#xrplchannelref) |
 | `reader` | [`XrplReader`](#xrplreader) |
-| `query` | `XrplQuery`\<[`XrplChannelRef`](#xrplchannelref)\> |
+| `query` | [`XrplQuery`](mpp.md#xrplquery)\<[`XrplChannelRef`](#xrplchannelref)\> |
 
 #### Returns
 
@@ -609,3 +609,9 @@ The bytes a channel claim signs: `CLM\0` ‖ channel id (32 bytes) ‖ drops as 
 #### Returns
 
 `Uint8Array`\<`ArrayBuffer`\> \| [`Refusal`](index.md#refusal)
+
+## References
+
+### XrplQuery
+
+Re-exports [XrplQuery](mpp.md#xrplquery)

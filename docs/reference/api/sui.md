@@ -249,7 +249,7 @@ What `build` hands the payer's wallet, and how it checks what comes back.
 
 ##### complete()
 
-> **complete**(`signed`, `sent?`): [`Refusal`](index.md#refusal) \| `SuiPaymentPayload`
+> **complete**(`signed`, `sent?`): [`Refusal`](index.md#refusal) \| [`SuiPaymentPayload`](index.md#suipaymentpayload)
 
 The payment, once the signed transaction carries H. `sent` is the transaction the client sent to the option's gas
 station (`extra.gasStation`), base64 of its `TransactionData`: on the sponsored path it is required, and the signed
@@ -266,9 +266,15 @@ the amount or remove the lapse under a valid H.
 
 ###### Returns
 
-[`Refusal`](index.md#refusal) \| `SuiPaymentPayload`
+[`Refusal`](index.md#refusal) \| [`SuiPaymentPayload`](index.md#suipaymentpayload)
 
 ## Type Aliases
+
+### SuiMark
+
+> **SuiMark** = `"executed"` \| `"final"`
+
+***
 
 ### SuiNetwork
 
@@ -278,7 +284,7 @@ the amount or remove the lapse under a valid H.
 
 ### SuiStatus
 
-> **SuiStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `SuiMark`, `bigint`\>
+> **SuiStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, [`SuiMark`](#suimark), `bigint`\>
 
 The answer of `suiStatus`, as the profile `read-status` gives it, and on `settled` whether its act is the payment
 presented. Positions are checkpoint sequence numbers, and so is the search's position. The one mark a query can ask
@@ -289,7 +295,7 @@ is the state below it that the endpoint tells apart and no query names.
 
 ### exactSui
 
-> `const` **exactSui**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SuiUnsigned`](#suiunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/sui"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SuiRef`](#suiref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`SuiStatus`](#suistatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactSui**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SuiUnsigned`](#suiunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/sui"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](aptos.md#x402read); `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SuiRef`](#suiref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`SuiStatus`](#suistatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/sui`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator executes the
 transaction the payer signed; `status` reads it by the digest the signed bytes fix.
@@ -421,7 +427,7 @@ unreadable `transport`; an answer out of the reader's form `unparseable`; transa
 | ------ | ------ |
 | `ref` | [`SuiRef`](#suiref) & `object` |
 | `reader` | [`SuiReader`](#suireader) |
-| `query` | [`StatusQuery`](index.md#statusquery)\<[`SuiRef`](#suiref) & `object`, `bigint`, `SuiMark`, `bigint`\> |
+| `query` | [`StatusQuery`](index.md#statusquery)\<[`SuiRef`](#suiref) & `object`, `bigint`, [`SuiMark`](#suimark), `bigint`\> |
 
 #### Returns
 
@@ -432,3 +438,15 @@ unreadable `transport`; an answer out of the reader's form `unparseable`; transa
 ### Broadcaster
 
 Re-exports [Broadcaster](index.md#broadcaster)
+
+***
+
+### SuiPaymentPayload
+
+Re-exports [SuiPaymentPayload](index.md#suipaymentpayload)
+
+***
+
+### X402Read
+
+Re-exports [X402Read](aptos.md#x402read)

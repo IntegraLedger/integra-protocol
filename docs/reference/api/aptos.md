@@ -185,7 +185,7 @@ header, and `oldestVersion`, its `X-Aptos-Ledger-Oldest-Version` header.
 
 ##### complete()
 
-> **complete**(`signed`): [`Refusal`](index.md#refusal) \| `AptosPaymentPayload`
+> **complete**(`signed`): [`Refusal`](index.md#refusal) \| [`AptosPaymentPayload`](index.md#aptospaymentpayload)
 
 The payment of the signed transaction, once `reference` reads its keys; a transaction `reference` refuses gets the
 code `reference` gives it, such as `aptos/chain-mismatch` for a transaction signed for a chain other than the
@@ -200,7 +200,22 @@ option's network.
 
 ###### Returns
 
-[`Refusal`](index.md#refusal) \| `AptosPaymentPayload`
+[`Refusal`](index.md#refusal) \| [`AptosPaymentPayload`](index.md#aptospaymentpayload)
+
+***
+
+### X402Read
+
+What a pairing's `read` returns: the hash, the link, the agreement URL when the document carries one, the offer.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-agreement"></a> `agreement?` | `string` |
+| <a id="property-h"></a> `h` | `` `0x${string}` `` |
+| <a id="property-link"></a> `link` | `string` |
+| <a id="property-offer"></a> `offer` | [`X402Offer`](x402.md#x402offer) |
 
 ## Type Aliases
 
@@ -223,7 +238,7 @@ endpoint serves as committed, which is final.
 
 ### exactAptos
 
-> `const` **exactAptos**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`AptosUnsigned`](#aptosunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/aptos"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`AptosRef`](#aptosref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`AptosStatus`](#aptosstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactAptos**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`AptosUnsigned`](#aptosunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/aptos"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](#x402read); `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`AptosRef`](#aptosref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`AptosStatus`](#aptosstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/aptos`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator submits the
 transaction the payer signed and names its hash; `status` finds it by that hash, else by the payer's sender and
@@ -344,6 +359,12 @@ ASCII letters, digits and underscores, else `aptos/tx-malformed`.
 [`Refusal`](index.md#refusal) \| [`AptosInstrument`](#aptosinstrument)
 
 ## References
+
+### AptosPaymentPayload
+
+Re-exports [AptosPaymentPayload](index.md#aptospaymentpayload)
+
+***
 
 ### Broadcaster
 

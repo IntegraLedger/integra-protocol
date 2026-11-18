@@ -103,7 +103,7 @@ transactions of a block, each in the state after the block named. Every failure 
 
 | Property | Modifier | Type | Inherited from |
 | ------ | ------ | ------ | ------ |
-| <a id="property-network"></a> `network` | `readonly` | `` `eip155:${string}` `` \| `HederaNetwork` | [`EvmSearchReader`](mpp.md#evmsearchreader).[`network`](mpp.md#property-network) |
+| <a id="property-network"></a> `network` | `readonly` | `` `eip155:${string}` `` \| [`HederaNetwork`](evm.md#hederanetwork) | [`EvmSearchReader`](mpp.md#evmsearchreader).[`network`](mpp.md#property-network-1) |
 
 #### Methods
 

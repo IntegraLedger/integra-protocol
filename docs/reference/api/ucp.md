@@ -52,7 +52,7 @@ The shape of a UCP pairing: its id, data, binding record and codec, over the che
 | Type Parameter |
 | ------ |
 | `Id` *extends* `string` |
-| `O` *extends* `Option` |
+| `O` *extends* [`Option`](#option) |
 
 #### Properties
 
@@ -272,6 +272,12 @@ A checkout's own `id`, 1–256 characters.
 | <a id="property-type"></a> `type` | `string` |
 | <a id="property-url"></a> `url` | `string` |
 
+***
+
+### Option
+
+> **Option** = [`CheckoutOption`](#checkoutoption) \| [`BookingOption`](#bookingoption)
+
 ## Variables
 
 ### agentSigned
@@ -395,7 +401,7 @@ The binding slot: the checkouts or bookings this ATR was minted for, each by its
 
 | Type Parameter |
 | ------ |
-| `O` *extends* `Option` |
+| `O` *extends* [`Option`](#option) |
 
 #### Parameters
 

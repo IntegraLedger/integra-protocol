@@ -241,6 +241,28 @@ The signed `Transaction`, base64.
 
 ***
 
+### HederaVoucherTypedData
+
+The EIP-712 voucher a Hedera session's payer signs: `Voucher(bytes32 channelId,uint128 cumulativeAmount)`.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-domain"></a> `domain` | `object` |
+| `domain.chainId` | `295` \| `296` |
+| `domain.name` | `"Hedera Stream Channel"` |
+| `domain.verifyingContract` | `` `0x${string}` `` |
+| `domain.version` | `"1"` |
+| <a id="property-message"></a> `message` | `object` |
+| `message.channelId` | `` `0x${string}` `` |
+| `message.cumulativeAmount` | `bigint` |
+| <a id="property-primarytype"></a> `primaryType` | `"Voucher"` |
+| <a id="property-types"></a> `types` | `object` |
+| `types.Voucher` | \[\{ `name`: `"channelId"`; `type`: `"bytes32"`; \}, \{ `name`: `"cumulativeAmount"`; `type`: `"uint128"`; \}\] |
+
+***
+
 ### MirrorEntry
 
 The Mirror Node's `Transaction` entry: the fields read here.
@@ -309,7 +331,7 @@ that finds that transaction when no one reports it.
 | ------ | ------ |
 | <a id="property-channel"></a> `channel` | [`Hex`](evm.md#hex) |
 | <a id="property-escrow-1"></a> `escrow` | [`Hex`](evm.md#hex) |
-| <a id="property-network-3"></a> `network` | `HederaNetwork` |
+| <a id="property-network-3"></a> `network` | [`HederaNetwork`](#hederanetwork) |
 | <a id="property-phase"></a> `phase` | `"close"` |
 | <a id="property-search"></a> `search` | `object` |
 | `search.address` | [`Hex`](evm.md#hex) |
@@ -321,6 +343,18 @@ that finds that transaction when no one reports it.
 ### HederaNetwork
 
 > **HederaNetwork** = `"hedera:mainnet"` \| `"hedera:testnet"` \| `"hedera:previewnet"` \| `"hedera:devnet"`
+
+***
+
+### HederaQuery
+
+> **HederaQuery**\<`Ref`\> = [`StatusQuery`](index.md#statusquery)\<`Ref`, `string`, `"consensus"`, `string`\>
+
+#### Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Ref` |
 
 ***
 
@@ -352,7 +386,7 @@ answer of `hederaStatus` states `presented` (the profile `x402/exact/hedera`, ru
 
 ### exactHedera
 
-> `const` **exactHedera**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaUnsigned`](#hederaunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/hedera"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaRef`](#hederaref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`HederaStatus`](#hederastatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactHedera**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaUnsigned`](#hederaunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/hedera"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](aptos.md#x402read); `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaRef`](#hederaref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`HederaStatus`](#hederastatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/hedera`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's facilitator, the
 transaction's fee payer, adds its signature to the transaction the payer signed and submits it; `status` reads it by
@@ -362,7 +396,7 @@ its transaction id.
 
 ### exactHederaExecutor
 
-> `const` **exactHederaExecutor**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `request`: \{ `amount`: `string`; `asset`: `string`; `executors`: readonly `string`[]; `kind`: `"hedera-executor"`; `network`: [`HederaNetwork`](#hederanetwork); `payTo`: `string`; `validBefore`: `number`; \}; `complete`: [`Refusal`](index.md#refusal) \| `ExecutorPaymentPayload`; \}\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/hedera/transfer-executor"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`ExecutorRef`](#executorref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`HederaStatus`](#hederastatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactHederaExecutor**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `request`: \{ `amount`: `string`; `asset`: `string`; `executors`: readonly `string`[]; `kind`: `"hedera-executor"`; `network`: [`HederaNetwork`](#hederanetwork); `payTo`: `string`; `validBefore`: `number`; \}; `complete`: [`Refusal`](index.md#refusal) \| [`ExecutorPaymentPayload`](index.md#executorpaymentpayload); \}\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/hedera/transfer-executor"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](aptos.md#x402read); `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`ExecutorRef`](#executorref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`HederaStatus`](#hederastatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/hedera/transfer-executor`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's
 facilitator submits the executor's transfer under the authorization the payer signed, and names its transaction;
@@ -415,7 +449,7 @@ else), or whose `idDigest` is not `0x` and 64 hex digits, is
 | ------ | ------ |
 | `ref` | [`ExecutorRef`](#executorref) & `object` |
 | `reader` | [`HederaReader`](#hederareader) |
-| `query` | `HederaQuery`\<[`ExecutorRef`](#executorref) & `object`\> |
+| `query` | [`HederaQuery`](#hederaquery)\<[`ExecutorRef`](#executorref) & `object`\> |
 
 #### Returns
 
@@ -482,7 +516,7 @@ facts. A `settled` answer states `presented`.
 | ------ | ------ |
 | `ref` | [`HederaRef`](#hederaref) |
 | `reader` | [`HederaReader`](#hederareader) |
-| `query` | `HederaQuery`\<[`HederaRef`](#hederaref)\> |
+| `query` | [`HederaQuery`](#hederaquery)\<[`HederaRef`](#hederaref)\> |
 
 #### Returns
 
@@ -492,7 +526,7 @@ facts. A `settled` answer states `presented`.
 
 ### hederaVoucher()
 
-> **hederaVoucher**(`c`, `cumulative`): `HederaVoucherTypedData`
+> **hederaVoucher**(`c`, `cumulative`): [`HederaVoucherTypedData`](#hederavouchertypeddata)
 
 The voucher for `cumulative` on a channel, under the escrow's domain. Throws TypeError when the channel id is not a
 32-byte hash, the escrow not `0x` and 40 hex digits, the chain id not 295 or 296, or `cumulative` not a bigint that
@@ -510,7 +544,7 @@ fits a uint128.
 
 #### Returns
 
-`HederaVoucherTypedData`
+[`HederaVoucherTypedData`](#hederavouchertypeddata)
 
 ***
 
@@ -556,6 +590,30 @@ Re-exports [Broadcaster](index.md#broadcaster)
 
 ***
 
+### ExecutorPayload
+
+Re-exports [ExecutorPayload](index.md#executorpayload)
+
+***
+
+### ExecutorPaymentPayload
+
+Re-exports [ExecutorPaymentPayload](index.md#executorpaymentpayload)
+
+***
+
 ### FETCHED
 
 Re-exports [FETCHED](index.md#fetched)
+
+***
+
+### X402Payment
+
+Re-exports [X402Payment](index.md#x402payment)
+
+***
+
+### X402Read
+
+Re-exports [X402Read](aptos.md#x402read)

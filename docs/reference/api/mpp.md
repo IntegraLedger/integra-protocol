@@ -15,6 +15,27 @@ key under which a pairing's `fetchPresented` writes the seller's read onto a cre
 
 ## Interfaces
 
+### ChargeRefBase
+
+The reference fields every logs-searching read takes.
+
+#### Extended by
+
+- [`MppEip3009Ref`](#mppeip3009ref)
+- [`MppPermit2Ref`](#mpppermit2ref)
+- [`MppSessionOpeningRef`](#mppsessionopeningref)
+
+#### Properties
+
+| Property | Modifier | Type | Description |
+| ------ | ------ | ------ | ------ |
+| <a id="property-network"></a> `network` | `readonly` | `` `eip155:${string}` `` | - |
+| <a id="property-payee"></a> `payee` | `readonly` | `string` | - |
+| <a id="property-payer"></a> `payer` | `readonly` | `` `0x${string}` `` | - |
+| <a id="property-transaction"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search, as the landed form gives it; never needed. |
+
+***
+
 ### EvmLogEntry
 
 A log as `eth_getLogs` gives it: the log, the transaction that emitted it, its block and its index in that block.
@@ -53,7 +74,7 @@ failure rejects, as `EvmReader`'s do: a range the endpoint refuses rejects, and 
 
 | Property | Modifier | Type | Inherited from |
 | ------ | ------ | ------ | ------ |
-| <a id="property-network"></a> `network` | `readonly` | `` `eip155:${string}` `` \| `HederaNetwork` | [`EvmReader`](evm.md#evmreader).[`network`](evm.md#property-network-4) |
+| <a id="property-network-1"></a> `network` | `readonly` | `` `eip155:${string}` `` \| [`HederaNetwork`](evm.md#hederanetwork) | [`EvmReader`](evm.md#evmreader).[`network`](evm.md#property-network-4) |
 
 #### Methods
 
@@ -203,6 +224,24 @@ none.
 
 ***
 
+### GatewayChargeChoice
+
+The buyer's inputs to the Gateway build: the chosen challenge; `sourceNetwork`, the CAIP-2 network the burn intent
+spends from, for which the next two were read; the `burnIntentExpirationHeight` Circle Gateway's `GET /v1/info`
+serves for that network; and that network's Gateway Wallet's `withdrawalDelay()`, in blocks, each of the two a
+decimal string below 2^256.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-burnintentexpirationheight"></a> `burnIntentExpirationHeight` | `string` |
+| <a id="property-challenge"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` |
+| <a id="property-sourcenetwork"></a> `sourceNetwork` | `string` |
+| <a id="property-withdrawaldelay"></a> `withdrawalDelay` | `string` |
+
+***
+
 ### GatewaySaltInput
 
 The inputs of `usdc`'s Gateway salt, every one a string.
@@ -220,8 +259,47 @@ The inputs of `usdc`'s Gateway salt, every one a string.
 | <a id="property-recipient"></a> `recipient` | `string` |
 | <a id="property-requesthash"></a> `requestHash` | `` `0x${string}` `` |
 | <a id="property-sourcedepositor"></a> `sourceDepositor` | `string` |
-| <a id="property-sourcenetwork"></a> `sourceNetwork` | `string` |
+| <a id="property-sourcenetwork-1"></a> `sourceNetwork` | `string` |
 | <a id="property-sourcesigner"></a> `sourceSigner` | `string` |
+
+***
+
+### HederaSessionUnsigned
+
+A Hedera escrow channel opening for the payer's signer: two calls broadcast in order, and the zero voucher to sign.
+No pairing's `build` in this package answers this kind.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-request"></a> `request` | `object` |
+| `request.calls` | `object`[] |
+| `request.chainId` | `295` \| `296` |
+| `request.kind` | `"hedera-session-open"` |
+| `request.voucher` | [`HederaVoucherTypedData`](hedera.md#hederavouchertypeddata) |
+
+#### Methods
+
+##### complete()
+
+> **complete**(`signed`): [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential)
+
+The opening's credential for the broadcast transaction's hash and the zero voucher's signature. A credential over
+the credential size bound, 64 KiB, its echoed challenge included, is `mpp/credential-malformed`, as `bound` refuses
+it.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `signed` | \{ `openTx`: `` `0x${string}` ``; `signature`: `` `0x${string}` ``; \} |
+| `signed.openTx` | `` `0x${string}` `` |
+| `signed.signature` | `` `0x${string}` `` |
+
+###### Returns
+
+[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential)
 
 ***
 
@@ -233,7 +311,7 @@ The reader of a stock session: the network's JSON-RPC relay, and three reads of 
 
 | Property | Modifier | Type |
 | ------ | ------ | ------ |
-| <a id="property-network-1"></a> `network` | `readonly` | `HederaNetwork` |
+| <a id="property-network-2"></a> `network` | `readonly` | [`HederaNetwork`](#hederanetwork) |
 
 #### Methods
 
@@ -330,9 +408,9 @@ is the caller's.
 | ------ | ------ |
 | <a id="property-channel"></a> `channel` | `` `0x${string}` `` |
 | <a id="property-escrow"></a> `escrow` | `` `0x${string}` `` |
-| <a id="property-network-2"></a> `network` | `HederaNetwork` |
-| <a id="property-payee"></a> `payee` | `` `0x${string}` `` |
-| <a id="property-transaction"></a> `transaction` | `` `0x${string}` `` |
+| <a id="property-network-3"></a> `network` | [`HederaNetwork`](#hederanetwork) |
+| <a id="property-payee-1"></a> `payee` | `` `0x${string}` `` |
+| <a id="property-transaction-1"></a> `transaction` | `` `0x${string}` `` |
 
 ***
 
@@ -353,7 +431,7 @@ A push credential with a landed EVM transaction, its block and its receipt's log
 | `[FETCHED].blockNumber` | `bigint` | - |
 | `[FETCHED].logs` | readonly [`EvmLog`](evm.md#evmlog)[] | - |
 | `[FETCHED].transaction` | `` `0x${string}` `` | - |
-| <a id="property-challenge"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` | [`MppCredential`](#mppcredential).[`challenge`](#property-challenge-3) |
+| <a id="property-challenge-1"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` | [`MppCredential`](#mppcredential).[`challenge`](#property-challenge-4) |
 | <a id="property-payload"></a> `payload` | `object` | [`MppCredential`](#mppcredential).[`payload`](#property-payload-1) |
 | <a id="property-source"></a> `source?` | `string` | [`MppCredential`](#mppcredential).[`source`](#property-source-1) |
 
@@ -367,11 +445,11 @@ The buyer's inputs to `build`: the paying account, the node, the valid start, th
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
-| <a id="property-challenge-1"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` | - |
+| <a id="property-challenge-2"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` | - |
 | <a id="property-decimals"></a> `decimals?` | `number` | A token's decimals, written as the token list's `expected_decimals`. |
 | <a id="property-maxfee-1"></a> `maxFee` | `bigint` | The most the fee payer pays, in tinybars. |
 | <a id="property-node"></a> `node` | `string` | The node the body is for, `shard.realm.num`. |
-| <a id="property-payer"></a> `payer` | `string` | The buyer's account, `shard.realm.num`: the one account the body debits. |
+| <a id="property-payer-1"></a> `payer` | `string` | The buyer's account, `shard.realm.num`: the one account the body debits. |
 | <a id="property-validstart"></a> `validStart` | `object` | - |
 | `validStart.nanos` | `number` | - |
 | `validStart.seconds` | `bigint` | - |
@@ -398,7 +476,7 @@ The body the buyer signs, and how its signature completes the credential.
 
 | Property | Type |
 | ------ | ------ |
-| <a id="property-request"></a> `request` | `object` |
+| <a id="property-request-1"></a> `request` | `object` |
 | `request.bodyBytes` | `Uint8Array`\<`ArrayBuffer`\> |
 | `request.kind` | `"hedera-body"` |
 
@@ -458,7 +536,7 @@ A challenge's auth-params after quoted-string unescaping. `request` and `opaque`
 | <a id="property-method"></a> `method` | `string` |
 | <a id="property-opaque"></a> `opaque?` | `string` |
 | <a id="property-realm-1"></a> `realm` | `string` |
-| <a id="property-request-1"></a> `request` | `string` |
+| <a id="property-request-2"></a> `request` | `string` |
 
 ***
 
@@ -476,7 +554,7 @@ challenge's id carries H; it compares no deal value.
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
-| <a id="property-challenge-2"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` | - |
+| <a id="property-challenge-3"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` | - |
 | <a id="property-from"></a> `from` | `` `0x${string}` `` | - |
 | <a id="property-now"></a> `now` | `number` | - |
 | <a id="property-spender"></a> `spender?` | `` `0x${string}` `` | permit2 only: the seller server's submitting address. |
@@ -501,7 +579,7 @@ naming the payer, where the method writes one; and the method's `payload`.
 
 | Property | Type |
 | ------ | ------ |
-| <a id="property-challenge-3"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` |
+| <a id="property-challenge-4"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` |
 | <a id="property-payload-1"></a> `payload` | `object` |
 | <a id="property-source-1"></a> `source?` | `string` |
 
@@ -513,7 +591,7 @@ The reference an MPP EIP-3009 charge's read takes; the pairing's `reference` wri
 
 #### Extends
 
-- `ChargeRefBase`
+- [`ChargeRefBase`](#chargerefbase)
 
 #### Properties
 
@@ -523,11 +601,11 @@ The reference an MPP EIP-3009 charge's read takes; the pairing's `reference` wri
 | `authorization.at` | `readonly` | `` `0x${string}` `` | - | - |
 | `authorization.deadline` | `readonly` | `string` | - | - |
 | `authorization.nonce` | `readonly` | `` `0x${string}` `` | - | - |
-| <a id="property-network-3"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | `ChargeRefBase.network` |
-| <a id="property-payee-1"></a> `payee` | `readonly` | `string` | - | `ChargeRefBase.payee` |
-| <a id="property-payer-1"></a> `payer` | `readonly` | `` `0x${string}` `` | - | `ChargeRefBase.payer` |
-| <a id="property-presented"></a> `presented` | `readonly` | `Signed` | The members of the payment presented: the token, `from`, `to`, `value` and `nonce`, lowercase, `value` in decimal. | - |
-| <a id="property-transaction-1"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search, as the landed form gives it; never needed. | `ChargeRefBase.transaction` |
+| <a id="property-network-4"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | [`ChargeRefBase`](#chargerefbase).[`network`](#property-network) |
+| <a id="property-payee-2"></a> `payee` | `readonly` | `string` | - | [`ChargeRefBase`](#chargerefbase).[`payee`](#property-payee) |
+| <a id="property-payer-2"></a> `payer` | `readonly` | `` `0x${string}` `` | - | [`ChargeRefBase`](#chargerefbase).[`payer`](#property-payer) |
+| <a id="property-presented"></a> `presented` | `readonly` | [`Signed`](#signed) | The members of the payment presented: the token, `from`, `to`, `value` and `nonce`, lowercase, `value` in decimal. | - |
+| <a id="property-transaction-2"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search, as the landed form gives it; never needed. | [`ChargeRefBase`](#chargerefbase).[`transaction`](#property-transaction) |
 
 ***
 
@@ -539,10 +617,10 @@ The reference the named-transaction read takes: the transaction the credential c
 
 | Property | Modifier | Type | Description |
 | ------ | ------ | ------ | ------ |
-| <a id="property-network-4"></a> `network` | `readonly` | `` `eip155:${string}` `` | - |
-| <a id="property-payee-2"></a> `payee` | `readonly` | `string` | - |
-| <a id="property-payer-2"></a> `payer` | `readonly` | `` `0x${string}` `` | - |
-| <a id="property-transaction-2"></a> `transaction` | `readonly` | `` `0x${string}` `` | The transaction the credential names (`hash`) or carries (`transaction`, by the hash of its signed bytes). |
+| <a id="property-network-5"></a> `network` | `readonly` | `` `eip155:${string}` `` | - |
+| <a id="property-payee-3"></a> `payee` | `readonly` | `string` | - |
+| <a id="property-payer-3"></a> `payer` | `readonly` | `` `0x${string}` `` | - |
+| <a id="property-transaction-3"></a> `transaction` | `readonly` | `` `0x${string}` `` | The transaction the credential names (`hash`) or carries (`transaction`, by the hash of its signed bytes). |
 
 ***
 
@@ -552,7 +630,7 @@ The reference the MPP Permit2 charge's read takes; the pairing's `reference` wri
 
 #### Extends
 
-- `ChargeRefBase`
+- [`ChargeRefBase`](#chargerefbase)
 
 #### Properties
 
@@ -562,12 +640,112 @@ The reference the MPP Permit2 charge's read takes; the pairing's `reference` wri
 | `authorization.at` | `readonly` | `` `0x${string}` `` | - | - |
 | `authorization.deadline` | `readonly` | `string` | - | - |
 | `authorization.nonce` | `readonly` | `` `0x${string}` `` | - | - |
-| <a id="property-network-5"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | `ChargeRefBase.network` |
-| <a id="property-payee-3"></a> `payee` | `readonly` | `string` | - | `ChargeRefBase.payee` |
-| <a id="property-payer-3"></a> `payer` | `readonly` | `` `0x${string}` `` | - | `ChargeRefBase.payer` |
-| <a id="property-presented-1"></a> `presented` | `readonly` | `Signed` | The members of the payment presented: the permit's `permitted` list (`token:amount`, comma-separated), `nonce` and `deadline`, the `owner`, the transfer details (`to:requestedAmount`, comma-separated) and the witness's hash. | - |
-| <a id="property-transaction-3"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search, as the landed form gives it; never needed. | `ChargeRefBase.transaction` |
+| <a id="property-network-6"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | [`ChargeRefBase`](#chargerefbase).[`network`](#property-network) |
+| <a id="property-payee-4"></a> `payee` | `readonly` | `string` | - | [`ChargeRefBase`](#chargerefbase).[`payee`](#property-payee) |
+| <a id="property-payer-4"></a> `payer` | `readonly` | `` `0x${string}` `` | - | [`ChargeRefBase`](#chargerefbase).[`payer`](#property-payer) |
+| <a id="property-presented-1"></a> `presented` | `readonly` | [`Signed`](#signed) | The members of the payment presented: the permit's `permitted` list (`token:amount`, comma-separated), `nonce` and `deadline`, the `owner`, the transfer details (`to:requestedAmount`, comma-separated) and the witness's hash. | - |
+| <a id="property-transaction-4"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search, as the landed form gives it; never needed. | [`ChargeRefBase`](#chargerefbase).[`transaction`](#property-transaction) |
 | <a id="property-witnesses"></a> `witnesses?` | `readonly` | readonly `` `0x${string}` ``[] | The witness words the search counts: the chosen challenge's, and each of the other challenges of the sale's issue on this pairing and chain that `reference` was given. Absent, the presented `witness` alone. | - |
+
+***
+
+### MppSessionOpeningRef
+
+The reference the EVM session's opening read takes; the pairing's `reference` writes it.
+
+#### Extends
+
+- [`ChargeRefBase`](#chargerefbase)
+
+#### Properties
+
+| Property | Modifier | Type | Description | Inherited from |
+| ------ | ------ | ------ | ------ | ------ |
+| <a id="property-funding"></a> `funding` | `readonly` | `object` | The funding the payer signed: its type; the challenge's `currency`; the contract that keeps its single-use value, the token for an `authorization` and the Permit2 deployment for a `permit2`; that value, the authorization's nonce or the permit's nonce as a 32-byte word; and its signed bound, `validBefore` or `deadline`, in decimal. | - |
+| `funding.at` | `readonly` | `` `0x${string}` `` | - | - |
+| `funding.deadline` | `readonly` | `string` | - | - |
+| `funding.nonce` | `readonly` | `` `0x${string}` `` | - | - |
+| `funding.token` | `readonly` | `` `0x${string}` `` | - | - |
+| `funding.type` | `readonly` | `"permit2"` \| `"authorization"` | - | - |
+| <a id="property-network-7"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | [`ChargeRefBase`](#chargerefbase).[`network`](#property-network) |
+| <a id="property-opens"></a> `opens` | `readonly` | `object` | The escrow, the channel the opening opens, H and the chain. | - |
+| `opens.chainId` | `readonly` | `number` | - | - |
+| `opens.channel` | `readonly` | `` `0x${string}` `` | - | - |
+| `opens.escrow` | `readonly` | `` `0x${string}` `` | - | - |
+| `opens.h` | `readonly` | `` `0x${string}` `` | - | - |
+| <a id="property-payee-5"></a> `payee` | `readonly` | `string` | - | [`ChargeRefBase`](#chargerefbase).[`payee`](#property-payee) |
+| <a id="property-payer-5"></a> `payer` | `readonly` | `` `0x${string}` `` | - | [`ChargeRefBase`](#chargerefbase).[`payer`](#property-payer) |
+| <a id="property-presented-2"></a> `presented` | `readonly` | [`Signed`](#signed) | The members of the payment presented, lowercase, numbers in decimal: `funding`, the type; on an `authorization` the token, `from`, `to` and `value` and `nonce`, EIP-3009's members; on a `permit2` the token, `amount`, `nonce`, `deadline`, `spender` and `owner`, and `witness`, the witness's `payee:salt:authorizedSigner`. | - |
+| <a id="property-transaction-5"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search, as the landed form gives it; never needed. | [`ChargeRefBase`](#chargerefbase).[`transaction`](#property-transaction) |
+
+***
+
+### NearIntentsRef
+
+The read keys of a NEAR Intents deposit: the origin network the challenge names, `methodDetails.originNetwork`, and
+the deposit's transaction hash as the credential presents it, in that network's spelling. The pairing has no
+`status`, so the reference names no payee.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-network-8"></a> `network` | `string` |
+| <a id="property-transaction-6"></a> `transaction` | `string` |
+
+***
+
+### RailSessionChoice
+
+The buyer's inputs to a session opening's `build`. The deposit and the XRPL channel terms are the funder's.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-challenge-5"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` |
+| <a id="property-deposit"></a> `deposit` | `bigint` |
+| <a id="property-from-1"></a> `from` | `string` |
+| <a id="property-now-1"></a> `now` | `number` |
+| <a id="property-xrpl"></a> `xrpl?` | `object` |
+| `xrpl.cancelAfter?` | `number` |
+| `xrpl.fee` | `string` |
+| `xrpl.lastLedgerSequence` | `number` |
+| `xrpl.publicKey` | `string` |
+| `xrpl.sequence` | `number` |
+| `xrpl.settleDelay` | `number` |
+
+***
+
+### Seen
+
+A transaction a read met, as the pairing's read classified it against the reference and the option.
+
+#### Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Position` |
+| `Mark` |
+
+#### Properties
+
+| Property | Modifier | Type | Description |
+| ------ | ------ | ------ | ------ |
+| <a id="property-account"></a> `account` | `readonly` | `"none"` \| `"other"` \| `"payee"` | The account it names against the option's payee's: `none` where it names no account. For a transaction with a failed result, which moved nothing, the destination in what the payer signed, as the pairing identifies it. |
+| <a id="property-authority"></a> `authority?` | `readonly` | `string` | - |
+| <a id="property-carries"></a> `carries` | `readonly` | `boolean` | Whether it carries H, or for an agreement on a pairing that has one, the agreement's own value. |
+| <a id="property-consumed"></a> `consumed` | `readonly` | `boolean` | Whether it consumed the act's single-use value. |
+| <a id="property-given"></a> `given?` | `readonly` | `boolean` | True where the pairing's read matched it to an other act the caller gave by its reference. |
+| <a id="property-kind"></a> `kind` | `readonly` | `"other"` \| `"same"` | Whether it is an act of the reference's pairing and of the act's kind. |
+| <a id="property-mark"></a> `mark` | `readonly` | `Mark` | The highest mark the read reached for it. |
+| <a id="property-moved"></a> `moved?` | `readonly` | readonly [`Moved`](index.md#moved)[] | - |
+| <a id="property-party"></a> `party` | `readonly` | `"other"` \| `"payer"` \| `"payee"` | Its signer against the reference's payer and the option's payee. |
+| <a id="property-position"></a> `position?` | `readonly` | `Position` | - |
+| <a id="property-presented-3"></a> `presented` | `readonly` | `"no"` \| `"yes"` \| `"unshown"` | Whether the message signed in it equals, member by member as the pairing's form names them, the payment presented: `yes`; `no` where a member differs; `unshown` where the read could not read every member. A `settled` answer states the act's. |
+| <a id="property-result"></a> `result` | `readonly` | `"failed"` \| `"succeeded"` | `succeeded`, or included with a failed result. |
+| <a id="property-signer"></a> `signer?` | `readonly` | `string` | - |
+| <a id="property-transaction-7"></a> `transaction` | `readonly` | `string` | - |
 
 ***
 
@@ -585,11 +763,11 @@ deal value.
 | Property | Type | Description | Inherited from |
 | ------ | ------ | ------ | ------ |
 | <a id="property-authorizedsigner"></a> `authorizedSigner?` | `` `0x${string}` `` | sessions: default the zero address, which means the payer. | - |
-| <a id="property-challenge-4"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` | - | [`MppChoice`](#mppchoice).[`challenge`](#property-challenge-2) |
+| <a id="property-challenge-6"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` | - | [`MppChoice`](#mppchoice).[`challenge`](#property-challenge-3) |
 | <a id="property-credentialtype"></a> `credentialType?` | `"permit2"` \| `"authorization"` | EVM: default the first listed type. | - |
-| <a id="property-deposit"></a> `deposit?` | `bigint` | sessions: the buyer's deposit; `suggestedDeposit` is advice. | - |
-| <a id="property-from-1"></a> `from` | `` `0x${string}` `` | - | [`MppChoice`](#mppchoice).[`from`](#property-from) |
-| <a id="property-now-1"></a> `now` | `number` | - | [`MppChoice`](#mppchoice).[`now`](#property-now) |
+| <a id="property-deposit-1"></a> `deposit?` | `bigint` | sessions: the buyer's deposit; `suggestedDeposit` is advice. | - |
+| <a id="property-from-2"></a> `from` | `` `0x${string}` `` | - | [`MppChoice`](#mppchoice).[`from`](#property-from) |
+| <a id="property-now-2"></a> `now` | `number` | - | [`MppChoice`](#mppchoice).[`now`](#property-now) |
 | <a id="property-spender-1"></a> `spender?` | `` `0x${string}` `` | permit2 only: the seller server's submitting address. | [`MppChoice`](#mppchoice).[`spender`](#property-spender) |
 | <a id="property-tokendomain-1"></a> `tokenDomain?` | `object` | authorization only: the token's EIP-712 name and version. | [`MppChoice`](#mppchoice).[`tokenDomain`](#property-tokendomain) |
 | `tokenDomain.name` | `string` | - | - |
@@ -620,13 +798,13 @@ The settlement read keys of these pairings.
 | <a id="property-closes"></a> `closes?` | `public` | `object` | The close of an EVM session: a call to `escrow` of one of `EVM_CLOSE_SELECTORS` naming `channel`. | - |
 | `closes.channel` | `public` | `` `0x${string}` `` | - | - |
 | `closes.escrow` | `public` | `` `0x${string}` `` | - | - |
-| <a id="property-funding"></a> `funding?` | `public` | `object` | The EVM opening's funding, as `MppSessionOpeningRef` names it: its type, token, value's keeper, nonce and bound. | - |
+| <a id="property-funding-1"></a> `funding?` | `public` | `object` | The EVM opening's funding, as `MppSessionOpeningRef` names it: its type, token, value's keeper, nonce and bound. | - |
 | `funding.at` | `readonly` | `` `0x${string}` `` | - | - |
 | `funding.deadline` | `readonly` | `string` | - | - |
 | `funding.nonce` | `readonly` | `` `0x${string}` `` | - | - |
 | `funding.token` | `readonly` | `` `0x${string}` `` | - | - |
 | `funding.type` | `readonly` | `"permit2"` \| `"authorization"` | - | - |
-| <a id="property-network-6"></a> `network` | `public` | `` `eip155:${string}` `` \| `HederaNetwork` | - | [`EvmRef`](evm.md#evmref).[`network`](evm.md#property-network-5) |
+| <a id="property-network-9"></a> `network` | `public` | `` `eip155:${string}` `` \| [`HederaNetwork`](evm.md#hederanetwork) | - | [`EvmRef`](evm.md#evmref).[`network`](evm.md#property-network-6) |
 | <a id="property-nonce"></a> `nonce?` | `public` | `object` | On a Tempo session, the opening transaction's single-use value: its nonce key and nonce, in decimal, and its signed `validBefore` in decimal Unix seconds, absent where it signs none. `status` reads the value by its key at the final mark and at the latest head, through a reader that reads a block's state (`TempoSearchReader`). | - |
 | `nonce.key` | `public` | `string` | - | - |
 | `nonce.value` | `public` | `string` | - | - |
@@ -636,14 +814,14 @@ The settlement read keys of these pairings.
 | `opened.channel` | `public` | `` `0x${string}` `` | - | - |
 | `opened.h` | `public` | `` `0x${string}` `` | - | - |
 | `opened.version` | `public` | `"v1"` \| `"v2"` | - | - |
-| <a id="property-opens"></a> `opens?` | `public` | `object` | The opening of an EVM session: the escrow's open call whose salt is `h`, and whose payer, payee, token and authorized signer, with `h`, the escrow and `chainId`, give `channel`. With `payer`, `funding` and `presented`, `status` reads the opening by its funding (`mppSessionOpeningStatus`). | - |
+| <a id="property-opens-1"></a> `opens?` | `public` | `object` | The opening of an EVM session: the escrow's open call whose salt is `h`, and whose payer, payee, token and authorized signer, with `h`, the escrow and `chainId`, give `channel`. With `payer`, `funding` and `presented`, `status` reads the opening by its funding (`mppSessionOpeningStatus`). | - |
 | `opens.chainId` | `public` | `number` | - | - |
 | `opens.channel` | `public` | `` `0x${string}` `` | - | - |
 | `opens.escrow` | `public` | `` `0x${string}` `` | - | - |
 | `opens.h` | `public` | `` `0x${string}` `` | - | - |
-| <a id="property-payee-4"></a> `payee` | `public` | `string` | The option's payee, which `reference` takes from the option the payment answers. | [`EvmRef`](evm.md#evmref).[`payee`](evm.md#property-payee-4) |
-| <a id="property-payer-4"></a> `payer?` | `public` | `` `0x${string}` `` | The payer: on a Tempo session the sender of the opening's transaction, recovered from its `0x76` form, on an EVM session the account its authorization or permit is signed by, and on a subscription the account whose root key signed the key authorization (`keyAuthorizationSigner`). With `opened`, `status` reads the Tempo opening by the search for its `ChannelOpened` (`tempoOpeningStatus`); with a binding log under `KeyAuthorizationWitness`, the activation by the search for that log (`activationStatus`). | - |
-| <a id="property-presented-2"></a> `presented?` | `public` | `Readonly`\<`Record`\<`string`, `string`\>\> | The members of the EVM opening's payment presented, as `MppSessionOpeningRef` names them. | - |
+| <a id="property-payee-6"></a> `payee` | `public` | `string` | The option's payee, which `reference` takes from the option the payment answers. | [`EvmRef`](evm.md#evmref).[`payee`](evm.md#property-payee-5) |
+| <a id="property-payer-6"></a> `payer?` | `public` | `` `0x${string}` `` | The payer: on a Tempo session the sender of the opening's transaction, recovered from its `0x76` form, on an EVM session the account its authorization or permit is signed by, and on a subscription the account whose root key signed the key authorization (`keyAuthorizationSigner`). With `opened`, `status` reads the Tempo opening by the search for its `ChannelOpened` (`tempoOpeningStatus`); with a binding log under `KeyAuthorizationWitness`, the activation by the search for that log (`activationStatus`). | - |
+| <a id="property-presented-4"></a> `presented?` | `public` | `Readonly`\<`Record`\<`string`, `string`\>\> | The members of the EVM opening's payment presented, as `MppSessionOpeningRef` names them. | - |
 | <a id="property-revokes"></a> `revokes?` | `public` | `object` | The close of a subscription: the account keychain's `KeyRevoked` whose topic 1 is `account` and topic 2 `keyId`. | - |
 | `revokes.account` | `public` | `` `0x${string}` `` | - | - |
 | `revokes.keyId` | `public` | `` `0x${string}` `` | - | - |
@@ -652,7 +830,7 @@ The settlement read keys of these pairings.
 | `search.topics` | `public` | readonly (`` `0x${string}` `` \| `null`)[] | - | - |
 | <a id="property-settleby"></a> `settleBy?` | `public` | `string` | Decimal Unix seconds after which the payment can no longer execute. | [`EvmRef`](evm.md#evmref).[`settleBy`](evm.md#property-settleby-1) |
 | <a id="property-signed"></a> `signed?` | `public` | `` `0x${string}` `` | What the payer signed, as presented: on a Tempo session `expiringNonceHash` over the opening transaction's sender-signed fields, in the `0x76` form whatever envelope carried it, under its sender; on a subscription keccak-256 over the signed key authorization's bytes, the authorization and its root signature whole. A reference that `status` reads by the search, with `payer`, holds it, and one without it is `unparseable`. | - |
-| <a id="property-transaction-4"></a> `transaction?` | `public` | `` `0x${string}` `` | The transaction the credential presents, where the payer broadcast the opening before presenting it. | - |
+| <a id="property-transaction-8"></a> `transaction?` | `public` | `` `0x${string}` `` | The transaction the credential presents, where the payer broadcast the opening before presenting it. | - |
 | <a id="property-transferlog"></a> `transferLog?` | `public` | [`TransferLog`](evm.md#transferlog) | The token transfer this payment made, identified by the digest of the named fields. | [`EvmRef`](evm.md#evmref).[`transferLog`](evm.md#property-transferlog) |
 | <a id="property-validbefore"></a> `validBefore?` | `public` | `string` | - | - |
 
@@ -669,9 +847,89 @@ cumulative amount to sign; and the action.
 | Property | Type |
 | ------ | ------ |
 | <a id="property-action"></a> `action` | `"close"` \| `"voucher"` |
-| <a id="property-challenge-5"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` |
+| <a id="property-challenge-7"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` |
 | <a id="property-cumulativeamount"></a> `cumulativeAmount` | `bigint` |
 | <a id="property-opening"></a> `opening` | [`MppCredential`](#mppcredential) |
+
+***
+
+### SessionWithinUnsigned
+
+One signing request; `complete` takes its one signature and returns the in-channel credential, measured as `bound`
+measures every credential: one over the credential size bound, 64 KiB, its challenge included, is
+`mpp/credential-malformed`, as each session pairing's `channel.kind`, `channel.ref` and `channel.boundWithin`
+refuse it.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-requests"></a> `requests` | readonly [`WithinSigningRequest`](#withinsigningrequest)[] |
+
+#### Methods
+
+##### complete()
+
+> **complete**(`signatures`): [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential)
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `signatures` | readonly `string`[] |
+
+###### Returns
+
+[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential)
+
+***
+
+### SolanaChargeChoice
+
+The buyer's inputs to `build`. The request's `decimals`, `tokenProgram` and `recentBlockhash` win when present.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-challenge-8"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` |
+| <a id="property-computeunitlimit"></a> `computeUnitLimit?` | `number` |
+| <a id="property-computeunitprice"></a> `computeUnitPrice?` | `bigint` |
+| <a id="property-decimals-1"></a> `decimals?` | `number` |
+| <a id="property-payer-7"></a> `payer` | `string` |
+| <a id="property-recentblockhash"></a> `recentBlockhash?` | `string` |
+| <a id="property-tokenprogram"></a> `tokenProgram?` | `string` |
+
+***
+
+### SolanaChargeUnsigned
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-request-3"></a> `request` | `object` |
+| `request.kind` | `"solana-message"` |
+| `request.message` | `Uint8Array`\<`ArrayBuffer`\> |
+
+#### Methods
+
+##### complete()
+
+> **complete**(`signature`): [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential)
+
+The payer's 64-byte Ed25519 signature over `message`. A credential over the credential size bound, 64 KiB, its
+echoed challenge included, is `mpp/credential-malformed`, as `bound` refuses it.
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `signature` | `Uint8Array` |
+
+###### Returns
+
+[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential)
 
 ***
 
@@ -684,15 +942,15 @@ The buyer's inputs to the memo session's `build`.
 | Property | Type | Description |
 | ------ | ------ | ------ |
 | <a id="property-authorizedsigner-1"></a> `authorizedSigner` | `string` | The session key that signs vouchers. |
-| <a id="property-challenge-6"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` | - |
-| <a id="property-deposit-1"></a> `deposit?` | `bigint` | The deposit; the request's `cap` where absent. |
+| <a id="property-challenge-9"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` | - |
+| <a id="property-deposit-2"></a> `deposit?` | `bigint` | The deposit; the request's `cap` where absent. |
 | <a id="property-graceperiod"></a> `gracePeriod?` | `number` | The close's grace period in seconds; 900 where absent, as the stock client opens. |
 | <a id="property-mint"></a> `mint?` | `string` | The mint the request's `currency` names: the currency itself where it is a key, else the caller's resolution. |
 | <a id="property-openslot"></a> `openSlot?` | `bigint` | The channel's `openSlot`; the request's `recentSlot` wins when present. |
-| <a id="property-payer-5"></a> `payer` | `string` | The payer, whose token account funds the deposit. |
-| <a id="property-recentblockhash"></a> `recentBlockhash?` | `string` | The request's `recentBlockhash` wins when present. |
+| <a id="property-payer-8"></a> `payer` | `string` | The payer, whose token account funds the deposit. |
+| <a id="property-recentblockhash-1"></a> `recentBlockhash?` | `string` | The request's `recentBlockhash` wins when present. |
 | <a id="property-salt"></a> `salt` | `bigint` | The PDA salt; lcp draws nothing. |
-| <a id="property-tokenprogram"></a> `tokenProgram?` | `string` | Token where absent. |
+| <a id="property-tokenprogram-1"></a> `tokenProgram?` | `string` | Token where absent. |
 
 ***
 
@@ -702,7 +960,7 @@ The buyer's inputs to the memo session's `build`.
 
 | Property | Type | Description |
 | ------ | ------ | ------ |
-| <a id="property-request-2"></a> `request` | `object` | - |
+| <a id="property-request-4"></a> `request` | `object` | - |
 | `request.channel` | `string` | - |
 | `request.kind` | `"solana-session-open"` | - |
 | `request.message` | `Uint8Array`\<`ArrayBuffer`\> | The message the payer signs: the stock `open` with one Memo instruction carrying H's LCP string. |
@@ -743,9 +1001,22 @@ or reads it.
 | ------ | ------ | ------ | ------ |
 | <a id="property-fetched-1"></a> `[FETCHED]` | `object` | - | - |
 | `[FETCHED].tables` | readonly `object`[] | For each address table lookup of the opening's message, in order: the table's address, and the table's entries at the lookup's writable and read-only indexes, in order, each a base58 key. Empty for a message without lookups. | - |
-| <a id="property-challenge-7"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` | - | [`MppCredential`](#mppcredential).[`challenge`](#property-challenge-3) |
+| <a id="property-challenge-10"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` | - | [`MppCredential`](#mppcredential).[`challenge`](#property-challenge-4) |
 | <a id="property-payload-2"></a> `payload` | `object` | - | [`MppCredential`](#mppcredential).[`payload`](#property-payload-1) |
 | <a id="property-source-2"></a> `source?` | `string` | - | [`MppCredential`](#mppcredential).[`source`](#property-source-1) |
+
+***
+
+### StacksChargeChoice
+
+The buyer's inputs to the Stacks build: the chosen challenge and the payer's c32 standard principal.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-challenge-11"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` |
+| <a id="property-from-3"></a> `from` | `string` |
 
 ***
 
@@ -786,7 +1057,7 @@ A push credential with the named transaction's receipt and signed bytes under `F
 | `[FETCHED].logs` | readonly [`EvmLog`](evm.md#evmlog)[] | - |
 | `[FETCHED].raw` | `` `0x${string}` `` | - |
 | `[FETCHED].transaction` | `` `0x${string}` `` | - |
-| <a id="property-challenge-8"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` | [`MppCredential`](#mppcredential).[`challenge`](#property-challenge-3) |
+| <a id="property-challenge-12"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` | [`MppCredential`](#mppcredential).[`challenge`](#property-challenge-4) |
 | <a id="property-payload-3"></a> `payload` | `object` | [`MppCredential`](#mppcredential).[`payload`](#property-payload-1) |
 | <a id="property-source-3"></a> `source?` | `string` | [`MppCredential`](#mppcredential).[`source`](#property-source-1) |
 
@@ -800,7 +1071,7 @@ What the caller adds to the reference: the act's own transaction where it knows 
 
 | Property | Type |
 | ------ | ------ |
-| <a id="property-transaction-5"></a> `transaction?` | `` `0x${string}` `` |
+| <a id="property-transaction-9"></a> `transaction?` | `` `0x${string}` `` |
 
 ***
 
@@ -819,12 +1090,12 @@ as `expiringNonceHash` computes it; on push also `named`, the transaction the cr
 | <a id="property-currency"></a> `currency` | `` `0x${string}` `` |
 | <a id="property-h-1"></a> `h` | `` `0x${string}` `` |
 | <a id="property-named"></a> `named?` | `` `0x${string}` `` |
-| <a id="property-network-7"></a> `network` | `` `eip155:${number}` `` |
+| <a id="property-network-10"></a> `network` | `` `eip155:${number}` `` |
 | <a id="property-nonce-1"></a> `nonce` | `object` |
 | `nonce.key` | `string` |
 | `nonce.value` | `string` |
-| <a id="property-payee-5"></a> `payee` | `` `0x${string}` `` |
-| <a id="property-payer-6"></a> `payer` | `` `0x${string}` `` |
+| <a id="property-payee-7"></a> `payee` | `` `0x${string}` `` |
+| <a id="property-payer-9"></a> `payer` | `` `0x${string}` `` |
 | <a id="property-signed-1"></a> `signed` | `` `0x${string}` `` |
 | <a id="property-validbefore-1"></a> `validBefore?` | `string` |
 
@@ -884,8 +1155,8 @@ The buyer's inputs to `build`: the paying account and the buyer's own reads of f
 
 | Property | Type |
 | ------ | ------ |
-| <a id="property-account"></a> `account` | `string` |
-| <a id="property-challenge-9"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` |
+| <a id="property-account-1"></a> `account` | `string` |
+| <a id="property-challenge-13"></a> `challenge` | [`MppChallenge`](#mppchallenge) & `object` |
 | <a id="property-fee"></a> `fee` | `string` |
 | <a id="property-lastledgersequence"></a> `lastLedgerSequence` | `number` |
 | <a id="property-sequence"></a> `sequence` | `number` |
@@ -898,7 +1169,7 @@ The buyer's inputs to `build`: the paying account and the buyer's own reads of f
 
 | Property | Type |
 | ------ | ------ |
-| <a id="property-request-3"></a> `request` | `object` |
+| <a id="property-request-5"></a> `request` | `object` |
 | `request.kind` | `"xrpl-tx"` |
 | `request.txJson` | [`XrplTxJson`](xrpl.md#xrpltxjson) |
 
@@ -927,6 +1198,42 @@ not hex bytes `xrpl/blob-malformed`); and one whose `NetworkID` the challenge's 
 
 `Promise`\<[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential)\>
 
+***
+
+### XrplSessionUnsigned
+
+An XRPL `PaymentChannelCreate` for the wallet to sign, and the first claim's bytes.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-request-6"></a> `request` | `object` |
+| `request.claim` | `object` |
+| `request.claim.bytes` | `Uint8Array`\<`ArrayBuffer`\> |
+| `request.claim.channelId` | `string` |
+| `request.claim.drops` | `bigint` |
+| `request.kind` | `"xrpl-session-open"` |
+| `request.txJson` | [`XrplTxJson`](xrpl.md#xrpltxjson) |
+
+#### Methods
+
+##### complete()
+
+> **complete**(`signed`): `Promise`\<[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential)\>
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `signed` | \{ `claimSignature`: `string`; `signedBlob`: `string`; \} |
+| `signed.claimSignature` | `string` |
+| `signed.signedBlob` | `string` |
+
+###### Returns
+
+`Promise`\<[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential)\>
+
 ## Type Aliases
 
 ### EvmMoved
@@ -949,6 +1256,18 @@ One transfer an act made, named by its transaction and its `Transfer` log's posi
 > **GatewayPreimage** = `Pick`\<[`GatewaySaltInput`](#gatewaysaltinput), `"id"` \| `"realm"` \| `"requestHash"` \| `"recipient"`\>
 
 The salt's inputs a Gateway signing request carries from the chosen challenge.
+
+***
+
+### HederaNetwork
+
+> **HederaNetwork** = `"hedera:mainnet"` \| `"hedera:testnet"` \| `"hedera:previewnet"` \| `"hedera:devnet"`
+
+***
+
+### HederaQuery
+
+> **HederaQuery** = [`StatusQuery`](index.md#statusquery)\<[`LcpHederaRef`](#lcphederaref), `string`, `"consensus"`, `string`\>
 
 ***
 
@@ -1002,9 +1321,15 @@ archival, by which a lookup at coverage `none` shows that it holds the history i
 
 ### MppEvmStatus
 
-> **MppEvmStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `EvmMark`\>
+> **MppEvmStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, [`EvmMark`](ap2.md#evmmark)\>
 
 What an MPP EVM charge's `status` answers: `read-status`'s answer, with `presented` on `settled`.
+
+***
+
+### MppIntent
+
+> **MppIntent** = `"charge"` \| `"session"` \| `"subscription"`
 
 ***
 
@@ -1061,7 +1386,7 @@ gives it.
 
 ### Presentation
 
-> **Presentation** = `Seen`\<`bigint`, `EvmMark`\>\[`"presented"`\]
+> **Presentation** = [`Seen`](#seen)\<`bigint`, [`EvmMark`](ap2.md#evmmark)\>\[`"presented"`\]
 
 Whether an act is the payment the reference was built from, `Seen.presented`.
 
@@ -1069,7 +1394,7 @@ Whether an act is the payment the reference was built from, `Seen.presented`.
 
 ### RailSessionUnsigned
 
-> **RailSessionUnsigned** = `HederaSessionUnsigned` \| [`SolanaSessionUnsigned`](#solanasessionunsigned) \| `XrplSessionUnsigned`
+> **RailSessionUnsigned** = [`HederaSessionUnsigned`](#hederasessionunsigned) \| [`SolanaSessionUnsigned`](#solanasessionunsigned) \| [`XrplSessionUnsigned`](#xrplsessionunsigned)
 
 ***
 
@@ -1106,7 +1431,7 @@ What these pairings' `status` answers, in the terms of `EvmBreadthStatus`.
 
 | Property | Type |
 | ------ | ------ |
-| <a id="property-funding-1"></a> `funding` | \{ `kind`: `"eip712"`; `opening?`: \{ `authorizedSigner`: [`Hex`](evm.md#hex); `payee`: [`Hex`](evm.md#hex); `salt`: [`Hex`](evm.md#hex); \}; `typedData`: [`ReceiveTypedData`](#receivetypeddata) \| [`Permit2TypedData`](evm.md#permit2typeddata); \} \| \{ `broadcast`: `false`; `call`: \{ `data`: [`Hex`](evm.md#hex); `to`: [`Hex`](evm.md#hex); \}; `chainId`: `number`; `kind`: `"tempo-call"`; `validBefore`: `number`; \} |
+| <a id="property-funding-2"></a> `funding` | \{ `kind`: `"eip712"`; `opening?`: \{ `authorizedSigner`: [`Hex`](evm.md#hex); `payee`: [`Hex`](evm.md#hex); `salt`: [`Hex`](evm.md#hex); \}; `typedData`: [`ReceiveTypedData`](#receivetypeddata) \| [`Permit2TypedData`](evm.md#permit2typeddata); \} \| \{ `broadcast`: `false`; `call`: \{ `data`: [`Hex`](evm.md#hex); `to`: [`Hex`](evm.md#hex); \}; `chainId`: `number`; `kind`: `"tempo-call"`; `validBefore`: `number`; \} |
 
 #### Methods
 
@@ -1159,9 +1484,23 @@ each `mpp/credential-malformed`.
 
 ***
 
+### Signed
+
+> **Signed** = `Readonly`\<`Record`\<`string`, `string`\>\>
+
+The members of what the payer signed, as read from a landed act or as presented, each a lowercase string.
+
+***
+
+### StockQuery
+
+> **StockQuery** = [`StatusQuery`](index.md#statusquery)\<[`HederaStockRef`](#hederastockref), `bigint`, `"finalized"`, `bigint`\>
+
+***
+
 ### TempoSplitQuery
 
-> **TempoSplitQuery** = `EvmQuery`\<[`TempoSplitRef`](#temposplitref)\>
+> **TempoSplitQuery** = [`EvmQuery`](ap2.md#evmquery)\<[`TempoSplitRef`](#temposplitref)\>
 
 What `status` takes beside the reference and the reader: its search position is a block number.
 
@@ -1169,7 +1508,7 @@ What `status` takes beside the reference and the reader: its search position is 
 
 ### TempoSplitStatus
 
-> **TempoSplitStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `EvmMark`\>
+> **TempoSplitStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, [`EvmMark`](ap2.md#evmmark)\>
 
 What `status` answers: block numbers, EVM marks, the search position a block number.
 
@@ -1231,9 +1570,23 @@ refuses one over the credential size bound, 64 KiB, with `mpp/credential-malform
 
 ### WithinSigningRequest
 
-> **WithinSigningRequest** = \{ `kind`: `"eip712"`; `typedData`: [`VoucherTypedData`](#vouchertypeddata) \| `HederaVoucherTypedData`; \} \| \{ `kind`: `"ed25519-raw"`; `message`: `Uint8Array`\<`ArrayBuffer`\>; `signer`: `string`; \} \| \{ `bytes`: `Uint8Array`\<`ArrayBuffer`\>; `channelId`: `string`; `drops`: `bigint`; `kind`: `"xrpl-claim"`; \}
+> **WithinSigningRequest** = \{ `kind`: `"eip712"`; `typedData`: [`VoucherTypedData`](#vouchertypeddata) \| [`HederaVoucherTypedData`](hedera.md#hederavouchertypeddata); \} \| \{ `kind`: `"ed25519-raw"`; `message`: `Uint8Array`\<`ArrayBuffer`\>; `signer`: `string`; \} \| \{ `bytes`: `Uint8Array`\<`ArrayBuffer`\>; `channelId`: `string`; `drops`: `bigint`; `kind`: `"xrpl-claim"`; \}
 
 A request to the buyer's signer for an in-channel payment.
+
+***
+
+### XrplQuery
+
+> **XrplQuery**\<`Ref`\> = [`StatusQuery`](index.md#statusquery)\<`Ref`, `number`, [`XrplMark`](xrpl.md#xrplmark)\>
+
+What an XRPL status read takes with the reference and the reader.
+
+#### Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Ref` |
 
 ## Variables
 
@@ -1269,7 +1622,7 @@ which `fetchPresented` reads. A credential of any other type gets `mpp/credentia
 
 ### chargeNearIntents
 
-> `const` **chargeNearIntents**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`, `named?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `advertiseBeforeCarrier`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`credential`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/nearintents"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`credential`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| `NearIntentsRef`\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>
+> `const` **chargeNearIntents**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`, `named?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `advertiseBeforeCarrier`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`credential`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/nearintents"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`credential`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`NearIntentsRef`](#nearintentsref)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>
 
 `mpp/charge/nearintents`. The payer broadcasts (`broadcaster` answers `"payer"` for a credential of `type` `hash`):
 it sends its deposit before presenting the deposit's hash. Settlement is the resource server's report: no
@@ -1280,7 +1633,7 @@ credential of any other type gets `near/not-hash-credential`, as `bound` refuses
 
 ### chargeSolana
 
-> `const` **chargeSolana**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| `SolanaChargeUnsigned`\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `fetchPresented`: (`credential`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential) & `object`\>; `id`: `"mpp/charge/solana"`; `landedTx`: (`presented`) => `string` \| `undefined`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SvmRef`](svm.md#svmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`SvmStatus`](svm.md#svmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>
+> `const` **chargeSolana**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SolanaChargeUnsigned`](#solanachargeunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `fetchPresented`: (`credential`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential) & `object`\>; `id`: `"mpp/charge/solana"`; `landedTx`: (`presented`) => `string` \| `undefined`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SvmRef`](svm.md#svmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`SvmStatus`](svm.md#svmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>
 
 `mpp/charge/solana`: a challenge whose `methodDetails.feePayer` is `true`, under which the stock client refuses to
 broadcast from `@solana/mpp` 0.6.0. A `signature` credential, which an older client pushes, is a payment that
@@ -1290,7 +1643,7 @@ already moved.
 
 ### chargeSolanaUnsponsored
 
-> `const` **chargeSolanaUnsponsored**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| `SolanaChargeUnsigned`\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `fetchPresented`: (`credential`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential) & `object`\>; `id`: `"mpp/charge/solana/unsponsored"`; `landedTx`: (`presented`) => `string` \| `undefined`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SvmRef`](svm.md#svmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`SvmStatus`](svm.md#svmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>
+> `const` **chargeSolanaUnsponsored**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SolanaChargeUnsigned`](#solanachargeunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `fetchPresented`: (`credential`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential) & `object`\>; `id`: `"mpp/charge/solana/unsponsored"`; `landedTx`: (`presented`) => `string` \| `undefined`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SvmRef`](svm.md#svmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`SvmStatus`](svm.md#svmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>
 
 `mpp/charge/solana/unsponsored`: a challenge of the `solana` method that does not set `feePayer: true`.
 
@@ -1307,7 +1660,7 @@ payment with the payer's shared payment token; nothing here reads it.
 
 ### chargeUsdcEvm
 
-> `const` **chargeUsdcEvm**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `authorizer`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`UsdcUnsigned`](#usdcunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/usdc/evm"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`EvmRef`](evm.md#evmref) & [`MppEip3009Ref`](#mppeip3009ref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`StatusAnswer`](index.md#statusanswer)\<`bigint`, `EvmMark`\>\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>
+> `const` **chargeUsdcEvm**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `authorizer`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`UsdcUnsigned`](#usdcunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/usdc/evm"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`EvmRef`](evm.md#evmref) & [`MppEip3009Ref`](#mppeip3009ref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`StatusAnswer`](index.md#statusanswer)\<`bigint`, [`EvmMark`](ap2.md#evmmark)\>\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>
 
 `mpp/charge/usdc/evm`. The payee broadcasts (`broadcaster` answers `"payee"` for a credential of `type`
 `authorization`): the payer signs an EIP-3009 authorization, and the seller's server submits it and pays the gas;
@@ -1327,7 +1680,7 @@ no `status` reads it. A credential of any other type gets `mpp/credential-type`,
 
 ### chargeUsdcSolana
 
-> `const` **chargeUsdcSolana**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| `SolanaChargeUnsigned`\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/usdc/solana"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SvmRef`](svm.md#svmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`SvmStatus`](svm.md#svmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>
+> `const` **chargeUsdcSolana**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SolanaChargeUnsigned`](#solanachargeunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/usdc/solana"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SvmRef`](svm.md#svmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`SvmStatus`](svm.md#svmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>
 
 `mpp/charge/usdc/solana`, which takes only `type="transaction"` credentials. The payee broadcasts (`broadcaster`
 answers `"payee"` for them): the seller's server broadcasts the transaction the payer signed, and `status` reads it.
@@ -1358,7 +1711,7 @@ it.
 
 ### evmAuthorization
 
-> `const` **evmAuthorization**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `authorizer`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppUnsigned`](#mppunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/evm/authorization"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`EvmRef`](evm.md#evmref) & [`MppEip3009Ref`](#mppeip3009ref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`StatusAnswer`](index.md#statusanswer)\<`bigint`, `EvmMark`\>\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`Json`](index.md#json); \}\>
+> `const` **evmAuthorization**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `authorizer`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppUnsigned`](#mppunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/evm/authorization"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`EvmRef`](evm.md#evmref) & [`MppEip3009Ref`](#mppeip3009ref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`StatusAnswer`](index.md#statusanswer)\<`bigint`, [`EvmMark`](ap2.md#evmmark)\>\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`Json`](index.md#json); \}\>
 
 `mpp/charge/evm/authorization`. The payee broadcasts (`broadcaster` answers `"payee"` for a credential of `type`
 `authorization`): the payer signs an EIP-3009 authorization, and the seller's server submits
@@ -1411,7 +1764,7 @@ The Stripe metadata key the seller places H under: at most 40 characters, no squ
 
 ### MPP\_BINDINGS
 
-> `const` **MPP\_BINDINGS**: readonly \[`Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `authorizer`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppUnsigned`](#mppunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/evm/authorization"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`EvmRef`](evm.md#evmref) & [`MppEip3009Ref`](#mppeip3009ref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`StatusAnswer`](index.md#statusanswer)\<`bigint`, `EvmMark`\>\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`Json`](index.md#json); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `authorizer`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppUnsigned`](#mppunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/evm/permit2"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`input`, `option`, `_given?`, `issue?`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`EvmRef`](evm.md#evmref) & [`MppPermit2Ref`](#mpppermit2ref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`MppEvmStatus`](#mppevmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`Json`](index.md#json); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppUnsigned`](#mppunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/evm/transaction"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`EvmRef`](evm.md#evmref) & [`MppNamedRef`](#mppnamedref) & `object`\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`MppEvmStatus`](#mppevmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`Json`](index.md#json); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppUnsigned`](#mppunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/evm/hash"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`EvmRef`](evm.md#evmref) & [`MppNamedRef`](#mppnamedref) & `object`\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`MppEvmStatus`](#mppevmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`Json`](index.md#json); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/tempo/split-memo"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TempoSplitRef`](#temposplitref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`TempoSplitStatus`](#temposplitstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `fetchPresented`: (`presented`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TempoLandedCredential`](#tempolandedcredential)\>; `id`: `"mpp/charge/tempo/split-memo/push"`; `landedTx`: (`presented`) => `string` \| `undefined`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TempoSplitRef`](#temposplitref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`TempoSplitStatus`](#temposplitstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionUnsigned`](#sessionunsigned)\>; `buildWithin`: (`w`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| `SessionWithinUnsigned`\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"`; `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`_presented`) => `number` \| `undefined`; \}\>; `claims`: `true`; `closeRef`: (`chosen`, `channel`) => [`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref); `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/evm"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`EvmBreadthStatus`](evm.md#evmbreadthstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`Json`](index.md#json); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionUnsigned`](#sessionunsigned)\>; `buildWithin`: (`w`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| `SessionWithinUnsigned`\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"`; `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`_presented`) => `number` \| `undefined`; \}\>; `claims`: `true`; `closeRef`: (`chosen`, `channel`) => [`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref); `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/tempo"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`EvmBreadthStatus`](evm.md#evmbreadthstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`Json`](index.md#json); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`KeyAuthorizationUnsigned`](tempo.md#keyauthorizationunsigned)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"`; `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`presented`) => `number` \| `undefined`; \}\>; `claims`: `true`; `closeRef`: (`chosen`, `_channel`, `account?`) => [`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref); `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/subscription/tempo"`; `keyProves`: `string`; `keySearch`: (`ref`, `receipt`, `h`) => [`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref); `pattern`: \{ `forwardIndexable`: `true`; `onChain`: `true`; `pattern`: `"native-field"`; `zeroPartyRecoverable`: `true`; \}; `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`EvmBreadthStatus`](evm.md#evmbreadthstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`Json`](index.md#json); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `advertiseBeforeCarrier`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`LnMppUnsigned`](lightning.md#lnmppunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/lightning"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`LnRef`](lightning.md#lnref)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`c`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `advertiseBeforeCarrier`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`LnMppUnsigned`](lightning.md#lnmppunsigned)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"`; `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`_presented`) => `number` \| `undefined`; \}\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/lightning"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`LnRef`](lightning.md#lnref)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`c`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| `SolanaChargeUnsigned`\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `fetchPresented`: (`credential`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential) & `object`\>; `id`: `"mpp/charge/solana"`; `landedTx`: (`presented`) => `string` \| `undefined`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SvmRef`](svm.md#svmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`SvmStatus`](svm.md#svmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| `SolanaChargeUnsigned`\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `fetchPresented`: (`credential`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential) & `object`\>; `id`: `"mpp/charge/solana/unsponsored"`; `landedTx`: (`presented`) => `string` \| `undefined`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SvmRef`](svm.md#svmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`SvmStatus`](svm.md#svmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => `"open"` \| [`Refusal`](index.md#refusal); `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`presented`) => `number` \| `undefined`; \}\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/subscription/solana"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SvmRef`](svm.md#svmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`SvmStatus`](svm.md#svmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SolanaSessionUnsigned`](#solanasessionunsigned)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"`; `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`_presented`) => `number` \| `undefined`; \}\>; `claims`: `true`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/solana/memo"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SvmRef`](svm.md#svmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`SvmStatus`](svm.md#svmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => `"open"` \| [`Refusal`](index.md#refusal); `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`_presented`) => `number` \| `undefined`; \}\>; `claims`: `false`; `data`: [`PairingData`](index.md#pairingdata); `fetchPresented`: (`credential`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential) & `object`\>; `id`: `"mpp/session/solana/stock"`; `landedTx`: (`presented`) => `string` \| `undefined`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SvmRef`](svm.md#svmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`SvmStatus`](svm.md#svmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`XrplChargeUnsigned`](#xrplchargeunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `fetchPresented`: (`credential`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential) & `object`\>; `id`: `"mpp/charge/xrpl"`; `landedTx`: (`presented`) => `string` \| `undefined`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `Omit`\<[`XrplRef`](xrpl.md#xrplref), `"fromLedger"`\>\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`XrplStatus`](xrpl.md#xrplstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`, `named?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `advertiseBeforeCarrier`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`credential`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/nearintents"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`credential`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| `NearIntentsRef`\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| `XrplSessionUnsigned`\>; `buildWithin`: (`w`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| `SessionWithinUnsigned`\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => [`Refusal`](index.md#refusal) \| `Kind`; `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`presented`) => `number` \| `undefined`; \}\>; `claims`: `true`; `closeRef`: (`chosen`, `channel`) => [`Refusal`](index.md#refusal) \| `Omit`\<[`XrplCloseRef`](xrpl.md#xrplcloseref), `"transaction"`\>; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/xrpl"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `Omit`\<[`XrplRef`](xrpl.md#xrplref), `"fromLedger"`\>\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`XrplStatus`](xrpl.md#xrplstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => [`Refusal`](index.md#refusal) \| `Kind`; `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: () => `number` \| `undefined`; \}\>; `claims`: `false`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/xrpl/stock"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`input`, `option`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `Omit`\<[`XrplChannelRef`](xrpl.md#xrplchannelref), `"fromLedger"`\>\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`XrplStatus`](xrpl.md#xrplstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => [`Refusal`](index.md#refusal) \| `Kind`; `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: () => `number` \| `undefined`; \}\>; `claims`: `false`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/hedera/stock"`; `pattern`: \{ `forwardIndexable`: `false`; `onChain`: `true`; `pattern`: `"opaque-challenge"`; `profile`: `string`; `zeroPartyRecoverable`: `false`; \}; `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`input`, `option`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaStockRef`](#hederastockref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`HederaStockStatus`](#hederastockstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`, `_act?`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`LcpHederaUnsigned`](#lcphederaunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `fetchPresented`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential) & `object`\>; `id`: `"mpp/charge/lcp/hedera"`; `landedTx`: (`presented`) => `string` \| `undefined`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`LcpHederaRef`](#lcphederaref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`HederaStatus`](hedera.md#hederastatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); `validate`: (`input`, `now`, `_reader?`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`LcpValidation`](#lcpvalidation)\>; \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`_choice`, `_h`) => `Promise`\<[`Refusal`](index.md#refusal)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/card"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`_choice`, `_h`) => `Promise`\<[`Refusal`](index.md#refusal)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/stripe"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`_choice`, `_h`) => `Promise`\<[`Refusal`](index.md#refusal)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`_presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`_presented`) => `"open"`; `ref`: (`_presented`, `receipt?`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`_presented`) => `number` \| `undefined`; \}\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/subscription/stripe"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `authorizer`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`UsdcUnsigned`](#usdcunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/usdc/evm"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`EvmRef`](evm.md#evmref) & [`MppEip3009Ref`](#mppeip3009ref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`StatusAnswer`](index.md#statusanswer)\<`bigint`, `EvmMark`\>\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| `SolanaChargeUnsigned`\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/usdc/solana"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SvmRef`](svm.md#svmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`SvmStatus`](svm.md#svmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `request`: \{ `anchorMode`: `"onChainOnly"`; `args`: \{ `amount`: `string`; `memo`: `` `0x${string}` ``; `recipient`: `string`; `sender`: `string`; \}; `chainId`: `number`; `contract`: `string`; `functionName`: `"transfer"`; `kind`: `"stacks-contract-call"`; `postCondition`: `"SentEq"`; `postConditionMode`: `"deny"`; \}; `complete`: [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential); \}\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/usdc/stacks"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| `Omit`\<[`StacksRef`](stacks.md#stacksref), `"payee"`\> & `object`\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`StacksStatus`](stacks.md#stacksstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `request`: \{ `challengeRequest`: `string`; `kind`: `"gateway-burn-intent"`; `maxBlockHeight`: `string`; `preimage`: [`GatewayPreimage`](#gatewaypreimage); \}; `complete`: [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential); \}\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/usdc/gateway"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>\]
+> `const` **MPP\_BINDINGS**: readonly \[`Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `authorizer`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppUnsigned`](#mppunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/evm/authorization"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`EvmRef`](evm.md#evmref) & [`MppEip3009Ref`](#mppeip3009ref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`StatusAnswer`](index.md#statusanswer)\<`bigint`, [`EvmMark`](ap2.md#evmmark)\>\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`Json`](index.md#json); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `authorizer`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppUnsigned`](#mppunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/evm/permit2"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`input`, `option`, `_given?`, `issue?`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`EvmRef`](evm.md#evmref) & [`MppPermit2Ref`](#mpppermit2ref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`MppEvmStatus`](#mppevmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`Json`](index.md#json); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppUnsigned`](#mppunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/evm/transaction"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`EvmRef`](evm.md#evmref) & [`MppNamedRef`](#mppnamedref) & `object`\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`MppEvmStatus`](#mppevmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`Json`](index.md#json); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppUnsigned`](#mppunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/evm/hash"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`EvmRef`](evm.md#evmref) & [`MppNamedRef`](#mppnamedref) & `object`\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`MppEvmStatus`](#mppevmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`Json`](index.md#json); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/tempo/split-memo"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TempoSplitRef`](#temposplitref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`TempoSplitStatus`](#temposplitstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `fetchPresented`: (`presented`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TempoLandedCredential`](#tempolandedcredential)\>; `id`: `"mpp/charge/tempo/split-memo/push"`; `landedTx`: (`presented`) => `string` \| `undefined`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`TempoSplitRef`](#temposplitref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`TempoSplitStatus`](#temposplitstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionUnsigned`](#sessionunsigned)\>; `buildWithin`: (`w`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionWithinUnsigned`](#sessionwithinunsigned)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"`; `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`_presented`) => `number` \| `undefined`; \}\>; `claims`: `true`; `closeRef`: (`chosen`, `channel`) => [`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref); `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/evm"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`EvmBreadthStatus`](evm.md#evmbreadthstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`Json`](index.md#json); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionUnsigned`](#sessionunsigned)\>; `buildWithin`: (`w`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionWithinUnsigned`](#sessionwithinunsigned)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"`; `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`_presented`) => `number` \| `undefined`; \}\>; `claims`: `true`; `closeRef`: (`chosen`, `channel`) => [`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref); `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/tempo"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`EvmBreadthStatus`](evm.md#evmbreadthstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`Json`](index.md#json); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`KeyAuthorizationUnsigned`](tempo.md#keyauthorizationunsigned)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"`; `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`presented`) => `number` \| `undefined`; \}\>; `claims`: `true`; `closeRef`: (`chosen`, `_channel`, `account?`) => [`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref); `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/subscription/tempo"`; `keyProves`: `string`; `keySearch`: (`ref`, `receipt`, `h`) => [`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref); `pattern`: \{ `forwardIndexable`: `true`; `onChain`: `true`; `pattern`: `"native-field"`; `profile`: `string`; `zeroPartyRecoverable`: `true`; \}; `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`EvmBreadthStatus`](evm.md#evmbreadthstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`Json`](index.md#json); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `advertiseBeforeCarrier`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`LnMppUnsigned`](lightning.md#lnmppunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/lightning"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`LnRef`](lightning.md#lnref)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`c`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `advertiseBeforeCarrier`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`LnMppUnsigned`](lightning.md#lnmppunsigned)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"`; `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`_presented`) => `number` \| `undefined`; \}\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/lightning"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`LnRef`](lightning.md#lnref)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`c`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SolanaChargeUnsigned`](#solanachargeunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `fetchPresented`: (`credential`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential) & `object`\>; `id`: `"mpp/charge/solana"`; `landedTx`: (`presented`) => `string` \| `undefined`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SvmRef`](svm.md#svmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`SvmStatus`](svm.md#svmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SolanaChargeUnsigned`](#solanachargeunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `fetchPresented`: (`credential`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential) & `object`\>; `id`: `"mpp/charge/solana/unsponsored"`; `landedTx`: (`presented`) => `string` \| `undefined`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SvmRef`](svm.md#svmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`SvmStatus`](svm.md#svmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => `"open"` \| [`Refusal`](index.md#refusal); `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`presented`) => `number` \| `undefined`; \}\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/subscription/solana"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SvmRef`](svm.md#svmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`SvmStatus`](svm.md#svmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SolanaSessionUnsigned`](#solanasessionunsigned)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"`; `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`_presented`) => `number` \| `undefined`; \}\>; `claims`: `true`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/solana/memo"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SvmRef`](svm.md#svmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`SvmStatus`](svm.md#svmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => `"open"` \| [`Refusal`](index.md#refusal); `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`_presented`) => `number` \| `undefined`; \}\>; `claims`: `false`; `data`: [`PairingData`](index.md#pairingdata); `fetchPresented`: (`credential`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential) & `object`\>; `id`: `"mpp/session/solana/stock"`; `landedTx`: (`presented`) => `string` \| `undefined`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SvmRef`](svm.md#svmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`SvmStatus`](svm.md#svmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`XrplChargeUnsigned`](#xrplchargeunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `fetchPresented`: (`credential`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential) & `object`\>; `id`: `"mpp/charge/xrpl"`; `landedTx`: (`presented`) => `string` \| `undefined`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `Omit`\<[`XrplRef`](xrpl.md#xrplref), `"fromLedger"`\>\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`XrplStatus`](xrpl.md#xrplstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`, `named?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `advertiseBeforeCarrier`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`credential`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/nearintents"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`credential`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`NearIntentsRef`](#nearintentsref)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`XrplSessionUnsigned`](#xrplsessionunsigned)\>; `buildWithin`: (`w`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionWithinUnsigned`](#sessionwithinunsigned)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => [`Refusal`](index.md#refusal) \| [`ChannelKind`](index.md#channelkind); `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`presented`) => `number` \| `undefined`; \}\>; `claims`: `true`; `closeRef`: (`chosen`, `channel`) => [`Refusal`](index.md#refusal) \| `Omit`\<[`XrplCloseRef`](xrpl.md#xrplcloseref), `"transaction"`\>; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/xrpl"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `Omit`\<[`XrplRef`](xrpl.md#xrplref), `"fromLedger"`\>\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`XrplStatus`](xrpl.md#xrplstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => [`Refusal`](index.md#refusal) \| [`ChannelKind`](index.md#channelkind); `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: () => `number` \| `undefined`; \}\>; `claims`: `false`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/xrpl/stock"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`input`, `option`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `Omit`\<[`XrplChannelRef`](xrpl.md#xrplchannelref), `"fromLedger"`\>\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`XrplStatus`](xrpl.md#xrplstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => [`Refusal`](index.md#refusal) \| [`ChannelKind`](index.md#channelkind); `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: () => `number` \| `undefined`; \}\>; `claims`: `false`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/hedera/stock"`; `pattern`: \{ `forwardIndexable`: `false`; `onChain`: `false`; `pattern`: `"opaque-challenge"`; `profile`: `string`; `zeroPartyRecoverable`: `false`; \}; `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`input`, `option`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaStockRef`](#hederastockref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`HederaStockStatus`](#hederastockstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`, `_act?`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`LcpHederaUnsigned`](#lcphederaunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `fetchPresented`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential) & `object`\>; `id`: `"mpp/charge/lcp/hedera"`; `landedTx`: (`presented`) => `string` \| `undefined`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`LcpHederaRef`](#lcphederaref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`HederaStatus`](hedera.md#hederastatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); `validate`: (`input`, `now`, `_reader?`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`LcpValidation`](#lcpvalidation)\>; \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`_choice`, `_h`) => `Promise`\<[`Refusal`](index.md#refusal)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/card"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`_choice`, `_h`) => `Promise`\<[`Refusal`](index.md#refusal)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/stripe"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`_choice`, `_h`) => `Promise`\<[`Refusal`](index.md#refusal)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`_presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`_presented`) => `"open"`; `ref`: (`_presented`, `receipt?`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`_presented`) => `number` \| `undefined`; \}\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/subscription/stripe"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `authorizer`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`UsdcUnsigned`](#usdcunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/usdc/evm"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`EvmRef`](evm.md#evmref) & [`MppEip3009Ref`](#mppeip3009ref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`StatusAnswer`](index.md#statusanswer)\<`bigint`, [`EvmMark`](ap2.md#evmmark)\>\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SolanaChargeUnsigned`](#solanachargeunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/usdc/solana"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SvmRef`](svm.md#svmref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`SvmStatus`](svm.md#svmstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `request`: \{ `anchorMode`: `"onChainOnly"`; `args`: \{ `amount`: `string`; `memo`: `` `0x${string}` ``; `recipient`: `string`; `sender`: `string`; \}; `chainId`: `number`; `contract`: `string`; `functionName`: `"transfer"`; `kind`: `"stacks-contract-call"`; `postCondition`: `"SentEq"`; `postConditionMode`: `"deny"`; \}; `complete`: [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential); \}\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/usdc/stacks"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| `Omit`\<[`StacksRef`](stacks.md#stacksref), `"payee"`\> & `object`\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`StacksStatus`](stacks.md#stacksstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>, `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `request`: \{ `challengeRequest`: `string`; `kind`: `"gateway-burn-intent"`; `maxBlockHeight`: `string`; `preimage`: [`GatewayPreimage`](#gatewaypreimage); \}; `complete`: [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential); \}\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/charge/usdc/gateway"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>\]
 
 Every MPP pairing this entry point implements.
 
@@ -1419,7 +1772,7 @@ Every MPP pairing this entry point implements.
 
 ### sessionEvm
 
-> `const` **sessionEvm**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionUnsigned`](#sessionunsigned)\>; `buildWithin`: (`w`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| `SessionWithinUnsigned`\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"`; `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`_presented`) => `number` \| `undefined`; \}\>; `claims`: `true`; `closeRef`: (`chosen`, `channel`) => [`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref); `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/evm"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`EvmBreadthStatus`](evm.md#evmbreadthstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`Json`](index.md#json); \}\>
+> `const` **sessionEvm**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionUnsigned`](#sessionunsigned)\>; `buildWithin`: (`w`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionWithinUnsigned`](#sessionwithinunsigned)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"`; `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`_presented`) => `number` \| `undefined`; \}\>; `claims`: `true`; `closeRef`: (`chosen`, `channel`) => [`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref); `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/evm"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`EvmBreadthStatus`](evm.md#evmbreadthstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`Json`](index.md#json); \}\>
 
 `mpp/session/evm`. `broadcaster` answers by the payment's action and type (`evmBroadcasts`), for the actions
 `channel.kind` takes, and every answer is `"payee"`: an opening or a top-up of type `authorization` or `permit2`,
@@ -1432,7 +1785,7 @@ as an opening of any other type does, and `mpp/not-an-opening` for a top-up of a
 
 ### sessionHederaStock
 
-> `const` **sessionHederaStock**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => [`Refusal`](index.md#refusal) \| `Kind`; `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: () => `number` \| `undefined`; \}\>; `claims`: `false`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/hedera/stock"`; `pattern`: \{ `forwardIndexable`: `false`; `onChain`: `true`; `pattern`: `"opaque-challenge"`; `profile`: `string`; `zeroPartyRecoverable`: `false`; \}; `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`input`, `option`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaStockRef`](#hederastockref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`HederaStockStatus`](#hederastockstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>
+> `const` **sessionHederaStock**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => [`Refusal`](index.md#refusal) \| [`ChannelKind`](index.md#channelkind); `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: () => `number` \| `undefined`; \}\>; `claims`: `false`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/hedera/stock"`; `pattern`: \{ `forwardIndexable`: `false`; `onChain`: `false`; `pattern`: `"opaque-challenge"`; `profile`: `string`; `zeroPartyRecoverable`: `false`; \}; `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`input`, `option`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`HederaStockRef`](#hederastockref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`HederaStockStatus`](#hederastockstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>
 
 `mpp/session/hedera/stock`, the stock client's session at coverage `none`, served after the agreement. `broadcaster`
 answers `"payer"` for the opening and a top-up, which the buyer's client sends, and `"payee"` for a voucher and the
@@ -1463,7 +1816,7 @@ H, after the agreement is recorded. `broadcaster` answers `"payer"` for the open
 
 ### sessionTempo
 
-> `const` **sessionTempo**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionUnsigned`](#sessionunsigned)\>; `buildWithin`: (`w`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| `SessionWithinUnsigned`\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"`; `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`_presented`) => `number` \| `undefined`; \}\>; `claims`: `true`; `closeRef`: (`chosen`, `channel`) => [`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref); `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/tempo"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`EvmBreadthStatus`](evm.md#evmbreadthstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`Json`](index.md#json); \}\>
+> `const` **sessionTempo**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionUnsigned`](#sessionunsigned)\>; `buildWithin`: (`w`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionWithinUnsigned`](#sessionwithinunsigned)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"`; `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`_presented`) => `number` \| `undefined`; \}\>; `claims`: `true`; `closeRef`: (`chosen`, `channel`) => [`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref); `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/tempo"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`EvmBreadthStatus`](evm.md#evmbreadthstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`Json`](index.md#json); \}\>
 
 `mpp/session/tempo`, whose `build` writes `broadcast: false`. The payee broadcasts every payment the session takes
 (`broadcaster` answers `"payee"` for the actions `channel.kind` takes, and an opening of `type` `transaction`), as
@@ -1475,7 +1828,7 @@ Any other credential gets `mpp/not-an-opening`, as `bound` refuses it.
 
 ### sessionXrpl
 
-> `const` **sessionXrpl**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| `XrplSessionUnsigned`\>; `buildWithin`: (`w`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| `SessionWithinUnsigned`\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => [`Refusal`](index.md#refusal) \| `Kind`; `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`presented`) => `number` \| `undefined`; \}\>; `claims`: `true`; `closeRef`: (`chosen`, `channel`) => [`Refusal`](index.md#refusal) \| `Omit`\<[`XrplCloseRef`](xrpl.md#xrplcloseref), `"transaction"`\>; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/xrpl"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `Omit`\<[`XrplRef`](xrpl.md#xrplref), `"fromLedger"`\>\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`XrplStatus`](xrpl.md#xrplstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>
+> `const` **sessionXrpl**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`XrplSessionUnsigned`](#xrplsessionunsigned)\>; `buildWithin`: (`w`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionWithinUnsigned`](#sessionwithinunsigned)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => [`Refusal`](index.md#refusal) \| [`ChannelKind`](index.md#channelkind); `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`presented`) => `number` \| `undefined`; \}\>; `claims`: `true`; `closeRef`: (`chosen`, `channel`) => [`Refusal`](index.md#refusal) \| `Omit`\<[`XrplCloseRef`](xrpl.md#xrplcloseref), `"transaction"`\>; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/xrpl"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `Omit`\<[`XrplRef`](xrpl.md#xrplref), `"fromLedger"`\>\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`XrplStatus`](xrpl.md#xrplstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>
 
 `mpp/session/xrpl`. The payee broadcasts every payment the session takes (`broadcaster` answers `"payee"` for the
 actions `channel.kind` takes: the opening, a voucher and the close): the seller's server submits the signed
@@ -1487,7 +1840,7 @@ refuses it.
 
 ### sessionXrplStock
 
-> `const` **sessionXrplStock**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => [`Refusal`](index.md#refusal) \| `Kind`; `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: () => `number` \| `undefined`; \}\>; `claims`: `false`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/xrpl/stock"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`input`, `option`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `Omit`\<[`XrplChannelRef`](xrpl.md#xrplchannelref), `"fromLedger"`\>\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`XrplStatus`](xrpl.md#xrplstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>
+> `const` **sessionXrplStock**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => [`Refusal`](index.md#refusal) \| [`ChannelKind`](index.md#channelkind); `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: () => `number` \| `undefined`; \}\>; `claims`: `false`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/session/xrpl/stock"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `reference`: (`input`, `option`, `_given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `Omit`\<[`XrplChannelRef`](xrpl.md#xrplchannelref), `"fromLedger"`\>\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`XrplStatus`](xrpl.md#xrplstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge); \}\>
 
 `mpp/session/xrpl/stock`, a stock client's session at coverage `none`, served after the agreement. The buyer's client
 opens the channel itself, out of band, which is no credential of the pairing, and presents vouchers that name it. The
@@ -1520,7 +1873,7 @@ Stripe subscription with the payer's shared payment token and reports its activa
 
 ### subscriptionTempo
 
-> `const` **subscriptionTempo**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`KeyAuthorizationUnsigned`](tempo.md#keyauthorizationunsigned)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"`; `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`presented`) => `number` \| `undefined`; \}\>; `claims`: `true`; `closeRef`: (`chosen`, `_channel`, `account?`) => [`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref); `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/subscription/tempo"`; `keyProves`: `string`; `keySearch`: (`ref`, `receipt`, `h`) => [`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref); `pattern`: \{ `forwardIndexable`: `true`; `onChain`: `true`; `pattern`: `"native-field"`; `zeroPartyRecoverable`: `true`; \}; `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`EvmBreadthStatus`](evm.md#evmbreadthstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`Json`](index.md#json); \}\>
+> `const` **subscriptionTempo**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `position`, `act?`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`MppChallenge`](#mppchallenge)[]; `bound`: (`input`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`choice`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`KeyAuthorizationUnsigned`](tempo.md#keyauthorizationunsigned)\>; `channel`: `Readonly`\<\{ `boundWithin`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `kind`: (`presented`) => `"open"` \| `"close"` \| [`Refusal`](index.md#refusal) \| `"within"`; `ref`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\>; `until`: (`presented`) => `number` \| `undefined`; \}\>; `claims`: `true`; `closeRef`: (`chosen`, `_channel`, `account?`) => [`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref); `data`: [`PairingData`](index.md#pairingdata); `id`: `"mpp/subscription/tempo"`; `keyProves`: `string`; `keySearch`: (`ref`, `receipt`, `h`) => [`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref); `pattern`: \{ `forwardIndexable`: `true`; `onChain`: `true`; `pattern`: `"native-field"`; `profile`: `string`; `zeroPartyRecoverable`: `true`; \}; `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}; \}; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`input`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`SessionRef`](#sessionref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`EvmBreadthStatus`](evm.md#evmbreadthstatus)\>; `tie`: (`options`) => \[`"mpp"`, \{ `challenges`: [`MppChallenge`](#mppchallenge)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`Json`](index.md#json); \}\>
 
 `mpp/subscription/tempo`. The payee broadcasts (`broadcaster` answers `"payee"` for a credential of `type`
 `keyAuthorization`, the one `channel.kind` takes): the payer's root key signs a key authorization, and the seller's
@@ -1699,7 +2052,7 @@ agreement.
 | ------ | ------ |
 | `ref` | [`HederaStockRef`](#hederastockref) |
 | `reader` | [`HederaStockReader`](#hederastockreader) |
-| `query` | `StockQuery` |
+| `query` | [`StockQuery`](#stockquery) |
 
 #### Returns
 
@@ -1995,7 +2348,7 @@ on `mpp/subscription/tempo` `revokes`, an `accessKey` with `account` or a bindin
 | ------ | ------ |
 | `ref` | [`SessionRef`](#sessionref) & `object` |
 | `reader` | [`EvmReader`](evm.md#evmreader) |
-| `query` | `EvmQuery`\<[`SessionRef`](#sessionref) & `object`\> |
+| `query` | [`EvmQuery`](ap2.md#evmquery)\<[`SessionRef`](#sessionref) & `object`\> |
 
 #### Returns
 
@@ -2079,7 +2432,7 @@ credential names.
 | ------ | ------ |
 | `ref` | [`MppNamedRef`](#mppnamedref) |
 | `reader` | [`MppEvmReader`](#mppevmreader) |
-| `query` | `EvmQuery`\<`unknown`\> |
+| `query` | [`EvmQuery`](ap2.md#evmquery)\<`unknown`\> |
 
 #### Returns
 
@@ -2169,6 +2522,30 @@ Re-exports [challengeId](index.md#challengeid)
 
 ***
 
+### ChannelKind
+
+Re-exports [ChannelKind](index.md#channelkind)
+
+***
+
+### EvmMark
+
+Re-exports [EvmMark](ap2.md#evmmark)
+
+***
+
+### EvmQuery
+
+Re-exports [EvmQuery](ap2.md#evmquery)
+
+***
+
 ### FETCHED
 
 Re-exports [FETCHED](index.md#fetched)
+
+***
+
+### HederaVoucherTypedData
+
+Re-exports [HederaVoucherTypedData](hedera.md#hederavouchertypeddata)

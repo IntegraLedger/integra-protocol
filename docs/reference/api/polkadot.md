@@ -185,7 +185,7 @@ The call the payer's signer wraps in an extrinsic, and how that extrinsic comple
 
 ##### complete()
 
-> **complete**(`extrinsic`): [`Refusal`](index.md#refusal) \| `PolkadotPaymentPayload`
+> **complete**(`extrinsic`): [`Refusal`](index.md#refusal) \| [`PolkadotPaymentPayload`](index.md#polkadotpaymentpayload)
 
 ###### Parameters
 
@@ -195,7 +195,7 @@ The call the payer's signer wraps in an extrinsic, and how that extrinsic comple
 
 ###### Returns
 
-[`Refusal`](index.md#refusal) \| `PolkadotPaymentPayload`
+[`Refusal`](index.md#refusal) \| [`PolkadotPaymentPayload`](index.md#polkadotpaymentpayload)
 
 ***
 
@@ -244,6 +244,12 @@ The reference with what the caller adds: H, and the timepoint a settler named, a
 
 ***
 
+### PolkadotMark
+
+> **PolkadotMark** = `"head"` \| `"finalized"`
+
+***
+
 ### PolkadotNetwork
 
 > **PolkadotNetwork** = `"polkadot:68d56f15f85d3136970ec16946040bc1"` \| `"polkadot:67f9723393ef76214df0118c34bbbd3d"`
@@ -252,7 +258,7 @@ The reference with what the caller adds: H, and the timepoint a settler named, a
 
 ### PolkadotQuery
 
-> **PolkadotQuery** = [`StatusQuery`](index.md#statusquery)\<[`PolkadotLanded`](#polkadotlanded), `bigint`, `PolkadotMark`, [`PolkadotCursor`](#polkadotcursor)\>
+> **PolkadotQuery** = [`StatusQuery`](index.md#statusquery)\<[`PolkadotLanded`](#polkadotlanded), `bigint`, [`PolkadotMark`](#polkadotmark), [`PolkadotCursor`](#polkadotcursor)\>
 
 What `polkadotStatus` takes beside the reference and the reader: the profile `read-status`'s query.
 
@@ -260,7 +266,7 @@ What `polkadotStatus` takes beside the reference and the reader: the profile `re
 
 ### PolkadotStatus
 
-> **PolkadotStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, `PolkadotMark`, [`PolkadotCursor`](#polkadotcursor)\>
+> **PolkadotStatus** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, [`PolkadotMark`](#polkadotmark), [`PolkadotCursor`](#polkadotcursor)\>
 
 The answer of `polkadotStatus`, as the profile `read-status` gives it. Its marks are `head` and `finalized`, in that
 order, and its position the block height. A transaction is named by its timepoint, `<block hash>-<index>`. A
@@ -284,7 +290,7 @@ Pallet and call indices, the same on both networks.
 
 ### exactPolkadotRemark
 
-> `const` **exactPolkadotRemark**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`PolkadotUnsigned`](#polkadotunsigned)\>; `claims`: `true`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/polkadot/lcp-assets-remark"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`PolkadotRef`](#polkadotref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`PolkadotStatus`](#polkadotstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactPolkadotRemark**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`PolkadotUnsigned`](#polkadotunsigned)\>; `claims`: `true`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/polkadot/lcp-assets-remark"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](aptos.md#x402read); `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`PolkadotRef`](#polkadotref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`PolkadotStatus`](#polkadotstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/polkadot/lcp-assets-remark`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's
 facilitator submits the extrinsic the payer signed and names where it landed; `status` reads it by the signer's
@@ -476,3 +482,27 @@ A simple-format SS58 address: one prefix byte 0–63, a 32-byte account, and a t
 ### Broadcaster
 
 Re-exports [Broadcaster](index.md#broadcaster)
+
+***
+
+### PolkadotPayload
+
+Re-exports [PolkadotPayload](index.md#polkadotpayload)
+
+***
+
+### PolkadotPaymentPayload
+
+Re-exports [PolkadotPaymentPayload](index.md#polkadotpaymentpayload)
+
+***
+
+### X402Payment
+
+Re-exports [X402Payment](index.md#x402payment)
+
+***
+
+### X402Read
+
+Re-exports [X402Read](aptos.md#x402read)

@@ -13,6 +13,21 @@ the payer's account for H.
 
 ## Interfaces
 
+### NearChoice
+
+#### Properties
+
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-accepted"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) | - |
+| <a id="property-accesskeynonce"></a> `accessKeyNonce` | `bigint` | `view_access_key`'s nonce for the key. |
+| <a id="property-finalheight"></a> `finalHeight` | `bigint` | `block` at finality "final": its height. |
+| <a id="property-payer"></a> `payer` | `string` | The payer's account: a NEAR account id, as nearcore reads a delegate action's sender, or `x402/option-malformed`. |
+| <a id="property-publickey"></a> `publicKey` | `string` | The access key, read as nearcore's `PublicKey::from_str` reads it: the key type before the first `:`, `ed25519` or `secp256k1` in ASCII letters of either case, or no key type, which is Ed25519; then the base58 of exactly that type's key size, 32 bytes or 64. Any other text is `x402/option-malformed`. |
+| <a id="property-required"></a> `required` | [`PaymentRequired`](x402.md#paymentrequired) | - |
+
+***
+
 ### NearFunctionCall
 
 A function call of a delegate action: its method, its base64 arguments, its gas, and its deposit in yoctoNEAR.
@@ -44,7 +59,7 @@ the transaction from it where it can, as a run on `near:testnet` showed (the pro
 | ------ | ------ | ------ |
 | <a id="property-height"></a> `height` | `readonly` | `bigint` |
 | <a id="property-nonce"></a> `nonce` | `readonly` | `bigint` \| `null` |
-| <a id="property-publickey"></a> `publicKey` | `readonly` | `string` |
+| <a id="property-publickey-1"></a> `publicKey` | `readonly` | `string` |
 | <a id="property-transaction"></a> `transaction?` | `readonly` | `object` |
 | `transaction.hash` | `readonly` | `string` |
 | `transaction.signer` | `readonly` | `string` |
@@ -191,8 +206,8 @@ shortens the search and proves nothing.
 | <a id="property-network-1"></a> `network` | [`NearNetwork`](#nearnetwork) |
 | <a id="property-nonce-1"></a> `nonce` | `string` |
 | <a id="property-payee"></a> `payee` | `string` |
-| <a id="property-payer"></a> `payer` | `string` |
-| <a id="property-publickey-1"></a> `publicKey` | `string` |
+| <a id="property-payer-1"></a> `payer` | `string` |
+| <a id="property-publickey-2"></a> `publicKey` | `string` |
 | <a id="property-transaction-1"></a> `transaction?` | `string` |
 
 ***
@@ -212,7 +227,7 @@ shortens the search and proves nothing.
 
 ##### complete()
 
-> **complete**(`signature`): [`Refusal`](index.md#refusal) \| `NearPayment`
+> **complete**(`signature`): [`Refusal`](index.md#refusal) \| [`NearPayment`](index.md#nearpayment)
 
 Takes the key type (0 Ed25519, 1 secp256k1) and its 64- or 65-byte signature. An Ed25519 signature whose last byte
 is 0x20 or more is `x402/signature-malformed`: nearcore reads none, and a valid signature never has one.
@@ -227,9 +242,15 @@ is 0x20 or more is `x402/signature-malformed`: nearcore reads none, and a valid 
 
 ###### Returns
 
-[`Refusal`](index.md#refusal) \| `NearPayment`
+[`Refusal`](index.md#refusal) \| [`NearPayment`](index.md#nearpayment)
 
 ## Type Aliases
+
+### Answer
+
+> **Answer** = [`StatusAnswer`](index.md#statusanswer)\<`bigint`, [`NearMark`](#nearmark), `bigint`\>
+
+***
 
 ### NearKeyChanges
 
@@ -268,7 +289,7 @@ search position are block heights.
 
 ### NearStatus
 
-> **NearStatus** = `Answer`
+> **NearStatus** = [`Answer`](#answer)
 
 The answer of `status`, as the profile `read-status` gives it, positions being block heights. A `settled` answer
 states `presented`: `yes` where the delegate action it settled on is, member by member, the one the reference was
@@ -279,7 +300,7 @@ in `moved` is named by the transaction and, as `place`, the id of the receipt th
 
 ### exactNear
 
-> `const` **exactNear**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`NearUnsigned`](#nearunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/near"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`NearRef`](#nearref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<`Answer`\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactNear**: `Readonly`\<\{ `advertise`: (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`PaymentRequired`](x402.md#paymentrequired); `bound`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`NearUnsigned`](#nearunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/near"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](aptos.md#x402read); `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`NearRef`](#nearref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`Answer`](#answer)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/near`. The payee broadcasts (`broadcaster` answers `"payee"`): a relayer of the seller's facilitator
 submits the delegate action the payer signed; `status` finds it by the payer's access key and searches every key of
@@ -439,7 +460,7 @@ are `near/sda-too-large`; without borsh, bytes within the bound are `near/peer-m
 
 ### nearStatus()
 
-> **nearStatus**(`ref`, `reader`, `query`): `Promise`\<`Answer`\>
+> **nearStatus**(`ref`, `reader`, `query`): `Promise`\<[`Answer`](#answer)\>
 
 Answers `status` as the profile `read-status` gives it, from what the read observed. The read holds the single-use
 value, the payer's access key's nonce, read at `final` and at the latest head; and, from the block after the
@@ -485,10 +506,28 @@ than the reference's, `chain-mismatch`; a reference, reader or query that is not
 
 #### Returns
 
-`Promise`\<`Answer`\>
+`Promise`\<[`Answer`](#answer)\>
 
 ## References
 
 ### Broadcaster
 
 Re-exports [Broadcaster](index.md#broadcaster)
+
+***
+
+### NearPayment
+
+Re-exports [NearPayment](index.md#nearpayment)
+
+***
+
+### X402Payment
+
+Re-exports [X402Payment](index.md#x402payment)
+
+***
+
+### X402Read
+
+Re-exports [X402Read](aptos.md#x402read)

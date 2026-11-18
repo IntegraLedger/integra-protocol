@@ -102,7 +102,7 @@ The reference the read takes: the option's payee is the permission's `spender`.
 
 #### Extends
 
-- `EvmReadRefBase`
+- [`EvmReadRefBase`](evm.md#evmreadrefbase)
 
 #### Properties
 
@@ -111,10 +111,10 @@ The reference the read takes: the option's payee is the permission's `spender`.
 | <a id="property-h"></a> `h` | `readonly` | `` `0x${string}` `` | H, the permission's `salt`. | - | - |
 | <a id="property-hash"></a> `hash` | `readonly` | `` `0x${string}` `` | The permission's hash, the search key. | - | - |
 | <a id="property-manager-2"></a> `manager` | `readonly` | `` `0x${string}` `` | The SpendPermissionManager the permission is approved on. | - | - |
-| <a id="property-network-2"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | `EvmReadRefBase.network` | - |
-| <a id="property-payee"></a> `payee` | `readonly` | `string` | - | - | `EvmReadRefBase.payee` |
+| <a id="property-network-2"></a> `network` | `readonly` | `` `eip155:${string}` `` | - | [`EvmReadRefBase`](evm.md#evmreadrefbase).[`network`](evm.md#property-network-5) | - |
+| <a id="property-payee"></a> `payee` | `readonly` | `string` | - | - | [`EvmReadRefBase`](evm.md#evmreadrefbase).[`payee`](evm.md#property-payee-4) |
 | <a id="property-permission-2"></a> `permission` | `readonly` | [`SpendPermission`](#spendpermission) | The permission whole, as presented: the members `presented` compares, and the argument of the value's two reads. | - | - |
-| <a id="property-transaction"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search; never needed. | - | `EvmReadRefBase.transaction` |
+| <a id="property-transaction"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search; never needed. | - | [`EvmReadRefBase`](evm.md#evmreadrefbase).[`transaction`](evm.md#property-transaction-4) |
 
 ***
 
@@ -423,3 +423,21 @@ The ATR's binding slot: the offer exactly as issued.
 ### Broadcaster
 
 Re-exports [Broadcaster](index.md#broadcaster)
+
+***
+
+### EvmMark
+
+Re-exports [EvmMark](ap2.md#evmmark)
+
+***
+
+### EvmQuery
+
+Re-exports [EvmQuery](ap2.md#evmquery)
+
+***
+
+### EvmReadRefBase
+
+Re-exports [EvmReadRefBase](evm.md#evmreadrefbase)

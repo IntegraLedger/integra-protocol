@@ -259,7 +259,7 @@ two signatures complete the payment.
 
 ##### complete()
 
-> **complete**(`signatures`): [`Refusal`](index.md#refusal) \| `StellarPaymentPayload`
+> **complete**(`signatures`): [`Refusal`](index.md#refusal) \| [`StellarPaymentPayload`](index.md#stellarpaymentpayload)
 
 The x402 payment: the entry's signature written as a Stellar account's, the payload's as a decorated signature of
 the envelope. A signature that is not 64 bytes is `stellar/tx-malformed`, and a signed envelope over 8,192
@@ -275,7 +275,7 @@ characters `stellar/tx-too-large`.
 
 ###### Returns
 
-[`Refusal`](index.md#refusal) \| `StellarPaymentPayload`
+[`Refusal`](index.md#refusal) \| [`StellarPaymentPayload`](index.md#stellarpaymentpayload)
 
 ## Type Aliases
 
@@ -639,3 +639,9 @@ the XDR.
 #### Returns
 
 [`Refusal`](index.md#refusal) \| readonly readonly `string`[][]
+
+## References
+
+### StellarPaymentPayload
+
+Re-exports [StellarPaymentPayload](index.md#stellarpaymentpayload)

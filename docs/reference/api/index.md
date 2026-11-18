@@ -31,6 +31,22 @@ Present where the pairing's payment can itself be an agreement.
 
 ***
 
+### AptosPaymentPayload
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-accepted"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
+| <a id="property-extensions"></a> `extensions?` | `object` |
+| <a id="property-payload"></a> `payload` | `object` |
+| `payload.transaction` | `string` |
+| <a id="property-resource"></a> `resource?` | `object` |
+| `resource.url` | `string` |
+| <a id="property-x402version"></a> `x402Version` | `2` |
+
+***
+
 ### Authorizer
 
 The optional member of a pull pairing whose payer signs an authorization that the chain executes later: the account
@@ -55,6 +71,37 @@ pairings' references record no `authorization`.
 ###### Returns
 
 `Promise`\<`string` \| [`Refusal`](#refusal)\>
+
+***
+
+### BatchPaymentPayload
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-accepted-1"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
+| <a id="property-extensions-1"></a> `extensions?` | `object` |
+| <a id="property-payload-1"></a> `payload` | `object` |
+| `payload.type` | `string` |
+| <a id="property-resource-1"></a> `resource?` | `object` |
+| `resource.url` | `string` |
+| <a id="property-x402version-1"></a> `x402Version` | `2` |
+
+***
+
+### CardanoPaymentPayload
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-accepted-2"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
+| <a id="property-extensions-2"></a> `extensions?` | `object` |
+| <a id="property-payload-2"></a> `payload` | [`CardanoPayload`](cardano.md#cardanopayload) |
+| <a id="property-resource-2"></a> `resource?` | `object` |
+| `resource.url` | `string` |
+| <a id="property-x402version-2"></a> `x402Version` | `2` |
 
 ***
 
@@ -98,6 +145,23 @@ the checks on that carrier. It takes the arguments its pairing's `advertise` tak
 
 ***
 
+### CloudflarePaymentPayload
+
+The request's payment document: the option's amount and asset, with the challenge's `extensions` echoed.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-accepted-3"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
+| <a id="property-extensions-3"></a> `extensions` | `object` |
+| <a id="property-payload-3"></a> `payload` | `object` |
+| `payload.amount` | `string` |
+| `payload.asset` | `string` |
+| <a id="property-x402version-3"></a> `x402Version` | `2` |
+
+***
+
 ### Codec
 
 A pairing's codec. `Presented` is what the payer presents, `Ref` the reference `reference` gives, `Reader` the
@@ -130,7 +194,7 @@ payment uses H; on every other pairing the act changes nothing. `status` takes t
 | <a id="property-build"></a> `build?` | `readonly` | (`choice`, `h`, `act?`) => `Promise`\<[`Refusal`](#refusal) \| `F`\[`"unsigned"`\]\> | What the payer signs, with H in place, or for the act `agreement` on a pairing whose agreement has its own value, that value. Absent where lcp builds no payment for the pairing: the payer's own client builds it. |
 | <a id="property-channel"></a> `channel?` | `readonly` | `object` | For a channel, a session or a subscription. |
 | `channel.boundWithin` | `readonly` | (`presented`) => `Promise`\<[`Refusal`](#refusal) \| `` `0x${string}` ``\> | H as a payment within the channel carries it. A pairing whose payments within the channel carry no hash refuses every one (on MPP, `mpp/not-bound-within`). |
-| `channel.kind` | `readonly` | (`presented`) => [`Refusal`](#refusal) \| `ChannelKind` | Whether the presented payment opens the channel, pays within it, or closes it (`ChannelKind`). |
+| `channel.kind` | `readonly` | (`presented`) => [`Refusal`](#refusal) \| [`ChannelKind`](#channelkind) | Whether the presented payment opens the channel, pays within it, or closes it (`ChannelKind`). |
 | `channel.ref` | `readonly` | (`presented`) => `Promise`\<[`Refusal`](#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\> | The network and channel the presented payment belongs to; a payment `kind` refuses gets `kind`'s refusal. |
 | `channel.until` | `readonly` | (`presented`) => `number` \| `undefined` | The time, in Unix seconds, after which the channel takes no payment, where the payment states one. |
 | <a id="property-fetchpresented"></a> `fetchPresented?` | `readonly` | (`presented`, `reader`) => `Promise`\<[`Refusal`](#refusal) \| `Presented`\> | For a form its payer broadcasts: the presented payment completed with the landed transaction it names. |
@@ -141,6 +205,27 @@ payment uses H; on every other pairing the act changes nothing. `status` takes t
 | <a id="property-recover"></a> `recover?` | `readonly` | (`input`, `reader`) => `Promise`\<[`Refusal`](#refusal) \| `` `0x${string}` ``\> | The value a landed transaction carries in H's place, in H's spelling: H, or H's low bits as the pairing carries them; and from an agreement's transaction on a pairing whose agreement has its own value, that value, which a holder of the ATR compares with `agreementValue` of its own H, since a digest is not read back to H. |
 | <a id="property-reference"></a> `reference?` | `readonly` | (`presented`, `option`, `given?`) => `Promise`\<[`Refusal`](#refusal) \| `Ref`\> | The read keys of a presented payment, with the payee of the option it answers; given the act `agreement` and H on a pairing whose agreement has its own value, the single-use value it names is that value. |
 | <a id="property-status"></a> `status?` | `readonly` | (`ref`, `reader`, `query`) => `Promise`\<`F`\[`"answer"`\]\> | The read of the act the query asks about, from the reference and what the landed transaction adds to it. |
+
+***
+
+### DataMembers
+
+The members of a pairing's data that do not turn on its coverage.
+
+#### Properties
+
+| Property | Modifier | Type | Description |
+| ------ | ------ | ------ | ------ |
+| <a id="property-asset"></a> `asset?` | `readonly` | `string` | How the asset is identified in the landed transaction. |
+| <a id="property-broadcasts"></a> `broadcasts` | `readonly` | [`Broadcaster`](#broadcaster) \| `"either"` | The answers the codec's `broadcaster` can give over every credential type the pairing takes. |
+| <a id="property-carrier"></a> `carrier` | `readonly` | [`Carrier`](#carrier) | - |
+| <a id="property-confirmed"></a> `confirmed` | `readonly` | `"no"` \| `"yes"` | Whether something outside lcp has shown the form as its profile defines it. |
+| <a id="property-destination"></a> `destination?` | `readonly` | `string` | How the account the act names is identified in the landed transaction. |
+| <a id="property-nonce"></a> `nonce` | `readonly` | `"unshown"` \| `"single-use"` \| `"reusable"` | Whether the identical instrument can land more than once; `unshown` until a vector or a run shows single use. |
+| <a id="property-payer"></a> `payer?` | `readonly` | `string` | How the payer is identified in the landed transaction. |
+| <a id="property-proves"></a> `proves` | `readonly` | `string` | What the read establishes of a payment through the pairing. |
+| <a id="property-read-1"></a> `read?` | `readonly` | [`ReadData`](#readdata) | Absent where no public ledger records the payment. |
+| <a id="property-source"></a> `source` | `readonly` | `string` | Who writes H: lcp's client, or a stock client and release, with the member it copies H from. |
 
 ***
 
@@ -243,12 +328,77 @@ two answers that name one transfer are told from two transfers.
 | Property | Modifier | Type | Description |
 | ------ | ------ | ------ | ------ |
 | <a id="property-amount"></a> `amount` | `readonly` | `string` | - |
-| <a id="property-asset"></a> `asset` | `readonly` | `string` | - |
+| <a id="property-asset-1"></a> `asset` | `readonly` | `string` | - |
 | <a id="property-decimals"></a> `decimals?` | `readonly` | `number` | Where the ledger states it for the asset, the number of decimals in which `amount` is written: `amount` counts the asset's smallest unit, and the amount in the asset's own unit is `amount` × 10^-`decimals`. Observed, and never compared with anything. |
 | <a id="property-partial"></a> `partial?` | `readonly` | `true` | True where the ledger records that the payer signed the payment as one that may deliver less than the amount it names, and `amount` is then what it delivered; absent otherwise. Observed, and never judged. |
 | <a id="property-place"></a> `place?` | `readonly` | `string` \| `number` | Its place in that transaction, in the pairing's own spelling: on EVM the position of its `Transfer` log among the receipt's logs; elsewhere the position of the instruction, operation, output or event it was read from. |
 | <a id="property-to"></a> `to` | `readonly` | `string` | The account it reached, or the beneficiary a contract names. |
 | <a id="property-transaction-1"></a> `transaction?` | `readonly` | `string` | The transaction it was read from. |
+
+***
+
+### Named
+
+#### Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Position` |
+| `Mark` |
+
+#### Properties
+
+| Property | Modifier | Type | Description |
+| ------ | ------ | ------ | ------ |
+| <a id="property-authority-1"></a> `authority?` | `readonly` | `string` | - |
+| <a id="property-finality"></a> `finality?` | `readonly` | `Mark` | The mark the read reached for the transaction it names. |
+| <a id="property-moved-1"></a> `moved?` | `readonly` | readonly [`Moved`](#moved)[] | - |
+| <a id="property-position-1"></a> `position?` | `readonly` | `Position` | - |
+| <a id="property-signer-1"></a> `signer?` | `readonly` | `string` | - |
+| <a id="property-transaction-2"></a> `transaction?` | `readonly` | `string` | - |
+
+***
+
+### PresentedOn
+
+What the buyer presents as payment, per surface: the union of the payment types of every pairing on it. Every
+pairing's `bound` and `reference` take `unknown` and check what they are given. `Presented` indexes it by every
+surface, so a pairing on a surface it does not name does not compile.
+
+#### Properties
+
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-ack"></a> `ack` | [`Json`](#json) | ACK defines no payer signature; its `bound` refuses whatever is presented. |
+| <a id="property-acp"></a> `acp` | [`Presented`](acp.md#presented) | - |
+| <a id="property-ap2"></a> `ap2` | [`Presented`](ap2.md#presented) \| [`X402Presented`](ap2.md#x402presented) | - |
+| <a id="property-card"></a> `card` | [`TapPresented`](card.md#tappresented) \| [`VicPresented`](card.md#vicpresented) \| [`ViImmediate`](card.md#viimmediate) \| [`ViAutonomous`](card.md#viautonomous) | - |
+| <a id="property-mpp"></a> `mpp` | [`MppCredential`](mpp.md#mppcredential) | - |
+| <a id="property-spend-permissions"></a> `spend-permissions` | [`SpendPermissionReturn`](spend-permissions.md#spendpermissionreturn) | - |
+| <a id="property-ucp"></a> `ucp` | [`Presented`](ap2.md#presented) \| [`AgentSignedPresented`](ucp.md#agentsignedpresented) | - |
+| <a id="property-x402"></a> `x402` | [`PaymentPayload`](x402.md#paymentpayload) \| [`LnPaymentPayload`](lightning.md#lnpaymentpayload) \| [`SvmPaymentPayload`](#svmpaymentpayload) \| [`UptoSvmPaymentPayload`](#uptosvmpaymentpayload) \| [`XrplPaymentPayload`](#xrplpaymentpayload) \| [`HederaPaymentPayload`](#hederapaymentpayload) \| [`ExecutorPaymentPayload`](#executorpaymentpayload) \| [`AptosPaymentPayload`](#aptospaymentpayload) \| [`AvmPaymentPayload`](#avmpaymentpayload) \| [`CardanoPaymentPayload`](#cardanopaymentpayload) \| [`CasperPaymentPayload`](#casperpaymentpayload) \| [`CcdPaymentPayload`](#ccdpaymentpayload) \| [`NearPayment`](#nearpayment) \| [`PolkadotPaymentPayload`](#polkadotpaymentpayload) \| [`StarknetPayment`](#starknetpayment) \| [`StellarPaymentPayload`](#stellarpaymentpayload) \| [`SuiPaymentPayload`](#suipaymentpayload) \| [`TronPayment`](#tronpayment) \| [`TvmPayment`](#tvmpayment) \| [`BatchPaymentPayload`](#batchpaymentpayload) \| [`CloudflarePaymentPayload`](#cloudflarepaymentpayload) \| [`UptoXrplPaymentPayload`](x402-upto-xrpl.md#uptoxrplpaymentpayload) | - |
+
+***
+
+### PushMode
+
+The optional member of a push-mode pairing: the transaction its credential names, or undefined.
+
+#### Methods
+
+##### landedTx()?
+
+> `optional` **landedTx**(`presented`): `string` \| `undefined`
+
+###### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `presented` | `unknown` |
+
+###### Returns
+
+`string` \| `undefined`
 
 ***
 
@@ -313,9 +463,99 @@ other acts under the same H.
 | ------ | ------ | ------ |
 | <a id="property-act"></a> `act` | `readonly` | [`Act`](#act) |
 | <a id="property-after"></a> `after?` | `readonly` | `Position` |
-| <a id="property-finality"></a> `finality` | `readonly` | `Mark` |
+| <a id="property-finality-1"></a> `finality` | `readonly` | `Mark` |
 | <a id="property-others"></a> `others?` | `readonly` | readonly [`OtherAct`](#otheract)\<`Ref`\>[] |
 | <a id="property-search-1"></a> `search?` | `readonly` | `Cursor` |
+
+***
+
+### StellarPaymentPayload
+
+A Stellar x402 payment: the base64 XDR of the transaction with the payer's entry signed.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-accepted-4"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
+| <a id="property-extensions-4"></a> `extensions?` | `object` |
+| <a id="property-payload-4"></a> `payload` | `object` |
+| `payload.transaction` | `string` |
+| <a id="property-resource-3"></a> `resource?` | `object` |
+| `resource.url` | `string` |
+| <a id="property-x402version-4"></a> `x402Version` | `2` |
+
+***
+
+### SuiPaymentPayload
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-accepted-5"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
+| <a id="property-extensions-5"></a> `extensions?` | `object` |
+| <a id="property-payload-5"></a> `payload` | [`SuiPayload`](sui.md#suipayload) |
+| <a id="property-resource-4"></a> `resource?` | `object` |
+| `resource.url` | `string` |
+| <a id="property-x402version-5"></a> `x402Version` | `2` |
+
+***
+
+### SvmPaymentPayload
+
+A payment on `x402/exact/solana`: the base64 partially signed versioned transaction. `../x402-exact-solana.ts`
+returns it from `complete`, and the root names it among the payments `Presented` covers; both export it.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-accepted-6"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
+| <a id="property-extensions-6"></a> `extensions?` | `object` |
+| <a id="property-payload-6"></a> `payload` | `object` |
+| `payload.transaction` | `string` |
+| <a id="property-resource-5"></a> `resource?` | `object` |
+| `resource.url` | `string` |
+| <a id="property-x402version-6"></a> `x402Version` | `2` |
+
+***
+
+### UptoSvmPaymentPayload
+
+A payment on `x402/upto/solana`: the opening's signed fields and its base64 partially signed transaction.
+`../x402-upto-solana.ts` returns it from `complete`, and the root names it among the payments `Presented` covers; both
+export it.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-accepted-7"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
+| <a id="property-extensions-7"></a> `extensions?` | `object` |
+| <a id="property-payload-7"></a> `payload` | [`UptoSvmPayload`](x402-upto-solana.md#uptosvmpayload) |
+| <a id="property-resource-6"></a> `resource?` | `object` |
+| `resource.url` | `string` |
+| <a id="property-x402version-7"></a> `x402Version` | `2` |
+
+***
+
+### XrplPaymentPayload
+
+A payment on `x402/exact/xrpl`: the wallet's signed blob, hex. `../x402-exact-xrpl.ts` returns it from `complete`,
+and the root names it among the payments `Presented` covers; both export the name.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-accepted-8"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
+| <a id="property-extensions-8"></a> `extensions?` | `object` |
+| <a id="property-payload-8"></a> `payload` | `object` |
+| `payload.signedTxBlob` | `string` |
+| <a id="property-resource-7"></a> `resource?` | `object` |
+| `resource.url` | `string` |
+| <a id="property-x402version-8"></a> `x402Version` | `2` |
 
 ## Type Aliases
 
@@ -335,9 +575,15 @@ The act `status` is asked about.
 
 ***
 
+### AvmPaymentPayload
+
+> **AvmPaymentPayload** = [`X402Payment`](#x402payment)\<[`AvmPresented`](avm.md#avmpresented)\>
+
+***
+
 ### Binding
 
-> **Binding** = [`X402Binding`](#x402binding) \| [`MppBinding`](#mppbinding) \| *typeof* [`paymentRequest`](ack.md#paymentrequest) \| *typeof* [`delegated`](acp.md#delegated) \| *typeof* [`undelegated`](acp.md#undelegated) \| *typeof* [`checkoutMandate`](ap2.md#checkoutmandate) \| *typeof* [`viAutonomous`](card.md#viautonomous-1) \| *typeof* [`viImmediate`](card.md#viimmediate-1) \| *typeof* [`sellerReference`](card.md#sellerreference) \| *typeof* [`visaTap`](card.md#visatap) \| *typeof* [`agentPay`](card.md#agentpay) \| *typeof* [`visaVic`](card.md#visavic) \| *typeof* [`bookingAp2Mandate`](ucp.md#bookingap2mandate) \| *typeof* [`bookingUnsigned`](ucp.md#bookingunsigned) \| *typeof* [`ap2Mandate`](ucp.md#ap2mandate) \| *typeof* [`unsigned`](ucp.md#unsigned-1) \| *typeof* [`checkoutMandateX402`](ap2.md#checkoutmandatex402) \| *typeof* [`agentSigned`](ucp.md#agentsigned) \| *typeof* [`spendPermissionsEip155`](spend-permissions.md#spendpermissionseip155) & `PushMode` & [`CarrierAfterH`](#carrierafterh) & [`Authorizer`](#authorizer)
+> **Binding** = [`X402Binding`](#x402binding) \| [`MppBinding`](#mppbinding) \| *typeof* [`paymentRequest`](ack.md#paymentrequest) \| *typeof* [`delegated`](acp.md#delegated) \| *typeof* [`undelegated`](acp.md#undelegated) \| *typeof* [`checkoutMandate`](ap2.md#checkoutmandate) \| *typeof* [`viAutonomous`](card.md#viautonomous-1) \| *typeof* [`viImmediate`](card.md#viimmediate-1) \| *typeof* [`sellerReference`](card.md#sellerreference) \| *typeof* [`visaTap`](card.md#visatap) \| *typeof* [`agentPay`](card.md#agentpay) \| *typeof* [`visaVic`](card.md#visavic) \| *typeof* [`bookingAp2Mandate`](ucp.md#bookingap2mandate) \| *typeof* [`bookingUnsigned`](ucp.md#bookingunsigned) \| *typeof* [`ap2Mandate`](ucp.md#ap2mandate) \| *typeof* [`unsigned`](ucp.md#unsigned-1) \| *typeof* [`checkoutMandateX402`](ap2.md#checkoutmandatex402) \| *typeof* [`agentSigned`](ucp.md#agentsigned) \| *typeof* [`spendPermissionsEip155`](spend-permissions.md#spendpermissionseip155) & [`PushMode`](#pushmode) & [`CarrierAfterH`](#carrierafterh) & [`Authorizer`](#authorizer)
 
 A pairing of protocol, scheme and rail.
 
@@ -355,6 +601,50 @@ applies first; any other payment gets the refusal `bound` gives that fault. Wher
 opening alone, so for any other action the reader is `channel.kind`: a payment it refuses for its own content gets
 its refusal (a batch channel reads the payload alone, under any `accepted` option), and one a session's
 `channel.kind` refuses for what the challenge decides is answered.
+
+***
+
+### CasperPaymentPayload
+
+> **CasperPaymentPayload** = `object`
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-accepted-9"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
+| <a id="property-extensions-9"></a> `extensions?` | [`PaymentRequired`](x402.md#paymentrequired)\[`"extensions"`\] |
+| <a id="property-payload-9"></a> `payload` | `object` |
+| `payload.authorization` | [`CasperAuthorization`](casper.md#casperauthorization) |
+| `payload.publicKey` | `string` |
+| `payload.signature` | `string` |
+| <a id="property-resource-8"></a> `resource?` | [`PaymentRequired`](x402.md#paymentrequired)\[`"resource"`\] |
+| <a id="property-x402version-9"></a> `x402Version` | `2` |
+
+***
+
+### CcdPaymentPayload
+
+> **CcdPaymentPayload** = `object`
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-accepted-10"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
+| <a id="property-extensions-10"></a> `extensions?` | [`PaymentRequired`](x402.md#paymentrequired)\[`"extensions"`\] |
+| <a id="property-payload-10"></a> `payload` | `object` |
+| `payload.signedTransaction` | `object` |
+| <a id="property-resource-9"></a> `resource?` | [`PaymentRequired`](x402.md#paymentrequired)\[`"resource"`\] |
+| <a id="property-x402version-10"></a> `x402Version` | `2` |
+
+***
+
+### ChannelKind
+
+> **ChannelKind** = `"open"` \| `"within"` \| `"close"`
+
+What a channel's `kind` names a payment: its opening, a payment within it, or its close.
 
 ***
 
@@ -392,7 +682,7 @@ A kind of endpoint a read goes through, as the pairing's chain names it.
 
 ### Entry
 
-> **Entry**\<`Id`, `Presented`, `Ref`, `Reader`, `F`\> = [`Codec`](#codec)\<`Presented`, `Ref`, `Reader`, `F`\> & `NoneWhereNever`\<`Presented`, `Ref`, `Reader`\> & `object`
+> **Entry**\<`Id`, `Presented`, `Ref`, `Reader`, `F`\> = [`Codec`](#codec)\<`Presented`, `Ref`, `Reader`, `F`\> & [`NoneWhereNever`](#nonewherenever)\<`Presented`, `Ref`, `Reader`\> & `object`
 
 A registry entry: its id, its data and its codec. It takes `never` for `Reader` only where the codec has no member
 that takes a reader, for `Ref` only where it has no `reference`, and never for `Presented`.
@@ -416,6 +706,28 @@ that takes a reader, for `Ref` only where it has no `reference`, and never for `
 
 ***
 
+### ExecutorPayload
+
+> **ExecutorPayload** = `object`
+
+The x402 `transferExecutor` payload.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-authorization"></a> `authorization` | [`Hex`](evm.md#hex) |
+| <a id="property-executor"></a> `executor` | `string` |
+| <a id="property-payer-1"></a> `payer` | `string` |
+
+***
+
+### ExecutorPaymentPayload
+
+> **ExecutorPaymentPayload** = [`X402Payment`](#x402payment)\<[`ExecutorPayload`](#executorpayload)\>
+
+***
+
 ### FailedReason
 
 > **FailedReason** = `"instrument-unused"` \| `"instrument-consumed"` \| `"transaction-failed"` \| `"before-position"`
@@ -429,6 +741,40 @@ The reasons of a `failed` answer.
 > **ForeignReason** = `"payee-signed"` \| `"other-signer"` \| `"given"` \| `"other-kind"` \| `"other-account"`
 
 Why a transaction that carries H is not the act asked about, in the order in which they are tried.
+
+***
+
+### HederaPayload
+
+> **HederaPayload** = `object`
+
+The x402 `exact` payload on Hedera: the partially signed transaction, base64.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-transaction-3"></a> `transaction` | `string` |
+
+***
+
+### HederaPaymentPayload
+
+> **HederaPaymentPayload** = [`X402Payment`](#x402payment)\<[`HederaPayload`](#hederapayload)\>
+
+***
+
+### IsNever
+
+> **IsNever**\<`T`\> = \[`T`\] *extends* \[`never`\] ? `true` : `false`
+
+True where `T` is `never`.
+
+#### Type Parameters
+
+| Type Parameter |
+| ------ |
+| `T` |
 
 ***
 
@@ -450,6 +796,38 @@ An MPP pairing of intent and method.
 
 ***
 
+### NearPayment
+
+> **NearPayment** = [`X402Payment`](#x402payment)\<\{ `signedDelegateAction`: `string`; \}\>
+
+***
+
+### NoneWhereNever
+
+> **NoneWhereNever**\<`Presented`, `Ref`, `Reader`\> = [`IsNever`](#isnever)\<`Presented`\> *extends* `true` ? `never` : `unknown` & [`IsNever`](#isnever)\<`Reader`\> *extends* `true` ? `object` : `unknown` & [`IsNever`](#isnever)\<`Ref`\> *extends* `true` ? `object` : `unknown`
+
+The members a codec may not have where its entry takes `never`: none where `Presented` is `never`, since `bound`
+takes what is presented; no member that takes the reader where `Reader` is; none that gives or takes the reference
+where `Ref` is.
+
+#### Type Parameters
+
+| Type Parameter |
+| ------ |
+| `Presented` |
+| `Ref` |
+| `Reader` |
+
+***
+
+### NonZeroDigit
+
+> **NonZeroDigit** = `"1"` \| `"2"` \| `"3"` \| `"4"` \| `"5"` \| `"6"` \| `"7"` \| `"8"` \| `"9"`
+
+A decimal digit other than zero.
+
+***
+
 ### OtherAct
 
 > **OtherAct**\<`Ref`\> = \{ `ref`: `Ref`; \} \| \{ `transaction`: `string`; \}
@@ -466,7 +844,7 @@ Another act under the same H, which `status` never settles on: by its reference,
 
 ### PairingData
 
-> **PairingData** = `DataMembers` & \{ `agreement?`: [`AgreementData`](#agreementdata); `agreementOn?`: `never`; `coverage`: `"full"`; `link?`: `never`; \} \| \{ `agreement?`: `never`; `agreementOn?`: `"any"` \| `"same-network"` \| `` `x402/${string}` `` \| `` `mpp/${string}` ``; `coverage`: `"none"`; `link`: `"h"` \| `"pointer"` \| `"none"`; \}
+> **PairingData** = [`DataMembers`](#datamembers) & \{ `agreement?`: [`AgreementData`](#agreementdata); `agreementOn?`: `never`; `coverage`: `"full"`; `link?`: `never`; \} \| \{ `agreement?`: `never`; `agreementOn?`: `"any"` \| `"same-network"` \| `` `x402/${string}` `` \| `` `mpp/${string}` ``; `coverage`: `"none"`; `link`: `"h"` \| `"pointer"` \| `"none"`; \}
 
 A pairing's data. At coverage `full` it has no `link` and no `agreementOn`; at coverage `none` it has a `link` and
 no `agreement`, since only a payment that is itself a public proof of H can be an agreement.
@@ -490,6 +868,20 @@ The id of a pairing this package implements: the `id` of an entry of `BINDINGS`.
 
 ***
 
+### PairingOn
+
+> **PairingOn**\<`S`\> = `Extract`\<[`PairingId`](#pairingid), `` `${S}/${string}` ``\>
+
+The pairing ids of one surface.
+
+#### Type Parameters
+
+| Type Parameter |
+| ------ |
+| `S` *extends* [`Surface`](#surface) |
+
+***
+
 ### PendingReason
 
 > **PendingReason** = `"below-mark"` \| `"instrument-live"` \| `"search-incomplete"` \| `"not-found"`
@@ -498,9 +890,30 @@ The reasons of a `pending` answer, in the order in which they are answered: the 
 
 ***
 
+### PolkadotPayload
+
+> **PolkadotPayload** = `object`
+
+The x402 payload: the signed extrinsic and its call, lowercase hex.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-call"></a> `call` | [`Hex`](evm.md#hex) |
+| <a id="property-extrinsic"></a> `extrinsic` | [`Hex`](evm.md#hex) |
+
+***
+
+### PolkadotPaymentPayload
+
+> **PolkadotPaymentPayload** = [`X402Payment`](#x402payment)\<[`PolkadotPayload`](#polkadotpayload)\>
+
+***
+
 ### Presented
 
-> **Presented** = `PresentedOn`\[`Surface`\]
+> **Presented** = [`PresentedOn`](#presentedon)\[[`Surface`](#surface)\]
 
 What the buyer presents as payment.
 
@@ -521,9 +934,15 @@ A refusal returned as a value. `code` is `<entry point>/<reason>`.
 
 ***
 
+### StarknetPayment
+
+> **StarknetPayment** = [`X402Payment`](#x402payment)\<\{ `from`: [`Felt`](starknet.md#felt); `outsideExecution`: \{ `signature`: readonly [`Felt`](starknet.md#felt)[]; `typedData`: [`OutsideExecutionTypedData`](starknet.md#outsideexecutiontypeddata); \}; \}\>
+
+***
+
 ### StatusAnswer
 
-> **StatusAnswer**\<`Position`, `Mark`, `Cursor`\> = `Named`\<`Position`, `Mark`\> & `object` \| `Named`\<`Position`, `Mark`\> & `object` \| `Named`\<`Position`, `Mark`\> & `object` \| \{ `foreign`: readonly [`ForeignItem`](#foreignitem)\<`Position`\>[]; `reason`: [`UnreadableReason`](#unreadablereason); `state`: `"unreadable"`; \}
+> **StatusAnswer**\<`Position`, `Mark`, `Cursor`\> = [`Named`](#named)\<`Position`, `Mark`\> & `object` \| [`Named`](#named)\<`Position`, `Mark`\> & `object` \| [`Named`](#named)\<`Position`, `Mark`\> & `object` \| \{ `foreign`: readonly [`ForeignItem`](#foreignitem)\<`Position`\>[]; `reason`: [`UnreadableReason`](#unreadablereason); `state`: `"unreadable"`; \}
 
 The answer of `status`: one state, one reason of a closed list, what it read, and the foreign items it met.
 
@@ -537,21 +956,53 @@ The answer of `status`: one state, one reason of a closed list, what it read, an
 
 #### Union Members
 
-`Named`\<`Position`, `Mark`\> & `object`
+[`Named`](#named)\<`Position`, `Mark`\> & `object`
 
 ***
 
-`Named`\<`Position`, `Mark`\> & `object`
+[`Named`](#named)\<`Position`, `Mark`\> & `object`
 
 ***
 
-`Named`\<`Position`, `Mark`\> & `object`
+[`Named`](#named)\<`Position`, `Mark`\> & `object`
 
 ***
 
 ##### Type Literal
 
 \{ `foreign`: readonly [`ForeignItem`](#foreignitem)\<`Position`\>[]; `reason`: [`UnreadableReason`](#unreadablereason); `state`: `"unreadable"`; \}
+
+***
+
+### Surface
+
+> **Surface** = [`SurfaceOf`](#surfaceof)\<[`PairingId`](#pairingid)\>
+
+The surfaces: each pairing id's first "/" segment.
+
+***
+
+### SurfaceOf
+
+> **SurfaceOf**\<`I`\> = `I` *extends* `` `${infer S}/${string}` `` ? `S` : `never`
+
+#### Type Parameters
+
+| Type Parameter |
+| ------ |
+| `I` |
+
+***
+
+### TronPayment
+
+> **TronPayment** = [`X402Payment`](#x402payment)\<\{ `transaction`: `string`; \}\>
+
+***
+
+### TvmPayment
+
+> **TvmPayment** = [`X402Payment`](#x402payment)\<\{ `asset`: `string`; `settlementBoc`: `string`; \}\>
 
 ***
 
@@ -585,6 +1036,26 @@ What the basic URL parser gives for an absolute URL's scheme and authority.
 > **X402Binding** = *typeof* [`exactEip3009`](x402.md#exacteip3009) \| *typeof* [`authCaptureEip3009`](x402.md#authcaptureeip3009) \| *typeof* [`authCapturePermit2`](x402.md#authcapturepermit2) \| *typeof* [`batchCloudflare`](x402-batch-settlement.md#batchcloudflare) \| *typeof* [`batchEvm`](x402-batch-settlement.md#batchevm) \| *typeof* [`batchSvm`](x402-batch-settlement.md#batchsvm) \| *typeof* [`exactAvm`](avm.md#exactavm) \| *typeof* [`exactAptos`](aptos.md#exactaptos) \| *typeof* [`exactCardano`](cardano.md#exactcardano) \| *typeof* [`exactCardanoLock`](cardano.md#exactcardanolock) \| *typeof* [`exactCasper`](casper.md#exactcasper) \| *typeof* [`exactCcd`](ccd.md#exactccd) \| *typeof* [`exactErc7710`](x402.md#exacterc7710) \| *typeof* [`exactErc7710Salt`](x402.md#exacterc7710salt) \| *typeof* [`exactPermit2`](x402.md#exactpermit2) \| *typeof* [`exactHedera`](hedera.md#exacthedera) \| *typeof* [`exactHederaExecutor`](hedera.md#exacthederaexecutor) \| *typeof* [`exactLnbtcPaymentHash`](lightning.md#exactlnbtcpaymenthash) \| *typeof* [`exactNear`](near.md#exactnear) \| *typeof* [`exactPolkadotRemark`](polkadot.md#exactpolkadotremark) \| *typeof* [`exactSvm`](x402-exact-solana.md#exactsvm) \| *typeof* [`exactStarknet`](starknet.md#exactstarknet) \| *typeof* [`exactStellarPrecondition`](x402-exact-stellar.md#exactstellarprecondition) \| *typeof* [`exactSui`](sui.md#exactsui) \| *typeof* [`exactTronMemo`](tron.md#exacttronmemo) \| *typeof* [`exactTvm`](tvm.md#exacttvm) \| *typeof* [`exactXrpl`](x402-exact-xrpl.md#exactxrpl) \| *typeof* [`uptoPermit2`](x402.md#uptopermit2) \| *typeof* [`uptoSvm`](x402-upto-solana.md#uptosvm) \| *typeof* [`exactGatewayBatched`](x402.md#exactgatewaybatched) \| *typeof* [`uptoXrpl`](x402-upto-xrpl.md#uptoxrpl)
 
 An x402 pairing of scheme and rail.
+
+***
+
+### X402Payment
+
+> **X402Payment**\<`P`\> = `Omit`\<[`PaymentPayload`](x402.md#paymentpayload), `"payload"`\> & `object`
+
+An x402 v2 payment whose `payload` is the pairing's own.
+
+#### Type Declaration
+
+| Name | Type |
+| ------ | ------ |
+| `payload` | `P` |
+
+#### Type Parameters
+
+| Type Parameter |
+| ------ |
+| `P` |
 
 ## Variables
 
@@ -1219,7 +1690,7 @@ A random RFC 9562 version 4 UUID, lowercase.
 
 ### pairingOf()
 
-> **pairingOf**(`option`): `PairingOn`\<`"x402"`\> \| `undefined`
+> **pairingOf**(`option`): [`PairingOn`](#pairingon)\<`"x402"`\> \| `undefined`
 
 The x402 pairing that serves an option: the first x402 pairing in `BINDINGS` whose `read` offers it, on a document
 holding that option alone. Undefined when none does. Each pairing's `read` applies the one filter its `advertise`,
@@ -1238,7 +1709,7 @@ the option, or its `bound`, on a presented payment, answers for that pairing alo
 
 #### Returns
 
-`PairingOn`\<`"x402"`\> \| `undefined`
+[`PairingOn`](#pairingon)\<`"x402"`\> \| `undefined`
 
 ***
 

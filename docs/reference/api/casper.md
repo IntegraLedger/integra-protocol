@@ -78,6 +78,19 @@ One executed contract call, as the reader reports it.
 
 ***
 
+### CasperChoice
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-accepted"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
+| <a id="property-from"></a> `from` | `string` |
+| <a id="property-now"></a> `now` | `number` |
+| <a id="property-required"></a> `required` | [`PaymentRequired`](x402.md#paymentrequired) |
+
+***
+
 ### CasperCursor
 
 The search's position: a height at which the item was read unset, above which the block that set it lies; or that
@@ -209,7 +222,7 @@ presented, for `presented`. Addresses and hashes are lowercase.
 | Property | Type |
 | ------ | ------ |
 | <a id="property-asset"></a> `asset` | `string` |
-| <a id="property-from"></a> `from` | `string` |
+| <a id="property-from-1"></a> `from` | `string` |
 | <a id="property-network-1"></a> `network` | `` `casper:${string}` `` |
 | <a id="property-nonce"></a> `nonce` | `` `0x${string}` `` |
 | <a id="property-payee"></a> `payee` | `string` |
@@ -232,7 +245,7 @@ presented, for `presented`. Addresses and hashes are lowercase.
 
 ##### complete()
 
-> **complete**(`publicKey`, `signature`): [`Refusal`](index.md#refusal) \| `CasperPaymentPayload`
+> **complete**(`publicKey`, `signature`): [`Refusal`](index.md#refusal) \| [`CasperPaymentPayload`](index.md#casperpaymentpayload)
 
 Both arguments are hex with a one-byte algorithm tag: `01` ed25519, `02` secp256k1.
 
@@ -245,7 +258,7 @@ Both arguments are hex with a one-byte algorithm tag: `01` ed25519, `02` secp256
 
 ###### Returns
 
-[`Refusal`](index.md#refusal) \| `CasperPaymentPayload`
+[`Refusal`](index.md#refusal) \| [`CasperPaymentPayload`](index.md#casperpaymentpayload)
 
 ***
 
@@ -290,7 +303,7 @@ Both arguments are hex with a one-byte algorithm tag: `01` ed25519, `02` secp256
 
 | Property | Type |
 | ------ | ------ |
-| <a id="property-from-1"></a> `from` | `string` |
+| <a id="property-from-2"></a> `from` | `string` |
 | <a id="property-nonce-1"></a> `nonce` | `string` |
 | <a id="property-to"></a> `to` | `string` |
 | <a id="property-validafter"></a> `validAfter` | `string` |
@@ -304,6 +317,20 @@ Both arguments are hex with a one-byte algorithm tag: `01` ed25519, `02` secp256
 > **CasperNetwork** = `` `casper:${string}` ``
 
 CAIP-2: `casper:` and the chainspec name.
+
+***
+
+### CasperRefRead
+
+> **CasperRefRead** = [`CasperRef`](#casperref) & `object`
+
+The reference `status` reads with: the read keys, and H, which the caller adds, from which the other act's value comes.
+
+#### Type Declaration
+
+| Name | Type |
+| ------ | ------ |
+| `h` | [`AtrHash`](index.md#atrhash) |
 
 ***
 
@@ -322,6 +349,29 @@ compares the executed call with the authorization as presented.
 > **PackageHash** = `string`
 
 64 hex digits, no prefix.
+
+***
+
+### X402Advertise
+
+> **X402Advertise** = (`doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`PaymentRequired`](x402.md#paymentrequired) \| [`Refusal`](index.md#refusal)
+
+A pairing's `advertise`: the document with the legal context placed, and the agreement URL when one is given. A
+document, or an option in its `accepts`, that carries a `refused` member is `x402/option-malformed`.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `doc` | [`PaymentRequired`](x402.md#paymentrequired) |
+| `h` | [`AtrHash`](index.md#atrhash) |
+| `link` | `string` |
+| `offer` | [`PaymentRequirements`](x402.md#paymentrequirements) |
+| `agreementUrl?` | `string` |
+
+#### Returns
+
+[`PaymentRequired`](x402.md#paymentrequired) \| [`Refusal`](index.md#refusal)
 
 ## Variables
 
@@ -387,7 +437,7 @@ The longest tagged signature lcp reads, in hex digits: a one-byte tag and a 65-b
 
 ### exactCasper
 
-> `const` **exactCasper**: `Readonly`\<\{ `advertise`: `X402Advertise`; `bound`: (`presented`, `given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`, `act?`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CasperUnsigned`](#casperunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/casper"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| `X402Read`; `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`, `given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CasperRef`](#casperref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`CasperStatus`](#casperstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
+> `const` **exactCasper**: `Readonly`\<\{ `advertise`: [`X402Advertise`](#x402advertise); `bound`: (`presented`, `given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `broadcaster`: (`presented`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`Broadcaster`](index.md#broadcaster)\>; `build`: (`c`, `h`, `act?`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CasperUnsigned`](#casperunsigned)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"x402/exact/casper"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| [`X402Read`](aptos.md#x402read); `recover`: (`input`, `reader`) => `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>; `reference`: (`presented`, `option`, `given?`) => `Promise`\<[`Refusal`](index.md#refusal) \| [`CasperRef`](#casperref)\>; `status`: (`ref`, `reader`, `query`) => `Promise`\<[`CasperStatus`](#casperstatus)\>; `tie`: (`accepts`, `request`) => \[`"x402"`, \{ `accepts`: readonly [`PaymentRequirements`](x402.md#paymentrequirements)[]; `request`: [`RequestCommitment`](x402.md#requestcommitment) \| [`ToolCallCommitment`](x402.md#toolcallcommitment); \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`PaymentRequirements`](x402.md#paymentrequirements); \}\>
 
 `x402/exact/casper`. The payee broadcasts (`broadcaster` answers `"payee"`): the settler submits the call that
 executes the payer's signed authorization; `status` reads the nonce's item, the block that set it and its
@@ -453,9 +503,9 @@ authorization as presented.
 
 | Parameter | Type |
 | ------ | ------ |
-| `ref` | `CasperRefRead` |
+| `ref` | [`CasperRefRead`](#casperrefread) |
 | `reader` | [`CasperReader`](#casperreader) |
-| `query` | [`StatusQuery`](index.md#statusquery)\<`CasperRefRead`, `bigint`, `"finalized"`, [`CasperCursor`](#caspercursor)\> |
+| `query` | [`StatusQuery`](index.md#statusquery)\<[`CasperRefRead`](#casperrefread), `bigint`, `"finalized"`, [`CasperCursor`](#caspercursor)\> |
 
 #### Returns
 
@@ -493,3 +543,15 @@ The CEP-3009 typed data for `TransferWithAuthorization`, with `validAfter` 0 and
 ### Broadcaster
 
 Re-exports [Broadcaster](index.md#broadcaster)
+
+***
+
+### CasperPaymentPayload
+
+Re-exports [CasperPaymentPayload](index.md#casperpaymentpayload)
+
+***
+
+### X402Read
+
+Re-exports [X402Read](aptos.md#x402read)

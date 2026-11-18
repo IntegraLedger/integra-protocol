@@ -101,6 +101,26 @@ One instruction of `meta.innerInstructions`: the top-level instruction it ran un
 
 ***
 
+### SvmInstruction
+
+One compiled instruction of an `SvmTx`; `B` is what its data is backed by, as for `SvmTx`.
+
+#### Type Parameters
+
+| Type Parameter | Default type |
+| ------ | ------ |
+| `B` *extends* `ArrayBufferLike` | `ArrayBufferLike` |
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-accounts-1"></a> `accounts` | readonly `number`[] |
+| <a id="property-data-2"></a> `data` | `Uint8Array`\<`B`\> |
+| <a id="property-program-1"></a> `program` | `number` |
+
+***
+
 ### SvmLanded
 
 A landed transaction as `getTransaction` returns it with encoding `base64` and `maxSupportedTransactionVersion` 1,
@@ -326,7 +346,7 @@ field in its own fresh `ArrayBuffer`, and a function that reads one takes any ba
 | Property | Type | Description |
 | ------ | ------ | ------ |
 | <a id="property-blockhash-1"></a> `blockhash` | `Uint8Array`\<`B`\> | - |
-| <a id="property-instructions"></a> `instructions` | readonly `SvmInstruction`\<`B`\>[] | - |
+| <a id="property-instructions"></a> `instructions` | readonly [`SvmInstruction`](#svminstruction)\<`B`\>[] | - |
 | <a id="property-keys"></a> `keys` | readonly `Uint8Array`\<`B`\>[] | The static account keys, in order. |
 | <a id="property-message"></a> `message` | `Uint8Array`\<`B`\> | Exactly the bytes every signer signed. |
 | <a id="property-signatures"></a> `signatures` | readonly `Uint8Array`\<`B`\>[] | - |
@@ -376,7 +396,7 @@ CAIP-2: `solana:` and 32 base58 characters.
 | <a id="property-network-2"></a> `network` | [`SolanaNetwork`](#solananetwork) | - |
 | <a id="property-payee-1"></a> `payee` | `string` | The option's payee. |
 | <a id="property-phase"></a> `phase` | `"close"` | - |
-| <a id="property-program-1"></a> `program` | `string` | - |
+| <a id="property-program-2"></a> `program` | `string` | - |
 | <a id="property-transaction-1"></a> `transaction` | `string` | - |
 
 ***
