@@ -1,6 +1,6 @@
 **LCP profile `x402/exact/ccd`: the ATR hash as the transfer memo.**
 
-**Status.** This profile defines the pairing `x402/exact/ccd`. Its `confirmed` is `no`: nothing outside lcp has yet shown a payment of this form with H as its memo. Its `nonce` is `unshown` and its data holds no `agreement` (rule 7). Until a recorded run shows the form, it is not offered.
+**Status.** This profile defines the pairing `x402/exact/ccd`. Its `confirmed` is `no`: nothing outside lcp has yet shown a payment of this form with H as its memo, and the stock `@x402/concordium` client writes no memo, so it cannot pay this pairing. Its `nonce` is `unshown`, and its data holds no `agreement` until a run shows single use (rule 7).
 
 1. The `PaymentRequired` carries `extensions.legalContext.info` = `{"type":"sha256","value":H,"legalContextUrl":L}`, H the SHA-256 of the ATR's exact bytes as `0x` lowercase hex and L an `https` URL serving them.
 2. The client fetches L, hashes the bytes received, and compares with H as 32 bytes. On a mismatch it does not sign.
