@@ -1,9 +1,12 @@
 ---
 title: "@integraledger/lcp/casper"
-description: "The exports of @integraledger/lcp/casper."
+description: "CEP-3009 on Casper and the `x402/exact/casper` pairing: the ATR hash as the authorization's 32-byte `nonce`, written by the buyer's signer, read back from what the payer signed, and read from the executed call's arguments."
 ---
 
 # @integraledger/lcp/casper
+
+CEP-3009 on Casper and the `x402/exact/casper` pairing: the ATR hash as the authorization's 32-byte `nonce`,
+written by the buyer's signer, read back from what the payer signed, and read from the executed call's arguments.
 
 ## Interfaces
 

@@ -1,9 +1,15 @@
 ---
 title: "@integraledger/lcp/x402-exact-xrpl"
-description: "The exports of @integraledger/lcp/x402-exact-xrpl."
+description: "The `x402/exact/xrpl` pairing: the ATR hash's LCP string placed as the option's `extra.invoiceId`, whose SHA-256 the payer signs as the Payment's `InvoiceID`."
 ---
 
 # @integraledger/lcp/x402-exact-xrpl
+
+The `x402/exact/xrpl` pairing: the ATR hash's LCP string placed as the option's `extra.invoiceId`, whose SHA-256 the
+payer signs as the Payment's `InvoiceID`.
+
+The hash is read back from the signed blob, single-signed or multisigned, and settlement is read by the payer's
+instrument, its `Account` with the signed `Sequence` or ticket.
 
 ## Variables
 

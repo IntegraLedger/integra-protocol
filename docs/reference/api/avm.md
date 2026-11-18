@@ -1,9 +1,17 @@
 ---
 title: "@integraledger/lcp/avm"
-description: "The exports of @integraledger/lcp/avm."
+description: "Algorand: the pairing `x402/exact/algorand`, in which the payer signs an asset transfer whose note is the ATR hash's LCP string, and the settlement read from an Indexer by the transaction id computed from the signed bytes."
 ---
 
 # @integraledger/lcp/avm
+
+Algorand: the pairing `x402/exact/algorand`, in which the payer signs an asset transfer whose note is the ATR hash's
+LCP string, and the settlement read from an Indexer by the transaction id computed from the signed bytes.
+
+`algosdk` is an optional peer: this module loads it when present, and `build` writes the transactions with it. The
+addresses and the payment entries are read without it, so the option filter, `advertise`, `read`, `bound`,
+`reference` and `avmCarrier` need no peer, and `build` refuses `avm/peer-missing` only after every check that needs
+none.
 
 ## Interfaces
 

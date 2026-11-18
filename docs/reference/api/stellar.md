@@ -1,9 +1,16 @@
 ---
 title: "@integraledger/lcp/stellar"
-description: "The exports of @integraledger/lcp/stellar."
+description: "Stellar rail pieces: the payer-signed Soroban `transfer` and the digest of its authorization entry, the signed-payload precondition over H, the search for a buyer's acts, and the read of the agreement `x402/exact/stellar/precondition`."
 ---
 
 # @integraledger/lcp/stellar
+
+Stellar rail pieces: the payer-signed Soroban `transfer` and the digest of its authorization entry, the
+signed-payload precondition over H, the search for a buyer's acts, and the read of the agreement
+`x402/exact/stellar/precondition`.
+
+It also holds the position P of a transaction and the muxed address `M(payee, P)`; the precondition's 40-byte
+payload; and the events that show what moved. Every read goes through a bounded reader.
 
 ## Interfaces
 
@@ -380,9 +387,7 @@ and the XDR must be consumed whole. The operation and that entry nest ScVals and
 (another entry, a delegate, the footprint, another operation), which is decoded whatever its depth, so its nesting
 does not refuse the envelope. `preimageHash` is SHA-256 of that entry's `HashIDPreimage` under the network's
 passphrase: the V1 form, or for V2 the form with the address. An entry with source-account credentials is not one:
-without an address entry of `from` the envelope is `stellar/no-address-auth`. Only `stellarStatus` and
-`stellarLocate`, on a ref without `authDigest`, read a payer that authorized the transfer as the transaction's source
-account.
+without an address entry of `from` the envelope is `stellar/no-address-auth`.
 
 #### Parameters
 

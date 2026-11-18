@@ -1,9 +1,18 @@
 ---
 title: "@integraledger/lcp"
-description: "The exports of @integraledger/lcp."
+description: "The package root of `@integraledger/lcp`: the core functions of `@integraledger/lcp/core`, the registry of every pairing (`BINDINGS`, `pairingOf`) and its types, and the return after an agreement."
 ---
 
 # @integraledger/lcp
+
+The package root of `@integraledger/lcp`: the core functions of `@integraledger/lcp/core`, the registry of every
+pairing (`BINDINGS`, `pairingOf`) and its types, and the return after an agreement.
+
+The core functions assemble an ATR and hash its exact bytes, compare hashes, give the hash's string and structured
+forms, and hold the https-link rule, `isRefusal` and `readToRepeat`. The return after an agreement is the
+`Legal-Context` header, its check, and the charge options an agreement option serves. The root also exports MPP's
+challenge id and its hash (`challengeId`, `challengeH`, `challengeHash`); the package's size bounds; and `FETCHED`,
+the key under which a pairing's `fetchPresented` writes the seller's read onto a credential.
 
 ## Interfaces
 
@@ -25,9 +34,11 @@ Present where the pairing's payment can itself be an agreement.
 ### Authorizer
 
 The optional member of a pull pairing whose payer signs an authorization that the chain executes later: the account
-whose signature authorises the pull, from the presented payment, as lowercase hex. With the pairing's `reference`,
-whose `authorization` names the nonce, the deadline and the token, it is what a settlement reader needs to read the
-authorization's use before any transaction is named.
+whose signature authorises the pull, from the presented payment, as lowercase hex. With a `reference` that records
+the authorization as `authorization` (its scheme, the contract that records its use, its nonce, deadline and token),
+as the MPP EVM `authorization` and `permit2` charges' and the `usdc` EVM charge's do, it is what `authorizationUsed`
+(`@integraledger/lcp/evm`) needs to read the authorization's use before any transaction is named. The x402 pull
+pairings' references record no `authorization`.
 
 #### Methods
 
@@ -112,21 +123,21 @@ payment uses H; on every other pairing the act changes nothing. `status` takes t
 
 | Property | Modifier | Type | Description |
 | ------ | ------ | ------ | ------ |
-| <a id="property-advertise"></a> `advertise` | `readonly` | (`doc`, `h`, `link`, `offer`, ...`rest`) => [`Refusal`](#refusal) \| `F`\[`"advertised"`\] | - |
+| <a id="property-advertise"></a> `advertise` | `readonly` | (`doc`, `h`, `link`, `offer`, ...`rest`) => [`Refusal`](#refusal) \| `F`\[`"advertised"`\] | The seller's placement: a copy of the document with H and the link placed for `offer` as this pairing places them, and the agreement URL where one is given; the arguments after `offer` are the family's (`F["rest"]`). |
 | <a id="property-advertisebeforecarrier"></a> `advertiseBeforeCarrier?` | `readonly` | (`doc`, `h`, `link`, `offer`, ...`rest`) => [`Refusal`](#refusal) \| `F`\[`"advertised"`\] | `advertise` without the checks on a carrier the seller writes after H. |
 | <a id="property-bound"></a> `bound` | `readonly` | (`presented`, `given?`) => `Promise`\<[`Refusal`](#refusal) \| `` `0x${string}` ``\> | H as what was presented carries it. Given the act `agreement` and H on a pairing whose agreement has its own value, it checks that what was presented carries that value in H's place, and gives H where it does. |
-| <a id="property-broadcaster"></a> `broadcaster` | `readonly` | (`presented`) => `Promise`\<[`Refusal`](#refusal) \| [`Broadcaster`](#broadcaster)\> | - |
+| <a id="property-broadcaster"></a> `broadcaster` | `readonly` | (`presented`) => `Promise`\<[`Refusal`](#refusal) \| [`Broadcaster`](#broadcaster)\> | Who broadcasts what the payer presents: `"payer"` or `"payee"` (`Broadcaster`). A payment of a type or kind the pairing does not take gets the refusal `bound` gives it. |
 | <a id="property-build"></a> `build?` | `readonly` | (`choice`, `h`, `act?`) => `Promise`\<[`Refusal`](#refusal) \| `F`\[`"unsigned"`\]\> | What the payer signs, with H in place, or for the act `agreement` on a pairing whose agreement has its own value, that value. Absent where lcp builds no payment for the pairing: the payer's own client builds it. |
 | <a id="property-channel"></a> `channel?` | `readonly` | `object` | For a channel, a session or a subscription. |
-| `channel.boundWithin` | `readonly` | (`presented`) => `Promise`\<[`Refusal`](#refusal) \| `` `0x${string}` ``\> | - |
-| `channel.kind` | `readonly` | (`presented`) => [`Refusal`](#refusal) \| `ChannelKind` | - |
-| `channel.ref` | `readonly` | (`presented`) => `Promise`\<[`Refusal`](#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\> | - |
-| `channel.until` | `readonly` | (`presented`) => `number` \| `undefined` | - |
+| `channel.boundWithin` | `readonly` | (`presented`) => `Promise`\<[`Refusal`](#refusal) \| `` `0x${string}` ``\> | H as a payment within the channel carries it. A pairing whose payments within the channel carry no hash refuses every one (on MPP, `mpp/not-bound-within`). |
+| `channel.kind` | `readonly` | (`presented`) => [`Refusal`](#refusal) \| `ChannelKind` | Whether the presented payment opens the channel, pays within it, or closes it (`ChannelKind`). |
+| `channel.ref` | `readonly` | (`presented`) => `Promise`\<[`Refusal`](#refusal) \| \{ `channel`: `string`; `network`: `string`; \}\> | The network and channel the presented payment belongs to; a payment `kind` refuses gets `kind`'s refusal. |
+| `channel.until` | `readonly` | (`presented`) => `number` \| `undefined` | The time, in Unix seconds, after which the channel takes no payment, where the payment states one. |
 | <a id="property-fetchpresented"></a> `fetchPresented?` | `readonly` | (`presented`, `reader`) => `Promise`\<[`Refusal`](#refusal) \| `Presented`\> | For a form its payer broadcasts: the presented payment completed with the landed transaction it names. |
 | <a id="property-keyproves"></a> `keyProves?` | `readonly` | `string` | What the record proves for a transfer `keySearch` finds. |
 | <a id="property-keysearch"></a> `keySearch?` | `readonly` | (`ref`, `receipt`, `h`) => [`Refusal`](#refusal) \| `Ref` | The read keys of a transfer made under a key the payer authorised over H, from the receipt that registered it. |
 | <a id="property-landedtx"></a> `landedTx?` | `readonly` | (`presented`) => `string` \| `undefined` | For a form its payer broadcasts: the transaction the presented payment names, or undefined. |
-| <a id="property-read"></a> `read` | `readonly` | (`doc`) => [`Refusal`](#refusal) \| `F`\[`"offered"`\] | - |
+| <a id="property-read"></a> `read` | `readonly` | (`doc`) => [`Refusal`](#refusal) \| `F`\[`"offered"`\] | The buyer's reading of the advertised document: H, the link, the agreement URL where the document carries one, and the offer this pairing serves in it (on x402, an `X402Offer`: the document and the options the pairing serves). |
 | <a id="property-recover"></a> `recover?` | `readonly` | (`input`, `reader`) => `Promise`\<[`Refusal`](#refusal) \| `` `0x${string}` ``\> | The value a landed transaction carries in H's place, in H's spelling: H, or H's low bits as the pairing carries them; and from an agreement's transaction on a pairing whose agreement has its own value, that value, which a holder of the ATR compares with `agreementValue` of its own H, since a digest is not read back to H. |
 | <a id="property-reference"></a> `reference?` | `readonly` | (`presented`, `option`, `given?`) => `Promise`\<[`Refusal`](#refusal) \| `Ref`\> | The read keys of a presented payment, with the payee of the option it answers; given the act `agreement` and H on a pairing whose agreement has its own value, the single-use value it names is that value. |
 | <a id="property-status"></a> `status?` | `readonly` | (`ref`, `reader`, `query`) => `Promise`\<`F`\[`"answer"`\]\> | The read of the act the query asks about, from the reference and what the landed transaction adds to it. |
@@ -351,6 +362,8 @@ its refusal (a batch channel reads the payload alone, under any `accepted` optio
 
 > **CoreRefusal** = `object`
 
+A refusal of the core, `assemble` and the JSON checks under it: one of the `core/` codes.
+
 #### Properties
 
 | Property | Type |
@@ -458,11 +471,22 @@ Another act under the same H, which `status` never settles on: by its reference,
 A pairing's data. At coverage `full` it has no `link` and no `agreementOn`; at coverage `none` it has a `link` and
 no `agreement`, since only a payment that is itself a public proof of H can be an agreement.
 
+Every pairing's data also has `carrier` (`Carrier`), where H rides; `source`, who writes H: lcp's client, or a stock
+client and release, with the member it copies H from; `nonce`, whether the identical instrument can land more than
+once (`single-use`, `reusable`, or `unshown` until a vector or a run shows single use); `broadcasts`, the answers the
+codec's `broadcaster` can give over every credential type the pairing takes; `confirmed`, whether something outside
+lcp has shown the form as its profile defines it (`yes` or `no`); and `proves`, what the read establishes of a
+payment through the pairing. Where a public ledger records the payment it has `read` (`ReadData`), what a read of
+the pairing needs; and, where the pairing's entry states them, `destination`, `asset` and `payer`: how the account
+the act names, the asset and the payer are identified in the landed transaction.
+
 ***
 
 ### PairingId
 
 > **PairingId** = [`Binding`](#binding)\[`"id"`\]
+
+The id of a pairing this package implements: the `id` of an entry of `BINDINGS`.
 
 ***
 

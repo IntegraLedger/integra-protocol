@@ -1,9 +1,12 @@
 ---
 title: "@integraledger/lcp/a2a"
-description: "The exports of @integraledger/lcp/a2a."
+description: "The LCP extension for A2A: the ATR hash and the link to the seller's copy delivered in a Task's `metadata`, keyed by the extension's URI. A2A signs nothing per transaction, so this is a carrier and exports no pairing. Pure; no I/O."
 ---
 
 # @integraledger/lcp/a2a
+
+The LCP extension for A2A: the ATR hash and the link to the seller's copy delivered in a Task's `metadata`, keyed by
+the extension's URI. A2A signs nothing per transaction, so this is a carrier and exports no pairing. Pure; no I/O.
 
 ## Interfaces
 

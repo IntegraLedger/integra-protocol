@@ -1,9 +1,15 @@
 ---
 title: "@integraledger/lcp/near"
-description: "The exports of @integraledger/lcp/near."
+description: "NEAR: the pairing `x402/exact/near`. The payer signs a NEP-366 delegate action for one NEP-141 `ft_transfer` whose `memo` argument is the ATR hash's LCP string; a facilitator's relayer submits it."
 ---
 
 # @integraledger/lcp/near
+
+NEAR: the pairing `x402/exact/near`. The payer signs a NEP-366 delegate action for one NEP-141 `ft_transfer` whose
+`memo` argument is the ATR hash's LCP string; a facilitator's relayer submits it.
+
+The read finds the payer's act by the payer's access key, through a bounded reader, and searches every access key of
+the payer's account for H.
 
 ## Interfaces
 

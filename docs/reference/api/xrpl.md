@@ -1,9 +1,13 @@
 ---
 title: "@integraledger/lcp/xrpl"
-description: "The exports of @integraledger/lcp/xrpl."
+description: "XRP Ledger rail pieces: the signed blob, its `InvoiceID` or memo carrying the ATR hash in each scheme's form, the transaction hash computed from the blob, the reads of a payment, an opening, a channel and a close through a bounded reader, and the payment channel's id and claim."
 ---
 
 # @integraledger/lcp/xrpl
+
+XRP Ledger rail pieces: the signed blob, its `InvoiceID` or memo carrying the ATR hash in each scheme's form, the
+transaction hash computed from the blob, the reads of a payment, an opening, a channel and a close through a
+bounded reader, and the payment channel's id and claim.
 
 ## Interfaces
 

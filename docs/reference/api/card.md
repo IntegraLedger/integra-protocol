@@ -1,9 +1,23 @@
 ---
 title: "@integraledger/lcp/card"
-description: "The exports of @integraledger/lcp/card."
+description: "The `card` entry point: the ATR hash on a card checkout, on five paths: Visa TAP, Mastercard Agent Pay, Visa Intelligent Commerce, Mastercard Verifiable Intent (Immediate and Autonomous) and the plain card checkout."
 ---
 
 # @integraledger/lcp/card
+
+The `card` entry point: the ATR hash on a card checkout, on five paths: Visa TAP, Mastercard Agent Pay, Visa
+Intelligent Commerce, Mastercard Verifiable Intent (Immediate and Autonomous) and the plain card checkout.
+
+- Visa TAP and Mastercard Agent Pay: the hash rides in what the agent's message signature covers: its `nonce`, the
+  base64 of the hash followed by 32 random bytes, or the merchant's checkout path, whose last segment is the hash.
+- Visa Intelligent Commerce: the hash is the `transactionReferenceId` the agent writes when it asks for the sale's
+  credential, as unpadded base64url.
+- Mastercard Verifiable Intent: the hash rides in the `checkout_jwt`, whose SHA-256 the user's L2 mandate
+  (Immediate) or the agent's L3b mandate (Autonomous) signs as `checkout_hash`.
+- The plain card checkout: nothing the buyer signs carries the hash. The seller shows it with the link before
+  payment and places it in its processor reference.
+
+Pure: no I/O, no state. WebCrypto supplies SHA-256 and ES256. No function throws.
 
 ## Interfaces
 

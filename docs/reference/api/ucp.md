@@ -1,9 +1,18 @@
 ---
 title: "@integraledger/lcp/ucp"
-description: "The exports of @integraledger/lcp/ucp."
+description: "UCP checkouts and bookings, and five pairings, each of which carries the ATR hash and link as one `links[]` entry of type `legal_context` in the checkout response."
 ---
 
 # @integraledger/lcp/ucp
+
+UCP checkouts and bookings, and five pairings, each of which carries the ATR hash and link as one `links[]` entry of
+type `legal_context` in the checkout response.
+
+The `ap2-mandate` pairings read the hash from the checkout JWT presented beside the buyer's checkout mandate, after
+AP2's `checkout_hash` check, the mandate presented alone or last in AP2's chain after the open mandate;
+`ucp/checkout/agent-signed` reads it from the `legal_context` member of the platform's signed request, once the
+request's `Content-Digest` matches its body; the `unsigned` pairings have nothing signed to read. Nothing here takes
+a key, signs, or verifies a signature, a `cnf` delegation or a link between chained mandates.
 
 ## Interfaces
 
@@ -35,6 +44,8 @@ The member the platform writes into the request that completes the checkout, bef
 ***
 
 ### UcpBinding
+
+The shape of a UCP pairing: its id, data, binding record and codec, over the checkout or booking option `O`.
 
 #### Type Parameters
 
@@ -162,6 +173,9 @@ Who broadcasts what the payer presents: the seller, which completes the payment 
 ***
 
 ### UcpOffer
+
+The offer a UCP pairing's `read` gives, and the buyer's input to its `build`: the checkout the business returned,
+carrying the `legal_context` link.
 
 #### Properties
 

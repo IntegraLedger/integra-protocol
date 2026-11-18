@@ -1,9 +1,17 @@
 ---
 title: "@integraledger/lcp/hedera"
-description: "The exports of @integraledger/lcp/hedera."
+description: "Hedera: the x402 pairings `x402/exact/hedera` (the ATR hash as the signed body memo) and `x402/exact/hedera/transfer-executor` (the hash advertised in the challenge only), with the transaction wire form and the Mirror Node settlement read."
 ---
 
 # @integraledger/lcp/hedera
+
+Hedera: the x402 pairings `x402/exact/hedera` (the ATR hash as the signed body memo) and
+`x402/exact/hedera/transfer-executor` (the hash advertised in the challenge only), with the transaction wire form and
+the Mirror Node settlement read.
+
+The wire form is read and written by hand (protobuf, five messages). The entry point also holds the escrow channel
+pieces `hederaChannelId` and `hederaVoucher`, and `FETCHED`, the key under which a pairing's `fetchPresented` writes
+the seller's read onto a credential.
 
 ## Interfaces
 

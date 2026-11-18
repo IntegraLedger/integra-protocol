@@ -1,13 +1,22 @@
 ---
 title: "@integraledger/lcp/acp"
-description: "The exports of @integraledger/lcp/acp."
+description: "ACP checkout sessions and delegate-payment allowances, and the pairings `acp/checkout/delegated` and `acp/checkout/undelegated`: the ATR hash as the checkout session's `id`."
 ---
 
 # @integraledger/lcp/acp
 
+ACP checkout sessions and delegate-payment allowances, and the pairings `acp/checkout/delegated` and
+`acp/checkout/undelegated`: the ATR hash as the checkout session's `id`.
+
+The link rides beside it in the session's `metadata.legal_context`, and, where the handler requires
+`delegate_payment`, the hash is also the allowance's `checkout_session_id`. Pure; no I/O. Nothing here signs or
+verifies a signature.
+
 ## Interfaces
 
 ### AcpBinding
+
+The shape of an ACP pairing: its id, data, binding record and codec.
 
 #### Type Parameters
 
@@ -270,6 +279,8 @@ SHA-256 over the RFC 8785 form of an issued handler option.
 ### METADATA\_KEY
 
 > `const` **METADATA\_KEY**: `"legal_context"` = `"legal_context"`
+
+The member of a CheckoutSession's `metadata` that carries the ATR hash and link.
 
 ***
 

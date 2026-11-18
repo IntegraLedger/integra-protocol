@@ -1,9 +1,17 @@
 ---
 title: "@integraledger/lcp/ccd"
-description: "The exports of @integraledger/lcp/ccd."
+description: "Concordium and the `x402/exact/ccd` pairing: the ATR hash in LCP's string form, as a CBOR text string, in the memo of the one transfer the sender signs; read back from the signed transaction, and read from the finalized transfer event."
 ---
 
 # @integraledger/lcp/ccd
+
+Concordium and the `x402/exact/ccd` pairing: the ATR hash in LCP's string form, as a CBOR text string, in the memo
+of the one transfer the sender signs; read back from the signed transaction, and read from the finalized transfer
+event.
+
+The signed transaction is read in x402's wire form, the JSON-serialized V1 sponsored transaction: with
+`@concordium/web-sdk`, `JSON.parse(Transaction.toJSONString(tx))`. Any other value, such as the SDK's object
+before serialization, whose header holds bigints, is `ccd/transaction-malformed`.
 
 ## Interfaces
 

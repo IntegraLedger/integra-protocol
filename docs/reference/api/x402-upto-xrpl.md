@@ -1,9 +1,15 @@
 ---
 title: "@integraledger/lcp/x402-upto-xrpl"
-description: "The exports of @integraledger/lcp/x402-upto-xrpl."
+description: "The `x402/upto/xrpl` pairing: x402's `upto` scheme on the XRP Ledger, at coverage `none`, its payment following an agreement on the same network."
 ---
 
 # @integraledger/lcp/x402-upto-xrpl
+
+The `x402/upto/xrpl` pairing: x402's `upto` scheme on the XRP Ledger, at coverage `none`, its payment following an
+agreement on the same network.
+
+The payer opens a payment channel to the option's `payTo` itself and presents the channel and its own account, so
+nothing it signs carries the ATR hash. Settlement is read from the channel's create.
 
 ## Interfaces
 

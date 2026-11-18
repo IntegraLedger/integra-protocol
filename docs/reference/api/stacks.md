@@ -1,9 +1,14 @@
 ---
 title: "@integraledger/lcp/stacks"
-description: "The exports of @integraledger/lcp/stacks."
+description: "Stacks rail pieces: the transaction id, the reader a read goes through, the read of a payment by its origin and the nonce the origin signed, and the zero-party recovery of the ATR hash from a mined transaction."
 ---
 
 # @integraledger/lcp/stacks
+
+Stacks rail pieces: the transaction id, the reader a read goes through, the read of a payment by its origin and the
+nonce the origin signed, and the zero-party recovery of the ATR hash from a mined transaction.
+
+The read searches for H over the origin's nonces. The profile `mpp/charge/usdc/stacks` states the read.
 
 ## Interfaces
 

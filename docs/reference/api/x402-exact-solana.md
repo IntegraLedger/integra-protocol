@@ -1,9 +1,12 @@
 ---
 title: "@integraledger/lcp/x402-exact-solana"
-description: "The exports of @integraledger/lcp/x402-exact-solana."
+description: "The `x402/exact/solana` pairing: the ATR hash placed as the option's `extra.memo` in LCP string form, written by the payer as the transaction's one Memo instruction, read back from the signed message, and read from the settlement."
 ---
 
 # @integraledger/lcp/x402-exact-solana
+
+The `x402/exact/solana` pairing: the ATR hash placed as the option's `extra.memo` in LCP string form, written by the
+payer as the transaction's one Memo instruction, read back from the signed message, and read from the settlement.
 
 ## Interfaces
 

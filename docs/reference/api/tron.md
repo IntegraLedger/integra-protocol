@@ -1,9 +1,15 @@
 ---
 title: "@integraledger/lcp/tron"
-description: "The exports of @integraledger/lcp/tron."
+description: "Tron: the pairing `x402/exact/tron/lcp-trc20-memo`, whose payer-signed TRC-20 transfer carries the ATR hash as its memo, `raw_data.data`, in LCP string form, and the transaction pieces it uses."
 ---
 
 # @integraledger/lcp/tron
+
+Tron: the pairing `x402/exact/tron/lcp-trc20-memo`, whose payer-signed TRC-20 transfer carries the ATR hash as its
+memo, `raw_data.data`, in LCP string form, and the transaction pieces it uses.
+
+The pieces are protobuf for the fields the profile uses, base58check addresses and the transaction id. Settlement is
+read by transaction id through a bounded reader.
 
 ## Interfaces
 

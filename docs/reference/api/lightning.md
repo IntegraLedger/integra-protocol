@@ -1,9 +1,15 @@
 ---
 title: "@integraledger/lcp/lightning"
-description: "The exports of @integraledger/lcp/lightning."
+description: "BOLT11 invoices and the Lightning pairings: on x402 (`x402/exact/lnbtc/payment-hash`) the ATR commits the option's `extra.paymentHash`, and on MPP the seller's node writes the ATR hash as the invoice's description hash `h`."
 ---
 
 # @integraledger/lcp/lightning
+
+BOLT11 invoices and the Lightning pairings: on x402 (`x402/exact/lnbtc/payment-hash`) the ATR commits the option's
+`extra.paymentHash`, and on MPP the seller's node writes the ATR hash as the invoice's description hash `h`.
+
+The payment hash is that of the invoice the seller's node issues after the agreement. The payer signs nothing; it
+pays the invoice.
 
 ## Interfaces
 

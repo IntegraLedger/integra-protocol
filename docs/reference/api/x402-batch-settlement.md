@@ -1,13 +1,23 @@
 ---
 title: "@integraledger/lcp/x402-batch-settlement"
-description: "The exports of @integraledger/lcp/x402-batch-settlement."
+description: "x402 `batch-settlement`: one ATR per channel, its hash the EVM channel configuration's `salt`, the Solana opening transaction's seller Memo instruction, or, on Cloudflare, the echoed `extensions.legalContext` of each request."
 ---
 
 # @integraledger/lcp/x402-batch-settlement
 
+x402 `batch-settlement`: one ATR per channel, its hash the EVM channel configuration's `salt`, the Solana opening
+transaction's seller Memo instruction, or, on Cloudflare, the echoed `extensions.legalContext` of each request.
+
+On EVM the channel id commits to the `salt`, and every signature signs it; on Solana the seller Memo instruction
+(`extra.memo`) sits beside x402's receiver-authorizer binding memo; on Cloudflare there is no channel.
+
 ## Interfaces
 
 ### BatchEvmOpen
+
+The buyer's inputs to the `build` of an x402 pairing on an eip155 chain: the document (`required`), the option chosen
+from its `accepts` (`accepted`), the payer's address (`from`), and the current time in Unix seconds (`now`); the
+authorization's deadline is `now` plus the option's `maxTimeoutSeconds`.
 
 #### Extends
 

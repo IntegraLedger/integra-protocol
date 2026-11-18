@@ -1,9 +1,21 @@
 ---
 title: "@integraledger/lcp/sui"
-description: "The exports of @integraledger/lcp/sui."
+description: "Sui, and the `x402/exact/sui` pairing: the ATR hash as the one `Pure` input of the payer's programmable transaction that no command uses."
 ---
 
 # @integraledger/lcp/sui
+
+Sui, and the `x402/exact/sui` pairing: the ATR hash as the one `Pure` input of the payer's programmable transaction
+that no command uses.
+
+The payer's signature covers it, the rail executes the transaction unchanged, and the hash stays on chain in the
+transaction's input list. Settlement is read by the transaction digest, which the signed bytes fix before any money
+moves. BCS decoding uses @mysten/sui, loaded once when this module is, and decoding a transaction's bytes is the one
+step that needs it: without it a function refuses `sui/peer-missing` only when it reaches that step, after the checks
+that need no peer; `build` gives the request it gives with it; and `status` reads as it does with it until it meets a
+transaction's bytes, where the transaction the digest names is unreadable `unparseable`, and each transaction of the
+sender's that the search passes is an item it could not decode, at which the search is held. A digest is base58, read
+and written with the package's own dependency @scure/base, so it is checked without the peer.
 
 ## Interfaces
 

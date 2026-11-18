@@ -1,9 +1,15 @@
 ---
 title: "@integraledger/lcp/tvm"
-description: "The exports of @integraledger/lcp/tvm."
+description: "TON: the pairing `x402/exact/tvm`. The ATR hash rides in the scheme's `extra.forwardPayload` as a TEP-74 text comment holding its LCP string."
 ---
 
 # @integraledger/lcp/tvm
+
+TON: the pairing `x402/exact/tvm`. The ATR hash rides in the scheme's `extra.forwardPayload` as a TEP-74 text comment
+holding its LCP string.
+
+The payer's W5 wallet signs a request whose one Jetton transfer carries that payload; settlement is read from the W5
+wallet's transaction with that request and the Jetton wallets' transactions it led to, through a bounded reader.
 
 ## Interfaces
 
@@ -399,9 +405,9 @@ the payer's W5 wallet signed; `status` reads the wallet's transaction and the Je
 
 > `const` **MAX\_TVM\_ATTACHED\_ABOVE\_FORWARD**: `30000000n` = `30_000_000n`
 
-The most nanotons `build` attaches above the option's forward TON amount: the stock settler refuses a request whose
-attached value is above `forwardTonAmount` plus this (`@x402/tvm` 2.30.0, `src/exact/facilitator/scheme.ts:326-329`,
-`DEFAULT_JETTON_WALLET_MESSAGE_AMOUNT` in `src/constants.ts:14`).
+The most nanotons `build` attaches above the option's forward TON amount: x402's TON facilitator (`@x402/tvm`)
+refuses a request whose attached value is above `forwardTonAmount` plus this (`@x402/tvm` 2.30.0,
+`src/exact/facilitator/scheme.ts:326-329`, `DEFAULT_JETTON_WALLET_MESSAGE_AMOUNT` in `src/constants.ts:14`).
 
 ***
 

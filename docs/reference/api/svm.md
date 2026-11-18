@@ -1,9 +1,15 @@
 ---
 title: "@integraledger/lcp/svm"
-description: "The exports of @integraledger/lcp/svm."
+description: "Solana rail pieces: the wire transaction and its one Memo instruction carrying the ATR hash in LCP string form, the settlement read, and the payment-channels program's pieces."
 ---
 
 # @integraledger/lcp/svm
+
+Solana rail pieces: the wire transaction and its one Memo instruction carrying the ATR hash in LCP string form, the
+settlement read, and the payment-channels program's pieces.
+
+It also holds the digest of the message the payer signed. The settlement is read through a bounded reader. The
+payment-channels pieces are its instructions and PDAs, the voucher, the session proof, and the channel's status read.
 
 ## Interfaces
 

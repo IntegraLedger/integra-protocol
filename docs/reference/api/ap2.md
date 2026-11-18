@@ -1,13 +1,25 @@
 ---
 title: "@integraledger/lcp/ap2"
-description: "The exports of @integraledger/lcp/ap2."
+description: "AP2 v0.2 checkouts and closed Checkout Mandates, and the `ap2/checkout-mandate` pairing: the ATR hash as the `legalContext` member of the merchant-signed `checkout_jwt` payload, which the buyer's closed Checkout Mandate commits to through `checkout_hash`."
 ---
 
 # @integraledger/lcp/ap2
 
+AP2 v0.2 checkouts and closed Checkout Mandates, and the `ap2/checkout-mandate` pairing: the ATR hash as the
+`legalContext` member of the merchant-signed `checkout_jwt` payload, which the buyer's closed Checkout Mandate
+commits to through `checkout_hash`.
+
+The hash is read back from the checkout JWT presented beside the mandate. The mandate is presented alone, or last in
+AP2's chain after the open mandate. In AP2's push funding, where the payer's side sends the funds, the presentation
+also carries the confirmation of funds sent, `payment_receipt`. Nothing here verifies a signature, a `cnf` delegation
+or a link between hops.
+
 ## Interfaces
 
 ### Ap2Offer
+
+The offer `read` gives, and the buyer's input to `build`: the merchant's `checkout_jwt` (`checkoutJwt`), its decoded
+payload, and the checkout's own `id` (`checkout`).
 
 #### Properties
 

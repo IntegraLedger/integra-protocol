@@ -1,9 +1,17 @@
 ---
 title: "@integraledger/lcp/mpp"
-description: "The exports of @integraledger/lcp/mpp."
+description: "The `mpp` entry point: MPP's challenge pieces and its pairings: the EVM charges, defined here, and every other MPP charge, session and subscription pairing but Lightning's, re-exported from its module."
 ---
 
 # @integraledger/lcp/mpp
+
+The `mpp` entry point: MPP's challenge pieces and its pairings: the EVM charges, defined here, and every other MPP
+charge, session and subscription pairing but Lightning's, re-exported from its module.
+
+The EVM charges are `authorization` (the signed nonce is keccak256 of the JSON array [id, realm]), `permit2` (the
+signed witness carries that value), and `transaction` and `hash` (nothing signed carries H). The re-exported charges
+are the card, Stripe, Solana, XRP Ledger, NEAR Intents, `usdc`, `lcp` and Tempo split-memo charges. `FETCHED` is the
+key under which a pairing's `fetchPresented` writes the seller's read onto a credential.
 
 ## Interfaces
 
@@ -479,6 +487,9 @@ challenge's id carries H; it compares no deal value.
 ***
 
 ### MppCredential
+
+An MPP credential, as the buyer presents it: the challenge it answers, echoed with its `id`; an optional `source`
+naming the payer, where the method writes one; and the method's `payload`.
 
 #### Extended by
 
@@ -1000,6 +1011,9 @@ What an MPP EVM charge's `status` answers: `read-status`'s answer, with `present
 ### MppMethod
 
 > **MppMethod** = `"evm"` \| `"tempo"` \| `"solana"` \| `"lightning"` \| `"card"` \| `"stripe"` \| `"usdc"` \| `"nearintents"` \| `"stellar"` \| `"xrpl"` \| `"hedera"` \| `"lcp"`
+
+The MPP payment methods this package knows a challenge's `method` as: the methods of a checked challenge
+(`Checked.method`) and the keys of `CARRIER`.
 
 ***
 
@@ -1765,10 +1779,11 @@ it, with that method's default where it names one. A method whose challenge name
 Checks a challenge as issued (no LCP member in `opaque`) and names its pairings, in the order they are offered. An
 `expires` that is present must be an RFC 3339 date-time, else `mpp/expires-required`. Without `expires`, the pairings
 whose `build` writes it into what the payer signs, and the NEAR Intents and XRP Ledger charges, whose drafts require
-it, are left out, and a challenge left with no pairing is `mpp/expires-required`. These checks are each pairing's one
-filter: they include every check its `build`, `bound` and `reference` make on the challenge alone, and those take
-only a challenge `pairingsOfPlaced` names for the pairing, refusing any other with the code these checks give it
-(`mpp/not-this-pairing` where they name only other pairings).
+it, are left out, and a challenge left with no pairing is `mpp/expires-required`; a `charge` on the `lcp` method whose
+`rail` is `hedera` or `stellar` is `mpp/expires-required` without it, by the method's own filter. These checks are
+each pairing's one filter: they include every check its `build`, `bound` and `reference` make on the challenge alone,
+and those take only a challenge `pairingsOfPlaced` names for the pairing, refusing any other with the code these
+checks give it (`mpp/not-this-pairing` where they name only other pairings).
 
 #### Parameters
 
@@ -1872,8 +1887,8 @@ Codes and Error Codes tables, under `https://paymentauth.org/problems/`:
 - 500 `internal-payment-error`: a call that cannot read the payment, which gives the same code until the seller
   changes the call: a reader that is not for the network the challenge or reference names, or a ref `recover`
   cannot read (`tempo/wrong-reader`, `svm/wrong-reader`, `xrpl/wrong-reader` and `hedera/wrong-reader`), and `bound`
-  or `reference` on a push credential before `fetchPresented` has read it (`svm/read-first`, `xrpl/read-first` and
-  `hedera/read-first`);
+  or `reference` on a push credential before `fetchPresented` has read it (`svm/read-first`, `xrpl/read-first`,
+  `hedera/read-first` and `tempo/read-first`);
 - 402 `verification-failed`: every other code this package returns;
 - 500 `internal-payment-error`: a code this package does not return. The caller answers its own codes itself.
 

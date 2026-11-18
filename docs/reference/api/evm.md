@@ -1,9 +1,18 @@
 ---
 title: "@integraledger/lcp/evm"
-description: "The exports of @integraledger/lcp/evm."
+description: "eip155 rail pieces: EIP-3009 and Permit2 typed data, the settlement read from a token's events, the read of a signed pull authorization's use, ERC-7710 permission contexts, the commerce-payments escrow's pieces, and x402's Permit2 proxy addresses."
 ---
 
 # @integraledger/lcp/evm
+
+eip155 rail pieces: EIP-3009 and Permit2 typed data, the settlement read from a token's events, the read of a signed
+pull authorization's use, ERC-7710 permission contexts, the commerce-payments escrow's pieces, and x402's Permit2
+proxy addresses.
+
+The settlement read is from the token's `AuthorizationUsed` event and the transfer it produced, and a pull
+authorization's use is read before any transaction is named. It also holds the identity digest of a transfer; the
+ERC-7710 permission-context decoder and MetaMask's DelegationManager address; and the commerce-payments escrow's
+payment hash and the salt commitment to a receiver authorizer and policy.
 
 ## Classes
 
@@ -308,8 +317,10 @@ One receipt log: the emitter, its topics and its data.
 ### EvmReader
 
 Bounded, read-only calls against one network's endpoint. Every failure rejects, for example with `ReaderError`; a
-rejected `receipt`, `transaction` or `call` reads as unreadable, and a rejected `blockNumber` counts as a mark not
-reached.
+rejected `receipt`, `transaction` or `call` reads as unreadable. A rejected `blockNumber` counts as a mark not
+reached where a read places a receipt it has read against the marks; where a read takes the marks before anything
+else, as the x402 reads on eip155 do with a reader that has no `block`, a rejected `finalized` mark is unreadable and
+a rejected `safe` mark reads as the final one.
 
 #### Extended by
 

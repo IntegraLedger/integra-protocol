@@ -11,47 +11,47 @@ Import each entry point by its subpath. Every entry point is ESM with its own ty
 
 | Entry point | What it holds |
 |---|---|
-| [`@integraledger/lcp`](#integraledgerlcp) | The core: assembling an ATR and hashing its exact bytes, comparing hashes, the hash's string and structured forms, the https-link rule, the registry of every pairing (`BINDINGS`, `pairingOf`), and `FETCHED`, the key under which a pairing's `fetchPresented` writes the seller's read onto a credential. |
+| [`@integraledger/lcp`](#integraledgerlcp) | The package root of `@integraledger/lcp`: the core functions of `@integraledger/lcp/core`, the registry of every pairing (`BINDINGS`, `pairingOf`) and its types, and the return after an agreement. |
 | [`@integraledger/lcp/a2a`](#integraledgerlcpa2a) | The LCP extension for A2A: the ATR hash and the link to the seller's copy delivered in a Task's `metadata`, keyed by the extension's URI. A2A signs nothing per transaction, so this is a carrier and exports no pairing. Pure; no I/O. |
-| [`@integraledger/lcp/ack`](#integraledgerlcpack) | ACK Payment Requests and receipts, and the pairing `ack/payment-request`: the ATR hash as the `id` of the seller-signed Payment Request, in LCP's string form, with the link beside the request in the 402 body. ACK defines no payer signature, so `build` and `bound` always refuse. The token is read under the name ACK's SDKs write from 0.10.0, `paymentRequestToken`, and under `paymentToken`, the name they wrote before it, in the 402 body and in a receipt's credential subject alike. Pure; no I/O. No token or receipt signature is verified here. |
-| [`@integraledger/lcp/acp`](#integraledgerlcpacp) | ACP checkout sessions and delegate-payment allowances, and the pairings `acp/checkout/delegated` and `acp/checkout/undelegated`: the ATR hash as the checkout session's `id`, with the link beside it in the session's `metadata.legal_context`, and, where the handler requires `delegate_payment`, as the allowance's `checkout_session_id`. Pure; no I/O. Nothing here signs or verifies a signature. |
-| [`@integraledger/lcp/ap2`](#integraledgerlcpap2) | AP2 v0.2 checkouts and closed Checkout Mandates, and the `ap2/checkout-mandate` pairing: the ATR hash as the `legalContext` member of the merchant-signed `checkout_jwt` payload, committed to by the buyer's closed Checkout Mandate through `checkout_hash`, and read back from the checkout JWT presented beside the mandate. The mandate is presented alone, or last in AP2's chain after the open mandate. In AP2's push funding, where the payer's side sends the funds, the presentation also carries the confirmation of funds sent, `payment_receipt`. Nothing here verifies a signature, a `cnf` delegation or a link between hops. |
-| [`@integraledger/lcp/aptos`](#integraledgerlcpaptos) | Aptos, and the `x402/exact/aptos` pairing, served at the seller-tied level: no field of a standard Aptos transfer carries the ATR hash, so the hash is advertised in the challenge, read back from the echoed extension, and tied to the payment by the seller's claim. The settlement is found by the payer's sender and sequence number, and identified by a digest of the transfer the payer signed and by the expiry it signed. |
-| [`@integraledger/lcp/avm`](#integraledgerlcpavm) | Algorand: the pairing `x402/exact/algorand`, in which the payer signs an asset transfer whose note is the ATR hash's LCP string, and the settlement read from an Indexer by the transaction id computed from the signed bytes. `algosdk` is an optional peer: this module loads it when present, and `build` writes the transactions with it. The addresses and the payment entries are read without it, so the option filter, `advertise`, `read`, `bound`, `reference` and `avmCarrier` need no peer, and `build` refuses `avm/peer-missing` only after every check that needs none. |
+| [`@integraledger/lcp/ack`](#integraledgerlcpack) | ACK Payment Requests and receipts, and the pairing `ack/payment-request`: the ATR hash as the `id` of the seller-signed Payment Request, in LCP's string form, with the link beside the request in the 402 body. |
+| [`@integraledger/lcp/acp`](#integraledgerlcpacp) | ACP checkout sessions and delegate-payment allowances, and the pairings `acp/checkout/delegated` and `acp/checkout/undelegated`: the ATR hash as the checkout session's `id`. |
+| [`@integraledger/lcp/ap2`](#integraledgerlcpap2) | AP2 v0.2 checkouts and closed Checkout Mandates, and the `ap2/checkout-mandate` pairing: the ATR hash as the `legalContext` member of the merchant-signed `checkout_jwt` payload, which the buyer's closed Checkout Mandate commits to through `checkout_hash`. |
+| [`@integraledger/lcp/aptos`](#integraledgerlcpaptos) | Aptos, and the `x402/exact/aptos` pairing, served at the seller-tied level: no field of a standard Aptos transfer carries the ATR hash, so the hash is advertised in the challenge and tied to the payment by the seller's claim. |
+| [`@integraledger/lcp/avm`](#integraledgerlcpavm) | Algorand: the pairing `x402/exact/algorand`, in which the payer signs an asset transfer whose note is the ATR hash's LCP string, and the settlement read from an Indexer by the transaction id computed from the signed bytes. |
 | [`@integraledger/lcp/card`](#integraledgerlcpcard) | The `card` entry point: the ATR hash on a card checkout, on five paths: Visa TAP, Mastercard Agent Pay, Visa Intelligent Commerce, Mastercard Verifiable Intent (Immediate and Autonomous) and the plain card checkout. |
-| [`@integraledger/lcp/cardano`](#integraledgerlcpcardano) | Cardano, and its two pairings: `x402/exact/cardano`, x402's address-to-address method, and `x402/exact/cardano/lock`, its two lock methods (`masumi` and `script`), told apart by the option's `extra.assetTransferMethod`. Each carries the ATR hash as a CIP-20 message (metadata label 674) that the payer's signed body commits to through `auxiliary_data_hash`. The transaction id is the Blake2b-256 of the body as received, so a payment is named by an id fixed before any money moves, and its single-use value is the input `payload.nonce` names, which the body spends. |
+| [`@integraledger/lcp/cardano`](#integraledgerlcpcardano) | Cardano, and its two pairings: `x402/exact/cardano`, x402's address-to-address method, and `x402/exact/cardano/lock`, its two lock methods (`masumi` and `script`). Each carries the ATR hash as a CIP-20 message that the payer's signed body commits to. |
 | [`@integraledger/lcp/casper`](#integraledgerlcpcasper) | CEP-3009 on Casper and the `x402/exact/casper` pairing: the ATR hash as the authorization's 32-byte `nonce`, written by the buyer's signer, read back from what the payer signed, and read from the executed call's arguments. |
 | [`@integraledger/lcp/ccd`](#integraledgerlcpccd) | Concordium and the `x402/exact/ccd` pairing: the ATR hash in LCP's string form, as a CBOR text string, in the memo of the one transfer the sender signs; read back from the signed transaction, and read from the finalized transfer event. |
-| [`@integraledger/lcp/core`](#integraledgerlcpcore) | The core alone: assembling an ATR and hashing its exact bytes, comparing hashes, the agreement's own value of a hash, the hash's string and structured forms, the https-link rule and the URL Standard's host and domain parsers it reads a link with, the RFC 8785 form of a JSON value and its digest, JSON reading capped at 64 levels, padded standard base64 and unpadded base64url, each read in its canonical form only (with or without a bound on its size) and written, `isRefusal` and `readToRepeat`. It imports no pairing, no rail and no optional peer, so a bundle of it holds these functions and nothing else. The package root exports the same functions: each is one function, reached by either path. |
-| [`@integraledger/lcp/discovery`](#integraledgerlcpdiscovery) | The discovery document of LCP §2, served at `/.well-known/legal-context.json`. `parse` reads one; `emit` writes one, members in the order of LCP §2.4–§2.5's tables, absent members omitted, no whitespace, UTF-8. Both check the members LCP §2.4–§2.5 define, with these bounds: each string member non-empty, `terms` an https URL, at most 65,536 bytes, and JSON nested at most 64 levels. Neither throws or does I/O. |
-| [`@integraledger/lcp/evm`](#integraledgerlcpevm) | eip155 rail pieces: EIP-3009 and Permit2 typed data, the identity digest of a transfer, the settlement read from the token's `AuthorizationUsed` event and the transfer it produced, and the read of a signed pull authorization's use before any transaction is named; the ERC-7710 permission-context decoder and MetaMask's DelegationManager address; the commerce-payments escrow's payment hash and the salt commitment to a receiver authorizer and policy; and x402's Permit2 proxy addresses. |
-| [`@integraledger/lcp/hedera`](#integraledgerlcphedera) | Hedera: the transaction wire form read and written by hand (protobuf, five messages), the Mirror Node settlement read, and the x402 pairings `x402/exact/hedera` (the ATR hash as the signed body memo) and `x402/exact/hedera/transfer-executor` (the hash advertised in the challenge only); the escrow channel pieces `hederaChannelId` and `hederaVoucher`; and `FETCHED`, the key under which a pairing's `fetchPresented` writes the seller's read onto a credential. |
-| [`@integraledger/lcp/lightning`](#integraledgerlcplightning) | BOLT11 invoices and the Lightning pairings. On x402 (`x402/exact/lnbtc/payment-hash`) the ATR commits the option's `extra.paymentHash`, the payment hash of the invoice the seller's node issues after the agreement. On MPP the seller's node writes the ATR hash as the invoice's description hash `h`. The payer signs nothing; it pays the invoice. |
-| [`@integraledger/lcp/mpp`](#integraledgerlcpmpp) | The `mpp` entry point: MPP's challenge pieces and its pairings. The charge pairings here are EVM `authorization` (the signed nonce is keccak256 of the JSON array [id, realm]), EVM `permit2` (the signed witness carries that value), and EVM `transaction` and `hash` (nothing signed carries H). The card, Stripe, Solana, XRP Ledger, NEAR Intents, `usdc` and `lcp` charges, and the session and subscription pairings other than Lightning's, are re-exported from their modules. `FETCHED` is the key under which a pairing's `fetchPresented` writes the seller's read onto a credential. |
-| [`@integraledger/lcp/near`](#integraledgerlcpnear) | NEAR: the pairing `x402/exact/near`. The payer signs a NEP-366 delegate action for one NEP-141 `ft_transfer` whose `memo` argument is the ATR hash's LCP string; a facilitator's relayer submits it. The read finds the payer's act by the payer's access key, through a bounded reader, and searches every access key of the payer's account for H. |
-| [`@integraledger/lcp/polkadot`](#integraledgerlcppolkadot) | Polkadot Asset Hub: the profile pairing `x402/exact/polkadot/lcp-assets-remark`, in which the payer signs one extrinsic whose call is `utility.batch_all([assets.transfer_keep_alive, system.remark_with_event])` with the ATR hash's LCP string as the remark; the settlement is read by the signer's account nonce through polkadot-rest-api. SCALE is encoded and decoded here for these shapes only. |
-| [`@integraledger/lcp/spend-permissions`](#integraledgerlcpspend-permissions) | The Spend Permission exchange and the pairing `spend-permissions/eip155`: an account's approval, on the SpendPermissionManager, of a Spend Permission whose `salt` is the ATR hash, as the sale's agreement. The offer in a `402` body, the typed data the account signs or the `approve` call it makes, the `Spend-Permission` return header, the resource server's checks, the permission's hash as the manager computes it, and the read of the approval by that hash, as the profile `spend-permissions/eip155` states them. No key is held, nothing is signed, and nothing is read but through the reader a caller supplies. |
-| [`@integraledger/lcp/stacks`](#integraledgerlcpstacks) | Stacks rail pieces: the transaction id, the reader a read goes through, the read of a payment by its origin and the nonce the origin signed with the search for H over the origin's nonces, and the zero-party recovery of the ATR hash from a mined transaction. The profile `mpp/charge/usdc/stacks` states the read. |
-| [`@integraledger/lcp/starknet`](#integraledgerlcpstarknet) | Starknet: the pairing `x402/exact/starknet`. The payer signs a SNIP-12 `OutsideExecution` (SNIP-9 v2) authorizing one token `transfer`; its `Nonce` is the ATR hash's low 250 bits, or on an agreement the agreement value's. The read is of that nonce on the payer's account, as state, and of the asset's `Transfer` events, receipts and traces, through a bounded reader. The chain holds 250 of the hash's bits, so a holder of the ATR confirms the hash from it but nothing recovers the hash. |
-| [`@integraledger/lcp/stellar`](#integraledgerlcpstellar) | Stellar rail pieces: the payer-signed Soroban `transfer` and the digest of the authorization entry that signs it; the position P of a transaction and the muxed address `M(payee, P)`; the 40-byte payload of the signed-payload precondition over H; the events that show what moved; the search for a buyer's acts; and the read of the agreement `x402/exact/stellar/precondition`, through a bounded reader. |
-| [`@integraledger/lcp/sui`](#integraledgerlcpsui) | Sui, and the `x402/exact/sui` pairing: the ATR hash as the one `Pure` input of the payer's programmable transaction that no command uses. The payer's signature covers it, the rail executes the transaction unchanged, and the hash stays on chain in the transaction's input list. Settlement is read by the transaction digest, which the signed bytes fix before any money moves. BCS decoding uses @mysten/sui, loaded once when this module is, and decoding a transaction's bytes is the one step that needs it: without it a function refuses `sui/peer-missing` only when it reaches that step, after the checks that need no peer, `build` gives the request it gives with it, and `status` reads as it does with it, pending `unreadable` only there. A digest is base58, read and written with the package's own dependency @scure/base, so it is checked without the peer. |
-| [`@integraledger/lcp/svm`](#integraledgerlcpsvm) | Solana rail pieces: the wire transaction, its one Memo instruction carrying the ATR hash in LCP string form, the digest of the message the payer signed, settlement read through a bounded reader, and the payment-channels program's pieces: its instructions and PDAs, the voucher, the session proof, and the channel's status read. |
-| [`@integraledger/lcp/tempo`](#integraledgerlcptempo) | Tempo rail pieces: the `0x76` transaction's calls, the TIP-20 `transferWithMemo` calldata, the TIP-20 channel reserve's descriptor and ids, and the account keychain's key authorizations. Tempo serves eip155 JSON-RPC, so the reader is `EvmReader`. Nothing here throws on a caller's value; refusals are values. |
-| [`@integraledger/lcp/tron`](#integraledgerlcptron) | Tron: the transaction pieces (protobuf for the fields the profile uses, base58check addresses, the transaction id) and the pairing `x402/exact/tron/lcp-trc20-memo`, whose payer-signed TRC-20 transfer carries the ATR hash as its memo, `raw_data.data`, in LCP string form. Settlement is read by transaction id through a bounded reader. |
-| [`@integraledger/lcp/tvm`](#integraledgerlcptvm) | TON: the pairing `x402/exact/tvm`. The ATR hash rides in the scheme's `extra.forwardPayload` as a TEP-74 text comment holding its LCP string. The payer's W5 wallet signs a request whose one Jetton transfer carries that payload; settlement is read from the W5 wallet's transaction with that request and the Jetton wallets' transactions it led to, through a bounded reader. |
-| [`@integraledger/lcp/ucp`](#integraledgerlcpucp) | UCP checkouts and bookings, and four pairings: the ATR hash and link as one `links[]` entry of type `legal_context` in the checkout response. The `ap2-mandate` pairings read the hash from the checkout JWT presented beside the buyer's checkout mandate, after AP2's `checkout_hash` check, the mandate presented alone or last in AP2's chain after the open mandate; the `unsigned` pairings have nothing signed to read. Nothing here takes a key, signs, or verifies a signature, a `cnf` delegation or a link between chained mandates. |
-| [`@integraledger/lcp/x402`](#integraledgerlcpx402) | x402 v2 documents, the request commitment, and the x402 pairings on eip155 chains: `exact` over EIP-3009, Permit2 and ERC-7710 (with its salt level), `upto` over Permit2, `auth-capture` over EIP-3009 and Permit2, and `exact` in Circle Gateway's batched domain. The ATR hash is advertised in the challenge's `extensions.legalContext`; each pairing's `pattern` record states how the pairing binds it. |
-| [`@integraledger/lcp/x402-batch-settlement`](#integraledgerlcpx402-batch-settlement) | x402 `batch-settlement`: one ATR per channel. On EVM the ATR hash is the channel configuration's `salt`, which the channel id commits to and every signature signs; on Solana it is the opening transaction's seller Memo instruction (`extra.memo`), beside x402's receiver-authorizer binding memo; on Cloudflare it rides the echoed `extensions.legalContext` of each request, with no channel. |
+| [`@integraledger/lcp/core`](#integraledgerlcpcore) | The core alone: assembling an ATR and hashing its exact bytes, comparing hashes, the hash's forms, the https-link rule, the JSON and base64 forms they read and write, `isRefusal` and `readToRepeat`, with no pairing, rail or optional peer. |
+| [`@integraledger/lcp/discovery`](#integraledgerlcpdiscovery) | The discovery document of LCP §2, served at `/.well-known/legal-context.json`: `parse` reads one, and `emit` writes one. |
+| [`@integraledger/lcp/evm`](#integraledgerlcpevm) | eip155 rail pieces: EIP-3009 and Permit2 typed data, the settlement read from a token's events, the read of a signed pull authorization's use, ERC-7710 permission contexts, the commerce-payments escrow's pieces, and x402's Permit2 proxy addresses. |
+| [`@integraledger/lcp/hedera`](#integraledgerlcphedera) | Hedera: the x402 pairings `x402/exact/hedera` (the ATR hash as the signed body memo) and `x402/exact/hedera/transfer-executor` (the hash advertised in the challenge only), with the transaction wire form and the Mirror Node settlement read. |
+| [`@integraledger/lcp/lightning`](#integraledgerlcplightning) | BOLT11 invoices and the Lightning pairings: on x402 (`x402/exact/lnbtc/payment-hash`) the ATR commits the option's `extra.paymentHash`, and on MPP the seller's node writes the ATR hash as the invoice's description hash `h`. |
+| [`@integraledger/lcp/mpp`](#integraledgerlcpmpp) | The `mpp` entry point: MPP's challenge pieces and its pairings: the EVM charges, defined here, and every other MPP charge, session and subscription pairing but Lightning's, re-exported from its module. |
+| [`@integraledger/lcp/near`](#integraledgerlcpnear) | NEAR: the pairing `x402/exact/near`. The payer signs a NEP-366 delegate action for one NEP-141 `ft_transfer` whose `memo` argument is the ATR hash's LCP string; a facilitator's relayer submits it. |
+| [`@integraledger/lcp/polkadot`](#integraledgerlcppolkadot) | Polkadot Asset Hub: the profile pairing `x402/exact/polkadot/lcp-assets-remark`, in which the payer signs one extrinsic that transfers an asset and remarks the ATR hash's LCP string. |
+| [`@integraledger/lcp/spend-permissions`](#integraledgerlcpspend-permissions) | The Spend Permission exchange and the pairing `spend-permissions/eip155`: an account's approval, on the SpendPermissionManager, of a Spend Permission whose `salt` is the ATR hash, as the sale's agreement. |
+| [`@integraledger/lcp/stacks`](#integraledgerlcpstacks) | Stacks rail pieces: the transaction id, the reader a read goes through, the read of a payment by its origin and the nonce the origin signed, and the zero-party recovery of the ATR hash from a mined transaction. |
+| [`@integraledger/lcp/starknet`](#integraledgerlcpstarknet) | Starknet: the pairing `x402/exact/starknet`. The payer signs a SNIP-12 `OutsideExecution` (SNIP-9 v2) authorizing one token `transfer`; its `Nonce` is the ATR hash's low 250 bits, or on an agreement the agreement value's. |
+| [`@integraledger/lcp/stellar`](#integraledgerlcpstellar) | Stellar rail pieces: the payer-signed Soroban `transfer` and the digest of its authorization entry, the signed-payload precondition over H, the search for a buyer's acts, and the read of the agreement `x402/exact/stellar/precondition`. |
+| [`@integraledger/lcp/sui`](#integraledgerlcpsui) | Sui, and the `x402/exact/sui` pairing: the ATR hash as the one `Pure` input of the payer's programmable transaction that no command uses. |
+| [`@integraledger/lcp/svm`](#integraledgerlcpsvm) | Solana rail pieces: the wire transaction and its one Memo instruction carrying the ATR hash in LCP string form, the settlement read, and the payment-channels program's pieces. |
+| [`@integraledger/lcp/tempo`](#integraledgerlcptempo) | Tempo rail pieces: the `0x76` transaction's calls, the TIP-20 `transferWithMemo` calldata, the TIP-20 channel reserve's descriptor and ids, and the account keychain's key authorizations. |
+| [`@integraledger/lcp/tron`](#integraledgerlcptron) | Tron: the pairing `x402/exact/tron/lcp-trc20-memo`, whose payer-signed TRC-20 transfer carries the ATR hash as its memo, `raw_data.data`, in LCP string form, and the transaction pieces it uses. |
+| [`@integraledger/lcp/tvm`](#integraledgerlcptvm) | TON: the pairing `x402/exact/tvm`. The ATR hash rides in the scheme's `extra.forwardPayload` as a TEP-74 text comment holding its LCP string. |
+| [`@integraledger/lcp/ucp`](#integraledgerlcpucp) | UCP checkouts and bookings, and five pairings, each of which carries the ATR hash and link as one `links[]` entry of type `legal_context` in the checkout response. |
+| [`@integraledger/lcp/x402`](#integraledgerlcpx402) | x402 v2 documents, the request commitment, and the x402 pairings on eip155 chains: `exact` over EIP-3009, Permit2 and ERC-7710 (with its salt level), `upto` over Permit2, `auth-capture` over EIP-3009 and Permit2, and `exact` in Circle Gateway's batched domain. |
+| [`@integraledger/lcp/x402-batch-settlement`](#integraledgerlcpx402-batch-settlement) | x402 `batch-settlement`: one ATR per channel, its hash the EVM channel configuration's `salt`, the Solana opening transaction's seller Memo instruction, or, on Cloudflare, the echoed `extensions.legalContext` of each request. |
 | [`@integraledger/lcp/x402-exact-solana`](#integraledgerlcpx402-exact-solana) | The `x402/exact/solana` pairing: the ATR hash placed as the option's `extra.memo` in LCP string form, written by the payer as the transaction's one Memo instruction, read back from the signed message, and read from the settlement. |
-| [`@integraledger/lcp/x402-exact-stellar`](#integraledgerlcpx402-exact-stellar) | The `x402-exact-stellar` entry point: the Stellar x402 pairing `exactStellarPrecondition`, and the `Broadcaster` type, which every pairing's `broadcaster` answers. |
-| [`@integraledger/lcp/x402-exact-xrpl`](#integraledgerlcpx402-exact-xrpl) | The `x402/exact/xrpl` pairing: the ATR hash's LCP string placed as the option's `extra.invoiceId`, whose SHA-256 the payer signs as the Payment's `InvoiceID`, read back from the signed blob, single-signed or multisigned, and settlement read by the payer's instrument, its `Account` with the signed `Sequence` or ticket. |
-| [`@integraledger/lcp/x402-upto-solana`](#integraledgerlcpx402-upto-solana) | The `x402/upto/solana` pairing: the ATR hash placed as the option's `extra.memo` in LCP string form, written by the payer as the one Memo instruction of the transaction that opens a one-request payment channel escrowing the signed maximum; read back from that transaction, and settlement read from the opening. |
-| [`@integraledger/lcp/x402-upto-xrpl`](#integraledgerlcpx402-upto-xrpl) | The `x402/upto/xrpl` pairing: x402's `upto` scheme on the XRP Ledger, at coverage `none`. The payer opens a payment channel to the option's `payTo` itself and presents the channel and its own account, so nothing it signs carries the ATR hash; the payment follows an agreement on the same network. Settlement is read from the channel's create. |
+| [`@integraledger/lcp/x402-exact-stellar`](#integraledgerlcpx402-exact-stellar) | Stellar on x402: the pairing `x402/exact/stellar/precondition` (`exactStellarPrecondition`), an agreement in which the buyer signs a Soroban authorization of `transfer(buyer, payTo, amount)` and a 40-byte payload of H and that authorization's nonce. |
+| [`@integraledger/lcp/x402-exact-xrpl`](#integraledgerlcpx402-exact-xrpl) | The `x402/exact/xrpl` pairing: the ATR hash's LCP string placed as the option's `extra.invoiceId`, whose SHA-256 the payer signs as the Payment's `InvoiceID`. |
+| [`@integraledger/lcp/x402-upto-solana`](#integraledgerlcpx402-upto-solana) | The `x402/upto/solana` pairing: the ATR hash placed as the option's `extra.memo` in LCP string form, written by the payer as the one Memo instruction of the transaction that opens a one-request payment channel. |
+| [`@integraledger/lcp/x402-upto-xrpl`](#integraledgerlcpx402-upto-xrpl) | The `x402/upto/xrpl` pairing: x402's `upto` scheme on the XRP Ledger, at coverage `none`, its payment following an agreement on the same network. |
 | [`@integraledger/lcp/xrpl`](#integraledgerlcpxrpl) | XRP Ledger rail pieces: the signed blob, its `InvoiceID` or memo carrying the ATR hash in each scheme's form, the transaction hash computed from the blob, the reads of a payment, an opening, a channel and a close through a bounded reader, and the payment channel's id and claim. |
 
 ## `@integraledger/lcp`
 
-The core: assembling an ATR and hashing its exact bytes, comparing hashes, the hash's string and structured forms, the https-link rule, the registry of every pairing (`BINDINGS`, `pairingOf`), and `FETCHED`, the key under which a pairing's `fetchPresented` writes the seller's read onto a credential.
+The package root of `@integraledger/lcp`: the core functions of `@integraledger/lcp/core`, the registry of every pairing (`BINDINGS`, `pairingOf`) and its types, and the return after an agreement.
 
 ```ts no-check
 import { agreementValue, assemble, base64Bytes, … } from "@integraledger/lcp";
@@ -75,7 +75,7 @@ import { A2A_EXTENSION_URIS, agentExtension, binding, … } from "@integraledger
 
 ## `@integraledger/lcp/ack`
 
-ACK Payment Requests and receipts, and the pairing `ack/payment-request`: the ATR hash as the `id` of the seller-signed Payment Request, in LCP's string form, with the link beside the request in the 402 body. ACK defines no payer signature, so `build` and `bound` always refuse. The token is read under the name ACK's SDKs write from 0.10.0, `paymentRequestToken`, and under `paymentToken`, the name they wrote before it, in the 402 body and in a receipt's credential subject alike. Pure; no I/O. No token or receipt signature is verified here.
+ACK Payment Requests and receipts, and the pairing `ack/payment-request`: the ATR hash as the `id` of the seller-signed Payment Request, in LCP's string form, with the link beside the request in the 402 body.
 
 ```ts no-check
 import { fromReceipt, paymentRequest, tie } from "@integraledger/lcp/ack";
@@ -89,7 +89,7 @@ import { fromReceipt, paymentRequest, tie } from "@integraledger/lcp/ack";
 
 ## `@integraledger/lcp/acp`
 
-ACP checkout sessions and delegate-payment allowances, and the pairings `acp/checkout/delegated` and `acp/checkout/undelegated`: the ATR hash as the checkout session's `id`, with the link beside it in the session's `metadata.legal_context`, and, where the handler requires `delegate_payment`, as the allowance's `checkout_session_id`. Pure; no I/O. Nothing here signs or verifies a signature.
+ACP checkout sessions and delegate-payment allowances, and the pairings `acp/checkout/delegated` and `acp/checkout/undelegated`: the ATR hash as the checkout session's `id`.
 
 ```ts no-check
 import { delegated, issuedDigest, METADATA_KEY, … } from "@integraledger/lcp/acp";
@@ -103,7 +103,7 @@ import { delegated, issuedDigest, METADATA_KEY, … } from "@integraledger/lcp/a
 
 ## `@integraledger/lcp/ap2`
 
-AP2 v0.2 checkouts and closed Checkout Mandates, and the `ap2/checkout-mandate` pairing: the ATR hash as the `legalContext` member of the merchant-signed `checkout_jwt` payload, committed to by the buyer's closed Checkout Mandate through `checkout_hash`, and read back from the checkout JWT presented beside the mandate. The mandate is presented alone, or last in AP2's chain after the open mandate. In AP2's push funding, where the payer's side sends the funds, the presentation also carries the confirmation of funds sent, `payment_receipt`. Nothing here verifies a signature, a `cnf` delegation or a link between hops.
+AP2 v0.2 checkouts and closed Checkout Mandates, and the `ap2/checkout-mandate` pairing: the ATR hash as the `legalContext` member of the merchant-signed `checkout_jwt` payload, which the buyer's closed Checkout Mandate commits to through `checkout_hash`.
 
 ```ts no-check
 import { CHECKOUT_VCT, checkoutBinding, checkoutJwtOf, … } from "@integraledger/lcp/ap2";
@@ -117,7 +117,7 @@ import { CHECKOUT_VCT, checkoutBinding, checkoutJwtOf, … } from "@integraledge
 
 ## `@integraledger/lcp/aptos`
 
-Aptos, and the `x402/exact/aptos` pairing, served at the seller-tied level: no field of a standard Aptos transfer carries the ATR hash, so the hash is advertised in the challenge, read back from the echoed extension, and tied to the payment by the seller's claim. The settlement is found by the payer's sender and sequence number, and identified by a digest of the transfer the payer signed and by the expiry it signed.
+Aptos, and the `x402/exact/aptos` pairing, served at the seller-tied level: no field of a standard Aptos transfer carries the ATR hash, so the hash is advertised in the challenge and tied to the payment by the seller's claim.
 
 ```ts no-check
 import { aptosIdDigest, aptosStatus, committedInstrument, … } from "@integraledger/lcp/aptos";
@@ -131,7 +131,7 @@ import { aptosIdDigest, aptosStatus, committedInstrument, … } from "@integrale
 
 ## `@integraledger/lcp/avm`
 
-Algorand: the pairing `x402/exact/algorand`, in which the payer signs an asset transfer whose note is the ATR hash's LCP string, and the settlement read from an Indexer by the transaction id computed from the signed bytes. `algosdk` is an optional peer: this module loads it when present, and `build` writes the transactions with it. The addresses and the payment entries are read without it, so the option filter, `advertise`, `read`, `bound`, `reference` and `avmCarrier` need no peer, and `build` refuses `avm/peer-missing` only after every check that needs none.
+Algorand: the pairing `x402/exact/algorand`, in which the payer signs an asset transfer whose note is the ATR hash's LCP string, and the settlement read from an Indexer by the transaction id computed from the signed bytes.
 
 ```ts no-check
 import { AVM_MAX_ENTRY, AVM_MAX_GROUP, AVM_MAX_LIFE, … } from "@integraledger/lcp/avm";
@@ -159,7 +159,7 @@ import { agentPay, disclosureDigest, MAX_CHARGE_REFERENCE, … } from "@integral
 
 ## `@integraledger/lcp/cardano`
 
-Cardano, and its two pairings: `x402/exact/cardano`, x402's address-to-address method, and `x402/exact/cardano/lock`, its two lock methods (`masumi` and `script`), told apart by the option's `extra.assetTransferMethod`. Each carries the ATR hash as a CIP-20 message (metadata label 674) that the payer's signed body commits to through `auxiliary_data_hash`. The transaction id is the Blake2b-256 of the body as received, so a payment is named by an id fixed before any money moves, and its single-use value is the input `payload.nonce` names, which the body spends.
+Cardano, and its two pairings: `x402/exact/cardano`, x402's address-to-address method, and `x402/exact/cardano/lock`, its two lock methods (`masumi` and `script`). Each carries the ATR hash as a CIP-20 message that the payer's signed body commits to.
 
 ```ts no-check
 import { auxiliaryData, CARDANO_MAX_TX_BYTES, CARDANO_SEARCH_BOUND, … } from "@integraledger/lcp/cardano";
@@ -201,7 +201,7 @@ import { accountBytes, CCD_EXPIRY_MARGIN, CCD_MAX_ADDRESS, … } from "@integral
 
 ## `@integraledger/lcp/core`
 
-The core alone: assembling an ATR and hashing its exact bytes, comparing hashes, the agreement's own value of a hash, the hash's string and structured forms, the https-link rule and the URL Standard's host and domain parsers it reads a link with, the RFC 8785 form of a JSON value and its digest, JSON reading capped at 64 levels, padded standard base64 and unpadded base64url, each read in its canonical form only (with or without a bound on its size) and written, `isRefusal` and `readToRepeat`. It imports no pairing, no rail and no optional peer, so a bundle of it holds these functions and nothing else. The package root exports the same functions: each is one function, reached by either path.
+The core alone: assembling an ATR and hashing its exact bytes, comparing hashes, the hash's forms, the https-link rule, the JSON and base64 forms they read and write, `isRefusal` and `readToRepeat`, with no pairing, rail or optional peer.
 
 ```ts no-check
 import { agreementValue, assemble, base64Bytes, … } from "@integraledger/lcp/core";
@@ -213,7 +213,7 @@ import { agreementValue, assemble, base64Bytes, … } from "@integraledger/lcp/c
 
 ## `@integraledger/lcp/discovery`
 
-The discovery document of LCP §2, served at `/.well-known/legal-context.json`. `parse` reads one; `emit` writes one, members in the order of LCP §2.4–§2.5's tables, absent members omitted, no whitespace, UTF-8. Both check the members LCP §2.4–§2.5 define, with these bounds: each string member non-empty, `terms` an https URL, at most 65,536 bytes, and JSON nested at most 64 levels. Neither throws or does I/O.
+The discovery document of LCP §2, served at `/.well-known/legal-context.json`: `parse` reads one, and `emit` writes one.
 
 ```ts no-check
 import { emit, MAX_DOCUMENT_BYTES, parse, … } from "@integraledger/lcp/discovery";
@@ -225,7 +225,7 @@ import { emit, MAX_DOCUMENT_BYTES, parse, … } from "@integraledger/lcp/discove
 
 ## `@integraledger/lcp/evm`
 
-eip155 rail pieces: EIP-3009 and Permit2 typed data, the identity digest of a transfer, the settlement read from the token's `AuthorizationUsed` event and the transfer it produced, and the read of a signed pull authorization's use before any transaction is named; the ERC-7710 permission-context decoder and MetaMask's DelegationManager address; the commerce-payments escrow's payment hash and the salt commitment to a receiver authorizer and policy; and x402's Permit2 proxy addresses.
+eip155 rail pieces: EIP-3009 and Permit2 typed data, the settlement read from a token's events, the read of a signed pull authorization's use, ERC-7710 permission contexts, the commerce-payments escrow's pieces, and x402's Permit2 proxy addresses.
 
 ```ts no-check
 import { AUTHORIZATION_CANCELED_TOPIC, AUTHORIZATION_STATE_SELECTOR, AUTHORIZATION_USED_TOPIC, … } from "@integraledger/lcp/evm";
@@ -237,7 +237,7 @@ import { AUTHORIZATION_CANCELED_TOPIC, AUTHORIZATION_STATE_SELECTOR, AUTHORIZATI
 
 ## `@integraledger/lcp/hedera`
 
-Hedera: the transaction wire form read and written by hand (protobuf, five messages), the Mirror Node settlement read, and the x402 pairings `x402/exact/hedera` (the ATR hash as the signed body memo) and `x402/exact/hedera/transfer-executor` (the hash advertised in the challenge only); the escrow channel pieces `hederaChannelId` and `hederaVoucher`; and `FETCHED`, the key under which a pairing's `fetchPresented` writes the seller's read onto a credential.
+Hedera: the x402 pairings `x402/exact/hedera` (the ATR hash as the signed body memo) and `x402/exact/hedera/transfer-executor` (the hash advertised in the challenge only), with the transaction wire form and the Mirror Node settlement read.
 
 ```ts no-check
 import { CHANNEL_CLOSED_TOPIC, CHANNEL_OPENED_TOPIC, decodeHederaTx, … } from "@integraledger/lcp/hedera";
@@ -251,7 +251,7 @@ import { CHANNEL_CLOSED_TOPIC, CHANNEL_OPENED_TOPIC, decodeHederaTx, … } from 
 
 ## `@integraledger/lcp/lightning`
 
-BOLT11 invoices and the Lightning pairings. On x402 (`x402/exact/lnbtc/payment-hash`) the ATR commits the option's `extra.paymentHash`, the payment hash of the invoice the seller's node issues after the agreement. On MPP the seller's node writes the ATR hash as the invoice's description hash `h`. The payer signs nothing; it pays the invoice.
+BOLT11 invoices and the Lightning pairings: on x402 (`x402/exact/lnbtc/payment-hash`) the ATR commits the option's `extra.paymentHash`, and on MPP the seller's node writes the ATR hash as the invoice's description hash `h`.
 
 ```ts no-check
 import { chargeLightning, checkPreimage, decodeBolt11, … } from "@integraledger/lcp/lightning";
@@ -265,7 +265,7 @@ import { chargeLightning, checkPreimage, decodeBolt11, … } from "@integraledge
 
 ## `@integraledger/lcp/mpp`
 
-The `mpp` entry point: MPP's challenge pieces and its pairings. The charge pairings here are EVM `authorization` (the signed nonce is keccak256 of the JSON array [id, realm]), EVM `permit2` (the signed witness carries that value), and EVM `transaction` and `hash` (nothing signed carries H). The card, Stripe, Solana, XRP Ledger, NEAR Intents, `usdc` and `lcp` charges, and the session and subscription pairings other than Lightning's, are re-exported from their modules. `FETCHED` is the key under which a pairing's `fetchPresented` writes the seller's read onto a credential.
+The `mpp` entry point: MPP's challenge pieces and its pairings: the EVM charges, defined here, and every other MPP charge, session and subscription pairing but Lightning's, re-exported from its module.
 
 ```ts no-check
 import { attributionMemo, CARRIER, challengeBound, … } from "@integraledger/lcp/mpp";
@@ -279,7 +279,7 @@ import { attributionMemo, CARRIER, challengeBound, … } from "@integraledger/lc
 
 ## `@integraledger/lcp/near`
 
-NEAR: the pairing `x402/exact/near`. The payer signs a NEP-366 delegate action for one NEP-141 `ft_transfer` whose `memo` argument is the ATR hash's LCP string; a facilitator's relayer submits it. The read finds the payer's act by the payer's access key, through a bounded reader, and searches every access key of the payer's account for H.
+NEAR: the pairing `x402/exact/near`. The payer signs a NEP-366 delegate action for one NEP-141 `ft_transfer` whose `memo` argument is the ATR hash's LCP string; a facilitator's relayer submits it.
 
 ```ts no-check
 import { exactNear, FT_TRANSFER_GAS, ftTransferArgs, … } from "@integraledger/lcp/near";
@@ -293,7 +293,7 @@ import { exactNear, FT_TRANSFER_GAS, ftTransferArgs, … } from "@integraledger/
 
 ## `@integraledger/lcp/polkadot`
 
-Polkadot Asset Hub: the profile pairing `x402/exact/polkadot/lcp-assets-remark`, in which the payer signs one extrinsic whose call is `utility.batch_all([assets.transfer_keep_alive, system.remark_with_event])` with the ATR hash's LCP string as the remark; the settlement is read by the signer's account nonce through polkadot-rest-api. SCALE is encoded and decoded here for these shapes only.
+Polkadot Asset Hub: the profile pairing `x402/exact/polkadot/lcp-assets-remark`, in which the payer signs one extrinsic that transfers an asset and remarks the ATR hash's LCP string.
 
 ```ts no-check
 import { CALL, decodeProfileCall, encodeProfileCall, … } from "@integraledger/lcp/polkadot";
@@ -307,7 +307,7 @@ import { CALL, decodeProfileCall, encodeProfileCall, … } from "@integraledger/
 
 ## `@integraledger/lcp/spend-permissions`
 
-The Spend Permission exchange and the pairing `spend-permissions/eip155`: an account's approval, on the SpendPermissionManager, of a Spend Permission whose `salt` is the ATR hash, as the sale's agreement. The offer in a `402` body, the typed data the account signs or the `approve` call it makes, the `Spend-Permission` return header, the resource server's checks, the permission's hash as the manager computes it, and the read of the approval by that hash, as the profile `spend-permissions/eip155` states them. No key is held, nothing is signed, and nothing is read but through the reader a caller supplies.
+The Spend Permission exchange and the pairing `spend-permissions/eip155`: an account's approval, on the SpendPermissionManager, of a Spend Permission whose `salt` is the ATR hash, as the sale's agreement.
 
 ```ts no-check
 import { APPROVE_SELECTOR, APPROVE_WITH_SIGNATURE_SELECTOR, approvedIn, … } from "@integraledger/lcp/spend-permissions";
@@ -321,7 +321,7 @@ import { APPROVE_SELECTOR, APPROVE_WITH_SIGNATURE_SELECTOR, approvedIn, … } fr
 
 ## `@integraledger/lcp/stacks`
 
-Stacks rail pieces: the transaction id, the reader a read goes through, the read of a payment by its origin and the nonce the origin signed with the search for H over the origin's nonces, and the zero-party recovery of the ATR hash from a mined transaction. The profile `mpp/charge/usdc/stacks` states the read.
+Stacks rail pieces: the transaction id, the reader a read goes through, the read of a payment by its origin and the nonce the origin signed, and the zero-party recovery of the ATR hash from a mined transaction.
 
 ```ts no-check
 import { MAX_SEARCH_NONCES, MAX_STACKS_TX_BYTES, stacksRecover, … } from "@integraledger/lcp/stacks";
@@ -333,7 +333,7 @@ import { MAX_SEARCH_NONCES, MAX_STACKS_TX_BYTES, stacksRecover, … } from "@int
 
 ## `@integraledger/lcp/starknet`
 
-Starknet: the pairing `x402/exact/starknet`. The payer signs a SNIP-12 `OutsideExecution` (SNIP-9 v2) authorizing one token `transfer`; its `Nonce` is the ATR hash's low 250 bits, or on an agreement the agreement value's. The read is of that nonce on the payer's account, as state, and of the asset's `Transfer` events, receipts and traces, through a bounded reader. The chain holds 250 of the hash's bits, so a holder of the ATR confirms the hash from it but nothing recovers the hash.
+Starknet: the pairing `x402/exact/starknet`. The payer signs a SNIP-12 `OutsideExecution` (SNIP-9 v2) authorizing one token `transfer`; its `Nonce` is the ATR hash's low 250 bits, or on an agreement the agreement value's.
 
 ```ts no-check
 import { ANY_CALLER, chainIdFelt, EVENT_TRANSFER, … } from "@integraledger/lcp/starknet";
@@ -347,7 +347,7 @@ import { ANY_CALLER, chainIdFelt, EVENT_TRANSFER, … } from "@integraledger/lcp
 
 ## `@integraledger/lcp/stellar`
 
-Stellar rail pieces: the payer-signed Soroban `transfer` and the digest of the authorization entry that signs it; the position P of a transaction and the muxed address `M(payee, P)`; the 40-byte payload of the signed-payload precondition over H; the events that show what moved; the search for a buyer's acts; and the read of the agreement `x402/exact/stellar/precondition`, through a bounded reader.
+Stellar rail pieces: the payer-signed Soroban `transfer` and the digest of its authorization entry, the signed-payload precondition over H, the search for a buyer's acts, and the read of the agreement `x402/exact/stellar/precondition`.
 
 ```ts no-check
 import { decodeStellarTx, MAX_CANDIDATES, MAX_ORDER, … } from "@integraledger/lcp/stellar";
@@ -359,7 +359,7 @@ import { decodeStellarTx, MAX_CANDIDATES, MAX_ORDER, … } from "@integraledger/
 
 ## `@integraledger/lcp/sui`
 
-Sui, and the `x402/exact/sui` pairing: the ATR hash as the one `Pure` input of the payer's programmable transaction that no command uses. The payer's signature covers it, the rail executes the transaction unchanged, and the hash stays on chain in the transaction's input list. Settlement is read by the transaction digest, which the signed bytes fix before any money moves. BCS decoding uses @mysten/sui, loaded once when this module is, and decoding a transaction's bytes is the one step that needs it: without it a function refuses `sui/peer-missing` only when it reaches that step, after the checks that need no peer, `build` gives the request it gives with it, and `status` reads as it does with it, pending `unreadable` only there. A digest is base58, read and written with the package's own dependency @scure/base, so it is checked without the peer.
+Sui, and the `x402/exact/sui` pairing: the ATR hash as the one `Pure` input of the payer's programmable transaction that no command uses.
 
 ```ts no-check
 import { decodeSuiTx, exactSui, MAX_SUI_BALANCE_CHANGES, … } from "@integraledger/lcp/sui";
@@ -373,7 +373,7 @@ import { decodeSuiTx, exactSui, MAX_SUI_BALANCE_CHANGES, … } from "@integraled
 
 ## `@integraledger/lcp/svm`
 
-Solana rail pieces: the wire transaction, its one Memo instruction carrying the ATR hash in LCP string form, the digest of the message the payer signed, settlement read through a bounded reader, and the payment-channels program's pieces: its instructions and PDAs, the voucher, the session proof, and the channel's status read.
+Solana rail pieces: the wire transaction and its one Memo instruction carrying the ATR hash in LCP string form, the settlement read, and the payment-channels program's pieces.
 
 ```ts no-check
 import { ATA_PROGRAM, buildChannelMessage, buildSvmMessage, … } from "@integraledger/lcp/svm";
@@ -385,7 +385,7 @@ import { ATA_PROGRAM, buildChannelMessage, buildSvmMessage, … } from "@integra
 
 ## `@integraledger/lcp/tempo`
 
-Tempo rail pieces: the `0x76` transaction's calls, the TIP-20 `transferWithMemo` calldata, the TIP-20 channel reserve's descriptor and ids, and the account keychain's key authorizations. Tempo serves eip155 JSON-RPC, so the reader is `EvmReader`. Nothing here throws on a caller's value; refusals are values.
+Tempo rail pieces: the `0x76` transaction's calls, the TIP-20 `transferWithMemo` calldata, the TIP-20 channel reserve's descriptor and ids, and the account keychain's key authorizations.
 
 ```ts no-check
 import { ACCESS_KEY_SPEND_TOPIC, ACCOUNT_KEYCHAIN, CHANNEL_CLOSED_V1_TOPIC, … } from "@integraledger/lcp/tempo";
@@ -397,7 +397,7 @@ import { ACCESS_KEY_SPEND_TOPIC, ACCOUNT_KEYCHAIN, CHANNEL_CLOSED_V1_TOPIC, … 
 
 ## `@integraledger/lcp/tron`
 
-Tron: the transaction pieces (protobuf for the fields the profile uses, base58check addresses, the transaction id) and the pairing `x402/exact/tron/lcp-trc20-memo`, whose payer-signed TRC-20 transfer carries the ATR hash as its memo, `raw_data.data`, in LCP string form. Settlement is read by transaction id through a bounded reader.
+Tron: the pairing `x402/exact/tron/lcp-trc20-memo`, whose payer-signed TRC-20 transfer carries the ATR hash as its memo, `raw_data.data`, in LCP string form, and the transaction pieces it uses.
 
 ```ts no-check
 import { decodeTronTx, encodeTronRaw, exactTronMemo, … } from "@integraledger/lcp/tron";
@@ -411,7 +411,7 @@ import { decodeTronTx, encodeTronRaw, exactTronMemo, … } from "@integraledger/
 
 ## `@integraledger/lcp/tvm`
 
-TON: the pairing `x402/exact/tvm`. The ATR hash rides in the scheme's `extra.forwardPayload` as a TEP-74 text comment holding its LCP string. The payer's W5 wallet signs a request whose one Jetton transfer carries that payload; settlement is read from the W5 wallet's transaction with that request and the Jetton wallets' transactions it led to, through a bounded reader.
+TON: the pairing `x402/exact/tvm`. The ATR hash rides in the scheme's `extra.forwardPayload` as a TEP-74 text comment holding its LCP string.
 
 ```ts no-check
 import { exactTvm, lcpComment, MAX_TVM_ATTACHED_ABOVE_FORWARD, … } from "@integraledger/lcp/tvm";
@@ -425,7 +425,7 @@ import { exactTvm, lcpComment, MAX_TVM_ATTACHED_ABOVE_FORWARD, … } from "@inte
 
 ## `@integraledger/lcp/ucp`
 
-UCP checkouts and bookings, and four pairings: the ATR hash and link as one `links[]` entry of type `legal_context` in the checkout response. The `ap2-mandate` pairings read the hash from the checkout JWT presented beside the buyer's checkout mandate, after AP2's `checkout_hash` check, the mandate presented alone or last in AP2's chain after the open mandate; the `unsigned` pairings have nothing signed to read. Nothing here takes a key, signs, or verifies a signature, a `cnf` delegation or a link between chained mandates.
+UCP checkouts and bookings, and five pairings, each of which carries the ATR hash and link as one `links[]` entry of type `legal_context` in the checkout response.
 
 ```ts no-check
 import { agentSigned, ap2Mandate, bookingAp2Mandate, … } from "@integraledger/lcp/ucp";
@@ -439,7 +439,7 @@ import { agentSigned, ap2Mandate, bookingAp2Mandate, … } from "@integraledger/
 
 ## `@integraledger/lcp/x402`
 
-x402 v2 documents, the request commitment, and the x402 pairings on eip155 chains: `exact` over EIP-3009, Permit2 and ERC-7710 (with its salt level), `upto` over Permit2, `auth-capture` over EIP-3009 and Permit2, and `exact` in Circle Gateway's batched domain. The ATR hash is advertised in the challenge's `extensions.legalContext`; each pairing's `pattern` record states how the pairing binds it.
+x402 v2 documents, the request commitment, and the x402 pairings on eip155 chains: `exact` over EIP-3009, Permit2 and ERC-7710 (with its salt level), `upto` over Permit2, `auth-capture` over EIP-3009 and Permit2, and `exact` in Circle Gateway's batched domain.
 
 ```ts no-check
 import { authCaptureEip3009, authCapturePermit2, decodePaymentRequired, … } from "@integraledger/lcp/x402";
@@ -453,7 +453,7 @@ import { authCaptureEip3009, authCapturePermit2, decodePaymentRequired, … } fr
 
 ## `@integraledger/lcp/x402-batch-settlement`
 
-x402 `batch-settlement`: one ATR per channel. On EVM the ATR hash is the channel configuration's `salt`, which the channel id commits to and every signature signs; on Solana it is the opening transaction's seller Memo instruction (`extra.memo`), beside x402's receiver-authorizer binding memo; on Cloudflare it rides the echoed `extensions.legalContext` of each request, with no channel.
+x402 `batch-settlement`: one ATR per channel, its hash the EVM channel configuration's `salt`, the Solana opening transaction's seller Memo instruction, or, on Cloudflare, the echoed `extensions.legalContext` of each request.
 
 ```ts no-check
 import { BATCH_SETTLEMENT, batchChannelCreated, batchChannelId, … } from "@integraledger/lcp/x402-batch-settlement";
@@ -481,7 +481,7 @@ import { exactSvm } from "@integraledger/lcp/x402-exact-solana";
 
 ## `@integraledger/lcp/x402-exact-stellar`
 
-The `x402-exact-stellar` entry point: the Stellar x402 pairing `exactStellarPrecondition`, and the `Broadcaster` type, which every pairing's `broadcaster` answers.
+Stellar on x402: the pairing `x402/exact/stellar/precondition` (`exactStellarPrecondition`), an agreement in which the buyer signs a Soroban authorization of `transfer(buyer, payTo, amount)` and a 40-byte payload of H and that authorization's nonce.
 
 ```ts no-check
 import { exactStellarPrecondition } from "@integraledger/lcp/x402-exact-stellar";
@@ -495,7 +495,7 @@ import { exactStellarPrecondition } from "@integraledger/lcp/x402-exact-stellar"
 
 ## `@integraledger/lcp/x402-exact-xrpl`
 
-The `x402/exact/xrpl` pairing: the ATR hash's LCP string placed as the option's `extra.invoiceId`, whose SHA-256 the payer signs as the Payment's `InvoiceID`, read back from the signed blob, single-signed or multisigned, and settlement read by the payer's instrument, its `Account` with the signed `Sequence` or ticket.
+The `x402/exact/xrpl` pairing: the ATR hash's LCP string placed as the option's `extra.invoiceId`, whose SHA-256 the payer signs as the Payment's `InvoiceID`.
 
 ```ts no-check
 import { exactXrpl } from "@integraledger/lcp/x402-exact-xrpl";
@@ -509,7 +509,7 @@ import { exactXrpl } from "@integraledger/lcp/x402-exact-xrpl";
 
 ## `@integraledger/lcp/x402-upto-solana`
 
-The `x402/upto/solana` pairing: the ATR hash placed as the option's `extra.memo` in LCP string form, written by the payer as the one Memo instruction of the transaction that opens a one-request payment channel escrowing the signed maximum; read back from that transaction, and settlement read from the opening.
+The `x402/upto/solana` pairing: the ATR hash placed as the option's `extra.memo` in LCP string form, written by the payer as the one Memo instruction of the transaction that opens a one-request payment channel.
 
 ```ts no-check
 import { uptoSvm } from "@integraledger/lcp/x402-upto-solana";
@@ -523,7 +523,7 @@ import { uptoSvm } from "@integraledger/lcp/x402-upto-solana";
 
 ## `@integraledger/lcp/x402-upto-xrpl`
 
-The `x402/upto/xrpl` pairing: x402's `upto` scheme on the XRP Ledger, at coverage `none`. The payer opens a payment channel to the option's `payTo` itself and presents the channel and its own account, so nothing it signs carries the ATR hash; the payment follows an agreement on the same network. Settlement is read from the channel's create.
+The `x402/upto/xrpl` pairing: x402's `upto` scheme on the XRP Ledger, at coverage `none`, its payment following an agreement on the same network.
 
 ```ts no-check
 import { uptoXrpl } from "@integraledger/lcp/x402-upto-xrpl";
