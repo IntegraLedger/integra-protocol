@@ -16,6 +16,15 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   signed before the payment: the pairing has no `agreementOn` and follows no agreement. The profile's rule 5 now quotes
   `data.proves` whole.
 
+### Documentation
+
+- The `spend-permissions/eip155` profile's rule 26 records that both routes have run on Base Sepolia
+  (`eip155:84532`) and read `settled` at `finalized` with `presented` `yes`: the route `"transaction"` in transaction
+  `0x5062e7014d8f52009a3ff7284b931ad19a7808baf179516406f24b550c5360c0` (2026-11-17) and the route `"signature"`,
+  `approveWithSignature` submitted by the spender, in transaction
+  `0xfc55d672c94a4c07fdff80c5124a065be2f616475455119bb22a2172dc685914` (block 60521753, 2026-11-18). The pairing's
+  `confirmed` stays `yes`.
+
 ## [0.6.0] - 2026-11-18
 
 ### Added
