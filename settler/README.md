@@ -612,6 +612,9 @@ Its stated costs:
 - A transaction is counted once it is sent (`evm`, `solana`, `aptos`, `casper`) or once its settle answers (`algorand`,
   `erc7710`, `hedera`, `near`), so settles that run at once on a nearly spent budget can each pass the check before the
   first is counted. The `starknet` and `stellar` modules count each send before it is made, one at a time per network.
+  The `evm` module's count at the send is what its node shows then: a transaction the node does not show yet (the
+  operator log's `fee-not-counted`, reason `not-shown`) is not counted until a later read shows it, when the class's
+  wait for its receipt ends or when the settle answers, and one the node never shows, never mined, is not counted.
 - A transaction whose id is not known before it is sent is counted at its bound for the whole period, as well as at
   the fee it paid once included. The count can exceed what was paid; it never falls short of it.
 
