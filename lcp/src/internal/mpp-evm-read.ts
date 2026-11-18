@@ -216,7 +216,7 @@ interface TxView {
 type Classified = { readonly seen: readonly Act[] } | { readonly undecodable: true } | { readonly unreadable: UnreadableReason };
 
 /** The reference fields every logs-searching read takes. */
-interface ChargeRefBase {
+export interface ChargeRefBase {
   readonly network: `eip155:${string}`;
   readonly payee: string;
   readonly payer: Hex;

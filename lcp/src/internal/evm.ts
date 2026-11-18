@@ -158,7 +158,7 @@ export interface EvmReceipt {
 }
 
 /** Hedera's CAIP-2 networks, read through their JSON-RPC relay with the same reader shape. */
-type HederaNetwork = "hedera:mainnet" | "hedera:testnet" | "hedera:previewnet" | "hedera:devnet";
+export type HederaNetwork = "hedera:mainnet" | "hedera:testnet" | "hedera:previewnet" | "hedera:devnet";
 
 /**
  * Bounded, read-only calls against one network's endpoint. Every failure rejects, for example with `ReaderError`; a

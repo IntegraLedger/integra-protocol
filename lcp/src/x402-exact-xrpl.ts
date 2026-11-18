@@ -58,6 +58,8 @@ import { x402Payee } from "./internal/payee.js";
 import type { Entry } from "./internal/registry.js";
 import type { Act } from "./internal/read.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
+export type { X402Read } from "./internal/x402.js";
+export type { XrplPaymentPayload, XrplQuery } from "./internal/xrpl.js";
 
 const ID = "x402/exact/xrpl" as const;
 /** A decimal with no sign, exponent or leading zero, whose fraction, if any, ends in a digit other than 0. */
@@ -68,7 +70,7 @@ const I64_LIMIT = 2n ** 63n;
 /** AccountID 1, rippled's `noAccount()` (XRPLF/rippled `00e64075`, `src/libxrpl/protocol/AccountID.cpp:165-170`). */
 const NO_ACCOUNT = 1n;
 
-interface XrplChoice {
+export interface XrplChoice {
   required: PaymentRequired;
   accepted: PaymentRequirements;
   account: string;

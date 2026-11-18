@@ -86,6 +86,8 @@ export type {
   EvmBreadthStatus,
   EvmLog,
   EvmLogEntry,
+  EvmMark,
+  EvmQuery,
   EvmReader,
   EvmReceipt,
   EvmRef,
@@ -93,6 +95,7 @@ export type {
   EvmTransaction,
   EvmTxRef,
   Field,
+  HederaNetwork,
   Hex,
   PaymentInfo,
   Permit2TypedData,
@@ -101,3 +104,4 @@ export type {
   TransferLog,
 } from "./internal/evm.js";
 export type { AuthCaptureRef, BatchEvmRef, Eip3009Ref, Erc7710Ref, Permit2Ref } from "./internal/evm-x402-reads.js";
+export type { EvmReadRefBase, Signed, X402EvmRefBase } from "./internal/evm-x402.js";

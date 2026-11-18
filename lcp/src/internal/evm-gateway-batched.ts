@@ -100,7 +100,7 @@ export interface GatewayBatchedUnsigned {
 }
 
 /** The batched authorization, every member a string, as Circle's client writes it. */
-type BatchedAuthorization = {
+export type BatchedAuthorization = {
   from: string;
   to: string;
   value: string;

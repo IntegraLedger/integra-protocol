@@ -8,7 +8,7 @@ import { fromRawBytes, hash, type AtrHash } from "./core.js";
 import type { Field, Hex } from "./evm.js";
 import { deepFreeze, isObject, normalHash, UINT256_LIMIT, uint256Of } from "./fields.js";
 import type { CasperAuthorization, CasperPaymentPayload } from "./internal/casper.js";
-export type { CasperAuthorization } from "./internal/casper.js";
+export type { CasperAuthorization, CasperPaymentPayload } from "./internal/casper.js";
 import { acceptedBy, advertiseFor, chosen, filterOf, isAmount, isTimeoutSeconds, legalContextOf, paymentWith, readFor, sameJson, x402Broadcaster, type X402Read, type X402Forms } from "./internal/x402.js";
 import { decimalBelow, U64_LIMIT } from "./rail-bytes.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -36,6 +36,7 @@ import { bigintOrder, isQuery, ledgerOf } from "./internal/read-ledger.js";
 import type { Entry } from "./internal/registry.js";
 import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
+export type { X402Advertise, X402Read } from "./internal/x402.js";
 
 /** CAIP-2: `casper:` and the chainspec name. */
 export type CasperNetwork = `casper:${string}`;
@@ -157,7 +158,7 @@ export interface CasperCursor {
  */
 export type CasperStatus = StatusAnswer<bigint, "finalized", CasperCursor>;
 
-interface CasperChoice {
+export interface CasperChoice {
   required: PaymentRequired;
   accepted: PaymentRequirements;
   from: CasperAddress;
@@ -272,7 +273,7 @@ export async function casperIdDigest(from: CasperAddress, to: CasperAddress, val
 }
 
 /** The reference `status` reads with: the read keys, and H, which the caller adds, from which the other act's value comes. */
-type CasperRefRead = CasperRef & { h: AtrHash };
+export type CasperRefRead = CasperRef & { h: AtrHash };
 
 /** A reference as the read takes it, its addresses and hashes lowercase, and the two values under H. */
 interface Keys {

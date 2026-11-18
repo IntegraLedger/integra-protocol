@@ -54,6 +54,8 @@ import {
 import type { Entry } from "./internal/registry.js";
 import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
+export type { CardanoPaymentPayload } from "./internal/cardano.js";
+export type { X402Read } from "./internal/x402.js";
 
 export type CardanoNetwork = "cardano:mainnet" | "cardano:preprod" | "cardano:preview";
 
@@ -231,7 +233,7 @@ export async function decodeCardanoTx(base64: string): Promise<CardanoTx | Refus
   return decodeBytes(bytes);
 }
 
-type CardanoQuery = StatusQuery<CardanoRef, bigint, bigint, bigint>;
+export type CardanoQuery = StatusQuery<CardanoRef, bigint, bigint, bigint>;
 
 /** An answer of the reader outside its documented shape: the read is `unreadable`, `unparseable`. */
 class Shape extends Error {}

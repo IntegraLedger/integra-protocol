@@ -1,7 +1,7 @@
 /**
  * Concordium's memo and account primitives, which `../ccd.ts` exports and both its codec and its read use; and the x402
  * payment a Concordium payer presents, which `../ccd.ts` returns from `complete` and the root names among the payments
- * `Presented` covers (no entry point exports that name).
+ * `Presented` covers (both export that name).
  */
 import { sha256 } from "@noble/hashes/sha2.js";
 import { fromLcpString, hash, hashEquals, toLcpString, type AtrHash, type Json } from "../core.js";

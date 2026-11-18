@@ -69,7 +69,7 @@ export interface Unsigned {
   complete(checkout_mandate: string): Promise<Presented | Refusal>;
 }
 
-type Option = CheckoutOption | BookingOption;
+export type Option = CheckoutOption | BookingOption;
 
 const MIB = 1_048_576;
 const MAX_LINKS = 64;

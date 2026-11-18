@@ -110,6 +110,10 @@ export {
   encodeHeader,
   type SettlementResponse,
 } from "./x402-headers.js";
+export type { Pairings } from "./internal/data/freeze.js";
+export type { BatchedAuthorization } from "./internal/evm-gateway-batched.js";
+export type { EvmMark, EvmQuery } from "./internal/evm.js";
+export type { X402Advertise, X402Read } from "./internal/x402.js";
 
 /**
  * An x402 v2 payment option, one entry of a `PaymentRequired` document's `accepts`: the scheme, the CAIP-2 network,
@@ -139,7 +143,7 @@ export type PaymentRequired = {
   extensions?: { [id: string]: { info: Json; schema: Json } };
 };
 
-type Eip3009Authorization = {
+export type Eip3009Authorization = {
   from: string;
   to: string;
   value: string;
@@ -148,7 +152,7 @@ type Eip3009Authorization = {
   nonce: string;
 };
 
-type Permit2Authorization = {
+export type Permit2Authorization = {
   permitted: { token: string; amount: string };
   from: string;
   spender: string;
@@ -158,7 +162,7 @@ type Permit2Authorization = {
 };
 
 /** The payload of each x402 EVM scheme this package carries; every member is a string. */
-type X402SchemePayload =
+export type X402SchemePayload =
   | { signature: Hex; authorization: Eip3009Authorization }
   | { signature: Hex; permit2Authorization: Permit2Authorization }
   | { delegationManager: string; permissionContext: string; delegator: string }
@@ -642,8 +646,8 @@ function isVisibleAscii(s: string): boolean {
 // ── EVM breadth: `exact` over Permit2 and ERC-7710, `upto` over Permit2, and `auth-capture` on the
 // commerce-payments escrow.
 
-type X402PairingId =
-  | typeof ID
+export type X402PairingId =
+  | "x402/exact/eip155/eip3009"
   | "x402/exact/eip155/permit2"
   | "x402/exact/eip155/erc7710"
   | "x402/exact/eip155/erc7710-salt"
@@ -1601,13 +1605,16 @@ function record(p: LcpPattern): LcpPattern {
 }
 
 /** The x402 EVM breadth pairings: those with data in the EVM family's module but EIP-3009 `exact`. */
-type BreadthId = Exclude<
+export type BreadthId = Exclude<
   Extract<keyof typeof EIP155_X402, `x402/${string}`>,
-  typeof ID | "x402/batch-settlement/eip155" | "x402/batch-settlement/cloudflare" | "x402/exact/eip155/gateway-batched"
+  | "x402/exact/eip155/eip3009"
+  | "x402/batch-settlement/eip155"
+  | "x402/batch-settlement/cloudflare"
+  | "x402/exact/eip155/gateway-batched"
 >;
 
 /** The members every x402 EVM breadth pairing shares. */
-type BreadthBase<Id extends BreadthId> = {
+export type BreadthBase<Id extends BreadthId> = {
   readonly id: Id;
   readonly data: PairingData;
   readonly pattern: LcpPattern;

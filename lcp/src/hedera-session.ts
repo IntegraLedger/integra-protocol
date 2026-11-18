@@ -14,7 +14,7 @@ import { HEDERA } from "./internal/data/hedera.js";
 import { isLog, isReceipt, type EvmLog, type EvmReceipt } from "./internal/evm.js";
 import { CHANNEL_OPENED_TOPIC, hederaChannelId } from "./internal/hedera-session.js";
 import { decide, type Act, type Facts, type Ledger, type Seen, type StatusAnswer, type StatusQuery, type UnreadableReason } from "./internal/read.js";
-import type { Entry } from "./internal/registry.js";
+import type { ChannelKind, Entry } from "./internal/registry.js";
 import {
   credentialOf,
   decodeObject,
@@ -40,9 +40,8 @@ import type { LcpPattern } from "./x402.js";
 
 const STOCK = "mpp/session/hedera/stock" as const;
 
-type HederaNetwork = "hedera:mainnet" | "hedera:testnet" | "hedera:previewnet" | "hedera:devnet";
+export type HederaNetwork = "hedera:mainnet" | "hedera:testnet" | "hedera:previewnet" | "hedera:devnet";
 type Obj = { [k: string]: Json };
-type Kind = "open" | "within" | "close";
 
 /** `open(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner)`, the escrow's call. */
 const OPEN_SELECTOR = /* @__PURE__ */ hexOf(keccak("open(address,address,uint128,bytes32,address)").subarray(0, 4));
@@ -93,7 +92,7 @@ export interface HederaStockReader {
 
 /** What `status` answers: positions are the relay's block numbers, and its one mark `finalized`, which is final. */
 export type HederaStockStatus = StatusAnswer<bigint, "finalized", bigint>;
-type StockQuery = StatusQuery<HederaStockRef, bigint, "finalized", bigint>;
+export type StockQuery = StatusQuery<HederaStockRef, bigint, "finalized", bigint>;
 
 const LEDGER: Ledger<bigint, "finalized"> = Object.freeze({
   coverage: HEDERA[STOCK].coverage,
@@ -132,7 +131,7 @@ export function hederaSessionResume(c: MppChallenge): { network: string; channel
  * A stock session credential's kind by its action, one of the four draft-hedera-session-00 defines: `open`, `topUp` and
  * `voucher` within the channel, and `close`. Any other action, `use` among them, is `mpp/session-action`.
  */
-function stockKind(presented: MppCredential): Kind | Refusal {
+function stockKind(presented: MppCredential): ChannelKind | Refusal {
   if (!isObject(presented) || !isObject(presented.payload)) return refusal("mpp/credential-malformed");
   const a = presented.payload["action"];
   if (a === "open" || a === "close") return a;

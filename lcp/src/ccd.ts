@@ -41,6 +41,8 @@ import type { RecoverInput, StatusAnswer, StatusQuery } from "./internal/read.js
 import type { Entry } from "./internal/registry.js";
 import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
+export type { CcdPaymentPayload } from "./internal/ccd.js";
+export type { X402Advertise, X402Read } from "./internal/x402.js";
 
 /** CAIP-2: `ccd:` and the first 32 lowercase hex digits of the genesis block hash. */
 export type CcdNetwork = `ccd:${string}`;
@@ -144,7 +146,7 @@ export interface CcdSearch {
 }
 
 /** The marks of a block item in a block, ascending: `committed`, below the one mark, and `finalized`. */
-type CcdMark = "committed" | "finalized";
+export type CcdMark = "committed" | "finalized";
 
 /**
  * The answer of `ccdStatus`. Positions are finalized block heights; the one mark is `finalized`, and an item read
@@ -152,7 +154,7 @@ type CcdMark = "committed" | "finalized";
  */
 export type CcdStatus = StatusAnswer<bigint, CcdMark, CcdSearch>;
 
-interface CcdChoice {
+export interface CcdChoice {
   required: PaymentRequired;
   accepted: PaymentRequirements;
   now: number;

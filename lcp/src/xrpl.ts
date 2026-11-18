@@ -14,6 +14,7 @@ export type {
   XrplMark,
   XrplNetwork,
   XrplPage,
+  XrplQuery,
   XrplReached,
   XrplReader,
   XrplRef,

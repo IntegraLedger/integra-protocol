@@ -1,7 +1,8 @@
 /**
  * The x402 payments a batch-settlement payer presents. `../x402-batch-settlement.ts` returns the EVM and Solana
  * payment from `complete` and takes it in the channel members, and returns the Cloudflare payment from that pairing's
- * `build`; the root names both among the payments `Presented` covers, and no entry point exports either name.
+ * `build`; the root names both among the payments `Presented` covers, and it and `../x402-batch-settlement.ts` export
+ * both names.
  */
 import type { Json } from "../core.js";
 import type { PaymentRequired, PaymentRequirements } from "../x402.js";

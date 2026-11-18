@@ -59,12 +59,17 @@ export type { LcpPattern } from "./x402.js";
 export type {
   AgreementData,
   Carrier,
+  ChannelKind,
   Codec,
   Coverage,
+  DataMembers,
   EndpointKind,
   Entry,
   Family,
+  IsNever,
   Life,
+  NoneWhereNever,
+  NonZeroDigit,
   PairingData,
   ReadData,
 } from "./internal/registry.js";
@@ -74,6 +79,7 @@ export type {
   ForeignItem,
   ForeignReason,
   Moved,
+  Named,
   OtherAct,
   PendingReason,
   RecoverInput,
@@ -92,6 +98,28 @@ export {
   MAX_REQUEST_BYTES,
   MAX_SIGNATURE_BYTES,
 } from "./internal/bounds.js";
+export type { AptosPaymentPayload } from "./internal/aptos.js";
+export type { AvmPaymentPayload } from "./internal/avm.js";
+export type { CardanoPaymentPayload } from "./internal/cardano.js";
+export type { CasperPaymentPayload } from "./internal/casper.js";
+export type { CcdPaymentPayload } from "./internal/ccd.js";
+export type {
+  ExecutorPayload,
+  ExecutorPaymentPayload,
+  HederaPayload,
+  HederaPaymentPayload,
+} from "./internal/hedera.js";
+export type { NearPayment } from "./internal/near.js";
+export type { PolkadotPayload, PolkadotPaymentPayload } from "./internal/polkadot.js";
+export type { StarknetPayment } from "./internal/starknet.js";
+export type { StellarPaymentPayload } from "./internal/stellar.js";
+export type { SuiPaymentPayload } from "./internal/sui.js";
+export type { SvmPaymentPayload, UptoSvmPaymentPayload } from "./internal/svm.js";
+export type { TronPayment } from "./internal/tron.js";
+export type { TvmPayment } from "./internal/tvm.js";
+export type { BatchPaymentPayload, CloudflarePaymentPayload } from "./internal/x402-batch-settlement.js";
+export type { X402Payment } from "./internal/x402.js";
+export type { XrplPaymentPayload } from "./internal/xrpl.js";
 
 import { paymentRequest } from "./ack.js";
 import { delegated, type Presented as AcpPresented, undelegated } from "./acp.js";
@@ -173,7 +201,7 @@ export type X402Binding =
 /** An MPP pairing of intent and method. */
 export type MppBinding = (typeof MPP_BINDINGS)[number];
 /** The optional member of a push-mode pairing: the transaction its credential names, or undefined. */
-interface PushMode {
+export interface PushMode {
   landedTx?(presented: unknown): string | undefined;
 }
 /**
@@ -221,15 +249,15 @@ export type Binding = (
   Authorizer;
 /** The id of a pairing this package implements: the `id` of an entry of `BINDINGS`. */
 export type PairingId = Binding["id"];
-type SurfaceOf<I> = I extends `${infer S}/${string}` ? S : never;
+export type SurfaceOf<I> = I extends `${infer S}/${string}` ? S : never;
 /** The surfaces: each pairing id's first "/" segment. */
-type Surface = SurfaceOf<PairingId>;
+export type Surface = SurfaceOf<PairingId>;
 /**
  * What the buyer presents as payment, per surface: the union of the payment types of every pairing on it. Every
  * pairing's `bound` and `reference` take `unknown` and check what they are given. `Presented` indexes it by every
  * surface, so a pairing on a surface it does not name does not compile.
  */
-interface PresentedOn {
+export interface PresentedOn {
   /** ACK defines no payer signature; its `bound` refuses whatever is presented. */
   ack: Json;
   acp: AcpPresented;
@@ -265,7 +293,7 @@ interface PresentedOn {
 /** What the buyer presents as payment. */
 export type Presented = PresentedOn[Surface];
 /** The pairing ids of one surface. */
-type PairingOn<S extends Surface> = Extract<PairingId, `${S}/${string}`>;
+export type PairingOn<S extends Surface> = Extract<PairingId, `${S}/${string}`>;
 
 // Built in a call marked pure, so a bundle that never reads BINDINGS holds none of the pairings it names.
 /** Every pairing this package implements. */

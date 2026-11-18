@@ -40,6 +40,8 @@ import { isQuery } from "./internal/read-ledger.js";
 import { canonicalJson } from "./internal/core.js";
 import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
+export type { AptosPaymentPayload } from "./internal/aptos.js";
+export type { X402Read } from "./internal/x402.js";
 
 /** CAIP-2: `aptos:` and the numeric chain id. */
 export type AptosNetwork = `aptos:${number}`;

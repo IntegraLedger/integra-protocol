@@ -1,7 +1,7 @@
 /**
  * The x402 payment a Casper payer presents, with the CEP-3009 authorization it carries. `../casper.ts` returns the
- * payment from `complete`, and the root names it among the payments `Presented` covers; no entry point exports
- * either name.
+ * payment from `complete` and exports both names, and the root names the payment among the payments `Presented`
+ * covers and exports its name.
  */
 import type { PaymentRequired, PaymentRequirements } from "../x402.js";
 

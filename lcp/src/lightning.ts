@@ -63,6 +63,7 @@ import type { Act } from "./internal/read.js";
 import type { Entry, NoRead } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 export type { ExactLnbtcReason, ExactLnbtcValidation, LnbtcRequest, LnHeaderFields } from "./internal/lightning.js";
+export type { X402Advertise, X402Read } from "./internal/x402.js";
 
 /**
  * x402's `lnbtc` network ids, in CAIP-2 form: `lnbtc:` and the first 32 hex digits of the genesis block hash of

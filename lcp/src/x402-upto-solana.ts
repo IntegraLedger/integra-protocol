@@ -71,6 +71,8 @@ import { SOLANA } from "./internal/data/solana.js";
 import { x402Payee } from "./internal/payee.js";
 import type { Entry } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
+export type { UptoSvmPaymentPayload } from "./internal/svm.js";
+export type { X402Read } from "./internal/x402.js";
 
 const ID = "x402/upto/solana" as const;
 const MAX_MEMO = 256;

@@ -72,7 +72,7 @@ const MIRROR_ID = /^((?:0|[1-9][0-9]{0,18})\.(?:0|[1-9][0-9]{0,18})\.(?:0|[1-9][
 const TIMESTAMP = /^(\d{1,19})\.(\d{9})$/;
 
 type Obj = { [k: string]: Json };
-type HederaQuery = StatusQuery<LcpHederaRef, string, "consensus", string>;
+export type HederaQuery = StatusQuery<LcpHederaRef, string, "consensus", string>;
 
 /** The buyer's inputs to `build`: the paying account, the node, the valid start, the maximum fee and, for a token, its decimals. */
 export interface LcpHederaChoice {

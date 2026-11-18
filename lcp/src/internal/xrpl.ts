@@ -203,7 +203,7 @@ export interface XrplUnsigned<P> {
 
 /**
  * A payment on `x402/exact/xrpl`: the wallet's signed blob, hex. `../x402-exact-xrpl.ts` returns it from `complete`,
- * and the root names it among the payments `Presented` covers; no entry point exports the name.
+ * and the root names it among the payments `Presented` covers; both export the name.
  */
 export interface XrplPaymentPayload {
   x402Version: 2;

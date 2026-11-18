@@ -34,6 +34,7 @@ export type {
   ChannelIx,
   SolanaNetwork,
   SvmBuildInput,
+  SvmInstruction,
   SvmNonce,
   SvmTx,
   SvmV1Header,

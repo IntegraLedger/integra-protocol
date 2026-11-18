@@ -7,6 +7,48 @@ rename exports and pairing ids and change a function's arguments or answers; a p
 
 ## [Unreleased]
 
+### Added
+
+- Every type that an exported function, type or pairing names is exported, as a type, from each entry point whose
+  declarations name it, so a caller can name what it passes and what it gets, and the API reference defines every type
+  it shows. No runtime export, and no existing name or shape, changes. From the root: `AptosPaymentPayload`,
+  `AvmPaymentPayload`, `BatchPaymentPayload`, `CardanoPaymentPayload`, `CasperPaymentPayload`, `CcdPaymentPayload`,
+  `ChannelKind`, `CloudflarePaymentPayload`, `DataMembers`, `ExecutorPayload`, `ExecutorPaymentPayload`,
+  `HederaPayload`, `HederaPaymentPayload`, `IsNever`, `Named`, `NearPayment`, `NoneWhereNever`, `NonZeroDigit`,
+  `PairingOn`, `PolkadotPayload`, `PolkadotPaymentPayload`, `PresentedOn`, `PushMode`, `StarknetPayment`,
+  `StellarPaymentPayload`, `SuiPaymentPayload`, `Surface`, `SurfaceOf`, `SvmPaymentPayload`, `TronPayment`,
+  `TvmPayment`, `UptoSvmPaymentPayload`, `X402Payment`, `XrplPaymentPayload`; from `@integraledger/lcp/ap2`:
+  `EvmMark`, `EvmQuery`; from `@integraledger/lcp/aptos`: `AptosPaymentPayload`, `X402Read`; from
+  `@integraledger/lcp/avm`: `AvmPaymentPayload`, `X402Payment`, `X402Read`; from `@integraledger/lcp/cardano`:
+  `CardanoPaymentPayload`, `CardanoQuery`, `X402Read`; from `@integraledger/lcp/casper`: `CasperChoice`,
+  `CasperPaymentPayload`, `CasperRefRead`, `X402Advertise`, `X402Read`; from `@integraledger/lcp/ccd`: `CcdChoice`,
+  `CcdMark`, `CcdPaymentPayload`, `X402Advertise`, `X402Read`; from `@integraledger/lcp/evm`: `EvmMark`, `EvmQuery`,
+  `EvmReadRefBase`, `HederaNetwork`, `Signed`, `X402EvmRefBase`; from `@integraledger/lcp/hedera`: `ExecutorPayload`,
+  `ExecutorPaymentPayload`, `HederaQuery`, `HederaVoucherTypedData`, `X402Payment`, `X402Read`; from
+  `@integraledger/lcp/lightning`: `X402Advertise`, `X402Read`; from `@integraledger/lcp/mpp`: `ChannelKind`,
+  `ChargeRefBase`, `EvmMark`, `EvmQuery`, `GatewayChargeChoice`, `HederaNetwork`, `HederaQuery`,
+  `HederaSessionUnsigned`, `HederaVoucherTypedData`, `MppIntent`, `MppSessionOpeningRef`, `NearIntentsRef`,
+  `RailSessionChoice`, `Seen`, `SessionWithinUnsigned`, `Signed`, `SolanaChargeChoice`, `SolanaChargeUnsigned`,
+  `StacksChargeChoice`, `StockQuery`, `XrplQuery`, `XrplSessionUnsigned`; from `@integraledger/lcp/near`: `Answer`,
+  `NearChoice`, `NearPayment`, `X402Payment`, `X402Read`; from `@integraledger/lcp/polkadot`: `PolkadotMark`,
+  `PolkadotPayload`, `PolkadotPaymentPayload`, `X402Payment`, `X402Read`; from `@integraledger/lcp/spend-permissions`:
+  `EvmMark`, `EvmQuery`, `EvmReadRefBase`; from `@integraledger/lcp/starknet`: `StarknetPayment`, `StarknetRefRead`,
+  `X402Payment`, `X402Read`; from `@integraledger/lcp/stellar`: `StellarPaymentPayload`; from
+  `@integraledger/lcp/sui`: `SuiMark`, `SuiPaymentPayload`, `X402Read`; from `@integraledger/lcp/svm`:
+  `SvmInstruction`; from `@integraledger/lcp/tron`: `TronChoice`, `TronMark`, `TronPayment`, `X402Payment`,
+  `X402Read`; from `@integraledger/lcp/tvm`: `TvmChoice`, `TvmMark`, `TvmPayment`, `X402Payment`, `X402Read`; from
+  `@integraledger/lcp/ucp`: `Option`; from `@integraledger/lcp/x402`: `BatchedAuthorization`, `BreadthBase`,
+  `BreadthId`, `Eip3009Authorization`, `EvmMark`, `EvmQuery`, `Pairings`, `Permit2Authorization`, `X402Advertise`,
+  `X402PairingId`, `X402Read`, `X402SchemePayload`; from `@integraledger/lcp/x402-batch-settlement`:
+  `BatchPaymentPayload`, `CloudflarePaymentPayload`, `EvmMark`, `EvmQuery`, `X402Advertise`, `X402Read`; from
+  `@integraledger/lcp/x402-exact-solana`: `SvmChoice`, `SvmPaymentPayload`, `X402Read`; from
+  `@integraledger/lcp/x402-exact-stellar`: `X402Read`; from `@integraledger/lcp/x402-exact-xrpl`: `X402Read`,
+  `XrplChoice`, `XrplPaymentPayload`, `XrplQuery`; from `@integraledger/lcp/x402-upto-solana`:
+  `UptoSvmPaymentPayload`, `X402Read`; from `@integraledger/lcp/x402-upto-xrpl`: `X402Read`; from
+  `@integraledger/lcp/xrpl`: `XrplQuery`.
+- `StatusAnswer`'s and `Seen`'s `presented` member is written as its union, `"yes" | "no" | "unshown"`, so `Presented`
+  at the root names only what a buyer presents.
+
 ### Fixed
 
 - `mpp/session/hedera/stock` and `mpp/session/xrpl/stock` have `pattern.onChain` `false`, from `true`: the stock client

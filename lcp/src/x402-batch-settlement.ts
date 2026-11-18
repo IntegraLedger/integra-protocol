@@ -127,6 +127,9 @@ import { EIP155_X402 } from "./internal/data/eip155-x402.js";
 import { SOLANA } from "./internal/data/solana.js";
 import type { Entry, NoRead } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
+export type { EvmMark, EvmQuery } from "./internal/evm.js";
+export type { BatchPaymentPayload, CloudflarePaymentPayload } from "./internal/x402-batch-settlement.js";
+export type { X402Advertise, X402Read } from "./internal/x402.js";
 
 // ── EVM pieces ───────────────────────────────────────────────────────────────────────────────────────────────────
 

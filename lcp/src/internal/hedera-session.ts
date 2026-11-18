@@ -5,8 +5,7 @@
  */
 import { addressWord, bytes32Word, concat, hexOf, keccak, uintWord, type Hex } from "../evm-abi.js";
 import { isAddress, isObject, normalHash } from "../fields.js";
-
-type HederaNetwork = "hedera:mainnet" | "hedera:testnet" | "hedera:previewnet" | "hedera:devnet";
+import type { HederaNetwork } from "../hedera.js";
 
 /** `approve(address,uint256)`. */
 export const APPROVE_SELECTOR = "0x095ea7b3";

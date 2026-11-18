@@ -20,7 +20,7 @@ export type SolanaNetwork = `solana:${string}`;
 
 /**
  * A payment on `x402/exact/solana`: the base64 partially signed versioned transaction. `../x402-exact-solana.ts`
- * returns it from `complete`, and the root names it among the payments `Presented` covers; no entry point exports it.
+ * returns it from `complete`, and the root names it among the payments `Presented` covers; both export it.
  */
 export interface SvmPaymentPayload {
   x402Version: 2;
@@ -32,8 +32,8 @@ export interface SvmPaymentPayload {
 
 /**
  * A payment on `x402/upto/solana`: the opening's signed fields and its base64 partially signed transaction.
- * `../x402-upto-solana.ts` returns it from `complete`, and the root names it among the payments `Presented` covers; no
- * entry point exports it.
+ * `../x402-upto-solana.ts` returns it from `complete`, and the root names it among the payments `Presented` covers; both
+ * export it.
  */
 export interface UptoSvmPaymentPayload {
   x402Version: 2;

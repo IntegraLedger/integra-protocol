@@ -58,6 +58,8 @@ import {
 import { bigintOrder, isQuery, ledgerOf, UNPARSEABLE } from "./internal/read-ledger.js";
 import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
+export type { SuiPaymentPayload } from "./internal/sui.js";
+export type { X402Read } from "./internal/x402.js";
 
 const peer: { bcs: typeof SuiBcs } | undefined = await import("@mysten/sui/bcs").then(
   (b) => ({ bcs: b.bcs }),
@@ -185,7 +187,7 @@ export interface SuiRef {
  */
 export type SuiStatus = StatusAnswer<bigint, SuiMark, bigint>;
 
-type SuiMark = "executed" | "final";
+export type SuiMark = "executed" | "final";
 /** The marks a query can ask for. */
 const QUERY_MARKS: readonly SuiMark[] = ["final"];
 

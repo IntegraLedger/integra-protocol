@@ -490,7 +490,7 @@ function hederaLedger(coverage: "full" | "none"): Ledger<string, "consensus"> {
   };
 }
 
-type HederaQuery<Ref> = StatusQuery<Ref, string, "consensus", string>;
+export type HederaQuery<Ref> = StatusQuery<Ref, string, "consensus", string>;
 type HederaFacts = Facts<string, "consensus", string>;
 type HederaSeen = HederaFacts["seen"][number];
 
@@ -1412,3 +1412,6 @@ export {
   type HederaChannelConfig,
   type HederaCloseRef,
 } from "./internal/hedera-session.js";
+export type { HederaVoucherTypedData } from "./internal/hedera-session.js";
+export type { ExecutorPayload, ExecutorPaymentPayload } from "./internal/hedera.js";
+export type { X402Payment, X402Read } from "./internal/x402.js";

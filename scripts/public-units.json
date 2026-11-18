@@ -49,8 +49,8 @@
     {
       "unit": "The registry of pairings",
       "exports": {
-        ".": ["BINDINGS", "Binding", "MppBinding", "X402Binding", "PairingId", "pairingOf", "Presented", "Authorizer", "CarrierAfterH", "FETCHED", "LcpPattern"],
-        "./x402": ["pairingOfPayment", "LcpPattern"],
+        ".": ["BINDINGS", "Binding", "MppBinding", "X402Binding", "PairingId", "pairingOf", "Presented", "Authorizer", "CarrierAfterH", "FETCHED", "LcpPattern", "AptosPaymentPayload", "AvmPaymentPayload", "BatchPaymentPayload", "CardanoPaymentPayload", "CasperPaymentPayload", "CcdPaymentPayload", "CloudflarePaymentPayload", "ExecutorPayload", "ExecutorPaymentPayload", "HederaPayload", "HederaPaymentPayload", "NearPayment", "PairingOn", "PolkadotPayload", "PolkadotPaymentPayload", "PresentedOn", "PushMode", "StarknetPayment", "StellarPaymentPayload", "SuiPaymentPayload", "Surface", "SurfaceOf", "SvmPaymentPayload", "TronPayment", "TvmPayment", "UptoSvmPaymentPayload", "X402Payment", "XrplPaymentPayload"],
+        "./x402": ["pairingOfPayment", "LcpPattern", "X402PairingId"],
         "./mpp": ["FETCHED", "MPP_BINDINGS", "MppPairingId"],
         "./hedera": ["FETCHED"]
       },
@@ -60,7 +60,7 @@
     {
       "unit": "The registry entry as data and its codec",
       "exports": {
-        ".": ["Codec", "Entry", "Family", "PairingData", "Carrier", "Coverage", "ReadData", "EndpointKind", "Life", "AgreementData"]
+        ".": ["Codec", "Entry", "Family", "PairingData", "Carrier", "Coverage", "ReadData", "EndpointKind", "Life", "AgreementData", "ChannelKind", "DataMembers", "IsNever", "NonZeroDigit", "NoneWhereNever"]
       },
       "use": "The registry entry as data and its codec, typed per family as Codec<Presented, Ref, Reader, F>, F being one descriptor of the family's documents, offers, inputs and read types: any caller reads a pairing's facts (which signed field carries H, whether a payment through it is itself a public proof of H, what reading it back needs and how long a signed payment can stay payable, and the agreement payment it admits) and calls its members with no cast.",
       "fixedBy": "Each pairing's profile; the Legal Context Protocol's binding patterns."
@@ -68,7 +68,7 @@
     {
       "unit": "The read of a landed payment or agreement",
       "exports": {
-        ".": ["Act", "StatusQuery", "OtherAct", "StatusAnswer", "PendingReason", "FailedReason", "UnreadableReason", "ForeignItem", "ForeignReason", "Moved", "RecoverInput"]
+        ".": ["Act", "StatusQuery", "OtherAct", "StatusAnswer", "PendingReason", "FailedReason", "UnreadableReason", "ForeignItem", "ForeignReason", "Moved", "RecoverInput", "Named"]
       },
       "use": "What every pairing's status takes and answers, and what its recover takes: any seller, buyer or auditor holding an ATR reads a payment or an agreement back through its own reader, learns whether the act asked about landed, can still land, or can no longer land, and why a transaction that carries H is not that act; and reads H back from a transaction id with the option the ATR's binding slot holds.",
       "fixedBy": "read-status.md; read-status.json."
@@ -161,7 +161,7 @@
     {
       "unit": "AP2 checkouts paid with AP2's x402 credential",
       "exports": {
-        "./ap2": ["X402Authorization", "X402Bundle", "X402Method", "X402Presented", "X402Ref", "checkoutMandateX402"]
+        "./ap2": ["X402Authorization", "X402Bundle", "X402Method", "X402Presented", "X402Ref", "checkoutMandateX402", "EvmMark", "EvmQuery"]
       },
       "use": "Any AP2 merchant paid through AP2's x402 payment credential reads H from the checkout mandate, checks the credential's authorization is bound to its payment mandate chain as AP2's payment processor does, and keys its record of the payment by the authorization's signer and nonce.",
       "fixedBy": "ap2-checkout-mandate-x402.md; AP2 v0.2 and its reference x402 flow."
@@ -177,7 +177,7 @@
     {
       "unit": "UCP checkouts and bookings",
       "exports": {
-        "./ucp": ["BookingOption", "ChargePresented", "ChargeRef", "Checkout", "CheckoutOption", "LINK_TYPE", "Link", "UcpBinding", "UcpOffer", "Unsigned", "ap2Mandate", "bookingAp2Mandate", "bookingUnsigned", "checkoutJwt", "issuedDigest", "legalContextLink", "tie", "unsigned"]
+        "./ucp": ["BookingOption", "ChargePresented", "ChargeRef", "Checkout", "CheckoutOption", "LINK_TYPE", "Link", "UcpBinding", "UcpOffer", "Unsigned", "ap2Mandate", "bookingAp2Mandate", "bookingUnsigned", "checkoutJwt", "issuedDigest", "legalContextLink", "tie", "unsigned", "Option"]
       },
       "use": "Any UCP business carries H and the link as a legal_context entry of the checkout response, and any platform builds the checkout JWT an AP2 mandate commits to from the business's detached signature, and reads H back from it.",
       "fixedBy": "ucp-checkout-legal-context.md; ucp-payment-handler-x402.md; UCP; charge-reference.json."
@@ -201,7 +201,7 @@
     {
       "unit": "x402 documents and the request commitment",
       "exports": {
-        "./x402": ["HeaderDigest", "HeaderFields", "HttpRequest", "LEGAL_CONTEXT", "LEGAL_CONTEXT_SCHEMA", "PaymentPayload", "PaymentRequired", "PaymentRequirements", "RequestCommitment", "requestCommitment", "ToolCall", "ToolCallCommitment", "toolCallCommitment", "Unsigned", "X402Choice", "X402Offer", "X402Unsigned", "issuedDigest", "tie"]
+        "./x402": ["HeaderDigest", "HeaderFields", "HttpRequest", "LEGAL_CONTEXT", "LEGAL_CONTEXT_SCHEMA", "PaymentPayload", "PaymentRequired", "PaymentRequirements", "RequestCommitment", "requestCommitment", "ToolCall", "ToolCallCommitment", "toolCallCommitment", "Unsigned", "X402Choice", "X402Offer", "X402Unsigned", "issuedDigest", "tie", "Permit2Authorization", "X402SchemePayload"]
       },
       "use": "Any x402 server and client reads and writes the v2 documents and the legalContext extension, and anyone reproducing H computes the request commitment the ATR's binding slot holds, of an HTTP request, with the header fields a resource server names, each by its name and the digest of its value, or of an MCP tool call.",
       "fixedBy": "The x402 v2 specification; x402-request-commitment.md; docs/guides/x402.md."
@@ -217,7 +217,7 @@
     {
       "unit": "x402 on eip155 chains",
       "exports": {
-        "./x402": ["authCaptureEip3009", "authCapturePermit2", "Eip3009Payment", "Eip3009TypedData", "exactEip3009", "exactErc7710", "exactErc7710Salt", "exactPermit2", "uptoPermit2"]
+        "./x402": ["authCaptureEip3009", "authCapturePermit2", "Eip3009Payment", "Eip3009TypedData", "exactEip3009", "exactErc7710", "exactErc7710Salt", "exactPermit2", "uptoPermit2", "BreadthBase", "BreadthId", "Eip3009Authorization", "EvmMark", "EvmQuery", "Pairings", "X402Advertise", "X402Read"]
       },
       "use": "Any buyer's client on an EVM chain builds an x402 payment that binds H, and any server checks it before anything moves and reads it back.",
       "fixedBy": "x402-exact-eip155-eip3009.md; x402-exact-eip155-permit2.md; x402-exact-eip155-erc7710-salt.md; x402-exact-eip155-erc7710.md; x402-upto-eip155-permit2.md; x402-auth-capture-eip155.md."
@@ -225,7 +225,7 @@
     {
       "unit": "Circle Gateway's batched payment on eip155 chains",
       "exports": {
-        "./x402": ["exactGatewayBatched", "GatewayBatchedChoice", "GatewayBatchedPayment", "GatewayBatchedTypedData", "GatewayBatchedUnsigned"]
+        "./x402": ["exactGatewayBatched", "GatewayBatchedChoice", "GatewayBatchedPayment", "GatewayBatchedTypedData", "GatewayBatchedUnsigned", "BatchedAuthorization"]
       },
       "use": "Any buyer's client signs Circle Gateway's batched authorization for an x402 option with the ATR hash as its nonce, after the sale's agreement is recorded on the same network, and any resource server reads the hash and the signer back before it hands the payment to Circle.",
       "fixedBy": "x402-exact-eip155-gateway-batched.md."
@@ -249,7 +249,7 @@
     {
       "unit": "Reading an EVM payment back",
       "exports": {
-        "./evm": ["EvmReader", "EvmLog", "EvmReceipt", "EvmTransaction", "ReaderError", "EvmRef", "Eip3009Ref", "EvmTxRef", "PullAuthorization", "authorizationUsed", "eip3009Recover", "eip3009Status", "evmStatus", "EvmStatus", "EvmBreadthStatus", "EvmLogEntry", "Permit2Ref", "AuthCaptureRef", "BatchEvmRef", "Erc7710Ref", "AUTHORIZATION_CANCELED_TOPIC", "UNORDERED_NONCE_INVALIDATION_TOPIC", "SEARCH_PAGE_BLOCKS", "MAX_SEARCH_PAGES"]
+        "./evm": ["EvmReader", "EvmLog", "EvmReceipt", "EvmTransaction", "ReaderError", "EvmRef", "Eip3009Ref", "EvmTxRef", "PullAuthorization", "authorizationUsed", "eip3009Recover", "eip3009Status", "evmStatus", "EvmStatus", "EvmBreadthStatus", "EvmLogEntry", "Permit2Ref", "AuthCaptureRef", "BatchEvmRef", "Erc7710Ref", "AUTHORIZATION_CANCELED_TOPIC", "UNORDERED_NONCE_INVALIDATION_TOPIC", "SEARCH_PAGE_BLOCKS", "MAX_SEARCH_PAGES", "EvmMark", "EvmQuery", "EvmReadRefBase", "HederaNetwork", "Signed", "X402EvmRefBase"]
       },
       "use": "Anyone reading an EVM payment back finds it, learns whether it landed, can still land or can no longer land, and reads H back from the settlement transaction alone.",
       "fixedBy": "EIP-3009; Permit2; Ethereum JSON-RPC; the x402 eip155 profiles."
@@ -265,7 +265,7 @@
     {
       "unit": "MPP challenges and credentials",
       "exports": {
-        "./mpp": ["MppChallenge", "MppCredential", "MppMethod", "MppChoice", "MppUnsigned", "LEGAL_CONTEXT_METADATA_KEY", "LandedCredential", "CARRIER", "parseChallenges", "problem", "read", "network", "pairingsOf", "pairingsOfPlaced", "place", "issuedDigest", "tie", "challengeBound"]
+        "./mpp": ["MppChallenge", "MppCredential", "MppMethod", "MppChoice", "MppUnsigned", "LEGAL_CONTEXT_METADATA_KEY", "LandedCredential", "CARRIER", "parseChallenges", "problem", "read", "network", "pairingsOf", "pairingsOfPlaced", "place", "issuedDigest", "tie", "challengeBound", "MppIntent"]
       },
       "use": "Any MPP server and client reads challenges as the stock clients read them, places H in a challenge and checks that a challenge is bound to it, names the request member a pairing writes H into, and answers a refusal in MPP's problem types.",
       "fixedBy": "The MPP specification; mpp-charge.md; mpp-challenge.json."
@@ -289,7 +289,7 @@
     {
       "unit": "MPP charges",
       "exports": {
-        "./mpp": ["chargeCard", "chargeNearIntents", "chargeSolana", "chargeSolanaUnsponsored", "chargeStripe", "chargeUsdcEvm", "chargeUsdcGateway", "chargeUsdcSolana", "chargeUsdcStacks", "chargeXrpl", "evmAuthorization", "evmHash", "evmPermit2", "evmTransaction", "transferPresent", "XrplChargeChoice", "XrplChargeUnsigned", "GatewayPreimage", "GatewaySaltInput", "usdcGatewaySalt", "usdcNonce", "usdcRequestHash", "UsdcUnsigned", "ReceiveTypedData", "SolanaTablesCredential", "attributionMemo", "checkAttribution", "EvmLogEntry", "EvmSearchReader", "EvmMoved", "MppEip3009Ref", "MppEvmReader", "MppEvmStatus", "MppNamedRef", "MppPermit2Ref", "Presentation", "tempoSplitMemo", "tempoSplitMemoPush", "TempoLandedCredential", "TempoSplitLanded", "TempoSplitQuery", "TempoSplitRef", "TempoSplitStatus"]
+        "./mpp": ["chargeCard", "chargeNearIntents", "chargeSolana", "chargeSolanaUnsponsored", "chargeStripe", "chargeUsdcEvm", "chargeUsdcGateway", "chargeUsdcSolana", "chargeUsdcStacks", "chargeXrpl", "evmAuthorization", "evmHash", "evmPermit2", "evmTransaction", "transferPresent", "XrplChargeChoice", "XrplChargeUnsigned", "GatewayPreimage", "GatewaySaltInput", "usdcGatewaySalt", "usdcNonce", "usdcRequestHash", "UsdcUnsigned", "ReceiveTypedData", "SolanaTablesCredential", "attributionMemo", "checkAttribution", "EvmLogEntry", "EvmSearchReader", "EvmMoved", "MppEip3009Ref", "MppEvmReader", "MppEvmStatus", "MppNamedRef", "MppPermit2Ref", "Presentation", "tempoSplitMemo", "tempoSplitMemoPush", "TempoLandedCredential", "TempoSplitLanded", "TempoSplitQuery", "TempoSplitRef", "TempoSplitStatus", "ChargeRefBase", "EvmMark", "EvmQuery", "GatewayChargeChoice", "NearIntentsRef", "Seen", "Signed", "SolanaChargeChoice", "SolanaChargeUnsigned", "StacksChargeChoice", "XrplQuery"]
       },
       "use": "Any MPP seller offers, and any buyer's client pays, a charge whose payment carries H or its commitment, and any server reads the payment back; on Tempo, builds and checks the attribution memo the stock MPP libraries write.",
       "fixedBy": "mpp-charge.md; mpp-charge-tempo-split-memo.md; mpp-charge-solana.md; mpp-charge-usdc-stacks.md; mpp-charge-nearintents.md; each method's MPP draft."
@@ -297,7 +297,7 @@
     {
       "unit": "The lcp MPP method",
       "exports": {
-        "./mpp": ["chargeLcpHedera", "LcpHederaChoice", "LcpHederaLanded", "LcpHederaRef", "LcpHederaUnsigned", "LcpRail", "LcpValidation"]
+        "./mpp": ["chargeLcpHedera", "LcpHederaChoice", "LcpHederaLanded", "LcpHederaRef", "LcpHederaUnsigned", "LcpRail", "LcpValidation", "HederaQuery"]
       },
       "use": "A seller's own MPP server on Hedera issues an lcp challenge and validates the payment that answers it, any client written to the profile builds the transfer whose signed memo carries H, the seller's own node submits the buyer's bytes unchanged, and anyone reads the payment back from the Mirror Node.",
       "fixedBy": "mpp-method-lcp.md; MPP's charge intent and Hedera charge drafts; Hedera's transaction format and Mirror Node API."
@@ -305,7 +305,7 @@
     {
       "unit": "MPP sessions and subscriptions",
       "exports": {
-        "./mpp": ["sessionHederaStock", "hederaStockStatus", "HederaStockReader", "HederaStockRef", "HederaStockStatus", "RailSessionUnsigned", "SessionChoice", "SessionRef", "SessionStatus", "SessionUnsigned", "SessionWithin", "VoucherTypedData", "WithinSigningRequest", "StripeSubscriptionReceipt", "evmChannelId", "keySearch", "sessionEvm", "sessionResume", "sessionStatus", "sessionTempo", "sessionXrpl", "sessionXrplStock", "sessionSolanaMemo", "sessionSolanaStock", "SolanaSessionChoice", "SolanaSessionUnsigned", "subscriptionSolana", "subscriptionStripe", "subscriptionTempo", "evmSessionAuthorizationNonce"]
+        "./mpp": ["sessionHederaStock", "hederaStockStatus", "HederaStockReader", "HederaStockRef", "HederaStockStatus", "RailSessionUnsigned", "SessionChoice", "SessionRef", "SessionStatus", "SessionUnsigned", "SessionWithin", "VoucherTypedData", "WithinSigningRequest", "StripeSubscriptionReceipt", "evmChannelId", "keySearch", "sessionEvm", "sessionResume", "sessionStatus", "sessionTempo", "sessionXrpl", "sessionXrplStock", "sessionSolanaMemo", "sessionSolanaStock", "SolanaSessionChoice", "SolanaSessionUnsigned", "subscriptionSolana", "subscriptionStripe", "subscriptionTempo", "evmSessionAuthorizationNonce", "ChannelKind", "HederaNetwork", "HederaSessionUnsigned", "HederaVoucherTypedData", "MppSessionOpeningRef", "RailSessionChoice", "SessionWithinUnsigned", "StockQuery", "XrplSessionUnsigned"]
       },
       "use": "Any server tells a channel's opening from a later credential and holds a later credential to its channel; a buyer's client builds a later payment within its channel; any holder of a subscription's ATR finds a collection made under the key the payer authorised over H.",
       "fixedBy": "The MPP session and subscription drafts; mpp-session-evm-tempo.md; mpp-session-hedera-solana-xrpl.md; mpp-subscription-solana.md."
@@ -321,7 +321,7 @@
     {
       "unit": "Lightning's payment-hash form on x402",
       "exports": {
-        "./lightning": ["ExactLnbtcReason", "ExactLnbtcValidation", "LnChoice", "LnHeaderFields", "LnbtcRequest", "checkPreimage", "exactLnbtcPaymentHash", "validateExactLnbtc"]
+        "./lightning": ["ExactLnbtcReason", "ExactLnbtcValidation", "LnChoice", "LnHeaderFields", "LnbtcRequest", "checkPreimage", "exactLnbtcPaymentHash", "validateExactLnbtc", "X402Advertise", "X402Read"]
       },
       "use": "Any resource server offers x402's exact scheme on Lightning with the ATR committing the invoice's payment hash, checks a presented proof by x402's validation and the preimage check before it serves, and any buyer's client makes x402's checks of the invoice before it pays; a settler's /settle for the scheme runs the same validation.",
       "fixedBy": "x402's scheme_exact_lnbtc.md; BOLT 11; x402-exact-lnbtc-payment-hash.md."
@@ -329,7 +329,7 @@
     {
       "unit": "The Solana transaction",
       "exports": {
-        "./svm": ["ATA_PROGRAM", "COMPUTE_BUDGET", "MEMO_V3", "MEMO_V4", "RENT_SYSVAR", "SYSTEM", "TOKEN", "TOKEN_2022", "SolanaNetwork", "SvmBuildInput", "SvmTx", "SvmV1Header", "buildSvmMessage", "decodeSvmTx", "findPda", "isKey", "svmCarrier", "svmDigest", "SvmNonce"]
+        "./svm": ["ATA_PROGRAM", "COMPUTE_BUDGET", "MEMO_V3", "MEMO_V4", "RENT_SYSVAR", "SYSTEM", "TOKEN", "TOKEN_2022", "SolanaNetwork", "SvmBuildInput", "SvmTx", "SvmV1Header", "buildSvmMessage", "decodeSvmTx", "findPda", "isKey", "svmCarrier", "svmDigest", "SvmNonce", "SvmInstruction"]
       },
       "use": "Any Solana buyer's client builds the transaction a payer signs with H in its one Memo instruction, and any server decodes it and checks that Memo before it is relayed.",
       "fixedBy": "The Solana transaction format and Memo program; x402's exact scheme on Solana; mpp-charge-solana.md."
@@ -353,8 +353,8 @@
     {
       "unit": "x402 on Solana",
       "exports": {
-        "./x402-exact-solana": ["exactSvm", "SvmUnsigned"],
-        "./x402-upto-solana": ["uptoSvm", "UptoSvmChoice", "UptoSvmPayload"]
+        "./x402-exact-solana": ["exactSvm", "SvmUnsigned", "SvmChoice", "SvmPaymentPayload", "X402Read"],
+        "./x402-upto-solana": ["uptoSvm", "UptoSvmChoice", "UptoSvmPayload", "UptoSvmPaymentPayload", "X402Read"]
       },
       "use": "Any x402 buyer's client on Solana pays an exact or upto option with H in the Memo it signs, and any server checks it.",
       "fixedBy": "x402's exact and upto schemes on Solana."
@@ -362,8 +362,8 @@
     {
       "unit": "XRP Ledger",
       "exports": {
-        "./xrpl": ["XRPL_MAX_BLOB_BYTES", "XRPL_MAX_DEPTH", "XRPL_MAX_PAGES", "XrplAmount", "XrplChannelEntry", "XrplChannelRef", "XrplCloseRef", "XrplCloseStatus", "XrplLanded", "XrplLedgerName", "XrplMark", "XrplNetwork", "XrplPage", "XrplReached", "XrplReader", "XrplRef", "XrplServer", "XrplSigned", "XrplStatus", "XrplTxJson", "XrplUnsigned", "decodeBlob", "mppInvoiceId", "x402InvoiceId", "xrplChannelId", "xrplChannelStatus", "xrplChargeStatus", "xrplClaim", "xrplOpenStatus", "xrplStatus"],
-        "./x402-exact-xrpl": ["exactXrpl"]
+        "./xrpl": ["XRPL_MAX_BLOB_BYTES", "XRPL_MAX_DEPTH", "XRPL_MAX_PAGES", "XrplAmount", "XrplChannelEntry", "XrplChannelRef", "XrplCloseRef", "XrplCloseStatus", "XrplLanded", "XrplLedgerName", "XrplMark", "XrplNetwork", "XrplPage", "XrplReached", "XrplReader", "XrplRef", "XrplServer", "XrplSigned", "XrplStatus", "XrplTxJson", "XrplUnsigned", "decodeBlob", "mppInvoiceId", "x402InvoiceId", "xrplChannelId", "xrplChannelStatus", "xrplChargeStatus", "xrplClaim", "xrplOpenStatus", "xrplStatus", "XrplQuery"],
+        "./x402-exact-xrpl": ["exactXrpl", "X402Read", "XrplChoice", "XrplPaymentPayload", "XrplQuery"]
       },
       "use": "Any XRPL buyer's client signs a Payment whose InvoiceID carries H, any server checks the signed blob, and anyone reads the payment, or a payment channel's opening, claim and close, back.",
       "fixedBy": "The XRP Ledger's Payment and PayChannel transactions; x402's exact scheme on the XRP Ledger; mpp-session-hedera-solana-xrpl.md."
@@ -371,7 +371,7 @@
     {
       "unit": "x402 upto on the XRP Ledger",
       "exports": {
-        "./x402-upto-xrpl": ["uptoXrpl", "UptoXrplPayload", "UptoXrplPaymentPayload"]
+        "./x402-upto-xrpl": ["uptoXrpl", "UptoXrplPayload", "UptoXrplPaymentPayload", "X402Read"]
       },
       "use": "Any x402 resource server that takes x402's upto scheme on the XRP Ledger after an agreement on the same network reads the presented payment's channel and payer, refuses an option a payment channel cannot pay, and reads the channel's create back from the ledger, so it and any auditor learn which account opened the channel to the payee, and when.",
       "fixedBy": "x402's upto scheme on the XRP Ledger; x402-upto-xrpl.md; x402-upto-xrpl.json."
@@ -379,7 +379,7 @@
     {
       "unit": "x402 batch settlement",
       "exports": {
-        "./x402-batch-settlement": ["BATCH_SETTLEMENT", "BatchEvmOpen", "BatchSvmOpen", "BatchUnsigned", "BatchWithin", "CHANNEL_CONFIG_TYPEHASH", "CHANNEL_CREATED_TOPIC", "ChannelConfig", "ChannelMembers", "DEPOSITED_TOPIC", "ERC3009_DEPOSIT_COLLECTOR", "Eip712Request", "PERMIT2_DEPOSIT_COLLECTOR", "SigningRequest", "VOUCHER_TYPEHASH", "batchChannelCreated", "batchChannelId", "batchCloudflare", "batchEvm", "batchSvm", "erc3009DepositNonce"]
+        "./x402-batch-settlement": ["BATCH_SETTLEMENT", "BatchEvmOpen", "BatchSvmOpen", "BatchUnsigned", "BatchWithin", "CHANNEL_CONFIG_TYPEHASH", "CHANNEL_CREATED_TOPIC", "ChannelConfig", "ChannelMembers", "DEPOSITED_TOPIC", "ERC3009_DEPOSIT_COLLECTOR", "Eip712Request", "PERMIT2_DEPOSIT_COLLECTOR", "SigningRequest", "VOUCHER_TYPEHASH", "batchChannelCreated", "batchChannelId", "batchCloudflare", "batchEvm", "batchSvm", "erc3009DepositNonce", "BatchPaymentPayload", "CloudflarePaymentPayload", "EvmMark", "EvmQuery", "X402Advertise", "X402Read"]
       },
       "use": "Any buyer and seller using x402's batch-settlement bind one ATR to a channel: on EVM as the channel configuration's salt, on Solana in the opening's Memo, and on Cloudflare in each request's echoed extension.",
       "fixedBy": "x402-batch-settlement-eip155.md; x402-batch-settlement-cloudflare.md; x402's batch-settlement scheme."
@@ -387,7 +387,7 @@
     {
       "unit": "Stellar",
       "exports": {
-        "./stellar": ["MAX_CANDIDATES", "MAX_ORDER", "MAX_PAGES", "PASSPHRASE", "PAYLOAD_BYTES", "PayloadSigner", "SCVAL_MAX_DEPTH", "StellarCandidate", "StellarEvent", "StellarEventRow", "StellarLanded", "StellarMark", "StellarNetwork", "StellarPayment", "StellarQuery", "StellarReader", "StellarRef", "StellarSearch", "StellarStatus", "StellarUnsigned", "decodeStellarTx", "muxedFor", "parseStellarPosition", "readSignedPayload", "signedPayload", "stellarLocate", "stellarPosition", "stellarRecover", "stellarStatus", "transferEventOf", "transferEventTopics"]
+        "./stellar": ["MAX_CANDIDATES", "MAX_ORDER", "MAX_PAGES", "PASSPHRASE", "PAYLOAD_BYTES", "PayloadSigner", "SCVAL_MAX_DEPTH", "StellarCandidate", "StellarEvent", "StellarEventRow", "StellarLanded", "StellarMark", "StellarNetwork", "StellarPayment", "StellarQuery", "StellarReader", "StellarRef", "StellarSearch", "StellarStatus", "StellarUnsigned", "decodeStellarTx", "muxedFor", "parseStellarPosition", "readSignedPayload", "signedPayload", "stellarLocate", "stellarPosition", "stellarRecover", "stellarStatus", "transferEventOf", "transferEventTopics", "StellarPaymentPayload"]
       },
       "use": "Any Stellar buyer's client builds the Soroban transfer a payer signs and the 40-byte signed-payload precondition over H, and derives the muxed address of a transaction's position; any settler, seller or third party recomputes them, searches the buyer's events and reads the agreement back.",
       "fixedBy": "Stellar's Soroban authorization (CAP-46), signed-payload signers (CAP-40), the Stellar Asset Contract's events (CAP-67) and muxed accounts; x402's exact scheme on Stellar."
@@ -395,7 +395,7 @@
     {
       "unit": "x402/exact/stellar/precondition",
       "exports": {
-        "./x402-exact-stellar": ["StellarPreconditionChoice", "exactStellarPrecondition"]
+        "./x402-exact-stellar": ["StellarPreconditionChoice", "exactStellarPrecondition", "X402Read"]
       },
       "use": "Any seller offering an agreement on Stellar under x402, any buyer's client signing it, and any settler or third party checking it, with no Integra software: the profile x402-exact-stellar-precondition defines the form.",
       "fixedBy": "The profile x402-exact-stellar-precondition; x402's exact scheme on Stellar."
@@ -403,7 +403,7 @@
     {
       "unit": "Hedera transactions",
       "exports": {
-        "./hedera": ["decodeHederaTx", "HederaBody", "HederaUnsigned", "exactHedera", "exactHederaExecutor", "ExecutorRef", "HederaNetwork", "HederaTxId", "txIdMirror", "txIdText", "hederaIdDigest", "HederaReader", "MirrorEntry", "MirrorRow", "MirrorPage", "HederaRef", "HederaPresented", "HederaRow", "HederaTransfer", "HederaStatus", "hederaStatus", "executorStatus"]
+        "./hedera": ["decodeHederaTx", "HederaBody", "HederaUnsigned", "exactHedera", "exactHederaExecutor", "ExecutorRef", "HederaNetwork", "HederaTxId", "txIdMirror", "txIdText", "hederaIdDigest", "HederaReader", "MirrorEntry", "MirrorRow", "MirrorPage", "HederaRef", "HederaPresented", "HederaRow", "HederaTransfer", "HederaStatus", "hederaStatus", "executorStatus", "ExecutorPayload", "ExecutorPaymentPayload", "HederaQuery", "X402Payment", "X402Read"]
       },
       "use": "Any settler or resource server validates a Hedera transfer whose signed memo carries H, and anyone reads it back from the Mirror Node.",
       "fixedBy": "Hedera's transaction format and Mirror Node API; x402-exact-hedera.md."
@@ -411,7 +411,7 @@
     {
       "unit": "Hedera session channels",
       "exports": {
-        "./hedera": ["CHANNEL_CLOSED_TOPIC", "CHANNEL_OPENED_TOPIC", "HederaChannelConfig", "hederaChannelId", "HederaCloseRef", "hederaVoucher"]
+        "./hedera": ["CHANNEL_CLOSED_TOPIC", "CHANNEL_OPENED_TOPIC", "HederaChannelConfig", "hederaChannelId", "HederaCloseRef", "hederaVoucher", "HederaVoucherTypedData"]
       },
       "use": "Any buyer and seller of a Hedera session compute its channel's id, sign and check its vouchers, and read its opening and close.",
       "fixedBy": "MPP's Hedera session draft; mpp-session-hedera-solana-xrpl.md."
@@ -419,7 +419,7 @@
     {
       "unit": "Aptos",
       "exports": {
-        "./aptos": ["AptosAccount", "AptosCommitted", "AptosInstrument", "AptosNetwork", "AptosReader", "AptosRef", "AptosStatus", "AptosUnsigned", "MAX_APTOS_READ_ITEMS", "MAX_APTOS_TX_BYTES", "aptosIdDigest", "aptosStatus", "committedInstrument", "decodeAptosTx", "exactAptos"]
+        "./aptos": ["AptosAccount", "AptosCommitted", "AptosInstrument", "AptosNetwork", "AptosReader", "AptosRef", "AptosStatus", "AptosUnsigned", "MAX_APTOS_READ_ITEMS", "MAX_APTOS_TX_BYTES", "aptosIdDigest", "aptosStatus", "committedInstrument", "decodeAptosTx", "exactAptos", "AptosPaymentPayload", "X402Read"]
       },
       "use": "Any Aptos seller advertises H in the challenge, and anyone holding the ATR finds the payer's transfer by its sender and sequence number and identifies it by what the payer signed.",
       "fixedBy": "x402's exact scheme on Aptos; the Aptos REST API."
@@ -427,7 +427,7 @@
     {
       "unit": "Algorand",
       "exports": {
-        "./avm": ["AVM_MAX_ENTRY", "AVM_MAX_GROUP", "AVM_MAX_LIFE", "AVM_MAX_NOTE", "AVM_SEARCH_PAGES", "AlgorandNetwork", "AvmAssetTransfer", "AvmIndexed", "AvmPage", "AvmParams", "AvmPresented", "AvmReader", "AvmRef", "AvmSearch", "AvmStatus", "AvmUnsigned", "MSGPACK_MAX_DEPTH", "avmCarrier", "avmRecover", "avmStatus", "exactAvm"]
+        "./avm": ["AVM_MAX_ENTRY", "AVM_MAX_GROUP", "AVM_MAX_LIFE", "AVM_MAX_NOTE", "AVM_SEARCH_PAGES", "AlgorandNetwork", "AvmAssetTransfer", "AvmIndexed", "AvmPage", "AvmParams", "AvmPresented", "AvmReader", "AvmRef", "AvmSearch", "AvmStatus", "AvmUnsigned", "MSGPACK_MAX_DEPTH", "avmCarrier", "avmRecover", "avmStatus", "exactAvm", "AvmPaymentPayload", "X402Payment", "X402Read"]
       },
       "use": "Any Algorand buyer's client builds an asset transfer whose note is H, any server checks it before it is relayed, and anyone holding the transaction id reads H back.",
       "fixedBy": "x402-exact-algorand-note.md; the Algorand Indexer API."
@@ -435,7 +435,7 @@
     {
       "unit": "Cardano",
       "exports": {
-        "./cardano": ["CARDANO_MAX_TX_BYTES", "CARDANO_SEARCH_BOUND", "CardanoMethod", "CardanoNetwork", "CardanoOnChain", "CardanoOutput", "CardanoPage", "CardanoPayload", "CardanoReader", "CardanoRef", "CardanoStatus", "CardanoTx", "CardanoUnsigned", "LCP_MARKER", "auxiliaryData", "cardanoFloor", "cardanoRecover", "cardanoStatus", "decodeCardanoTx", "exactCardano", "exactCardanoLock"]
+        "./cardano": ["CARDANO_MAX_TX_BYTES", "CARDANO_SEARCH_BOUND", "CardanoMethod", "CardanoNetwork", "CardanoOnChain", "CardanoOutput", "CardanoPage", "CardanoPayload", "CardanoReader", "CardanoRef", "CardanoStatus", "CardanoTx", "CardanoUnsigned", "LCP_MARKER", "auxiliaryData", "cardanoFloor", "cardanoRecover", "cardanoStatus", "decodeCardanoTx", "exactCardano", "exactCardanoLock", "CardanoPaymentPayload", "CardanoQuery", "X402Read"]
       },
       "use": "Any Cardano buyer's client builds a transaction whose signed body commits to H as a CIP-20 message, on x402's address method or its two lock methods, any server checks it and prices the smallest agreement by the ledger's minimum output, and anyone reads the payment through its own indexer, by the input it spends and the payer's credential, or reads H back from the included transaction.",
       "fixedBy": "x402-exact-cardano.md; CIP-20."
@@ -443,7 +443,7 @@
     {
       "unit": "Casper",
       "exports": {
-        "./casper": ["CASPER_DOMAIN_TYPEHASH", "CASPER_MAX_NAME_LENGTH", "CASPER_MAX_PAGE_CALLS", "CASPER_MAX_PAGES", "CASPER_MAX_PROBES", "CASPER_MAX_PUBLIC_KEY_HEX", "CASPER_MAX_SIGNATURE_HEX", "CasperAddress", "CasperAuthorization", "CasperBlockCall", "CasperBlockPage", "CasperCall", "CasperCursor", "CasperHead", "CasperNetwork", "CasperReader", "CasperRef", "CasperStatus", "CasperUnsigned", "Cep3009TypedData", "PackageHash", "casperIdDigest", "casperRecover", "casperStatus", "cep3009TypedData", "exactCasper"]
+        "./casper": ["CASPER_DOMAIN_TYPEHASH", "CASPER_MAX_NAME_LENGTH", "CASPER_MAX_PAGE_CALLS", "CASPER_MAX_PAGES", "CASPER_MAX_PROBES", "CASPER_MAX_PUBLIC_KEY_HEX", "CASPER_MAX_SIGNATURE_HEX", "CasperAddress", "CasperAuthorization", "CasperBlockCall", "CasperBlockPage", "CasperCall", "CasperCursor", "CasperHead", "CasperNetwork", "CasperReader", "CasperRef", "CasperStatus", "CasperUnsigned", "Cep3009TypedData", "PackageHash", "casperIdDigest", "casperRecover", "casperStatus", "cep3009TypedData", "exactCasper", "CasperChoice", "CasperPaymentPayload", "CasperRefRead", "X402Advertise", "X402Read"]
       },
       "use": "Any Casper buyer's client builds the CEP-3009 authorization whose nonce is H, or its agreement value, any server checks it, anyone reads the payment back through a node by the token's record of the nonce, with lcp's bounds on that read, and anyone reads the carried value back from the executed call.",
       "fixedBy": "x402-exact-casper.md; CEP-3009."
@@ -451,7 +451,7 @@
     {
       "unit": "Concordium",
       "exports": {
-        "./ccd": ["CCD_EXPIRY_MARGIN", "CCD_MAX_ADDRESS", "CCD_MAX_MEMO", "CCD_MAX_OPERATIONS", "CCD_MAX_TRANSACTION", "CCD_SEARCH_NUMBERS", "CcdBlockItem", "CcdItem", "CcdNetwork", "CcdReader", "CcdRef", "CcdSearch", "CcdStatus", "CcdTransfer", "CcdUnsigned", "accountBytes", "ccdMemo", "ccdRecover", "ccdStatus", "exactCcd", "memoCarrier", "pltMemo"]
+        "./ccd": ["CCD_EXPIRY_MARGIN", "CCD_MAX_ADDRESS", "CCD_MAX_MEMO", "CCD_MAX_OPERATIONS", "CCD_MAX_TRANSACTION", "CCD_SEARCH_NUMBERS", "CcdBlockItem", "CcdItem", "CcdNetwork", "CcdReader", "CcdRef", "CcdSearch", "CcdStatus", "CcdTransfer", "CcdUnsigned", "accountBytes", "ccdMemo", "ccdRecover", "ccdStatus", "exactCcd", "memoCarrier", "pltMemo", "CcdChoice", "CcdMark", "CcdPaymentPayload", "X402Advertise", "X402Read"]
       },
       "use": "Any Concordium buyer's client builds the one transfer whose memo carries H, any server checks it, and anyone reads H back from the finalized transfer.",
       "fixedBy": "x402-exact-ccd.md."
@@ -459,7 +459,7 @@
     {
       "unit": "NEAR",
       "exports": {
-        "./near": ["FT_TRANSFER_GAS", "MAX_FT_TRANSFER_ARGS_BYTES", "MAX_SIGNED_DELEGATE_BASE64", "NEP461_DELEGATE", "NearFunctionCall", "NearKeyChange", "NearKeyChanges", "NearMark", "NearNetwork", "NearOutcome", "NearQuery", "NearReader", "NearRef", "NearStatus", "NearUnsigned", "exactNear", "ftTransferArgs", "nearCarrier", "nearRecover", "nearRequest", "nearStatus"]
+        "./near": ["FT_TRANSFER_GAS", "MAX_FT_TRANSFER_ARGS_BYTES", "MAX_SIGNED_DELEGATE_BASE64", "NEP461_DELEGATE", "NearFunctionCall", "NearKeyChange", "NearKeyChanges", "NearMark", "NearNetwork", "NearOutcome", "NearQuery", "NearReader", "NearRef", "NearStatus", "NearUnsigned", "exactNear", "ftTransferArgs", "nearCarrier", "nearRecover", "nearRequest", "nearStatus", "Answer", "NearChoice", "NearPayment", "X402Payment", "X402Read"]
       },
       "use": "Any NEAR buyer's client signs a delegate action whose ft_transfer memo is H, any relayer or server checks it, and anyone reads the payment through the payer's access key and the relayed transaction's receipts.",
       "fixedBy": "x402-exact-near-memo.md; NEP-366; NEP-141."
@@ -467,7 +467,7 @@
     {
       "unit": "Polkadot",
       "exports": {
-        "./polkadot": ["CALL", "LCP_ASSETS_REMARK", "POLKADOT_BOUNDS", "PolkadotCursor", "PolkadotEra", "PolkadotExtrinsic", "PolkadotLanded", "PolkadotNetwork", "PolkadotQuery", "PolkadotReader", "PolkadotRef", "PolkadotStatus", "PolkadotUnsigned", "ProfileCall", "decodeProfileCall", "encodeProfileCall", "exactPolkadotRemark", "extrinsicHash", "polkadotRecover", "polkadotStatus", "splitSigned", "ss58Decode"]
+        "./polkadot": ["CALL", "LCP_ASSETS_REMARK", "POLKADOT_BOUNDS", "PolkadotCursor", "PolkadotEra", "PolkadotExtrinsic", "PolkadotLanded", "PolkadotNetwork", "PolkadotQuery", "PolkadotReader", "PolkadotRef", "PolkadotStatus", "PolkadotUnsigned", "ProfileCall", "decodeProfileCall", "encodeProfileCall", "exactPolkadotRemark", "extrinsicHash", "polkadotRecover", "polkadotStatus", "splitSigned", "ss58Decode", "PolkadotMark", "PolkadotPayload", "PolkadotPaymentPayload", "X402Payment", "X402Read"]
       },
       "use": "Any Polkadot Asset Hub buyer's client signs one extrinsic that transfers the asset and remarks H, any server checks it, and anyone reads it back.",
       "fixedBy": "x402-exact-polkadot-lcp-assets-remark.md."
@@ -483,7 +483,7 @@
     {
       "unit": "Starknet",
       "exports": {
-        "./starknet": ["ANY_CALLER", "EVENT_TRANSFER", "FELT_P", "Felt", "Field", "MASK_250", "OutsideExecutionTypedData", "SELECTOR_EXECUTE_FROM_OUTSIDE_V2", "SELECTOR_TRANSFER", "STARKNET_MAX_CANDIDATES", "STARKNET_MAX_CONTINUATION", "STARKNET_MAX_EVENTS", "STARKNET_MAX_EVENT_PAGES", "STARKNET_MAX_SIGNATURE_FELTS", "STARKNET_MAX_TRACE_DEPTH", "STARKNET_MAX_TRACE_INVOCATIONS", "STARKNET_MAX_TYPED_DATA_BYTES", "StarknetCall", "StarknetCursor", "StarknetEmittedEvent", "StarknetEvent", "StarknetEventPage", "StarknetEventQuery", "StarknetHead", "StarknetInvocation", "StarknetMark", "StarknetNetwork", "StarknetOutsideExecution", "StarknetReader", "StarknetReceipt", "StarknetRef", "StarknetStatus", "StarknetUnsigned", "chainIdFelt", "exactStarknet", "outsideExecution", "snNonce", "starknetIdDigest", "starknetLandedNonce", "starknetRecover", "starknetStatus"]
+        "./starknet": ["ANY_CALLER", "EVENT_TRANSFER", "FELT_P", "Felt", "Field", "MASK_250", "OutsideExecutionTypedData", "SELECTOR_EXECUTE_FROM_OUTSIDE_V2", "SELECTOR_TRANSFER", "STARKNET_MAX_CANDIDATES", "STARKNET_MAX_CONTINUATION", "STARKNET_MAX_EVENTS", "STARKNET_MAX_EVENT_PAGES", "STARKNET_MAX_SIGNATURE_FELTS", "STARKNET_MAX_TRACE_DEPTH", "STARKNET_MAX_TRACE_INVOCATIONS", "STARKNET_MAX_TYPED_DATA_BYTES", "StarknetCall", "StarknetCursor", "StarknetEmittedEvent", "StarknetEvent", "StarknetEventPage", "StarknetEventQuery", "StarknetHead", "StarknetInvocation", "StarknetMark", "StarknetNetwork", "StarknetOutsideExecution", "StarknetReader", "StarknetReceipt", "StarknetRef", "StarknetStatus", "StarknetUnsigned", "chainIdFelt", "exactStarknet", "outsideExecution", "snNonce", "starknetIdDigest", "starknetLandedNonce", "starknetRecover", "starknetStatus", "StarknetPayment", "StarknetRefRead", "X402Payment", "X402Read"]
       },
       "use": "Any Starknet buyer's client builds the SNIP-12 outside execution whose nonce carries H's low 250 bits, or its agreement value's, any server checks it, anyone reads the payment back through a node by the payer's nonce and the asset's Transfer events, with lcp's bounds on that read, and a holder of the ATR confirms H's low bits against the landed nonce.",
       "fixedBy": "x402-exact-starknet.md; SNIP-9; SNIP-12."
@@ -491,7 +491,7 @@
     {
       "unit": "Sui",
       "exports": {
-        "./sui": ["MAX_SUI_BALANCE_CHANGES", "MAX_SUI_COIN_TYPE_LENGTH", "MAX_SUI_SEARCH_PAGES", "SuiBalanceChange", "SuiExecuted", "SuiFound", "SuiNetwork", "SuiPage", "SuiPayload", "SuiReader", "SuiRef", "SuiSearchRange", "SuiStatus", "SuiTransfer", "SuiTx", "SuiUnsigned", "decodeSuiTx", "exactSui", "suiCarrier", "suiRecover", "suiStatus"]
+        "./sui": ["MAX_SUI_BALANCE_CHANGES", "MAX_SUI_COIN_TYPE_LENGTH", "MAX_SUI_SEARCH_PAGES", "SuiBalanceChange", "SuiExecuted", "SuiFound", "SuiNetwork", "SuiPage", "SuiPayload", "SuiReader", "SuiRef", "SuiSearchRange", "SuiStatus", "SuiTransfer", "SuiTx", "SuiUnsigned", "decodeSuiTx", "exactSui", "suiCarrier", "suiRecover", "suiStatus", "SuiMark", "SuiPaymentPayload", "X402Read"]
       },
       "use": "Any Sui buyer's client builds a programmable transaction holding H as an unused input, any server checks it, and anyone reads H back from the executed transaction, what it moved and to whom, and searches the payer's transactions for H through a GraphQL endpoint.",
       "fixedBy": "x402-exact-sui.md."
@@ -499,7 +499,7 @@
     {
       "unit": "Tron",
       "exports": {
-        "./tron": ["LCP_TRC20_MEMO", "TRANSFER_SELECTOR", "TRANSFER_TOPIC", "TRIGGER_SMART_CONTRACT", "TRIGGER_URL", "TRON_BOUNDS", "TronBlock", "TronCursor", "TronInfo", "TronLevel", "TronNetwork", "TronNow", "TronQuery", "TronRaw", "TronReader", "TronRef", "TronStatus", "TronUnsigned", "decodeTronTx", "encodeTronRaw", "exactTronMemo", "tronAddress", "tronCarrier", "tronRecover", "tronRequest", "tronStatus"]
+        "./tron": ["LCP_TRC20_MEMO", "TRANSFER_SELECTOR", "TRANSFER_TOPIC", "TRIGGER_SMART_CONTRACT", "TRIGGER_URL", "TRON_BOUNDS", "TronBlock", "TronCursor", "TronInfo", "TronLevel", "TronNetwork", "TronNow", "TronQuery", "TronRaw", "TronReader", "TronRef", "TronStatus", "TronUnsigned", "decodeTronTx", "encodeTronRaw", "exactTronMemo", "tronAddress", "tronCarrier", "tronRecover", "tronRequest", "tronStatus", "TronChoice", "TronMark", "TronPayment", "X402Payment", "X402Read"]
       },
       "use": "Any Tron buyer's client signs a TRC-20 transfer whose memo is H, any server checks it, and anyone reads it back by its transaction id and searches a node's blocks for H.",
       "fixedBy": "x402-exact-tron-lcp-trc20-memo.md."
@@ -507,7 +507,7 @@
     {
       "unit": "TON",
       "exports": {
-        "./tvm": ["MAX_TVM_ATTACHED_ABOVE_FORWARD", "MAX_TVM_BOC_BYTES", "MAX_TVM_CELLS", "MAX_TVM_DEPTH", "MAX_TVM_LISTED", "OP", "TVM_EXPIRY_MARGIN", "TonAccountState", "TonAccountStatus", "TonCell", "TonIndexed", "TonLink", "TonOutMsg", "TonTx", "TonWalletState", "TvmNetwork", "TvmReader", "TvmRef", "TvmSearch", "TvmStatus", "TvmUnsigned", "W5R1_CODE_HASH", "exactTvm", "lcpComment", "tvmCarrier", "tvmRecover", "tvmRequest", "tvmStatus"]
+        "./tvm": ["MAX_TVM_ATTACHED_ABOVE_FORWARD", "MAX_TVM_BOC_BYTES", "MAX_TVM_CELLS", "MAX_TVM_DEPTH", "MAX_TVM_LISTED", "OP", "TVM_EXPIRY_MARGIN", "TonAccountState", "TonAccountStatus", "TonCell", "TonIndexed", "TonLink", "TonOutMsg", "TonTx", "TonWalletState", "TvmNetwork", "TvmReader", "TvmRef", "TvmSearch", "TvmStatus", "TvmUnsigned", "W5R1_CODE_HASH", "exactTvm", "lcpComment", "tvmCarrier", "tvmRecover", "tvmRequest", "tvmStatus", "TvmChoice", "TvmMark", "TvmPayment", "X402Payment", "X402Read"]
       },
       "use": "Any TON buyer's client sends a Jetton transfer whose forward payload is H as a text comment, any server validates it before it is relayed, and anyone reads it back, reads whether it settled, and reads its lapse from the wallet's state and its linked list of transactions.",
       "fixedBy": "x402's exact scheme on TON; TEP-74; x402-exact-tvm.md."
@@ -521,7 +521,7 @@
           "APPROVE_WITH_SIGNATURE_SELECTOR", "IS_APPROVED_SELECTOR", "IS_REVOKED_SELECTOR", "SPEND_PERMISSION_APPROVED_TOPIC",
           "SPEND_PERMISSION_REVOKED_TOPIC", "SpendPermission", "OfferedPermission", "SpendPermissionRoute", "SpendPermissionRef",
           "SpendPermissionError", "SpendPermissionOffer", "SpendPermissionBody", "SpendPermissionOfferInput", "SpendPermissionReturn",
-          "SpendPermissionChoice", "SpendPermissionTypedData", "SpendPermissionUnsigned"
+          "SpendPermissionChoice", "SpendPermissionTypedData", "SpendPermissionUnsigned", "EvmMark", "EvmQuery", "EvmReadRefBase"
         ]
       },
       "use": "A seller's server offers a Spend Permission whose salt is the ATR hash in a 402 response, a buyer's client checks the offer against the ATR it fetched and gets the typed data its account signs or the approve call it makes, and the seller's server decodes the returned permission, makes its checks before it submits or serves, and reads the SpendPermissionManager's approval by the permission's hash, with Coinbase's SpendPermissionManager and its own stock clients and no other software.",

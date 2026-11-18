@@ -29,6 +29,7 @@ import { x402Payee } from "./internal/payee.js";
 import type { Entry } from "./internal/registry.js";
 import type { Act } from "./internal/read.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
+export type { X402Read } from "./internal/x402.js";
 
 const ID = "x402/upto/xrpl" as const;
 /** Drops of XRP: a positive integer in canonical decimal below 10^17, the most an XRP amount holds. */

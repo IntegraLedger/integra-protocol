@@ -1,6 +1,7 @@
 /**
  * The x402 payment a TON payer presents, and the CRC32C a bag of cells carries. `../tvm.ts` returns the payment from
- * `complete`, and the root names it among the payments `Presented` covers; no entry point exports either name.
+ * `complete`, and the root names it among the payments `Presented` covers; both export the payment's name, and no entry
+ * point exports the CRC32C's.
  */
 import type { X402Payment } from "./x402.js";
 

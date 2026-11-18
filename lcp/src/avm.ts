@@ -30,6 +30,8 @@ export { AVM_SEARCH_PAGES } from "./internal/avm-read.js";
 import type { Entry } from "./internal/registry.js";
 import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
+export type { AvmPaymentPayload } from "./internal/avm.js";
+export type { X402Payment, X402Read } from "./internal/x402.js";
 
 const sdk: typeof Algosdk | null = await import("algosdk").then(
   (m) => m,

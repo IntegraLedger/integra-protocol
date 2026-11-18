@@ -70,7 +70,7 @@ export interface ReadData {
 }
 
 /** A decimal digit other than zero. */
-type NonZeroDigit = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9";
+export type NonZeroDigit = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9";
 
 /** Present where the pairing's payment can itself be an agreement. */
 export interface AgreementData {
@@ -88,7 +88,7 @@ export interface AgreementData {
 }
 
 /** The members of a pairing's data that do not turn on its coverage. */
-interface DataMembers {
+export interface DataMembers {
   readonly carrier: Carrier;
   /** Who writes H: lcp's client, or a stock client and release, with the member it copies H from. */
   readonly source: string;
@@ -290,14 +290,14 @@ export interface Codec<Presented, Ref, Reader, F extends Family> {
 }
 
 /** True where `T` is `never`. */
-type IsNever<T> = [T] extends [never] ? true : false;
+export type IsNever<T> = [T] extends [never] ? true : false;
 
 /**
  * The members a codec may not have where its entry takes `never`: none where `Presented` is `never`, since `bound`
  * takes what is presented; no member that takes the reader where `Reader` is; none that gives or takes the reference
  * where `Ref` is.
  */
-type NoneWhereNever<Presented, Ref, Reader> = (IsNever<Presented> extends true ? never : unknown) &
+export type NoneWhereNever<Presented, Ref, Reader> = (IsNever<Presented> extends true ? never : unknown) &
   (IsNever<Reader> extends true
     ? { readonly status?: undefined; readonly recover?: undefined; readonly fetchPresented?: undefined }
     : unknown) &

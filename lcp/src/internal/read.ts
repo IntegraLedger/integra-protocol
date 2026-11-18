@@ -72,7 +72,7 @@ export interface StatusQuery<Ref, Position, Mark, Cursor = Position> {
   readonly others?: readonly OtherAct<Ref>[];
 }
 
-interface Named<Position, Mark> {
+export interface Named<Position, Mark> {
   readonly transaction?: string;
   readonly position?: Position;
   /** The mark the read reached for the transaction it names. */
@@ -93,7 +93,7 @@ export type StatusAnswer<Position, Mark, Cursor = Position> =
        * message the payer signed equals the one presented, `no` where one differs, `unshown` where the read could not
        * read every member. It decides no answer.
        */
-      readonly presented: Presented;
+      readonly presented: "yes" | "no" | "unshown";
       readonly foreign: readonly ForeignItem<Position>[];
     })
   | (Named<Position, Mark> & {
@@ -151,7 +151,7 @@ export interface Seen<Position, Mark> {
    * `yes`; `no` where a member differs; `unshown` where the read could not read every member. A `settled` answer
    * states the act's.
    */
-  readonly presented: Presented;
+  readonly presented: "yes" | "no" | "unshown";
   readonly moved?: readonly Moved[];
   readonly signer?: string;
   readonly authority?: string;

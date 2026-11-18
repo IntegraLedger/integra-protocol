@@ -11,3 +11,4 @@
 export { exactStellarPrecondition } from "./x402-exact-stellar-precondition.js";
 export type { StellarPreconditionChoice } from "./x402-exact-stellar-precondition.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
+export type { X402Read } from "./internal/x402.js";

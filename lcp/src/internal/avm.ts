@@ -1,8 +1,8 @@
 /**
  * The x402 payment an Algorand payer presents, the reader of one payment entry, and the reader of an address's text.
  * `../avm.ts` returns the payment from `complete`, reads each entry with `readEntry` and each address with
- * `isAlgorandAddress`; the root names the payment among the payments `Presented` covers. No entry point exports any
- * name here.
+ * `isAlgorandAddress`; the root names the payment among the payments `Presented` covers. Both export the payment's
+ * name, and no entry point exports any other name here.
  *
  * On the x402 path an entry has two readers. The x402 reference facilitator (`@x402/avm`) decodes it with
  * algokit-utils' `decodeSignedTransaction`, then submits the entry's own bytes, which algod decodes with go-codec and

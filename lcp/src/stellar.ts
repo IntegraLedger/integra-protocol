@@ -29,6 +29,7 @@ export type {
   StellarMark,
   StellarNetwork,
   StellarPayment,
+  StellarPaymentPayload,
   StellarQuery,
   StellarReader,
   StellarRef,

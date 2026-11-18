@@ -117,7 +117,7 @@ export {
   read,
   tie,
 } from "./mpp-challenge.js";
-export type { MppChallenge, MppChoice, MppCredential, MppMethod, MppPairingId } from "./mpp-challenge.js";
+export type { MppChallenge, MppChoice, MppCredential, MppIntent, MppMethod, MppPairingId } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 export { LEGAL_CONTEXT_METADATA_KEY, chargeCard, chargeStripe, subscriptionStripe } from "./mpp-card-stripe.js";
 export type { StripeSubscriptionReceipt } from "./mpp-card-stripe.js";
@@ -137,13 +137,16 @@ export { chargeNearIntents } from "./mpp-nearintents.js";
 export { toX402, type TokenDomain, type X402Mapped } from "./mpp-x402.js";
 export type { EvmLogEntry, EvmSearchReader } from "./internal/evm-search.js";
 export type {
+  ChargeRefBase,
   EvmMoved,
   MppEip3009Ref,
   MppEvmReader,
   MppEvmStatus,
   MppNamedRef,
   MppPermit2Ref,
+  MppSessionOpeningRef,
   Presentation,
+  Signed,
 } from "./internal/mpp-evm-read.js";
 export { chargeSolana, chargeSolanaUnsponsored } from "./mpp-solana.js";
 export { subscriptionSolana } from "./mpp-subscription-solana.js";
@@ -195,9 +198,21 @@ export type {
   SessionStatus,
   SessionUnsigned,
   SessionWithin,
+  SessionWithinUnsigned,
   VoucherTypedData,
   WithinSigningRequest,
 } from "./mpp-session.js";
+export type { HederaNetwork, StockQuery } from "./hedera-session.js";
+export type { EvmMark, EvmQuery } from "./internal/evm.js";
+export type { HederaVoucherTypedData } from "./internal/hedera-session.js";
+export type { Seen } from "./internal/read.js";
+export type { ChannelKind } from "./internal/registry.js";
+export type { XrplQuery } from "./internal/xrpl.js";
+export type { HederaQuery } from "./mpp-lcp-hedera.js";
+export type { NearIntentsRef } from "./mpp-nearintents.js";
+export type { HederaSessionUnsigned, RailSessionChoice, XrplSessionUnsigned } from "./mpp-session-rails.js";
+export type { SolanaChargeChoice, SolanaChargeUnsigned } from "./mpp-solana.js";
+export type { GatewayChargeChoice, StacksChargeChoice } from "./mpp-usdc.js";
 /**
  * What the buyer's signer is handed for each EVM charge, and how its answer completes the credential. Each
  * `complete` measures the credential it would return as `bound` measures every credential, its echoed challenge

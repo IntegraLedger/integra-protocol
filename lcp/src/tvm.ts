@@ -62,6 +62,8 @@ import {
 import { bigintOrder, isQuery, ledgerOf, UNPARSEABLE } from "./internal/read-ledger.js";
 import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
+export type { TvmPayment } from "./internal/tvm.js";
+export type { X402Payment, X402Read } from "./internal/x402.js";
 
 /** The optional peer, loaded once; undefined when it is not installed, and every function needing it refuses. */
 const peer: typeof TonCore | undefined = await import("@ton/core").then(
@@ -236,10 +238,10 @@ export interface TvmSearch {
  */
 export type TvmStatus = StatusAnswer<bigint, TvmMark, TvmSearch>;
 
-type TvmMark = "confirmed" | "finalized";
+export type TvmMark = "confirmed" | "finalized";
 const MARKS: readonly TvmMark[] = ["confirmed", "finalized"];
 
-interface TvmChoice {
+export interface TvmChoice {
   required: PaymentRequired;
   accepted: PaymentRequirements;
   /** The payer's W5 wallet, raw, on a workchain TON's configuration holds (-1 or 0; else `x402/option-malformed`). */

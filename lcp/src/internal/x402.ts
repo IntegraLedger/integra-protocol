@@ -3,7 +3,9 @@
  * pairing's `advertise`), the step that holds a presented `accepted` to a filter (each x402 pairing's `bound`), the
  * legal context's extension key and schema, the bounds on a document's options and on a link, an option's match by
  * RFC 8785 form, and the other types and helpers each pairing's own module is built from.
- * `../x402.ts` re-exports `LEGAL_CONTEXT` and `LEGAL_CONTEXT_SCHEMA`; no entry point exports the other names.
+ * `../x402.ts` re-exports `LEGAL_CONTEXT` and `LEGAL_CONTEXT_SCHEMA`. `X402Read`, what a pairing's `read` gives,
+ * `X402Advertise`, its `advertise`, and `X402Payment`, the payment a pairing's own payload type fills in, are exported
+ * by each entry point whose declarations name them; no entry point exports the other names.
  */
 import {
   canonicalJson,

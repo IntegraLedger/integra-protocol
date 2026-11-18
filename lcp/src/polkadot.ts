@@ -29,6 +29,8 @@ import { decide, type Facts, type Moved, type RecoverInput, type Seen, type Stat
 import { bigintOrder, isQuery, ledgerOf, UNPARSEABLE } from "./internal/read-ledger.js";
 import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
+export type { PolkadotPayload, PolkadotPaymentPayload } from "./internal/polkadot.js";
+export type { X402Payment, X402Read } from "./internal/x402.js";
 
 export type PolkadotNetwork = "polkadot:68d56f15f85d3136970ec16946040bc1" | "polkadot:67f9723393ef76214df0118c34bbbd3d";
 const POLKADOT_NETWORKS: readonly PolkadotNetwork[] = Object.freeze([
@@ -140,7 +142,7 @@ export type PolkadotLanded = PolkadotRef & { h: AtrHash; transaction?: string };
  */
 export type PolkadotStatus = StatusAnswer<bigint, PolkadotMark, PolkadotCursor>;
 
-type PolkadotMark = "head" | "finalized";
+export type PolkadotMark = "head" | "finalized";
 const MARKS: readonly PolkadotMark[] = ["head", "finalized"];
 
 /** The call the payer's signer wraps in an extrinsic, and how that extrinsic completes the payment. */

@@ -69,6 +69,8 @@ export type { Broadcaster } from "./internal/broadcaster.js";
 const borsh: typeof Borsh | undefined = await import("borsh").catch(() => undefined);
 
 export { NEP461_DELEGATE } from "./internal/near.js";
+export type { NearPayment } from "./internal/near.js";
+export type { X402Payment, X402Read } from "./internal/x402.js";
 
 /** x402's NEAR network identifiers. */
 export type NearNetwork = "near:mainnet" | "near:testnet";
@@ -197,7 +199,7 @@ const MARKS: readonly NearMark[] = ["optimistic", "final"];
  */
 export type NearQuery = StatusQuery<NearRef, bigint, NearMark, bigint>;
 
-type Answer = StatusAnswer<bigint, NearMark, bigint>;
+export type Answer = StatusAnswer<bigint, NearMark, bigint>;
 
 /**
  * The answer of `status`, as the profile `read-status` gives it, positions being block heights. A `settled` answer
@@ -207,7 +209,7 @@ type Answer = StatusAnswer<bigint, NearMark, bigint>;
  */
 export type NearStatus = Answer;
 
-interface NearChoice {
+export interface NearChoice {
   required: PaymentRequired;
   accepted: PaymentRequirements;
   /** The payer's account: a NEAR account id, as nearcore reads a delegate action's sender, or `x402/option-malformed`. */

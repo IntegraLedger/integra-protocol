@@ -62,7 +62,7 @@ import { withinChecks, type SessionWithin, type SessionWithinUnsigned, type With
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
 import type { LcpPattern } from "./x402.js";
 import { XRPL as XRPL_DATA } from "./internal/data/xrpl.js";
-import type { Entry } from "./internal/registry.js";
+import type { ChannelKind, Entry } from "./internal/registry.js";
 import type { Act } from "./internal/read.js";
 
 const XRPL = "mpp/session/xrpl" as const;
@@ -73,7 +73,6 @@ const HEX = /^(?:[0-9A-Fa-f]{2})+$/;
 const U64 = 1n << 64n;
 const UTF8 = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true });
 
-type Kind = "open" | "within" | "close";
 
 /**
  * A Solana channel opening with its message's address lookup tables under `FETCHED`. No pairing in this package writes
@@ -138,7 +137,7 @@ export type RailSessionUnsigned = HederaSessionUnsigned | SolanaSessionUnsigned 
 
 // ── Shared.
 
-function actionKind(presented: MppCredential, within: readonly string[]): Kind | Refusal {
+function actionKind(presented: MppCredential, within: readonly string[]): ChannelKind | Refusal {
   if (!isObject(presented) || !isObject(presented.payload)) return refusal("mpp/credential-malformed");
   const a = presented.payload["action"];
   if (a === "open") return "open";
@@ -219,7 +218,7 @@ async function notBoundWithin(_presented: MppCredential): Promise<AtrHash | Refu
 
 // ── mpp/session/xrpl.
 
-function xrplKind(presented: MppCredential): Kind | Refusal {
+function xrplKind(presented: MppCredential): ChannelKind | Refusal {
   return actionKind(presented, ["voucher"]);
 }
 
@@ -478,7 +477,7 @@ async function xrplBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWit
  * stock server would submit with no memo, is refused `mpp/session-action` before anything is submitted, as any other
  * action is: the stock client opens its channel itself, out of band, and presents vouchers that name it.
  */
-function stockKind(presented: MppCredential): Kind | Refusal {
+function stockKind(presented: MppCredential): ChannelKind | Refusal {
   const k = actionKind(presented, ["voucher"]);
   return k === "open" ? refusal("mpp/session-action") : k;
 }

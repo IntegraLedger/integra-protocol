@@ -54,6 +54,8 @@ import {
 import { bigintOrder, isQuery, ledgerOf, UNPARSEABLE } from "./internal/read-ledger.js";
 import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
+export type { StarknetPayment } from "./internal/starknet.js";
+export type { X402Payment, X402Read } from "./internal/x402.js";
 
 export type StarknetNetwork = "starknet:SN_MAIN" | "starknet:SN_SEPOLIA";
 /** Lowercase `0x` hex with no leading zero digit, below FELT_P. */
@@ -407,7 +409,7 @@ function word(v: bigint): Uint8Array {
 // ── The read.
 
 /** The reference `status` reads with: the read keys, H, which the caller adds, and the transaction a settler named. */
-type StarknetRefRead = StarknetRef & { h: AtrHash; transaction?: Felt };
+export type StarknetRefRead = StarknetRef & { h: AtrHash; transaction?: Felt };
 
 /** An outside execution as numbers: its `Caller`, `Nonce`, window and calls. */
 interface Execution {

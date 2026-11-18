@@ -55,6 +55,8 @@ export {
 } from "./internal/spend-permissions.js";
 export type { OfferedPermission, SpendPermission, SpendPermissionRef, SpendPermissionRoute } from "./internal/spend-permissions.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
+export type { EvmReadRefBase } from "./internal/evm-x402.js";
+export type { EvmMark, EvmQuery } from "./internal/evm.js";
 
 const ID = "spend-permissions/eip155" as const;
 

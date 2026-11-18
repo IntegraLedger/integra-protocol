@@ -42,6 +42,8 @@ import { decide, type Facts, type Moved, type RecoverInput, type Seen, type Stat
 import { bigintOrder, isQuery, ledgerOf, UNPARSEABLE } from "./internal/read-ledger.js";
 import type { MppChallenge } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
+export type { TronPayment } from "./internal/tron.js";
+export type { X402Payment, X402Read } from "./internal/x402.js";
 
 /** CAIP-2 with the decimal chain id: tron:728126428 mainnet, tron:3448148188 Nile, tron:2494104990 Shasta. */
 export type TronNetwork = `tron:${number}`;
@@ -171,10 +173,10 @@ export type TronStatus = StatusAnswer<bigint, TronMark, TronCursor>;
 /** The query `tronStatus` takes: the profile `read-status`'s, its search position a `TronCursor`. */
 export type TronQuery = StatusQuery<TronRef, bigint, TronMark, TronCursor>;
 
-type TronMark = "head" | "solidified";
+export type TronMark = "head" | "solidified";
 const MARKS: readonly TronMark[] = ["head", "solidified"];
 
-interface TronChoice {
+export interface TronChoice {
   required: PaymentRequired;
   accepted: PaymentRequirements;
   /** The payer's base58check address. */

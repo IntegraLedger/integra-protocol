@@ -53,6 +53,7 @@ import { carriedEip3009Read, type Eip3009Ref } from "./internal/evm-x402-reads.j
 import { CARD } from "./internal/data/card.js";
 import type { Entry, NoRead } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
+export type { EvmMark, EvmQuery } from "./internal/evm.js";
 
 export const CHECKOUT_VCT = "mandate.checkout.1";
 /** The `vct` of AP2's closed Payment Mandate. */
