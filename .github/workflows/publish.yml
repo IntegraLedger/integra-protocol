@@ -113,7 +113,7 @@ jobs:
         env:
           INTEGRA_DATABASE_URL: postgres://postgres@127.0.0.1:${{ job.services.postgres.ports[5432] }}/postgres
         run: pnpm -r --if-present run test
-      - name: Pack; the settler only once lcp's version in this commit is on npm, with its peer dependency on lcp naming that version
+      - name: Pack; the settler only once lcp's version in this commit is on npm as this commit's lcp packs, with its peer dependency on lcp naming that version
         run: |
           set -eu
           mkdir pack
@@ -130,6 +130,17 @@ jobs:
               exit 1
             fi
             echo "the packed settler's peer dependency on @integraledger/lcp is ~$lcp, and @integraledger/lcp $lcp is on npm"
+            # npm serves one lcp under that version: the settler is packed only where it is this commit's lcp, which packs
+            # byte-identically from the same tree, so a settler never ships against an older lcp of the same version.
+            mkdir lcp-pack
+            (cd lcp && pnpm pack --pack-destination ../lcp-pack)
+            here="sha512-$(openssl dgst -sha512 -binary lcp-pack/*.tgz | base64 -w0)"
+            there=$(npm view "@integraledger/lcp@$lcp" dist.integrity)
+            if [ "$here" != "$there" ]; then
+              echo "npm's @integraledger/lcp $lcp is $there, and this commit's lcp packs to $here: release this commit's lcp under a new version first"
+              exit 1
+            fi
+            echo "this commit's lcp packs to npm's @integraledger/lcp $lcp, $here"
           fi
           for f in pack/*.tgz; do
             echo "$f sha512-$(openssl dgst -sha512 -binary "$f" | base64 -w0)"

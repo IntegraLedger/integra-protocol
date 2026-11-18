@@ -278,7 +278,10 @@ version, made in this order:
 
 The settler's peer dependency on `@integraledger/lcp` is packed as `~<version>`, the version `lcp/package.json` names
 in the settler's commit, so lcp is released first: the `pack` job packs the settler only once that version of lcp is on
-npm, and fails unless the packed peer dependency names it.
+npm, and fails unless the packed peer dependency names it. It also packs that commit's lcp and fails unless the pack's
+integrity is npm's for that version, `npm view @integraledger/lcp@<version> dist.integrity` (lcp packs byte-identically
+from the same tree), so the settler never ships against another lcp published under the same version: an lcp change
+after a release is released under a new version before the settler that needs it.
 
 To link the documentation of a release, link the tag's copy:
 `https://github.com/IntegraLedger/integra-protocol/tree/v<version>/docs`.
