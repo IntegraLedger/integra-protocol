@@ -414,9 +414,10 @@ describe("the fee budget", () => {
       { credential: CREDENTIAL, feeBudgets: [{ network: NETWORK, amount: 100n, periodSeconds: 3600 }] },
     );
     const s = (b: unknown) => settle(b, CREDENTIAL);
-    // The first submission's fee, as the chain shows it, reaches the budget.
+    // The first submission's fee, as the chain shows it, reaches the budget. The core counts it once the answer is
+    // stored, on its own bounds, so the count can land after the answer: it is awaited, as the deadline case awaits it.
     expect(await s(body())).toEqual(success());
-    expect((await db.pool.query("SELECT fee::text, included FROM fee")).rows).toEqual([{ fee: "100", included: true }]);
+    await vi.waitFor(async () => expect(await fees()).toEqual([{ fee: "100", included: true }]), { timeout: 3_000 });
     const spent = { success: false, errorReason: "fee_budget_spent", transaction: "", network: NETWORK };
     // A fresh submission: refused, with nothing sent; its claim stays, not final.
     const fresh = payment({ nonce: nonce("H2") });
