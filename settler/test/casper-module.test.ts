@@ -231,6 +231,7 @@ async function start(casper: readonly CasperConfig[], feeBudgets?: readonly FeeB
 async function rows(): Promise<unknown[][]> {
   if (store === undefined) throw new Error("no settler is serving");
   const pool = new pg.Pool({ connectionString: store });
+  pool.on("error", () => {});
   try {
     const r = await pool.query<{ key: string; final: boolean; transaction: string | null }>("SELECT key, final, transaction FROM instrument ORDER BY claimed, key");
     return r.rows.map((row) => [row.key, row.final, row.transaction]);
