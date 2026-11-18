@@ -7,9 +7,8 @@ This pairing is the codec of Cloudflare's Pay Per Crawl as x402 describes it: an
 3. Cloudflare verifies the agent's HTTP message signature over the request, with the key the agent registered with it, and bills that identity; lcp reads no such signature and no ledger.
 4. Because Cloudflare writes the 402, a resource server behind it cannot put its own `extensions.legalContext` in it, so a payment through it carries no H the seller issued; lcp keeps the codec for a resource server that writes the option itself.
 
-**What a record proves**
-
-5. That an account signed an agreement transaction carrying this ATR's hash before this payment was taken, which shows neither that the account is the payer nor what the agreement moved; and that the request whose payment echoed this ATR's hash in the legal-context extension was billed by Cloudflare off chain, which no public ledger shows. This does not show that the amount, asset or timing match the ATR's content.
+5. **What a record proves**, as the pairing's `data.proves` states it:
+    - `x402/batch-settlement/cloudflare`: The request whose payment echoed this ATR's hash in the legalContext entry of x402's extensions was signed with an HTTP message signature key registered with Cloudflare, which Cloudflare verifies, billing that key's registered identity off chain. The echoed hash only locates the sale: the pairing follows no agreement, and no public ledger records the payment. This does not show that amount, asset or timing match the ATR's content.
 
 **The read kit**
 

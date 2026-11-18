@@ -12,6 +12,9 @@ rename exports and pairing ids and change a function's arguments or answers; a p
 - `mpp/session/hedera/stock` and `mpp/session/xrpl/stock` have `pattern.onChain` `false`, from `true`: the stock client
   opens the session itself and nothing it signs carries H, and `onChain` states that the settlement carries H or a value
   derived from it.
+- `x402/batch-settlement/cloudflare`'s `data.proves`, and its profile's rule 5, no longer say that an agreement was
+  signed before the payment: the pairing has no `agreementOn` and follows no agreement. The profile's rule 5 now quotes
+  `data.proves` whole.
 
 ## [0.6.0] - 2026-11-18
 

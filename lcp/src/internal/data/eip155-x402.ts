@@ -262,12 +262,10 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     broadcasts: "payee",
     confirmed: "no",
     proves:
-      "Before this payment was taken, an account signed an agreement transaction carrying this ATR's hash on " +
-      "<network>, recorded in <transaction>; this shows neither that the account is the payer nor what the agreement " +
-      "moved. The request whose payment echoed this ATR's hash in the legalContext entry of x402's extensions was " +
-      "signed with an HTTP message signature key registered with Cloudflare, which Cloudflare verifies, billing that " +
-      "key's registered identity off chain; no public ledger records the payment. This does not show that amount, " +
-      "asset or timing match the ATR's content.",
+      "The request whose payment echoed this ATR's hash in the legalContext entry of x402's extensions was signed " +
+      "with an HTTP message signature key registered with Cloudflare, which Cloudflare verifies, billing that key's " +
+      "registered identity off chain. The echoed hash only locates the sale: the pairing follows no agreement, and no " +
+      "public ledger records the payment. This does not show that amount, asset or timing match the ATR's content.",
   },
   "x402/exact/eip155/erc7710-salt": {
     coverage: "full",

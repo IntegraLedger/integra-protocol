@@ -2,6 +2,7 @@
 // shares with the EIP-3009 profile, and the agreement's value each states is the one its vector file holds.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import { batchCloudflare } from "../src/x402-batch-settlement.js";
 import { rowsOf } from "./rows.js";
 
 const read = (name: string) => readFileSync(new URL(`../profiles/${name}`, import.meta.url), "utf8");
@@ -41,6 +42,16 @@ describe("the EVM x402 profiles", () => {
     const text = read(file);
     expect(lines(text)[0]!.startsWith(`**LCP profile \`${id}\`: `)).toBe(true);
     expect(text).toContain("coverage `none`");
+  });
+
+  // `agreementOn` names the agreement a charge at coverage `none` can follow (docs/concepts/binding.md); the Cloudflare
+  // pairing names none, so neither its record nor its profile says that an agreement was signed before the payment.
+  it("x402-batch-settlement-cloudflare.md: the pairing follows no agreement, and the profile quotes its record whole", () => {
+    expect(batchCloudflare.data.agreementOn).toBeUndefined();
+    expect(batchCloudflare.data.proves).not.toContain("signed an agreement");
+    const text = read("x402-batch-settlement-cloudflare.md");
+    expect(text).not.toContain("signed an agreement");
+    expect(lines(text)).toContain(`    - \`x402/batch-settlement/cloudflare\`: ${batchCloudflare.data.proves}`);
   });
 
   it("the eip3009 and Permit2 profiles state the agreement's value their vector files hold", () => {
