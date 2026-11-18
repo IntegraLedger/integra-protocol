@@ -49,7 +49,7 @@ This pairing is x402's `exact` scheme on Bitcoin Lightning (`lnbtc`), with the `
 
 **The registry entry**
 
-19. Coverage `none`, `link` `none`, `nonce` `single-use` (the payment hash), `broadcasts` `payer`, `agreementOn` `any`, no `agreement` (no Lightning act is signed by the buyer, so this pairing is never an agreement), no `read`. `confirmed` is `no`: no recorded run or published sample shows a payment of this form.
+19. Coverage `none`, `link` `none`, `nonce` `single-use` (the payment hash), `broadcasts` `payer`, `agreementOn` `any`, no `agreement` (no Lightning act is signed by the buyer, so this pairing is never an agreement), no `read`. `confirmed` is `yes`: a recorded run on Bitcoin testnet3 showed a payment of this form.
 
 **The read**
 

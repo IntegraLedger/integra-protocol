@@ -1,10 +1,12 @@
 **LCP profile `x402/exact/casper`: the ATR hash as the CEP-3009 nonce.**
 
+**Status.** This profile defines the pairing `x402/exact/casper`. Its `confirmed` is `no`: nothing outside lcp has yet shown a payment of this form with H as its nonce, and the stock `@x402/casper` client draws a random nonce, so it cannot pay this pairing. No token on Casper mainnet (`casper:casper`) has yet been shown to execute `transfer_with_authorization`.
+
 **The form**
 
 1. The `PaymentRequired` carries `extensions.legalContext.info` = `{"type":"sha256","value":H,"legalContextUrl":L}`, H the SHA-256 of the ATR's exact bytes as `0x` lowercase hex and L an `https` URL serving them.
 2. The client fetches L, hashes the bytes received, and compares with H as 32 bytes. On a mismatch it does not sign.
-3. On a match it signs CEP-3009 `TransferWithAuthorization` (`from`, `to`, `value`, `validAfter`, `validBefore`, `nonce`, under the domain `name`, `version`, `chain_name`, `contract_package_hash`) with `to` the option's `payTo`, `value` its `amount`, `validAfter` 0, `validBefore` the client's clock plus the option's `maxTimeoutSeconds` in Unix seconds, `chain_name` the option's `network`, `contract_package_hash` its `asset`, and `nonce` = H as 64 hex digits; and it echoes `extensions` unchanged. A presented nonce is read with or without `0x`, and is 32 bytes.
+3. On a match it signs CEP-3009 `TransferWithAuthorization` (`from`, `to`, `value`, `validAfter`, `validBefore`, `nonce`, under the domain `name`, `version`, `chain_name`, `contract_package_hash`) with `to` the option's `payTo`, `value` its `amount`, `validAfter` 0, `validBefore` the client's clock plus the option's `maxTimeoutSeconds` in Unix seconds, `chain_name` the option's `network` (`casper:` and the chainspec name, CAIP-2: `casper:casper` on mainnet, `casper:casper-test` on testnet), `contract_package_hash` its `asset`, and `nonce` = H as 64 hex digits; and it echoes `extensions` unchanged. A presented nonce is read with or without `0x`, and is 32 bytes.
 4. **The agreement's own nonce.** Where the payment is offered as an agreement, the signed `nonce` is the agreement's value in place of H: SHA-256 over the 16 ASCII bytes `lcp-agreement-v1` followed by H's 32 bytes (the profile `read-status`, rule 1), 64 hex digits; its vectors are `core-vectors.json`'s `agreementValue` and this pairing's. The token keys a used nonce by `(from, nonce)`, so an agreement and a payment under one H from one account never take one item. `build` writes it for the act `agreement`; `bound`, given the act `agreement` and H, refuses a payment whose nonce is not that value, `casper/nonce-not-bound`, and gives H where it is; `reference`, given the same, names that value as the signed nonce.
 5. The server refuses a payment whose nonce is not an H it issued for this request, or that H's agreement value where it offered the option as an agreement, and has not seen claimed. It refuses a payment whose `from` is the option's `payTo`: an act the payee signed is no payment and no agreement.
 6. A settler relays the authorization to the token's `transfer_with_authorization` and pays the gas; nothing in the authorization names it. It checks the authorization by x402's Casper scheme before anything is sent, and the server checks H first (rule 5).
@@ -40,7 +42,7 @@
 
 **The agreement**
 
-24. The payment can be an agreement: one authorization the payer signs, paying the payee directly a fixed amount, with no hold, landing whole on one network. The floor is 0 by the token; x402's published Casper settler refuses a zero amount, so a settler that registers it declares no zero, and the agreement is then 1 base unit. The settler pays the fee, always. The transaction must succeed (rule 7). An authorization the payee signed is no agreement.
+24. The pairing's data holds an `agreement`, so the payment can be an agreement, while its `confirmed` is `no` (*Status*): one authorization the payer signs, paying the payee directly a fixed amount, with no hold, landing whole on one network. The floor is 0 by the token; x402's published Casper settler refuses a zero amount, so a settler that registers it declares no zero, and the agreement is then 1 base unit. The settler pays the fee, always. The transaction must succeed (rule 7). An authorization the payee signed is no agreement.
 
 **What a record proves**
 

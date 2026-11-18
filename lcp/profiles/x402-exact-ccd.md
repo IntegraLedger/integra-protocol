@@ -1,8 +1,10 @@
 **LCP profile `x402/exact/ccd`: the ATR hash as the transfer memo.**
 
+**Status.** This profile defines the pairing `x402/exact/ccd`. Its `confirmed` is `no`: nothing outside lcp has yet shown a payment of this form with H as its memo. Its `nonce` is `unshown` and its data holds no `agreement` (rule 7). Until a recorded run shows the form, it is not offered.
+
 1. The `PaymentRequired` carries `extensions.legalContext.info` = `{"type":"sha256","value":H,"legalContextUrl":L}`, H the SHA-256 of the ATR's exact bytes as `0x` lowercase hex and L an `https` URL serving them.
 2. The client fetches L, hashes the bytes received, and compares with H as 32 bytes. On a mismatch it does not sign.
-3. On a match its one transfer carries a memo: for CCD (the option's `asset` read without regard to case, as the stock facilitator reads it), `SimpleTransferWithMemo` whose memo is the CBOR text string `lcp:sha256:` + H; for a PLT, a `transfer` operation whose `memo` is CBOR tag 24 around those bytes. The transaction is the sponsored form, version 1: the header the sender signs names the sender, its sequence number, the `expiry` and the sponsor, the option's `extra.feePayer`. The client sets the expiry as the stock client does, the time it signs plus `maxTimeoutSeconds` less 5 seconds. The option's `amount` may be `"0"`: the scheme asks strict equality and sets no floor.
+3. On a match its one transfer carries a memo: for CCD (the option's `asset` read without regard to case, as the stock facilitator reads it), `SimpleTransferWithMemo` whose memo is the CBOR text string `lcp:sha256:` + H; for a PLT, a `transfer` operation whose `memo` is CBOR tag 24 around those bytes. The transaction is the sponsored form, version 1: the header the sender signs names the sender, its sequence number, the `expiry` and the sponsor, the option's `extra.feePayer`. The client sets the expiry as the stock client does, the time it signs plus `maxTimeoutSeconds` less 5 seconds. The option's `network` is `ccd:` and the first 32 lowercase hex digits of the genesis block hash (CAIP-2). Its `amount` may be `"0"`: the scheme asks strict equality and sets no floor.
 4. The server refuses a payment whose memo does not carry an H it issued for this request and has not seen claimed.
 5. The memo is in the finalized `AccountTransfer` or `TokenTransfer` event of the settlement transaction.
 
