@@ -115,7 +115,8 @@ yet), and the codes of a transaction that is not final yet: `casper/not-executed
 the finalized height), `stacks/not-final` (a failure in a block fewer than two tenures below the tip),
 `starknet/not-final` (a revert, or no single matching transfer, in a pre-confirmed block), `svm/not-final` (a
 transaction the read at Solana's `confirmed` holds and the read at `finalized` does not, with an error or none) and
-`tempo/not-final` (as `evm/not-final`, on Tempo). The [refusal code reference](../reference/refusals.md) marks each of them.
+`tempo/not-final` (as `evm/not-final`, on Tempo). The [refusal code reference](../reference/refusals.md) marks each
+of them.
 
 Every other code is false. A verdict, such as `evm/reverted`, gives the same answer on every read. A call you must change
 before it can succeed gives the same answer too, so it is not a read to repeat: `<rail>/wrong-reader` (a reader for

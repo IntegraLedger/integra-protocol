@@ -13,9 +13,13 @@ the payer signs carries H, whatever the buyer signs, and the agreement payment, 
 the record can then match it to the payment, and on most rails to the settlement on chain.
 
 This repository holds [`@integraledger/lcp`](./lcp), which implements that binding for x402, MPP, ACP, UCP, AP2, ACK,
-Visa TAP, Mastercard Verifiable Intent and A2A, across EVM chains, Solana, the XRP Ledger, Hedera, Algorand, Aptos,
-Cardano, Casper, Concordium, NEAR, Polkadot Asset Hub, Starknet, Sui, Tron, TON, Tempo, Stacks and Lightning; its
-[documentation](./docs); and the shared test vectors that fix the rules byte for byte across languages.
+Spend Permissions and card networks (Visa TAP, Visa Intelligent Commerce, Mastercard Agent Pay, Mastercard Verifiable
+Intent and a plain card checkout), and carries H in A2A task metadata, across EVM chains, Solana, Stellar, the XRP
+Ledger, Hedera, Algorand, Aptos, Cardano, Casper, Concordium, NEAR, Polkadot Asset Hub, Starknet, Sui, Tron, TON,
+Tempo, Stacks and Lightning; the settler, [`@integraledger/profile-facilitator`](./settler), an x402 facilitator for
+the x402 pairings it settles; its [documentation](./docs); and the shared test vectors that fix the rules byte for
+byte across languages. Each pairing's `data.confirmed` says whether anything outside this package has yet shown its
+form; the [pairings reference](./docs/reference/pairings.md) names the confirmed ones.
 
 ## How the pieces fit
 
@@ -45,13 +49,20 @@ of `@integraledger/lcp` they pin.
 | Package | Install | What it is |
 |---|---|---|
 | [`@integraledger/lcp`](./lcp) | `npm install @integraledger/lcp` | Assemble and hash an ATR, and bind H into x402, MPP, agentic checkout and card payments on every supported rail. |
-| [`@integraledger/profile-facilitator`](./settler) | `npm install @integraledger/profile-facilitator @integraledger/lcp` | The settler: an x402 facilitator (`/supported`, `/verify`, `/settle`) for the x402 pairings `@integraledger/lcp` implements. |
+| [`@integraledger/profile-facilitator`](./settler) | `npm install @integraledger/profile-facilitator @integraledger/lcp@~0.6.0` | The settler: an x402 facilitator (`/supported`, `/verify`, `/settle`) for the x402 pairings `@integraledger/lcp` implements, except the two another party settles (`x402/exact/eip155/gateway-batched` and `x402/batch-settlement/cloudflare`). |
+
+While the version is 0.x, a minor release may remove or rename exports and pairing ids, so pin each package with a
+tilde range. [Upgrading](./docs/upgrading.md) gives the ranges and each change from 0.5.x to 0.6.0, and the
+[changelog](./lcp/CHANGELOG.md) records each release of `@integraledger/lcp`.
 
 ## Quickstart
 
 ```sh
 npm install @integraledger/lcp
 ```
+
+The package needs Node.js `>=24.22.1` and ESM; the toolchain under [Building and testing](#building-and-testing) is for
+working on this repository.
 
 ```ts
 import { assemble, hash, hashEquals, isRefusal, newAtrId } from "@integraledger/lcp";
@@ -75,7 +86,7 @@ The [package README](./lcp/README.md) walks one x402 payment through both sides,
 
 ## Documentation
 
-- [Getting started](./docs/getting-started.md)
+- [Getting started](./docs/getting-started.md) and [Upgrading](./docs/upgrading.md)
 - Concepts: [the ATR](./docs/concepts/atr.md), [the ATR hash](./docs/concepts/atr-hash.md),
   [binding](./docs/concepts/binding.md), [pairings](./docs/concepts/pairings.md),
   [the buyer gate](./docs/concepts/buyer-gate.md), [refusals](./docs/concepts/refusals.md),
@@ -133,6 +144,7 @@ To build the documentation site:
 ```sh
 cd website
 pnpm install --frozen-lockfile
+pnpm run browser # fetch the pinned Chrome Headless Shell the Mermaid diagrams are drawn in (Linux x64 only)
 pnpm run api     # regenerate docs/reference/api/ from lcp/src; CI checks the committed pages match
 pnpm build
 ```
@@ -142,10 +154,11 @@ pnpm build
 Contributions are welcome. Read [CONTRIBUTING.md](./CONTRIBUTING.md) first. Every commit is signed off under the
 [Developer Certificate of Origin](https://developercertificate.org): add `Signed-off-by: Your Name <you@example.com>`
 with `git commit -s`. On every push to `main`, CI reads every commit in `main`'s history except one merge commit, exempt
-by its sha, and fails if a commit has no `Signed-off-by:` trailer or its message matches the agent pattern in
-`.github/workflows/ci.yml`. The TypeScript samples in every README and
-in `docs/` not marked `no-check` are compiled and run in CI after each push to `main`, so a change that alters behaviour
-updates the samples that show it.
+by its sha, and fails if a commit has no `Signed-off-by:` trailer, or if its message contains, anywhere and in any
+case, one of the strings its commit-message step lists, `co-authored-by` and `generated with` among them; name a human
+co-author in the pull request's description instead. The check runs after the merge, so check every message before
+you open a pull request. The TypeScript samples in every README and in `docs/` not marked `no-check` are compiled and
+run in CI after each push to `main`, so a change that alters behaviour updates the samples that show it.
 
 This project follows the [Contributor Covenant](./CODE_OF_CONDUCT.md).
 

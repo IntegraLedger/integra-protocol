@@ -207,7 +207,8 @@ exchange, and a facilitator settles the payment. Every name below is exported by
 4. **The seller reads the settlement.** `exactEip3009.reference(payment, option)` gives the read keys. With the
    transaction the settle answer names added as `transaction`, `exactEip3009.status(ref, reader, { act: "payment",
    finality: "finalized" })` reads it through an `EvmReader` you write over your own RPC endpoint, and answers
-   `settled` once the transaction is this payment's at that mark ([reading settlement](./guides/rails.md#reading-settlement)).
+   `settled` once the transaction is this payment's at that mark
+   ([reading settlement](./guides/rails.md#reading-settlement)).
 
 To run this on Base Sepolia with the option above, the payer's key needs test USDC at the option's `asset`, the
 facilitator's key needs Base Sepolia ETH for the gas of the transaction it submits, and the reader needs an RPC
