@@ -582,11 +582,10 @@ export function railSessionResume(c: MppChallenge): { network: string; channel: 
 // ── The records.
 
 
-function sessionPattern(p: Pick<LcpPattern, "pattern" | "zeroPartyRecoverable">, profile: string): LcpPattern {
+function sessionPattern(p: Pick<LcpPattern, "pattern" | "zeroPartyRecoverable" | "onChain">, profile: string): LcpPattern {
   return deepFreeze({
     ...p,
     profile,
-    onChain: true,
     forwardIndexable: false,
   });
 }
@@ -605,6 +604,7 @@ export const sessionXrpl = Object.freeze({
     {
       pattern: "native-field",
       zeroPartyRecoverable: true,
+      onChain: true,
     },
     "mpp/session/hedera-solana-xrpl",
   ),
@@ -653,7 +653,10 @@ export const sessionXrpl = Object.freeze({
 export const sessionXrplStock = Object.freeze({
   id: XRPL_STOCK,
   data: XRPL_DATA[XRPL_STOCK],
-  pattern: sessionPattern({ pattern: "opaque-challenge", zeroPartyRecoverable: false }, "mpp/session/hedera-solana-xrpl"),
+  pattern: sessionPattern(
+    { pattern: "opaque-challenge", zeroPartyRecoverable: false, onChain: false },
+    "mpp/session/hedera-solana-xrpl",
+  ),
   claims: false as const,
   unplaced,
   tie,

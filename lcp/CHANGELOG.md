@@ -5,6 +5,14 @@ Every release of `@integraledger/lcp`, newest first. The format follows
 rename exports and pairing ids and change a function's arguments or answers; a patch release does not.
 [Upgrading](../docs/upgrading.md) gives each change a caller of 0.5.x makes for 0.6.0.
 
+## [Unreleased]
+
+### Fixed
+
+- `mpp/session/hedera/stock` and `mpp/session/xrpl/stock` have `pattern.onChain` `false`, from `true`: the stock client
+  opens the session itself and nothing it signs carries H, and `onChain` states that the settlement carries H or a value
+  derived from it.
+
 ## [0.6.0] - 2026-11-18
 
 ### Added

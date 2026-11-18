@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BINDINGS } from "../src/index.js";
 import { XRPL_NETWORKS } from "../src/mpp-rail-checks.js";
-import { sessionXrpl } from "../src/mpp.js";
+import { sessionHederaStock, sessionXrpl, sessionXrplStock } from "../src/mpp.js";
 import type { LcpPattern } from "../src/x402.js";
 
 // Each session profile's published text, whole: its heading names its id, then its rules, each as published.
@@ -56,6 +56,13 @@ describe("the session profiles", () => {
     const ids = Object.values(XRPL_NETWORKS).map((n) => Number(n.slice("xrpl:".length)));
     expect(ids).toEqual([0, 1, 2]);
     expect(ids.every((id) => Number.isSafeInteger(id) && id <= 1024)).toBe(true);
+  });
+
+  // docs/concepts/binding.md defines `onChain` as "the settlement carries H or a value derived from it", and the
+  // profile says of both stock sessions that "nothing the payer signs carries H": the stock client opens the session
+  // itself, with a random `salt` on Hedera and with no memo on the XRP Ledger.
+  it("mpp/session/hedera-solana-xrpl: the Hedera and XRPL stock sessions, whose openings carry no H, are not bound on chain", () => {
+    for (const b of [sessionHederaStock, sessionXrplStock]) expect(b.pattern.onChain, b.id).toBe(false);
   });
 });
 

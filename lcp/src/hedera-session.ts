@@ -480,7 +480,7 @@ export const sessionHederaStock = Object.freeze({
     pattern: "opaque-challenge",
     zeroPartyRecoverable: false,
     profile: "mpp/session/hedera-solana-xrpl",
-    onChain: true,
+    onChain: false,
     forwardIndexable: false,
   } satisfies LcpPattern),
   claims: false as const,
