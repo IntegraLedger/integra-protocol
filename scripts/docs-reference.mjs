@@ -114,10 +114,12 @@ function pairingsPage() {
     `\`BINDINGS\` holds ${rows.length} pairings on ${surfaces.length} surfaces (${surfaces.map(code).join(", ")}). ` +
     "Each row gives the pairing's id, the export that implements it, its data's `coverage` (`full` where the " +
     "payer's own signed act on a public ledger binds H, `none` where no public payer-signed act carries it) and " +
-    "`confirmed`, and these members of its `pattern` record: the binding pattern, where it names one, whether the " +
-    "binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and the LCP " +
-    "profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each member, " +
-    "`forwardIndexable` included.\n\n";
+    "`confirmed` (`yes` where something outside this package has shown the form as its profile defines it, `no` " +
+    "where nothing has yet), and these members of its `pattern` record: the binding pattern, where it names one, " +
+    "whether the binding is visible on a public ledger, whether the hash can be recovered from the chain alone, and " +
+    "the LCP profile that defines the binding, where one does. [Binding](../concepts/binding.md) explains each " +
+    "member, `forwardIndexable` included. Each pairing's id links to [where H rides in it and what its binding " +
+    "proves](#what-each-binding-proves).\n\n";
   for (const surface of surfaces) {
     s += `## ${code(surface)}\n\n`;
     s += "| Pairing | Export | Coverage | Confirmed | Pattern | Binding on chain | Recoverable from chain | Profile |\n";
@@ -131,16 +133,33 @@ function pairingsPage() {
       const profile = p.profile === undefined ? "" : profileLink(p.profile);
       const name = p.pattern === undefined ? "" : code(p.pattern);
       const pattern = b.pattern === undefined ? ["", "", ""] : [name, yes(p.onChain), yes(p.zeroPartyRecoverable)];
-      s += `| ${code(b.id)} | ${where.join("<br>")} | ${code(b.data.coverage)} | ${b.data.confirmed} | ${pattern.join(" | ")} | ${profile} |\n`;
+      s += `| [${code(b.id)}](#${anchor(b.id)}) | ${where.join("<br>")} | ${code(b.data.coverage)} | ${b.data.confirmed} | ${pattern.join(" | ")} | ${profile} |\n`;
     }
     s += "\n";
   }
   s += "## What each binding proves\n\n";
   s +=
-    "Each pairing's `data.proves` states what a payment through it shows, and what it does not. The text is the " +
-    "package's own, quoted as it is. Where it names `<network>` and `<transaction>`, the record fills them in.\n\n";
-  for (const b of rows) s += `### ${code(b.id)}\n\n${b.data.proves}\n\n`;
+    "For each pairing, where H rides, from its data's `carrier`: `signed`, the field of what the payer signs that " +
+    "carries H, and `member`, the member of the option (x402) or of the challenge's request (MPP) the seller " +
+    "writes H into; then its data's `proves`, what a payment through it shows and what it does not. The text is " +
+    "the package's own, quoted as it is. Where it names `<network>` and `<transaction>`, the record fills them " +
+    "in.\n\n";
+  for (const b of rows) {
+    s += `### ${code(b.id)}\n\n**Where H rides:** ${carrierText(b)}\n\n**What it proves:** ${b.data.proves}\n\n`;
+  }
   return s;
+}
+
+/** A pairing's `data.carrier` as sentences: the signed field that carries H, then the member the seller writes into. */
+function carrierText(b) {
+  const { signed, member } = b.data.carrier;
+  const sentence = (t) => (/[.!?]$/.test(t) ? t : `${t}.`);
+  let t = signed === null ? "nothing the payer signs carries H." : sentence(signed);
+  if (member !== undefined) {
+    const where = b.id.startsWith("x402/") ? "the option's" : "the challenge request's";
+    t += ` The seller writes H into ${where} ${code(member.join("."))}.`;
+  }
+  return t;
 }
 
 function profileLink(profile) {
