@@ -172,12 +172,11 @@ await settler.close();
 
 ## Run it as a service
 
-The package exports one function that starts the server; it has no command-line entry. It reads no environment
-variable and no file: every setting is a member of the configuration, and the variable names in these samples are the
-samples' own. A service is a short module that reads its configuration, makes the signer objects its keyed modules
-take, and stops cleanly on a signal. This one
-serves x402's `exact` scheme on Base Sepolia through the `evm` module, whose key, the seller's gas key, sends each
-transaction and pays its gas:
+The package exports one function that starts the server; it has no command-line entry. It reads no environment variable
+and no file: every setting is a member of the configuration, and the variable names in these samples are the samples'
+own. A service is a short module that reads its configuration, makes the signer objects its keyed modules take, and
+stops cleanly on a signal. This one serves x402's `exact` scheme on Base Sepolia through the `evm` module, whose key,
+the seller's gas key, sends each transaction and pays its gas:
 
 ```ts no-check title="settler.ts"
 import { serveProfileFacilitator } from "@integraledger/profile-facilitator";
@@ -446,21 +445,21 @@ Each member, one entry per network unless it says otherwise:
   `settlementTransaction`, a `PaymentChannelClaim` its `payTo` key signed for the actual charge with `tfClose`, which the
   module checks and submits unchanged; `/verify` refuses a payload that already carries one, as the scheme requires.
 
-The `cardano`, `concordium` and `ton` modules take an lcp reader in `reader` rather than a node's URL, and lcp ships
-the interface but no implementation: `CardanoReader` of `@integraledger/lcp/cardano`, `CcdReader` of
+The `cardano`, `concordium` and `ton` modules take an lcp reader in `reader` rather than a node's URL, and lcp ships the
+interface but no implementation: `CardanoReader` of `@integraledger/lcp/cardano`, `CcdReader` of
 `@integraledger/lcp/ccd` and `TvmReader` of `@integraledger/lcp/tvm`, each documented member by member on its API page
 ([`cardano`](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/reference/api/cardano.md),
 [`ccd`](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/reference/api/ccd.md),
 [`tvm`](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/reference/api/tvm.md)), with the calls each
 makes in
 [Rails: reading settlement](https://github.com/IntegraLedger/integra-protocol/blob/main/docs/guides/rails.md#reading-settlement).
-Write one over your own indexer or node. Its `network` is the module's `network`: the module refuses to start where
-they differ. Each call is read-only and bounded by your own timeout and byte limit, and
-rejects on any failure, with lcp's `ReaderError` (`@integraledger/lcp/evm`) where the kind is known: a rejection reads
-as `unreadable`, never as absence. An item the endpoint does not hold is answered only in the form the interface names
-for it (`null`, or `{ notFound: true, ... }` with the point the interface asks for), and only where the endpoint
-answered in the form it documents for a missing item. lcp makes no other call, so the endpoint, its credentials, its
-timeouts and its retries are yours.
+Write one over your own indexer or node. Its `network` is the module's `network`: the module refuses to start where they
+differ. Each call is read-only and bounded by your own timeout and byte limit, and rejects on any failure, with lcp's
+`ReaderError` (`@integraledger/lcp/evm`) where the kind is known: a rejection reads as `unreadable`, never as absence.
+An item the endpoint does not hold is answered only in the form the interface names for it (`null`, or
+`{ notFound: true, ... }` with the point the interface asks for), and only where the endpoint answered in the form it
+documents for a missing item. lcp makes no other call, so the endpoint, its credentials, its timeouts and its retries
+are yours.
 
 ### What stops the start
 
