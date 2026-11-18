@@ -6,12 +6,14 @@ description: Read the challenge, compare the served bytes with H, build and sign
 # Buyer
 
 The buyer's side of the binding is the [buyer gate](../concepts/buyer-gate.md): compare, then build and sign, then
-finish. This guide writes it with this package's pieces on x402 with `x402/exact/eip155/eip3009`. For a ready-made
-gate with the fetch bounds and declines already in place, use the buyer packages in
-[`integra-agentic-terms`](https://github.com/IntegraLedger/integra-agentic-terms).
+finish. This guide writes it with this package's pieces on x402 with `x402/exact/eip155/eip3009`; at the end you have
+a program that reads a seller's `402`, compares the served bytes with H, and signs a payment that carries it. For a
+ready-made gate with the fetch bounds and declines already in place, use the
+[buyer gate packages](https://agenticterms.integraledger.com).
 
 ## 1. Compare
 
+Read the challenge from the `402` answer's `PAYMENT-REQUIRED` header with `decodePaymentRequired(header)`. Then
 `read(doc)` gives H, the link, and the options the pairing can pay. Fetch the link with bounds, keep the bytes exactly
 as received, and compare their hash with H. On any failure, stop before anything is signed.
 
@@ -45,7 +47,7 @@ network is used.
 
 ```ts
 import { hash, hashEquals, isRefusal } from "@integraledger/lcp";
-import { exactEip3009, type PaymentRequired } from "@integraledger/lcp/x402";
+import { decodePaymentRequired, encodeHeader, exactEip3009, type PaymentRequired } from "@integraledger/lcp/x402";
 import type { TypedDataDefinition } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 
@@ -118,9 +120,13 @@ const challenge: PaymentRequired = {
   },
 };
 const sellerFetch: typeof fetch = async () => new Response(atrBytes);
+const paymentRequired = encodeHeader(challenge); // the 402's PAYMENT-REQUIRED header
+if (isRefusal(paymentRequired)) throw new Error(paymentRequired.code);
 
 // 1. Compare.
-const offer = exactEip3009.read(challenge);
+const doc = decodePaymentRequired(paymentRequired);
+if (isRefusal(doc)) throw new Error(`decline: ${doc.code}`);
+const offer = exactEip3009.read(doc);
 if (isRefusal(offer)) throw new Error(`decline: ${offer.code}`);
 const served = await fetchAtr(offer.link, sellerFetch);
 if (typeof served === "string") throw new Error(`decline: ${served}`);
@@ -131,7 +137,7 @@ console.log("compared:", offer.h === H);
 const payer = privateKeyToAccount(generatePrivateKey());
 const accepted = offer.offer.options[0]!;
 const unsigned = await exactEip3009.build(
-  { required: challenge, accepted, from: payer.address, now: Math.floor(Date.now() / 1000) },
+  { required: doc, accepted, from: payer.address, now: Math.floor(Date.now() / 1000) },
   offer.h,
 );
 if (isRefusal(unsigned)) throw new Error(`decline: ${unsigned.code}`);
@@ -143,6 +149,8 @@ const payment = unsigned.complete(signature);
 if (isRefusal(payment)) throw new Error(`decline: ${payment.code}`);
 const signed = await exactEip3009.bound(payment);
 if (typeof signed !== "string" || !hashEquals(signed, offer.h)) throw new Error("decline: signed-not-bound");
+const paymentSignature = encodeHeader(payment); // the retried request's PAYMENT-SIGNATURE header
+if (isRefusal(paymentSignature)) throw new Error(paymentSignature.code);
 console.log("finished: the payment carries H");
 ```
 
@@ -152,8 +160,8 @@ signing: TransferWithAuthorization with nonce H: true
 finished: the payment carries H
 ```
 
-Send `payment` to the seller in x402's `PAYMENT-SIGNATURE` header, as the x402 specification describes, and keep
-`served`: it is your copy of what you agreed to.
+Send `encodeHeader(payment)` to the seller as the retried request's `PAYMENT-SIGNATURE` header (`PAYMENT_SIGNATURE`;
+[The headers](./x402.md#the-headers)), and keep `served`: it is your copy of what you agreed to.
 
 ## Choosing among options
 
@@ -171,13 +179,22 @@ the agreement's `200` receipt names the same H. Where the agreement URL answers 
 payment for this ATR is settling: sign nothing, and call again later without approval. See
 [the agreement URL](../concepts/buyer-gate.md#the-agreement-url).
 
+Pay the agreement through a pairing whose `data.agreement` is present, one whose payment can itself be an agreement,
+and build it as one: `build(choice, h, "agreement")`. On a pairing whose single-use value is H itself, such as
+`x402/exact/eip155/eip3009`, the agreement then carries the agreement's own value, `agreementValue(h)`, where a payment
+carries H, so the agreement and the charge under one H never share a nonce. `bound(agreement, { act: "agreement", h })`
+reads H back from it.
+
 ## Returning after the agreement
 
 Where the sale's charge is offered only once its agreement is recorded, the buyer's agent repeats its request after it
-pays the agreement, with the sale's H in the `Legal-Context` request header (`legal-context-return.md`).
+pays the agreement, with the sale's H in the `Legal-Context` request header (profile
+[`legal-context-return`](../../lcp/profiles/legal-context-return.md)). Over MCP, the agent sends the same value in
+`params._meta` under `LEGAL_CONTEXT_META`, `com.integraledger.lcp/legal-context`, on each later tool call of the sale.
 `toLegalContextHeader(h, returnValue?)` writes it, an RFC 9651 Item whose token is H's LCP string, with the sale's
 32-byte return value as the parameter `rv` where the first response gave one; `fromLegalContextHeader(value)` reads it as
 RFC 9651 parses an Item, an `rv` given twice counting as the last and its base64 read with or without its padding.
+Send a return value only to the resource server that gave it, on the return and on every later request of the sale.
 `servesOf(option)` names the charge options an agreement option serves, each `x402/<i>` or `mpp/<i>`, the option at
 that index of the ATR's binding slot, so the buyer pays an agreement that serves the charge it means to pay.
 
