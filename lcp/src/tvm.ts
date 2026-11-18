@@ -2428,6 +2428,7 @@ function isUint32(n: unknown): n is number {
 
 const pattern: LcpPattern = deepFreeze({
   pattern: "native-field",
+  profile: "x402/exact/tvm",
   onChain: true,
   zeroPartyRecoverable: true,
   forwardIndexable: false,

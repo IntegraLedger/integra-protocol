@@ -622,6 +622,7 @@ function unplaced(option: PaymentRequirements): PaymentRequirements | Refusal {
 
 const pattern: LcpPattern = deepFreeze({
   pattern: "http-advisory",
+  profile: "x402/exact/aptos",
   onChain: false,
   zeroPartyRecoverable: false,
   forwardIndexable: false,

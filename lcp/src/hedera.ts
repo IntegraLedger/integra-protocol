@@ -1359,6 +1359,7 @@ export async function executorStatus(
 
 const executorPattern: LcpPattern = deepFreeze({
   pattern: "http-advisory",
+  profile: "x402/exact/hedera",
   onChain: false,
   zeroPartyRecoverable: false,
   forwardIndexable: false,

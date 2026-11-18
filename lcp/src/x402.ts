@@ -1687,6 +1687,7 @@ export const exactErc7710 = binding(
   ERC7710,
   record({
     pattern: "http-advisory",
+    profile: "x402/exact/eip155/erc7710",
     onChain: false,
     zeroPartyRecoverable: false,
     forwardIndexable: false,

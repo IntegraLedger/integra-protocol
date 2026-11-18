@@ -1813,6 +1813,7 @@ export const batchCloudflare = Object.freeze({
   data: EIP155_X402[CF_ID],
   pattern: Object.freeze({
     pattern: "protocol-extension",
+    profile: "x402/batch-settlement/cloudflare",
     onChain: false,
     zeroPartyRecoverable: false,
     forwardIndexable: false,
