@@ -38,8 +38,10 @@ export const LEGAL_CONTEXT_METADATA_KEY = "legal_context";
 
 type ConfirmOnly = "mpp/charge/card" | "mpp/charge/stripe" | "mpp/subscription/stripe";
 
+/** The card and Stripe charges' record; `mpp/subscription/stripe` names its own profile. */
 const pattern: LcpPattern = deepFreeze({
   pattern: "opaque-challenge",
+  profile: "mpp/charge",
   onChain: false,
   zeroPartyRecoverable: false,
   forwardIndexable: false,

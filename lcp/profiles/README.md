@@ -54,7 +54,7 @@ lists for every pairing.
 | [`x402/exact/eip155/gateway-batched`](x402-exact-eip155-gateway-batched.md) | `x402/exact/eip155/gateway-batched` |
 | [`x402/exact/eip155/permit2`](x402-exact-eip155-permit2.md) | `x402/exact/eip155/permit2` |
 | [`x402/exact/hedera`](x402-exact-hedera.md) | `x402/exact/hedera`, `x402/exact/hedera/transfer-executor` |
-| [`x402/exact/lnbtc/payment-hash`](x402-exact-lnbtc.md) | `x402/exact/lnbtc/payment-hash` |
+| [`x402/exact/lnbtc/payment-hash`](x402-exact-lnbtc-payment-hash.md) | `x402/exact/lnbtc/payment-hash` |
 | [`x402/exact/near/memo`](x402-exact-near-memo.md) | `x402/exact/near` |
 | [`x402/exact/polkadot/lcp-assets-remark`](x402-exact-polkadot-lcp-assets-remark.md) | `x402/exact/polkadot/lcp-assets-remark` |
 | [`x402/exact/solana`](x402-exact-solana.md) | `x402/exact/solana` |

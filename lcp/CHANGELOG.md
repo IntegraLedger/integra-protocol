@@ -15,6 +15,13 @@ rename exports and pairing ids and change a function's arguments or answers; a p
 - `x402/batch-settlement/cloudflare`'s `data.proves`, and its profile's rule 5, no longer say that an agreement was
   signed before the payment: the pairing has no `agreementOn` and follows no agreement. The profile's rule 5 now quotes
   `data.proves` whole.
+- Every pairing names its profile in `pattern.profile`: `mpp/charge` on `mpp/charge/evm/authorization`,
+  `mpp/charge/evm/permit2`, `mpp/charge/evm/transaction`, `mpp/charge/evm/hash`, `mpp/charge/usdc/evm`,
+  `mpp/charge/usdc/gateway`, `mpp/charge/card` and `mpp/charge/stripe`; `mpp/session/evm-tempo` on
+  `mpp/subscription/tempo`; and `x402/exact/lnbtc/payment-hash` on that pairing. The vector files of the eight MPP
+  charges and of `mpp/subscription/tempo` carry the same `profile` in their `pattern`.
+- The Lightning payment-hash profile is `profiles/x402-exact-lnbtc-payment-hash.md`, named by its id as every other
+  profile is, in place of `profiles/x402-exact-lnbtc.md`.
 
 ### Documentation
 

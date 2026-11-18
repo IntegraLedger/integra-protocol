@@ -61,6 +61,7 @@
  },
  "pattern": {
   "pattern": "id-reuse",
+  "profile": "mpp/charge",
   "claims": true,
   "onChain": true,
   "zeroPartyRecoverable": false,

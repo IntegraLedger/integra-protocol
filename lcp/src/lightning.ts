@@ -265,6 +265,7 @@ export const exactLnbtcPaymentHash = Object.freeze({
   data: LIGHTNING[LNBTC],
   pattern: deepFreeze({
     pattern: "native-field",
+    profile: "x402/exact/lnbtc/payment-hash",
     onChain: false,
     zeroPartyRecoverable: false,
     forwardIndexable: false,

@@ -58,6 +58,7 @@
  },
  "pattern": {
   "pattern": "opaque-challenge",
+  "profile": "mpp/charge",
   "claims": false,
   "onChain": false,
   "zeroPartyRecoverable": false,

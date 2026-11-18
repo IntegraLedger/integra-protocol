@@ -918,6 +918,7 @@ export const evmAuthorization = Object.freeze({
   data: EIP155_TEMPO_MPP[AUTHORIZATION],
   pattern: pattern({
     pattern: "id-reuse",
+    profile: "mpp/charge",
     onChain: true,
   }),
   claims: true as boolean,
@@ -956,6 +957,7 @@ export const evmPermit2 = Object.freeze({
   data: EIP155_TEMPO_MPP[PERMIT2_ID],
   pattern: pattern({
     pattern: "id-reuse",
+    profile: "mpp/charge",
     onChain: true,
   }),
   claims: true as boolean,
@@ -996,6 +998,7 @@ export const evmTransaction = Object.freeze({
   data: EIP155_TEMPO_MPP[TRANSACTION],
   pattern: pattern({
     pattern: "opaque-challenge",
+    profile: "mpp/charge",
     onChain: false,
   }),
   claims: false as boolean,
@@ -1035,6 +1038,7 @@ export const evmHash = Object.freeze({
   data: EIP155_TEMPO_MPP[HASH],
   pattern: pattern({
     pattern: "opaque-challenge",
+    profile: "mpp/charge",
     onChain: false,
   }),
   claims: false as boolean,

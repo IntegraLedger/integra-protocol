@@ -2596,6 +2596,7 @@ export const subscriptionTempo = Object.freeze({
   data: EIP155_TEMPO_MPP[SUBSCRIPTION],
   pattern: deepFreeze({
     pattern: "native-field",
+    profile: "mpp/session/evm-tempo",
     onChain: true,
     zeroPartyRecoverable: true,
     forwardIndexable: true,

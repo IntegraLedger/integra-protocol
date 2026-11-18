@@ -1,22 +1,21 @@
-// Every profile a registered pairing names is published: `profiles/` holds a file named by the profile id, its `/`
-// written as `-`, whose first line is headed by that id.
+// Every registered pairing names its profile, and every profile a pairing names is published: `profiles/` holds a
+// file named by the profile id, its `/` written as `-`, whose first line is headed by that id.
 import { existsSync, readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { BINDINGS } from "../src/index.js";
 import type { LcpPattern } from "../src/x402.js";
 import { rowsOf } from "./rows.js";
 
-const named = [
-  ...new Set(
-    rowsOf(BINDINGS.map((b) => ("pattern" in b ? (b.pattern as LcpPattern).profile : undefined)), "BINDINGS, each pairing's profile", {
-      keep: ["the profiles the pairings name", (p) => typeof p === "string"],
-      leave: ["the pairings that name no profile, or have no pattern record", (p) => p === undefined],
-    }) as string[],
-  ),
-].sort();
+const profiles = rowsOf(
+  BINDINGS.map((b) => ("pattern" in b ? (b.pattern as LcpPattern).profile : undefined)),
+  "BINDINGS, each pairing's profile",
+  { exact: BINDINGS.length },
+);
+const named = [...new Set(profiles.filter((p): p is string => typeof p === "string"))].sort();
 
 describe("the published profiles", () => {
-  it("the pairings name profiles", () => {
+  it("every pairing names a profile", () => {
+    expect(BINDINGS.filter((_, i) => typeof profiles[i] !== "string").map((b) => b.id)).toEqual([]);
     expect(named).toContain("mpp/charge/solana");
   });
 

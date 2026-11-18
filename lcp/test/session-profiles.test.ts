@@ -10,7 +10,7 @@ const PROFILES: readonly [profile: string, file: string, pairings: readonly stri
   [
     "mpp/session/evm-tempo",
     "mpp-session-evm-tempo.md",
-    ["mpp/session/evm", "mpp/session/tempo"],
+    ["mpp/session/evm", "mpp/session/tempo", "mpp/subscription/tempo"],
     [
       "**LCP profile `mpp/session/evm-tempo`: the ATR hash in an MPP session or subscription opening.**",
       "",

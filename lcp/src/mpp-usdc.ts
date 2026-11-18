@@ -358,6 +358,7 @@ export const chargeUsdcEvm = Object.freeze({
   data: EIP155_TEMPO_MPP[EVM],
   pattern: pattern({
     pattern: "id-reuse",
+    profile: "mpp/charge",
     onChain: true,
     zeroPartyRecoverable: false,
     forwardIndexable: false,
@@ -858,6 +859,7 @@ export const chargeUsdcGateway = Object.freeze({
   data: EIP155_TEMPO_MPP[GATEWAY],
   pattern: pattern({
     pattern: "id-reuse",
+    profile: "mpp/charge",
     onChain: true,
     zeroPartyRecoverable: false,
     forwardIndexable: false,

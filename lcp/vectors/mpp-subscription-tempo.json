@@ -169,6 +169,7 @@
  },
  "pattern": {
   "pattern": "native-field",
+  "profile": "mpp/session/evm-tempo",
   "claims": true,
   "onChain": true,
   "zeroPartyRecoverable": true,

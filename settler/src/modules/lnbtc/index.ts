@@ -1,6 +1,7 @@
 /**
  * The Lightning module: x402's `exact` scheme on the `lnbtc` networks, for lcp's pairing `x402/exact/lnbtc/payment-hash`,
- * written to x402's scheme text (`specs/schemes/exact/scheme_exact_lnbtc.md`) and lcp's profile `x402-exact-lnbtc.md`.
+ * written to x402's scheme text (`specs/schemes/exact/scheme_exact_lnbtc.md`) and lcp's profile
+ * `x402-exact-lnbtc-payment-hash.md`.
  * The buyer's node paid the invoice before the preimage reached the buyer, so settling moves nothing. The module makes
  * the scheme's whole validation through lcp's `validateExactLnbtc`, the export a resource server also runs before it
  * settles: the invoice's signature, its signer against `payTo`, its `h` against the request hash, its `p` against
