@@ -8,9 +8,9 @@ description: Assemble the ATR, advertise its hash, check the payment, and read t
 The **seller** is the party serving the resource. Its side of the binding has four steps: assemble the ATR for this
 request, advertise H in the challenge, read H back from the payment it receives, and read the settlement from the
 rail. This guide walks them on x402 with `x402/exact/eip155/eip3009`. Every pairing has the same
-[members](../concepts/pairings.md#the-members), except that eight have no `build`, because the payer's own client
-builds their payment ([On other surfaces](#on-other-surfaces) names them), so the shape is the same on every surface.
-At the end you have a program that runs the seller's whole side, and the exchanges an agreement-first sale adds.
+[members](../concepts/pairings.md#the-members), so the shape is the same on every surface; eight have no `build`,
+because the payer's own client builds their payment ([On other surfaces](#on-other-surfaces) names them). At the end
+you have a program that runs the seller's whole side, and the exchanges an agreement-first sale adds.
 
 ```mermaid
 sequenceDiagram

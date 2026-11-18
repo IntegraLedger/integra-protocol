@@ -44,7 +44,7 @@ checkout sale is agreement-first. The seller passes an [agreement URL](../concep
 answers `402` with an x402 challenge that advertises the same H and link
 ([the seller guide](./seller.md#the-agreement-url) gives the exchange). The buyer pays it first, as an agreement, with
 a payment that is itself a public proof of H, and completes the checkout only after the agreement's `200` receipt names
-the same H. Every sample below passes an agreement URL.
+the same H. Each pairing's sample below passes an agreement URL.
 
 ```ts
 import { agreementValue, hash, hashEquals, isRefusal } from "@integraledger/lcp";

@@ -162,9 +162,9 @@ returns what the buyer signs; on card and Stripe, where nothing the buyer signs 
 `mpp/no-signed-place`. Its `bound(credential)` reads H from the echoed challenge and, where the payer signs a value that
 carries it, checks that value; where nothing signed carries H, the card, Stripe and EVM `transaction` and `hash`
 pairings and the three stock sessions (`mpp/session/solana/stock`, `mpp/session/xrpl/stock` and
-`mpp/session/hedera/stock`) refuse `mpp/no-signed-place`. `reference` and
-`status` read the settlement where the method lands on a chain. In push mode, where the buyer broadcasts and presents
-only the transaction's hash or signature, `fetchPresented(credential, reader)` reads the landed transaction first, and
+`mpp/session/hedera/stock`) refuse `mpp/no-signed-place`. `reference` and `status` read the settlement where the method
+lands on a chain. In push mode, where the buyer broadcasts and presents only the transaction's hash or signature,
+`fetchPresented(credential, reader)` reads the landed transaction first, and
 refuses one that failed: `svm/err` on Solana, which it gives only once a read at `finalized` holds the transaction with
 its error (`svm/not-final` when the error is at `confirmed` and that read does not hold the transaction yet), and
 `xrpl/not-success` on the XRP Ledger, which it reads only once the transaction is in a validated ledger
