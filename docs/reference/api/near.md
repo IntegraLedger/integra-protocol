@@ -30,7 +30,7 @@ block it is in; the key, written as the RPC writes one; the key's nonce after it
 (`access_key_deletion`); and, where the reader can name them, the transaction that carried it and that
 transaction's signer. The change's `cause` names a transaction (`transaction_processing`) or a receipt
 (`receipt_processing`), which for a delegate action is the receipt the relayer's transaction made; the reader names
-the transaction from it where it can, which no run has shown yet (the profile `x402-exact-near-memo`).
+the transaction from it where it can, as a run on `near:testnet` showed (the profile `x402-exact-near-memo`, rule 9).
 
 #### Properties
 
@@ -146,8 +146,9 @@ key, written as the RPC writes one: the key's nonce, or null where the account h
 > **txStatus**(`txHash`, `sender?`): `Promise`\<[`NearOutcome`](#nearoutcome) \| `null`\>
 
 `EXPERIMENTAL_tx_status` with `wait_until` "NONE", for the transaction's hash and its signer's account where the
-read knows it (the RPC's `sender_account_id`); null: unknown. A hash named without its signer is read as the
-reader can, which no run has shown yet (the profile `x402-exact-near-memo`).
+read knows it (the RPC's `sender_account_id`); null: unknown. The RPC refuses a hash named without its signer,
+so a reader resolves the signer itself, as a seller's reader can from the accounts that relayed its payments (the
+profile `x402-exact-near-memo`, rule 9).
 
 ###### Parameters
 
