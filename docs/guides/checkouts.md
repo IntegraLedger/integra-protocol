@@ -8,28 +8,26 @@ description: The ATR hash on ACP, UCP, AP2 and ACK checkouts, on card networks, 
 Not every agent pays through a `402` challenge. Many buy through a checkout: the seller opens a checkout or a payment
 request, the buyer's agent completes it, and a payment service provider, a card network or a credential provider
 moves the money. This package places H in each of these checkouts in the field its protocol provides, delivers it in
-A2A task metadata, and says plainly where the buyer signs nothing.
+A2A task metadata, and says plainly where the buyer signs nothing. This page is for a seller or a buyer on one of these
+checkouts: it gives where H rides in each, the agreement every checkout sale makes first, and a program for each
+protocol.
 
 The members are the ones [every pairing has](../concepts/pairings.md#the-members). What differs is the document the
 seller advertises into and what the buyer presents:
 
-| Protocol | Entry point | Pairings | Where H rides | Buyer signs H |
-|---|---|---|---|---|
-| ACP | `@integraledger/lcp/acp` | `acp/checkout/delegated`, `acp/checkout/undelegated` | The checkout session's `id`, and the delegate-payment allowance's `checkout_session_id` where the handler requires one. | no |
-| UCP | `@integraledger/lcp/ucp` | `ucp/checkout/ap2-mandate`, `ucp/checkout/agent-signed`, `ucp/checkout/unsigned`, `ucp/booking/ap2-mandate`, `ucp/booking/unsigned` | A `legal_context` entry in the checkout's `links[]`, before the business signs the checkout; on `ucp/checkout/agent-signed` also the `legal_context` member of the platform's signed request that completes it. | with an AP2 mandate, or in the platform's signed request |
-| AP2 | `@integraledger/lcp/ap2` | `ap2/checkout-mandate`, `ap2/checkout-mandate/x402` | The `legalContext` member of the merchant-signed `checkout_jwt`, which the buyer's Checkout Mandate commits to; on the x402 route the payment's nonce carries the payment mandate chain, not H. | yes |
-| ACK | `@integraledger/lcp/ack` | `ack/payment-request` | The `id` of the seller-signed Payment Request, as H's LCP string. | no |
-| Card networks | `@integraledger/lcp/card` | `card/visa-tap`, `card/mastercard-agent-pay`, `card/visa-vic`, `card/mastercard-vi/immediate`, `card/mastercard-vi/autonomous`, `card/seller-reference` | The nonce or the checkout path the agent's message signature covers, the transaction reference of a Visa Intelligent Commerce credential request, the `checkout_jwt` a Verifiable Intent mandate signs, or the seller's processor reference. | Visa TAP, Agent Pay and Verifiable Intent |
-| A2A | `@integraledger/lcp/a2a` | none | The Task's `metadata`, under the extension's URI. Delivery only. | no |
+| Protocol | Entry point | Pairings | Where H rides | Buyer signs H | Confirmed |
+|---|---|---|---|---|---|
+| ACP | `@integraledger/lcp/acp` | `acp/checkout/delegated`, `acp/checkout/undelegated` | The checkout session's `id`, and the delegate-payment allowance's `checkout_session_id` where the handler requires one. | no | no |
+| UCP | `@integraledger/lcp/ucp` | `ucp/checkout/ap2-mandate`, `ucp/checkout/agent-signed`, `ucp/checkout/unsigned`, `ucp/booking/ap2-mandate`, `ucp/booking/unsigned` | A `legal_context` entry in the checkout's `links[]`, before the business signs the checkout; on `ucp/checkout/agent-signed` also the `legal_context` member of the platform's signed request that completes it. | with an AP2 mandate, or in the platform's signed request | no |
+| AP2 | `@integraledger/lcp/ap2` | `ap2/checkout-mandate`, `ap2/checkout-mandate/x402` | The `legalContext` member of the merchant-signed `checkout_jwt`, which the buyer's Checkout Mandate commits to; on the x402 route the payment's nonce carries the payment mandate chain, not H. | yes | no |
+| ACK | `@integraledger/lcp/ack` | `ack/payment-request` | The `id` of the seller-signed Payment Request, as H's LCP string. | no | no |
+| Card networks | `@integraledger/lcp/card` | `card/visa-tap`, `card/mastercard-agent-pay`, `card/visa-vic`, `card/mastercard-vi/immediate`, `card/mastercard-vi/autonomous`, `card/seller-reference` | The nonce or the checkout path the agent's message signature covers, the transaction reference of a Visa Intelligent Commerce credential request, the `checkout_jwt` a Verifiable Intent mandate signs, or the seller's processor reference. | Visa TAP, Agent Pay and Verifiable Intent | no |
+| A2A | `@integraledger/lcp/a2a` | none | The Task's `metadata`, under the extension's URI. Delivery only. | no | none |
 
 The "Buyer signs H" column says where each pairing's `data.carrier.signed` names a field. The
 [pairings reference](../reference/pairings.md#what-each-binding-proves) gives the sentence each pairing's record
-states about what a payment through it proves.
-
-Where the pairing's `data.coverage` is `none`, the seller advertises an
-[agreement URL](../concepts/buyer-gate.md#the-agreement-url) beside the link; the buyer gate declines such an offer
-without one. Every checkout pairing's `advertise` takes it as its last argument and writes it where the protocol keeps
-the link, and its `read` returns it as `agreement`.
+states about what a payment through it proves. No checkout pairing is confirmed yet (`data.confirmed` is `no` on every
+one): nothing outside this package has yet shown any of these forms as its profile defines it.
 
 The AP2, UCP, ACK and card pairings read each compact JWS and SD-JWT segment, each disclosure and each Verifiable
 Intent key coordinate as base64url without padding (RFC 7515 §2) in its canonical form only (RFC 4648 §3.5). One whose
@@ -37,11 +35,84 @@ last character has a bit set past its last byte is malformed, and the pairing re
 other malformed one. Two compact JWSs are not decoded: a Key Binding JWT, which no pairing reads, and UCP's
 `ap2.merchant_authorization`, which the AP2 Mandate pairings match against UCP's schema pattern only.
 
+## The agreement comes first
+
+Every pairing on this page has `data.coverage` `none`: no public ledger shows a payer-signed act carrying H. So every
+checkout sale is agreement-first. The seller passes an [agreement URL](../concepts/buyer-gate.md#the-agreement-url) to
+`advertise` as its last argument; `advertise` writes it where the protocol keeps the link, and `read` returns it as
+`agreement`. The buyer gate declines a checkout offer without one (`agreement-not-offered`). Unpaid, the agreement URL
+answers `402` with an x402 challenge that advertises the same H and link
+([the seller guide](./seller.md#the-agreement-url) gives the exchange). The buyer pays it first, as an agreement, with
+a payment that is itself a public proof of H, and completes the checkout only after the agreement's `200` receipt names
+the same H. Every sample below passes an agreement URL.
+
+```ts
+import { agreementValue, hash, hashEquals, isRefusal } from "@integraledger/lcp";
+import { delegated, type HandlerOption } from "@integraledger/lcp/acp";
+import { exactEip3009, type PaymentRequired, type PaymentRequirements } from "@integraledger/lcp/x402";
+import type { TypedDataDefinition } from "viem";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
+
+const h = await hash(new TextEncoder().encode("the ATR's bytes"));
+const link = `https://atr.seller.example/${crypto.randomUUID()}`;
+const agreementUrl = `https://pay.seller.example/agreement/${crypto.randomUUID()}`;
+
+// Seller: the checkout names the agreement URL beside the link.
+const handler: HandlerOption = { requires_delegate_payment: true };
+const session = delegated.advertise({ currency: "usd" }, h, link, handler, agreementUrl);
+if (isRefusal(session)) throw new Error(String(session.code));
+
+// Seller: unpaid, the agreement URL answers 402 with an x402 challenge advertising the same H and link.
+const option: PaymentRequirements = {
+  scheme: "exact",
+  network: "eip155:84532",
+  amount: "1",
+  asset: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+  payTo: "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+  maxTimeoutSeconds: 60,
+  extra: { name: "USDC", version: "2" },
+};
+const unpaid: PaymentRequired = { x402Version: 2, resource: { url: agreementUrl }, accepts: [option] };
+const challenge = exactEip3009.advertise(unpaid, h, link, option);
+if (isRefusal(challenge)) throw new Error(challenge.code);
+
+// Buyer: the checkout names an agreement URL, whose challenge advertises the same H.
+const offer = delegated.read(session);
+if (isRefusal(offer)) throw new Error(offer.code);
+const agreementOffer = exactEip3009.read(challenge);
+if (isRefusal(agreementOffer)) throw new Error(agreementOffer.code);
+console.log("agreement URL:", offer.agreement === agreementUrl, "same H:", hashEquals(agreementOffer.h, offer.h));
+
+// Buyer: the agreement, built as one: its nonce is the agreement's own value, so the agreement and a charge never
+// share one.
+const payer = privateKeyToAccount(generatePrivateKey());
+const unsigned = await exactEip3009.build(
+  { required: challenge, accepted: option, from: payer.address, now: Math.floor(Date.now() / 1000) },
+  offer.h,
+  "agreement",
+);
+if (isRefusal(unsigned)) throw new Error(unsigned.code);
+console.log("nonce is agreementValue(H):", unsigned.typedData.message.nonce === (await agreementValue(offer.h)));
+const agreement = unsigned.complete(await payer.signTypedData(unsigned.typedData as TypedDataDefinition));
+if (isRefusal(agreement)) throw new Error(agreement.code);
+
+// Seller of the agreement URL: the payment is this H's agreement.
+const bound = await exactEip3009.bound(agreement, { act: "agreement", h });
+console.log("agreement bound to H:", typeof bound === "string" && hashEquals(bound, h));
+```
+
+```text
+agreement URL: true same H: true
+nonce is agreementValue(H): true
+agreement bound to H: true
+```
+
 ## ACP
 
 In the [Agentic Commerce Protocol](https://www.agenticcommerce.dev), the seller creates a checkout session and the
 buyer's agent completes it with a payment handler. These pairings target ACP 2026-04-17. This package makes H the
-session's `id`, and puts the link beside it in the session's `metadata.legal_context`, in snake case:
+session's `id`, and puts the link and the agreement URL beside it in the session's `metadata.legal_context`, in snake
+case:
 
 ```json no-check
 {
@@ -50,7 +121,8 @@ session's `id`, and puts the link beside it in the session's `metadata.legal_con
     "legal_context": {
       "type": "sha256",
       "value": "0x1be27e75ea3728b55834ec54ff6709669427b11c9ba47a6d9f182b0be46513be",
-      "legal_context_url": "https://atr.seller.example/2ff8f7af-0bd8-41fa-862e-cb0945fc149e"
+      "legal_context_url": "https://atr.seller.example/2ff8f7af-0bd8-41fa-862e-cb0945fc149e",
+      "legal_context_agreement_url": "https://pay.seller.example/agreement/5f0c2a5e-8d0e-4c1b-9d43-2a3c1f6b7e10"
     }
   }
 }
@@ -68,6 +140,12 @@ own `{ "requires_delegate_payment": boolean }`, and nothing from the checkout. T
 - **`acp/checkout/undelegated`**: nothing the buyer signs names the session. `build` refuses `acp/nothing-to-sign` and
   `bound` refuses `acp/not-buyer-signed`.
 
+On `acp/checkout/undelegated`, `ucp/checkout/unsigned` and `card/seller-reference`, the payment is known from the
+seller's report alone. `reference({ charge }, option)` keys it by the processor's identifier of the charge, such as a
+Stripe PaymentIntent `id` or an Adyen `pspReference`, 1 to 255 visible ASCII characters (else
+`<surface>/charge-reference-malformed`), together with the checkout of the option it answers where the option names
+one (UCP and card).
+
 ```ts
 import { assemble, hash, hashEquals, isRefusal, newAtrId } from "@integraledger/lcp";
 import { delegated, tie, type HandlerOption, type Session } from "@integraledger/lcp/acp";
@@ -78,14 +156,16 @@ const terms = new TextEncoder().encode('{"line_items":[{"id":"li_1","quantity":1
 const atr = await assemble(newAtrId(), tie([handler]), [["order", terms]]);
 if (isRefusal(atr)) throw new Error(atr.code);
 const link = `https://atr.seller.example/${crypto.randomUUID()}`;
+const agreementUrl = `https://pay.seller.example/agreement/${crypto.randomUUID()}`;
 const opened: Session = { currency: "usd", metadata: { order_ref: "A-100" } };
-const session = delegated.advertise(opened, atr.atrHash, link, handler);
+const session = delegated.advertise(opened, atr.atrHash, link, handler, agreementUrl);
 if (isRefusal(session)) throw new Error(String(session.code));
 console.log("session id is H:", session.id === atr.atrHash, Object.keys(session.metadata ?? {}));
 
-// Buyer: read H and the link, fetch and compare, then build the allowance.
+// Buyer: read H, the link and the agreement URL, fetch and compare, pay the agreement, then build the allowance.
 const offer = delegated.read(session);
 if (isRefusal(offer)) throw new Error(offer.code);
+console.log("agreement URL:", offer.agreement === agreementUrl);
 if (!hashEquals(await hash(atr.bytes), offer.h)) throw new Error("decline: hash-mismatch");
 const unsigned = await delegated.build(
   { session, max_amount: 19900, currency: "usd", merchant_id: "acme", expires_at: "2026-10-01T00:00:00Z" },
@@ -110,6 +190,7 @@ console.log("bound to H:", typeof bound === "string" && hashEquals(bound, atr.at
 
 ```text
 session id is H: true [ 'order_ref', 'legal_context' ]
+agreement URL: true
 checkout_session_id is H: true {
   reason: 'one_time',
   max_amount: 19900,
@@ -149,7 +230,8 @@ option's (`ucp/option-not-this-checkout`) and one that carries a `refused` membe
 | Pairing | Buyer side | `bound` |
 |---|---|---|
 | `ucp/checkout/ap2-mandate`, `ucp/booking/ap2-mandate` | `read` requires the business's `ap2.merchant_authorization` (`ucp/ap2-not-active` otherwise). `build` returns the checkout unchanged for the buyer's mandate issuer, once its link carries H, and `complete(checkout_mandate)` gives what the buyer presents: the mandate and the checkout JWT its closed mandate discloses, so `bound` on it checks only that the two agree. | Reads the buyer's mandate, one SD-JWT or AP2's chain of the open and closed mandates joined by `~~`, checks AP2's `checkout_hash` against the presented `checkout_jwt`, and that any checkout the closed mandate discloses is that JWT, then reads H from that checkout's `legal_context` link. It verifies no signature, no `cnf` delegation and no link between the chained mandates. UCP's AP2 Mandates extension has the business verify the checkout mandate's signatures, key binding and expiry itself; `bound` does not, so run that verification before relying on its result. For AP2's latest-checkout check, build `checkout_jwt` from your own `ap2.merchant_authorization` for the checkout's current state, with its payload attached, not from the mandate: `bound` then refuses `ap2/checkout-not-latest` when the mandate commits to another state of the checkout. |
-| `ucp/checkout/unsigned`, `ucp/booking/unsigned` | `read` gives H and the link. `build` refuses `ucp/nothing-to-sign`: UCP without the AP2 Mandates extension defines no buyer signature. | Refuses `ucp/not-buyer-signed`. |
+| `ucp/checkout/agent-signed` | `read` gives H and the link. `build(offer, h)` returns `{ legal_context: { type: "sha256", value: H } }` once the checkout's link carries H (else `ucp/hash-not-in-checkout`), which the platform writes into the body of the request that completes the checkout; the platform's RFC 9421 signature covers that body through `content-digest`. | Takes `{ body, contentDigest }` as the business received them. Requires `contentDigest` to be exactly `sha-256=:`, the standard base64 of SHA-256 over the body, and `:` (`ucp/content-digest-mismatch`), then reads H from the body's one `legal_context` member. It verifies no signature and reads no key, so verify the platform's signature first. The LCP profile [`ucp/checkout/agent-signed`](../../lcp/profiles/ucp-checkout-agent-signed.md) states the rules. |
+| `ucp/checkout/unsigned`, `ucp/booking/unsigned` | `read` gives H and the link. `build` refuses `ucp/nothing-to-sign`: UCP without the AP2 Mandates extension defines no buyer signature. | Refuses `ucp/not-buyer-signed`. On `ucp/checkout/unsigned`, `reference({ charge }, option)` keys the payment by the processor's charge id, as on [ACP](#acp). |
 
 `legalContextLink(checkout)` reads the one `legal_context` entry of any checkout: two such entries are
 `ucp/legal-context-conflict`. The LCP profile
@@ -161,19 +243,22 @@ import { legalContextLink, unsigned, type Checkout } from "@integraledger/lcp/uc
 
 const h = await hash(new TextEncoder().encode("the ATR's bytes"));
 const link = "https://atr.seller.example/2ff8f7af-0bd8-41fa-862e-cb0945fc149e";
+const agreementUrl = "https://pay.seller.example/agreement/5f0c2a5e-8d0e-4c1b-9d43-2a3c1f6b7e10";
 const checkout: Checkout = {
   id: "chk_123",
   status: "ready_for_complete",
   links: [{ type: "terms_of_service", url: "https://seller.example/tos" }],
 };
 
-const placed = unsigned.advertise(checkout, h, link, { checkout: "chk_123" });
+const placed = unsigned.advertise(checkout, h, link, { checkout: "chk_123" }, agreementUrl);
 if (isRefusal(placed)) throw new Error(String(placed.code));
 console.log(placed.links);
 
 const found = legalContextLink(placed);
 console.log(isRefusal(found) ? found.code : found.h === h);
-const wrong = unsigned.advertise(checkout, h, link, { checkout: "chk_999" });
+const offer = unsigned.read(placed);
+console.log(isRefusal(offer) ? offer.code : offer.agreement === agreementUrl);
+const wrong = unsigned.advertise(checkout, h, link, { checkout: "chk_999" }, agreementUrl);
 console.log(isRefusal(wrong) ? wrong.code : "placed");
 console.log(isRefusal(await unsigned.build({ checkout: placed }, h)));
 ```
@@ -185,8 +270,13 @@ console.log(isRefusal(await unsigned.build({ checkout: placed }, h)));
     type: 'legal_context',
     url: 'https://atr.seller.example/2ff8f7af-0bd8-41fa-862e-cb0945fc149e',
     title: 'lcp:sha256:0x3283f4fc90a2f6d2782b0345c3b274acbe0218ec84ce2d8c3a1fdbe6d1cff263'
+  },
+  {
+    type: 'legal_context_agreement',
+    url: 'https://pay.seller.example/agreement/5f0c2a5e-8d0e-4c1b-9d43-2a3c1f6b7e10'
   }
 ]
+true
 true
 ucp/option-not-this-checkout
 true
@@ -211,9 +301,9 @@ to it through `checkout_hash`, the SHA-256 of that JWT. AP2 lets the mandate's `
 reads a mandate whose `_sd_alg` is `sha-256` or absent, and refuses one with any other value (`ap2/sd-alg-unsupported`).
 The pairing targets AP2 v0.2 (Checkout Mandates, `mandate.checkout.1`). This package puts H in the JWT's payload:
 
-- **Seller.** `advertise(payload, h, link, { checkout: id })` appends a `legalContext` member,
-  `{"type":"sha256","value":H,"legalContextUrl":link}`, to the checkout payload whose `id` is the option's, and
-  refuses a payload that carries a `refused` member (`ap2/jws-malformed`). The seller's own stack signs the result as
+- **Seller.** `advertise(payload, h, link, { checkout: id }, agreementUrl)` appends a `legalContext` member,
+  `{"type":"sha256","value":H,"legalContextUrl":link,"legalContextAgreementUrl":agreementUrl}`, to the checkout
+  payload whose `id` is the option's, and refuses a payload that carries a `refused` member (`ap2/jws-malformed`). The seller's own stack signs the result as
   its `checkout_jwt`.
 - **Buyer.** `read(checkoutJwt)` decodes the JWT's payload and returns H, the link and the checkout. `build(offer, h)`
   returns the Checkout Mandate's required claims: `vct` `"mandate.checkout.1"`, the `checkout_jwt`, and
@@ -236,6 +326,16 @@ from the mandate and the `checkout_jwt` you last sent for that checkout, not the
 `jwsPayload`, `readMandate` and `checkoutBinding` expose those steps one by one. The LCP profile
 [`ap2/checkout-mandate`](../../lcp/profiles/ap2-checkout-mandate.md) states the rules.
 
+**On the x402 route** (`ap2/checkout-mandate/x402`), AP2's x402 credential provider writes the EIP-3009
+authorization's nonce as keccak-256 of the payment mandate chain, so the payment itself carries no H. H rides in the
+`checkout_jwt` that the closed mandate commits to, as above. `bound` takes `{ checkout_mandate, checkout_jwt, payment }`,
+`payment` being AP2's x402 bundle as the merchant receives it, and reads H from the mandate and the JWT. It refuses
+`ap2/payment-not-bound` where the authorization's nonce is not keccak-256 of the bundle's `payment_mandate_chain`, or
+where the chain's closed Payment Mandate does not name this checkout. `reference(presented, method)`, against the
+checkout's x402 method `{ type: "x402", address, network, asset }`, and `status` read the carried EIP-3009 payment as
+`x402/exact/eip155/eip3009` does, at coverage `none`, with the authorization's own nonce where that pairing has H. The
+LCP profile [`ap2/checkout-mandate/x402`](../../lcp/profiles/ap2-checkout-mandate-x402.md) states the rules.
+
 ```ts
 import { hash, isRefusal } from "@integraledger/lcp";
 import { checkoutMandate } from "@integraledger/lcp/ap2";
@@ -243,7 +343,8 @@ import { checkoutMandate } from "@integraledger/lcp/ap2";
 const h = await hash(new TextEncoder().encode("the ATR's bytes"));
 const checkout = { id: "chk_42", total: { currency: "USD", value: "19.90" } };
 const link = `https://atr.seller.example/${crypto.randomUUID()}`;
-const payload = checkoutMandate.advertise(checkout, h, link, { checkout: "chk_42" });
+const agreementUrl = `https://pay.seller.example/agreement/${crypto.randomUUID()}`;
+const payload = checkoutMandate.advertise(checkout, h, link, { checkout: "chk_42" }, agreementUrl);
 if (isRefusal(payload)) throw new Error(String(payload.code));
 console.log(Object.keys(payload));
 
@@ -254,6 +355,7 @@ const checkoutJwt = `${segment({ alg: "ES256", typ: "JWT" })}.${segment(payload)
 
 const offer = checkoutMandate.read(checkoutJwt);
 if (isRefusal(offer)) throw new Error(offer.code);
+console.log("agreement URL:", offer.agreement === agreementUrl);
 const unsigned = await checkoutMandate.build(offer.offer, offer.h);
 if (isRefusal(unsigned)) throw new Error(unsigned.code);
 console.log(unsigned.content.vct, unsigned.content.checkout_hash.length);
@@ -261,6 +363,7 @@ console.log(unsigned.content.vct, unsigned.content.checkout_hash.length);
 
 ```text
 [ 'id', 'total', 'legalContext' ]
+agreement URL: true
 mandate.checkout.1 43
 ```
 
@@ -271,9 +374,9 @@ In the payment flow of the [Agent Commerce Kit (ACK)](https://www.agentcommercek
 pairing targets ACK protocol version 2025-05-04. This package makes H the Payment Request's `id`, in LCP string form,
 and puts the link beside the request in the `402` body:
 
-- **Seller.** `advertise({}, h, link, option)` returns the values the seller's stack places: `paymentRequestId`,
-  `lcp:sha256:0x…`, for the token it signs, and `legalContext`, `{type, value, legalContextUrl}`, for the body beside
-  it. `tie(options)` records the Payment Request's options exactly as issued.
+- **Seller.** `advertise({}, h, link, option, agreementUrl)` returns the values the seller's stack places:
+  `paymentRequestId`, `lcp:sha256:0x…`, for the token it signs, and `legalContext`,
+  `{type, value, legalContextUrl, legalContextAgreementUrl}`, for the body beside it. `tie(options)` records the Payment Request's options exactly as issued.
 - **Buyer.** `read(body)` takes H from the signed token's `id`, which must equal the body's `legalContext`
   (`ack/legal-context-conflict` otherwise), and returns the token's payment options. The body's unsigned
   `paymentRequest` copy is never read. The token's signature is not verified here.
@@ -289,8 +392,8 @@ rules.
 The `card` entry point covers five ways to pay a card checkout. The option is the seller's own
 `{ scheme, checkout }`, where `scheme` is `"visa-tap"`, `"mastercard-agent-pay"`, `"visa-vic"`, `"mastercard-vi"` or
 `"seller-reference"` and `checkout` is the seller's checkout id. `advertise` gives the same values for every card
-pairing: the `legalContext` the seller shows before payment, and `reference`, H's LCP string, for the seller to place
-in its processor reference.
+pairing: the `legalContext` the seller shows before payment, with the agreement URL after the link, and `reference`,
+H's LCP string, for the seller to place in its processor reference.
 
 - **[Visa Trusted Agent Protocol](https://developer.visa.com/capabilities/trusted-agent-protocol).** H rides in what
   the agent's `agent-payer-auth` message signature covers (RFC 9421): its `nonce`, the base64 of H's 32 bytes followed
@@ -320,7 +423,8 @@ in its processor reference.
   LCP profile [`card/mastercard-vi`](../../lcp/profiles/card-mastercard-vi.md) states the rules.
 - **`card/seller-reference`.** A plain card checkout: nothing the buyer signs carries H. The seller shows H and the
   link before payment and places `reference` in its processor reference. `build` and `bound` refuse
-  `card/no-signed-place`.
+  `card/no-signed-place`, and `reference({ charge }, option)` keys the payment by the processor's charge id, as on
+  [ACP](#acp).
 
 ```ts
 import { hash, isRefusal } from "@integraledger/lcp";
@@ -330,9 +434,12 @@ const h = await hash(new TextEncoder().encode("the ATR's bytes"));
 const option: CardOption = { scheme: "visa-tap", checkout: "order-7731" };
 
 const link = `https://atr.seller.example/${crypto.randomUUID()}`;
-const shown = visaTap.advertise({}, h, link, option);
+const agreementUrl = `https://pay.seller.example/agreement/${crypto.randomUUID()}`;
+const shown = visaTap.advertise({}, h, link, option, agreementUrl);
 if (isRefusal(shown)) throw new Error(shown.code);
 console.log(shown.reference === `lcp:sha256:${h}`);
+const offer = visaTap.read(shown);
+console.log(isRefusal(offer) ? offer.code : offer.agreement === agreementUrl);
 
 const placed = await visaTap.build(shown, h);
 if (isRefusal(placed)) throw new Error(placed.code);
@@ -341,6 +448,7 @@ console.log(placed.nonce.length, `0x${Buffer.from(bytes.subarray(0, 32)).toStrin
 ```
 
 ```text
+true
 true
 88 true
 ```
