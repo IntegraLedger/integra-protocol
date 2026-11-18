@@ -467,11 +467,12 @@ before it reads the body, closing the connection. A keyless deployment may set o
 The settler serves plain HTTP (`node:http`, no TLS option): the credential and every payment cross the network in clear
 unless TLS is in front of it. Bind `listen` to loopback or a private interface and terminate TLS in a proxy before it,
 or run the settler on the resource server's own host. The credential is its only gate: anyone who holds it can have a
-keyed module pay fees for payments between other parties, up to the fee budget ([The fee budget](#the-fee-budget)), so
-keep it as you keep the keys, and set a budget on each network whose fees a key pays. The keys live in the operator's
-process, as the signer objects passed in; the settler reads no key material itself, and names a node in an error by its
-origin alone. It does not check that H is the one the resource server issued, nor that the resource server has not
-accepted it before ([the settler](../concepts/settler.md#where-it-sits)): those checks are the resource server's.
+keyed module pay fees for payments between other parties, without limit unless a fee budget caps them ([The fee
+budget](#the-fee-budget)), so keep it as you keep the keys, and set a budget on each network whose fees a key pays (the
+`ton` and `concordium` modules take none). The keys live in the operator's process, as the signer objects passed in; the
+settler reads no key material itself, and names a node in an error by its origin alone. It does not check that H is the
+one the resource server issued, nor that the resource server has not accepted it before ([the
+settler](../concepts/settler.md#where-it-sits)): those checks are the resource server's.
 
 ## The fee budget
 
