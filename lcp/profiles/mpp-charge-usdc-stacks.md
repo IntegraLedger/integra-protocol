@@ -1,4 +1,4 @@
-**LCP profile `mpp/charge/usdc/stacks`: the ATR hash as the SIP-010 `transfer` memo of MPP's `usdc` Stacks charge, and the read of the payment by its origin and the nonce the origin signed.** Clauses 1–3 and 5 of `mpp/charge` apply to the challenge. The read's answers and the rules that choose them are the profile `read-status`'s; this profile states how this pairing's read finds what those rules name.
+**LCP profile `mpp/charge/usdc/stacks`: the ATR hash as the SIP-010 `transfer` memo of MPP's `usdc` Stacks charge, and the read of the payment by its origin and the nonce the origin signed.** Rules 1–3 and 5 of `mpp/charge` apply to the challenge. The read's answers and the rules that choose them are the profile `read-status`'s; this profile states how this pairing's read finds what those rules name.
 
 **The payment**
 
