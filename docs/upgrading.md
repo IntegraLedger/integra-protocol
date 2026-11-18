@@ -47,8 +47,8 @@ placement.
 | `mpp/charge/hedera` (`chargeHedera`, from `@integraledger/lcp/hedera` and `@integraledger/lcp/mpp`) | `mpp/charge/lcp/hedera` (`chargeLcpHedera`, choice `LcpHederaChoice`, from `@integraledger/lcp/mpp`): MPP's `lcp` method on Hedera, whose signed memo is H's LCP string. |
 | `mpp/charge/stellar` (`chargeStellar`) | No MPP pairing on Stellar. Stellar is served on x402, by `x402/exact/stellar/precondition`. |
 
-A pairing at coverage `none` carries no H in anything the payer signs, so its sale is served only after an agreement
-payment ([the agreement URL](./concepts/buyer-gate.md#the-agreement-url)).
+At coverage `none`, no public act the payer signs carries H, so the sale is served only after an agreement payment
+([the agreement URL](./concepts/buyer-gate.md#the-agreement-url)).
 
 ### Removed exports
 
