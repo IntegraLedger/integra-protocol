@@ -260,11 +260,15 @@ Once the agreement is recorded, the buyer's agent repeats its request for the ch
 
 1. **The first response** carries H, the link and the agreement URL, and no charge option the payer could pay before
    the agreement.
-2. **Each agreement option names the charges it serves**, each `x402/<i>` or `mpp/<i>`: the option at index `i` of
-   the ATR's binding slot of that name, so a buyer pays an agreement that serves the charge it means to pay. On x402
+2. **Each agreement option names the charges it serves**, each `<slot>/<i>`: the option at index `i` of the charge
+   options the ATR's binding slot of that name holds (`accepts` of `x402`, `challenges` of `mpp`, `paymentOptions` of
+   `ack`, `options` of `acp`, `ap2`, `card` and `ucp`), so a buyer pays an agreement that serves the charge it means to
+   pay. A card sale whose agreement is an x402 option names its card options `card/<i>`. On x402
    the member is `extra.legalContextServes` (`LEGAL_CONTEXT_SERVES`), an array of those names; on MPP it is the
    `opaque` member of that name, the names joined by one space. It is part of the option as issued, so write it before
-   you record the option's digest. `servesOf(option)` reads it, and refuses a malformed one `return/serves-malformed`.
+   you record the option's digest. `servesOf(option, atr?)` reads it, and refuses a malformed one
+   `return/serves-malformed`, and, given the ATR's bytes, one that names a slot the ATR does not bind or an index past
+   that slot's options.
 3. **A return value**, where the charge is paid by a bearer value such as a Lightning preimage: draw 32 random bytes
    for the sale, keep them in your own record, never in the ATR, and send them with H in a `Legal-Context` response
    header, which `toLegalContextHeader(h, returnValue)` writes.

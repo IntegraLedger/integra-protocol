@@ -5,6 +5,18 @@ Every release of `@integraledger/lcp`, newest first. The format follows
 rename exports and pairing ids and change a function's arguments or answers; a patch release does not.
 [Upgrading](../docs/upgrading.md) gives each change a caller of 0.5.x makes for 0.6.0.
 
+## [Unreleased]
+
+### Added
+
+- An agreement option's served member (profile `legal-context-return`, rule 6) names a charge option `<slot>/<i>` for
+  every ATR binding slot that holds charge options: `x402/<i>` (`accepts`) and `mpp/<i>` (`challenges`), as before, and
+  `ack/<i>` (`paymentOptions`), `acp/<i>`, `ap2/<i>`, `card/<i>` and `ucp/<i>` (`options`), so a card or checkout
+  sale offered an agreement as an x402 option or an MPP challenge names its card or checkout options. `servesOf` reads
+  the new names, and takes the ATR's bytes as an optional second argument, `servesOf(option, atr?)`, against which it
+  resolves each name: a slot that is not the ATR's binding slot, or an index not below the number of options that slot
+  holds, is `return/serves-malformed`. `legal-context-return.json` gains a card ATR and its rows.
+
 ## [0.6.1] - 2026-11-18
 
 ### Added

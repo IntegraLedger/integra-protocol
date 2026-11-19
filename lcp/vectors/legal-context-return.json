@@ -1,5 +1,8 @@
 {
- "about": "Vectors for the return after an agreement (legal-context-return.md): the Legal-Context header, an RFC 9651 Item whose token is H's LCP string and whose one parameter is rv, the sale's 32-byte return value as a byte sequence; and the member by which an agreement option names the charge options it serves. H is mpp-challenge.json's; the return value is the bytes 0x00 to 0x1f; the x402 option and the MPP challenge are mpp-challenge.json's C_E and the x402 specification's example option. Expected values were written from the profile with Python 3.12.3's base64 and json, the MPP opaque as base64url without padding of RFC 8785's form. The read and readRefusals rows follow RFC 9651's parsing algorithm (section 4.2, the Item; 4.2.3.2, parameters, a repeated key overwriting the value before it; 4.2.4 to 4.2.10, the bare items; 4.2.7, a byte sequence read with its padding absent and with bits set past its last byte, which a parser should not refuse), each rv's bytes decoded by Python 3.12.3's base64.b64decode with the padding restored; the bare items given before an overwritten rv are RFC 9651 section 3.3's own examples, and each refused one breaks one step of section 4.2. The check rows hold a header value and the resource server's record of the sale (its H, and its return value where it has one), and what checkLegalContextReturn answers: one return that passes and one for each refusal, the last a Lightning sale's return without its return value; their headers are written as the write rows are.",
+ "about": "Vectors for the return after an agreement (legal-context-return.md): the Legal-Context header, an RFC 9651 Item whose token is H's LCP string and whose one parameter is rv, the sale's 32-byte return value as a byte sequence; and the member by which an agreement option names the charge options it serves, each `<slot>/<i>`. H is mpp-challenge.json's; the return value is the bytes 0x00 to 0x1f; the x402 option and the MPP challenge are mpp-challenge.json's C_E and the x402 specification's example option. The card ATR of `atrs`, its UTF-8 text, is an ATR whose binding slot `card` holds card.json's three C1 options and one party slot, `terms`, written as the ATR's form fixes its bytes (atrVersion, id, the binding slot, then each party slot) with Python 3.12.3's json.dumps without spaces; a row naming it reads the option's names against those bytes. Expected values were written from the profile with Python 3.12.3's base64 and json, the MPP opaque as base64url without padding of RFC 8785's form. The read and readRefusals rows follow RFC 9651's parsing algorithm (section 4.2, the Item; 4.2.3.2, parameters, a repeated key overwriting the value before it; 4.2.4 to 4.2.10, the bare items; 4.2.7, a byte sequence read with its padding absent and with bits set past its last byte, which a parser should not refuse), each rv's bytes decoded by Python 3.12.3's base64.b64decode with the padding restored; the bare items given before an overwritten rv are RFC 9651 section 3.3's own examples, and each refused one breaks one step of section 4.2. The check rows hold a header value and the resource server's record of the sale (its H, and its return value where it has one), and what checkLegalContextReturn answers: one return that passes and one for each refusal, the last a Lightning sale's return without its return value; their headers are written as the write rows are.",
+ "atrs": {
+  "card": "{\"atrVersion\":\"1\",\"id\":\"7c8acfa2-f800-4192-89e9-1cef9833180f\",\"card\":{\"options\":[{\"scheme\":\"visa-tap\",\"checkout\":\"chk_1001\"},{\"scheme\":\"mastercard-vi\",\"checkout\":\"chk_1001\"},{\"scheme\":\"seller-reference\",\"checkout\":\"chk_1001\"}]},\"terms\":\"Pay for checkout chk_1001 at the card checkout.\"}"
+ },
  "write": [
   {
    "case": "H alone",
@@ -414,11 +417,35 @@
     "expires": "2026-09-21T14:14:20Z"
    },
    "expect": null
+  },
+  {
+   "case": "an x402 agreement option serving card/0 and card/2, read against the card ATR, whose card slot holds three options",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "1",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "name": "USDC",
+     "version": "2",
+     "legalContextServes": [
+      "card/0",
+      "card/2"
+     ]
+    }
+   },
+   "atr": "card",
+   "expect": [
+    "card/0",
+    "card/2"
+   ]
   }
  ],
  "servesRefusals": [
   {
-   "case": "a slot other than x402 and mpp",
+   "case": "a slot that holds no charge options",
    "option": {
     "scheme": "exact",
     "network": "eip155:84532",
@@ -637,6 +664,52 @@
     "maxTimeoutSeconds": 60,
     "extra": "x402/0"
    },
+   "expect": {
+    "refused": true,
+    "code": "return/serves-malformed"
+   }
+  },
+  {
+   "case": "x402/0 read against the card ATR, which holds no x402 slot",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "1",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "name": "USDC",
+     "version": "2",
+     "legalContextServes": [
+      "x402/0"
+     ]
+    }
+   },
+   "atr": "card",
+   "expect": {
+    "refused": true,
+    "code": "return/serves-malformed"
+   }
+  },
+  {
+   "case": "card/3 read against the card ATR, whose card slot holds three options",
+   "option": {
+    "scheme": "exact",
+    "network": "eip155:84532",
+    "amount": "1",
+    "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+    "payTo": "0x209693Bc6afc0C5328bA36FaF03C514EF312287C",
+    "maxTimeoutSeconds": 60,
+    "extra": {
+     "name": "USDC",
+     "version": "2",
+     "legalContextServes": [
+      "card/3"
+     ]
+    }
+   },
+   "atr": "card",
    "expect": {
     "refused": true,
     "code": "return/serves-malformed"

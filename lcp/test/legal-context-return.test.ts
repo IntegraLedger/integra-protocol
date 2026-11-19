@@ -1,5 +1,5 @@
 // legal-context-return.json: the Legal-Context header written and read, and the member by which an agreement option
-// names the charge options it serves. Every expected value is the file's.
+// names the charge options it serves, read alone and against an ATR's bytes. Every expected value is the file's.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { checkLegalContextReturn, fromLegalContextHeader, isRefusal, servesOf, toLegalContextHeader } from "../src/index.js";
@@ -39,9 +39,10 @@ describe("legal-context-return.json", () => {
       if (!isRefusal(got)) expect([got.h, hex(got.returnValue)]).toEqual([row.h.toLowerCase(), row.returnValueHex]);
     }
   });
-  for (const row of rowsOf([...V.serves, ...V.servesRefusals], "legal-context-return.json serves and servesRefusals", { exact: 16 })) {
+  for (const row of rowsOf([...V.serves, ...V.servesRefusals], "legal-context-return.json serves and servesRefusals", { exact: 19 })) {
     it(`servesOf: ${row.case}`, () => {
-      expect(servesOf(row.option) ?? null).toEqual(row.expect);
+      const atr = row.atr === undefined ? undefined : new TextEncoder().encode(V.atrs[row.atr]);
+      expect(servesOf(row.option, atr) ?? null).toEqual(row.expect);
     });
   }
 });

@@ -195,8 +195,10 @@ pays the agreement, with the sale's H in the `Legal-Context` request header (pro
 32-byte return value as the parameter `rv` where the first response gave one; `fromLegalContextHeader(value)` reads it as
 RFC 9651 parses an Item, an `rv` given twice counting as the last and its base64 read with or without its padding.
 Send a return value only to the resource server that gave it, on the return and on every later request of the sale.
-`servesOf(option)` names the charge options an agreement option serves, each `x402/<i>` or `mpp/<i>`, the option at
-that index of the ATR's binding slot, so the buyer pays an agreement that serves the charge it means to pay.
+`servesOf(option, atr?)` names the charge options an agreement option serves, each `<slot>/<i>` (`x402/<i>`, `mpp/<i>`,
+`card/<i>` and the other slots the profile lists), the option at that index of the charge options the ATR's binding slot
+of that name holds, so the buyer pays an agreement that serves the charge it means to pay. Given the ATR's bytes, it
+also refuses a name whose slot is not the ATR's binding slot or whose index is past that slot's options.
 
 ## Channels and sessions
 

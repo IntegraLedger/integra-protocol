@@ -393,10 +393,10 @@ function isOneJsonValue(b: Uint8Array, n: number): boolean {
 }
 
 /**
- * True when no array or object in JSON text is nested more than `MAX_JSON_DEPTH` deep. Brackets inside strings are
- * skipped; nothing else about the text is checked.
+ * True when no array or object in JSON text is nested more than `max` deep, `MAX_JSON_DEPTH` where not given. Brackets
+ * inside strings are skipped; nothing else about the text is checked.
  */
-export function jsonWithinDepth(text: string): boolean {
+export function jsonWithinDepth(text: string, max: number = MAX_JSON_DEPTH): boolean {
   let depth = 0;
   let inString = false;
   for (let i = 0; i < text.length; i++) {
@@ -407,7 +407,7 @@ export function jsonWithinDepth(text: string): boolean {
     } else if (c === 0x22) {
       inString = true;
     } else if (c === 0x5b || c === 0x7b) {
-      if (++depth > MAX_JSON_DEPTH) return false;
+      if (++depth > max) return false;
     } else if (c === 0x5d || c === 0x7d) {
       depth--;
     }

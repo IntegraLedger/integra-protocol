@@ -5,6 +5,8 @@
  */
 import { fromLcpString, hashEquals, toLcpString, type AtrHash } from "./core.js";
 import { isObject, normalHash } from "./fields.js";
+import { MAX_JSON_DEPTH } from "./internal/bounds.js";
+import { jsonObjectKeys, jsonWithinDepth } from "./internal/core.js";
 import { opaqueMembers } from "./mpp-challenge.js";
 import { fromBase64, toBase64 } from "./rail-bytes.js";
 import { isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -28,8 +30,20 @@ export interface LegalContextReturn {
 }
 
 const LCP_TOKEN = /^lcp:sha256:0x[0-9a-f]{64}$/;
-const SERVED = /^(?:x402|mpp)\/(?:[0-9]|[12][0-9]|3[01])$/;
+const SERVED = /^(x402|mpp|ack|acp|ap2|card|ucp)\/([0-9]|[12][0-9]|3[01])$/;
 const MAX_SERVED = 32;
+const MAX_ATR_BYTES = 1_048_576;
+
+/** The member of each ATR binding slot that holds its charge options, by the slot's name. */
+const CHARGE_OPTIONS: Readonly<Record<string, string>> = Object.freeze({
+  x402: "accepts",
+  mpp: "challenges",
+  ack: "paymentOptions",
+  acp: "options",
+  ap2: "options",
+  card: "options",
+  ucp: "options",
+});
 
 /**
  * The header's value, an RFC 9651 Item: H's LCP string as a token, and, where `returnValue` is given, the parameter
@@ -247,13 +261,17 @@ function byteSequence(text: string): Uint8Array | null {
 }
 
 /**
- * The charge options an agreement option names as those it serves: each `x402/<i>` or `mpp/<i>`, the option at index
- * `i` of the ATR binding slot of that name (`accepts` of `x402`, `challenges` of `mpp`). On an x402 option the member is
- * `extra.legalContextServes`, an array of those strings; on an MPP challenge it is `opaque`'s `legalContextServes`, those
- * strings joined by one space. Undefined where the option carries no such member; `return/serves-malformed` where the
- * member is not 1 to 32 distinct such strings.
+ * The charge options an agreement option names as those it serves: each `<slot>/<i>`, the option at index `i` of the
+ * charge options the ATR binding slot of that name holds: `accepts` of `x402`, `challenges` of `mpp`, `paymentOptions`
+ * of `ack`, and `options` of `acp`, `ap2`, `card` and `ucp`. On an x402 option the member is
+ * `extra.legalContextServes`, an array of those strings; on an MPP challenge it is `opaque`'s `legalContextServes`,
+ * those strings joined by one space. Undefined where the option carries no such member; `return/serves-malformed`
+ * where the member is not 1 to 32 distinct such strings. Where `atr`, the ATR's bytes, is given, each name is also
+ * resolved against it: a name whose slot is not the ATR's binding slot (its member after `atrVersion` and `id`), or
+ * whose index is not below the number of charge options that slot holds, is `return/serves-malformed`, and so is every
+ * name where `atr` is not the bytes of a UTF-8 JSON object of at most 1 MiB.
  */
-export function servesOf(option: unknown): readonly string[] | undefined | Refusal {
+export function servesOf(option: unknown, atr?: Uint8Array): readonly string[] | undefined | Refusal {
   if (!isObject(option)) return refusal("return/serves-malformed");
   let listed: unknown;
   if (typeof option["scheme"] === "string") {
@@ -279,5 +297,39 @@ export function servesOf(option: unknown): readonly string[] | undefined | Refus
   ) {
     return refusal("return/serves-malformed");
   }
+  if (atr !== undefined) {
+    const held = chargeOptionsOf(atr);
+    for (const name of listed as string[]) {
+      const [, slot, index] = SERVED.exec(name)!;
+      if (held === undefined || slot !== held.slot || Number(index) >= held.count) return refusal("return/serves-malformed");
+    }
+  }
   return Object.freeze([...(listed as string[])]);
+}
+
+/**
+ * The ATR's binding slot, the member after `atrVersion` and `id` in the ATR's bytes, and the number of charge options
+ * it holds; undefined where the bytes are not a UTF-8 JSON object of at most 1 MiB that names `atrVersion`, `id` and a
+ * binding slot once each, nested at most one level more than `MAX_JSON_DEPTH`, or where that slot holds no list of
+ * charge options.
+ */
+function chargeOptionsOf(atr: unknown): { slot: string; count: number } | undefined {
+  if (!(atr instanceof Uint8Array) || atr.length > MAX_ATR_BYTES) return undefined;
+  let text: string;
+  let value: unknown;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(atr);
+    if (!jsonWithinDepth(text, MAX_JSON_DEPTH + 1)) return undefined;
+    value = JSON.parse(text);
+  } catch {
+    return undefined;
+  }
+  const keys = jsonObjectKeys(text);
+  if (!isObject(value) || keys === undefined || keys[0] !== "atrVersion" || keys[1] !== "id") return undefined;
+  const slot = keys[2];
+  if (slot === undefined || !Object.hasOwn(CHARGE_OPTIONS, slot)) return undefined;
+  if (keys.filter((k) => k === "atrVersion" || k === "id" || k === slot).length !== 3) return undefined;
+  const bound = value[slot];
+  const list = isObject(bound) ? bound[CHARGE_OPTIONS[slot]!] : undefined;
+  return Array.isArray(list) ? { slot, count: list.length } : undefined;
 }
