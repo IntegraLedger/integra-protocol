@@ -854,6 +854,7 @@
        "asset": "XRP",
        "amount": "10000000",
        "to": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+       "beneficiary": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
        "transaction": "75820DE1B0885B4125522CEF55E4000683164F0AE83218CA8D8454CCF8AE3491"
       }
      ],
@@ -888,6 +889,7 @@
        "asset": "XRP",
        "amount": "10000000",
        "to": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+       "beneficiary": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
        "transaction": "A37317D42B5617F9DA7557C0227B2511FABD259997F7F1F8C374579709BFE7AD"
       }
      ],
@@ -917,6 +919,7 @@
        "asset": "XRP",
        "amount": "10000000",
        "to": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+       "beneficiary": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
        "transaction": "75820DE1B0885B4125522CEF55E4000683164F0AE83218CA8D8454CCF8AE3491"
       }
      ],
@@ -951,6 +954,7 @@
        "asset": "XRP",
        "amount": "10000000",
        "to": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+       "beneficiary": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
        "transaction": "26B339F3C0B99C991F531C3F4A1E66CD8A98E784D07912A44CFD0ED80E4A69FB"
       }
      ],
@@ -984,6 +988,7 @@
        "asset": "XRP",
        "amount": "10000000",
        "to": "rfPaNmieF15VqV752Q8qAc6ugtkKhWsA2R",
+       "beneficiary": "rfPaNmieF15VqV752Q8qAc6ugtkKhWsA2R",
        "transaction": "498EBCF18632A4F1A996ECE13B82B2D14517890EE7D998A11D7519FDC9E45D5B"
       }
      ],
@@ -1017,6 +1022,7 @@
        "asset": "XRP",
        "amount": "10000000",
        "to": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+       "beneficiary": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
        "transaction": "75820DE1B0885B4125522CEF55E4000683164F0AE83218CA8D8454CCF8AE3491"
       }
      ],
@@ -1093,6 +1099,7 @@
        "asset": "XRP",
        "amount": "10000000",
        "to": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
+       "beneficiary": "rPT1Sjq2YGrBMTttX4GZHjKu9dyfzbpAYe",
        "transaction": "75820DE1B0885B4125522CEF55E4000683164F0AE83218CA8D8454CCF8AE3491"
       }
      ],

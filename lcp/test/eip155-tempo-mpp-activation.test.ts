@@ -2,7 +2,8 @@
 // rule 7), on the live Moderato activation, row "L2" of vectors/mpp-subscription-tempo.json (read from
 // https://rpc.moderato.tempo.xyz on 2026-09-25): the account whose root key signed the key authorization it carries is
 // the witness log's account, and the read settles on it only where that account is the reference's payer and the key
-// authorization's one recipient the option's payee. The keychain's state is constructed from the ledger's own
+// authorization's one recipient the option's payee; every answer naming the activation names that recipient
+// (`named`), the vector's `transferTo`. The keychain's state is constructed from the ledger's own
 // transactions (test/eip155-tempo-mpp-tempo-ledger.ts), whose log search returns no reverted receipt's logs.
 import { readFileSync } from "node:fs";
 import { keccak256 } from "viem";
@@ -61,6 +62,7 @@ describe("the activation read on the live Moderato activation", () => {
       presented: "yes",
       signer: account,
       moved: MOVED,
+      named: LIVE.transferTo,
       foreign: [],
     });
     expect(await subscriptionTempo.status(ref({ signed: `0x${"11".repeat(32)}` }) as never, ledger() as never, query)).toMatchObject({ state: "settled", presented: "no" });
@@ -75,6 +77,7 @@ describe("the activation read on the live Moderato activation", () => {
       finality: "finalized",
       signer: account,
       moved: MOVED,
+      named: LIVE.transferTo,
       carries: "other-account",
       foreign: [],
     });
@@ -88,7 +91,7 @@ describe("the activation read on the live Moderato activation", () => {
       expect(await subscriptionTempo.status(ref(over) as never, ledger() as never, query), reason).toEqual({
         state: "pending",
         reason: "instrument-live",
-        foreign: [{ transaction: TX, position: BLOCK, signer: account, moved: MOVED, reason }],
+        foreign: [{ transaction: TX, position: BLOCK, signer: account, moved: MOVED, named: LIVE.transferTo, reason }],
       });
     }
   });
@@ -106,6 +109,7 @@ describe("the activation read by the key slot", () => {
       finality: "finalized",
       signer: account,
       moved: MOVED,
+      named: LIVE.transferTo,
       foreign: [],
     });
   });
@@ -119,6 +123,7 @@ describe("the activation read by the key slot", () => {
       finality: "finalized",
       signer: account,
       moved: MOVED,
+      named: LIVE.transferTo,
       foreign: [],
     });
   });

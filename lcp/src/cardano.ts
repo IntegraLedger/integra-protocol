@@ -456,7 +456,14 @@ async function readStatus(r: CardanoRef, reader: CardanoReader, query: CardanoQu
       // A phase-2-invalid transaction created none of its outputs: it moved nothing, and names what its body names.
       if (!tx.valid) return;
       for (const a of o.assets) {
-        moved.push({ asset: a.asset, amount: a.amount.toString(), to: to ?? cred ?? hexOf(o.address), transaction: txId, place: index });
+        moved.push({
+          asset: a.asset,
+          amount: a.amount.toString(),
+          to: to ?? cred ?? hexOf(o.address),
+          ...(escrowed && o.seller !== undefined ? { beneficiary: o.seller } : {}),
+          transaction: txId,
+          place: index,
+        });
       }
     });
     // The account the act names is read from the body the payer signed, whatever its result.

@@ -1010,6 +1010,7 @@
        "asset": "0x0000000000000000000000000000000000001549",
        "amount": "10000000",
        "to": "0.0.6006",
+       "beneficiary": "0.0.6006",
        "transaction": "0x2222222222222222222222222222222222222222222222222222222222222222",
        "place": 1
       }
@@ -1073,6 +1074,7 @@
        "asset": "0x0000000000000000000000000000000000001549",
        "amount": "10000000",
        "to": "0.0.6006",
+       "beneficiary": "0.0.6006",
        "transaction": "0x2222222222222222222222222222222222222222222222222222222222222222",
        "place": 1
       }
@@ -1137,6 +1139,7 @@
        "asset": "0x0000000000000000000000000000000000001549",
        "amount": "10000000",
        "to": "0.0.6006",
+       "beneficiary": "0.0.6006",
        "transaction": "0x2222222222222222222222222222222222222222222222222222222222222222",
        "place": 1
       }
@@ -1199,6 +1202,7 @@
        "asset": "0x0000000000000000000000000000000000001549",
        "amount": "10000000",
        "to": "0.0.6006",
+       "beneficiary": "0.0.6006",
        "transaction": "0x2222222222222222222222222222222222222222222222222222222222222222",
        "place": 1
       }
@@ -1259,6 +1263,7 @@
        "asset": "0x0000000000000000000000000000000000001549",
        "amount": "10000000",
        "to": "0.0.6006",
+       "beneficiary": "0.0.6006",
        "transaction": "0x2222222222222222222222222222222222222222222222222222222222222222",
        "place": 1
       }
@@ -1319,6 +1324,7 @@
        "asset": "0x0000000000000000000000000000000000001549",
        "amount": "10000000",
        "to": "0x742d35cc6634c0532925a3b844bc9e7595f8fe00",
+       "beneficiary": "0x742d35cc6634c0532925a3b844bc9e7595f8fe00",
        "transaction": "0x2222222222222222222222222222222222222222222222222222222222222222",
        "place": 1
       }
@@ -1677,6 +1683,7 @@
        "asset": "0x0000000000000000000000000000000000001549",
        "amount": "10000",
        "to": "0.0.4307",
+       "beneficiary": "0.0.4307",
        "transaction": "0x109d8a611ce3a54019be191c7992faf5798b498af0904cf185282cca5f806f66",
        "place": 1
       }
@@ -1742,6 +1749,7 @@
        "asset": "0x0000000000000000000000000000000000001549",
        "amount": "10000000",
        "to": "0.0.6006",
+       "beneficiary": "0.0.6006",
        "transaction": "0x2222222222222222222222222222222222222222222222222222222222222222",
        "place": 1
       }
@@ -1876,6 +1884,7 @@
        "asset": "XRP",
        "amount": "1000000",
        "to": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+       "beneficiary": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
        "transaction": "CB1E7FE59E4265EEAA5E71C2A9BBC18D7E3213299A82349B92331DE485662746"
       }
      ],
@@ -1905,6 +1914,7 @@
        "asset": "XRP",
        "amount": "1000000",
        "to": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+       "beneficiary": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
        "transaction": "CB1E7FE59E4265EEAA5E71C2A9BBC18D7E3213299A82349B92331DE485662746"
       }
      ],
@@ -1939,6 +1949,7 @@
        "asset": "XRP",
        "amount": "1000000",
        "to": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+       "beneficiary": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
        "transaction": "889FBCFC845CFC0A24FCB183B67C7E02D45E9AA167FB521A0C50F4FBB7AA083B"
       }
      ],
@@ -1972,6 +1983,7 @@
        "asset": "XRP",
        "amount": "1000000",
        "to": "rfPaNmieF15VqV752Q8qAc6ugtkKhWsA2R",
+       "beneficiary": "rfPaNmieF15VqV752Q8qAc6ugtkKhWsA2R",
        "transaction": "80F830EEB82F840CF31F59BBBD1648350C0497239B6EDE5111B64251AAAC011F"
       }
      ],
@@ -2039,6 +2051,7 @@
        "asset": "XRP",
        "amount": "1000000",
        "to": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+       "beneficiary": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
        "transaction": "CB1E7FE59E4265EEAA5E71C2A9BBC18D7E3213299A82349B92331DE485662746"
       }
      ],

@@ -501,6 +501,7 @@ async function classify(
               asset: open.mint,
               amount: open.deposit.toString(),
               to: open.recipients.includes(ref.payee) ? ref.payee : (open.recipients[0] ?? open.channel),
+              ...(open.recipients.length === 0 ? {} : { beneficiary: open.recipients.includes(ref.payee) ? ref.payee : open.recipients[0]! }),
               transaction: signature,
               place: placeOf(channels[0]!.i),
             },

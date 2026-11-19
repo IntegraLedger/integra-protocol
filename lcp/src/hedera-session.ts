@@ -419,7 +419,7 @@ export async function hederaStockStatus(
         kind: "same",
         account: named ? "payee" : "other",
         signer: payer ?? members.payer,
-        moved: [{ asset: members.token, amount: members.deposit.toString(), to, transaction: tx, place: opened[0]!.place }],
+        moved: [{ asset: members.token, amount: members.deposit.toString(), to, beneficiary: to, transaction: tx, place: opened[0]!.place }],
       };
     }
   }

@@ -995,7 +995,7 @@ async function openingClassify(ref: MppSessionOpeningRef, view: TxView, reader: 
       party: party(c),
       kind: c.funding === "hash" ? "other" : "same",
       account: account(c),
-      moved: [{ asset: c.token, amount: c.deposit.toString(), to: c.payee, transaction: view.hash, place: t.log }],
+      moved: [{ asset: c.token, amount: c.deposit.toString(), to: c.payee, beneficiary: c.payee, transaction: view.hash, place: t.log }],
       signer: c.from,
       ...(signed === undefined ? {} : { signed }),
     });

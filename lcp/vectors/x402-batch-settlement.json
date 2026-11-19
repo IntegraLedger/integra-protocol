@@ -511,6 +511,7 @@
       "asset": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
       "amount": "100000",
       "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c",
+      "beneficiary": "0x209693bc6afc0c5328ba36faf03c514ef312287c",
       "transaction": "0xabababababababababababababababababababababababababababababababab",
       "place": 4
      }
@@ -549,6 +550,7 @@
         "asset": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
         "amount": "100000",
         "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c",
+        "beneficiary": "0x209693bc6afc0c5328ba36faf03c514ef312287c",
         "transaction": "0xabababababababababababababababababababababababababababababababab",
         "place": 0
        }
@@ -597,6 +599,7 @@
         "asset": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
         "amount": "100000",
         "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c",
+        "beneficiary": "0x209693bc6afc0c5328ba36faf03c514ef312287c",
         "transaction": "0xabababababababababababababababababababababababababababababababab",
         "place": 1
        }
@@ -925,6 +928,7 @@
       "asset": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
       "amount": "100000",
       "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c",
+      "beneficiary": "0x209693bc6afc0c5328ba36faf03c514ef312287c",
       "transaction": "0xefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
       "place": 4
      }
@@ -1092,6 +1096,7 @@
       "asset": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
       "amount": "100000",
       "to": "0x209693bc6afc0c5328ba36faf03c514ef312287c",
+      "beneficiary": "0x209693bc6afc0c5328ba36faf03c514ef312287c",
       "transaction": "0xefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefef",
       "place": 2
      }
@@ -1487,6 +1492,7 @@
        "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
        "amount": "100000",
        "to": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+       "beneficiary": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
        "transaction": "4EuircEmWcoP14hzw9p8vaunXT25vKnYUDLouXMJMaB4acvxVx28UoB9k8Q149bkPhfHh49tDcguC6bVV2QgRqR6",
        "place": 0
       }
@@ -1513,6 +1519,7 @@
        "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
        "amount": "100000",
        "to": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+       "beneficiary": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
        "transaction": "4EuircEmWcoP14hzw9p8vaunXT25vKnYUDLouXMJMaB4acvxVx28UoB9k8Q149bkPhfHh49tDcguC6bVV2QgRqR6",
        "place": 0
       }

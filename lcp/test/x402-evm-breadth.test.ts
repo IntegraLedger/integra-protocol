@@ -1204,6 +1204,35 @@ describe("x402-auth-capture-eip155-eip3009.json and x402-auth-capture-eip155-per
       code: "evm/wrong-reader",
     });
   });
+  // The escrow records a deposit as one event naming one amount to its PaymentInfo.receiver (x402-auth-capture-eip155.md
+  // rule 11): EV6's `authorized` event, landed at block 110, is the deposit, its receiver the option's payTo.
+  it("EV6 status: the authorized event's deposit names the PaymentInfo's receiver, the option's payTo, as its beneficiary", async () => {
+    const d = ESCROW["v1.1"];
+    const i = info(f.payer, A3.EV3.expectBindSalt as Hex);
+    const values = [
+      [i.operator, i.payer, i.receiver, i.token, i.maxAmount, Number(i.preApprovalExpiry), Number(i.authorizationExpiry), Number(i.refundExpiry), i.minFeeBps, i.maxFeeBps, i.feeReceiver, BigInt(i.salt)],
+      10_000n,
+      d.eip3009Collector,
+    ];
+    const INFO = "(address,address,address,address,uint120,uint48,uint48,uint48,uint16,uint16,address,uint256)";
+    const log = {
+      address: d.escrow,
+      topics: [PAYMENT_AUTHORIZED_TOPIC, A3.EV3.bound.expectPaymentHash],
+      data: encodeAbiParameters(parseAbiParameters(`${INFO}, uint256, address`) as never, values as never) as Hex,
+    };
+    const ref = (await referenceOf(authCaptureEip3009, await signed(authCaptureEip3009, f))) as AuthCaptureRef;
+    const T = ("0x" + "44".repeat(32)) as Hex;
+    const ledger = readerOf({
+      network: "eip155:84532",
+      heads: { finalized: 140n, safe: 140n, latest: 150n },
+      time: (b) => 1_700_000_000n + b,
+      txs: [{ hash: T, block: 110n, status: 1, logs: [log] }],
+      call: () => ("0x" + "00".repeat(31) + "01") as Hex,
+    });
+    const answer = await authCaptureEip3009.status!(ref as never, ledger, { act: "payment", finality: "finalized", after: 100n } as never);
+    const payTo = (f.option.payTo as string).toLowerCase();
+    expect(answer).toMatchObject({ state: "settled", moved: [{ to: payTo, beneficiary: payTo, amount: "10000" }] });
+  });
   it("EV3 unbound: build with an option whose extra names no receiverAuthorizer signs the payer-agnostic hash of salt H", async () => {
     const unbound = structuredClone(f.option) as any;
     delete unbound.extra.receiverAuthorizer;

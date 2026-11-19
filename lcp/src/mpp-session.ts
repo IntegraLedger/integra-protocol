@@ -952,7 +952,7 @@ async function tempoOpeningFacts(
       const moved: OpeningMoved[] =
         token === undefined || deposit === undefined || payee === undefined
           ? []
-          : [{ asset: token, amount: uintOf(deposit).toString(), to: payee, transaction: hash, place: i }];
+          : [{ asset: token, amount: uintOf(deposit).toString(), to: payee, beneficiary: payee, transaction: hash, place: i }];
       seen.push({
         ...place,
         ...common,
@@ -1155,6 +1155,7 @@ async function activationFacts(
       kind: own ? "same" : "other",
       account: recipient === undefined ? "none" : sameBytes(recipient, ref.payee) ? "payee" : "other",
       moved,
+      ...(recipient === undefined ? {} : { named: recipient }),
       ...(landedSigned !== undefined && givenSigned.some((g) => sameBytes(g, landedSigned)) ? { given: true } : {}),
       presented: landedSigned !== undefined && sameBytes(landedSigned, signed) ? "yes" : "no",
     });

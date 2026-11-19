@@ -350,6 +350,7 @@
        "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
        "amount": "10000",
        "to": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+       "beneficiary": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
        "transaction": "4fKgq1suJkQtuVSLXNzEqHoShn5iTPiq1nUPyUuiechbYn7oVbzDx7mevPnKZvaCdFAXP4yzD5K5KT3EWvec8duA",
        "place": 0
       }
@@ -376,6 +377,7 @@
        "asset": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
        "amount": "10000",
        "to": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
+       "beneficiary": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
        "transaction": "4fKgq1suJkQtuVSLXNzEqHoShn5iTPiq1nUPyUuiechbYn7oVbzDx7mevPnKZvaCdFAXP4yzD5K5KT3EWvec8duA",
        "place": 0
       }

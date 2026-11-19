@@ -51,6 +51,16 @@ rename exports and pairing ids and change a function's arguments or answers; a p
 - `cardanoInputs` (`@integraledger/lcp/cardano`): the inputs a transaction's body spends, as `<id>#<index>` in the
   body's order, read from the transaction's bytes with the Cardano reader's bounds, so a `CardanoReader` answers
   `inputAddresses` from an indexer that returns a transaction's CBOR.
+- `Moved.beneficiary`, optional: on a deposit into a contract, the account that contract names as the payment's
+  beneficiary, beside `to`, which keeps its meaning. The reads that record a deposit set it: the MPP session openings
+  on Tempo, EVM and Hedera (the channel's `payee`), `x402/auth-capture/eip155/*` (the `PaymentInfo.receiver`),
+  `x402/batch-settlement/eip155` (the channel's `receiver`), the XRPL `PaymentChannelCreate` reads of
+  `x402/upto/xrpl` and the XRPL sessions (its `Destination`), the Solana channel openings of `x402/upto/solana`,
+  `x402/batch-settlement/solana` and the Solana sessions (the payee the `open`'s distribution holds, else its first
+  recipient), and the Masumi lock of `x402/exact/cardano/lock` (the seller its escrow datum names).
+- `named`, optional, on `Named`, `Seen` and `ForeignItem`: the account an act names apart from what it moved. The read
+  of `mpp/subscription/tempo` sets it to the activation's one recipient, the account the key authorization it carries
+  lets its key pay. The profile `read-status` (rules 13 and 14) and each pairing's profile state what is recorded.
 
 ## [0.6.1] - 2026-11-18
 

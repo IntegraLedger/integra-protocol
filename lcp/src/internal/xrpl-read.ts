@@ -153,6 +153,11 @@ function movedOf(amount: XrplAmount | undefined, to: string | undefined, transac
   return undefined;
 }
 
+/** A PaymentChannelCreate's deposit, its channel's `Destination` recorded as the beneficiary beside `to`. */
+function deposited(m: Moved | undefined): Moved | undefined {
+  return m === undefined ? undefined : { ...m, beneficiary: m.to };
+}
+
 /**
  * Whether a Payment sets `tfPartialPayment` (131072, ripple-binary-codec 2.11.0 `dist/enums/definitions.json` L5283),
  * by which its payer let it deliver less than its `Amount`.
@@ -252,7 +257,7 @@ async function classify(
   if (result === "succeeded") {
     const m =
       tx.TransactionType === "PaymentChannelCreate"
-        ? movedOf(tx["Amount"] as XrplAmount, destination, hash)
+        ? deposited(movedOf(tx["Amount"] as XrplAmount, destination, hash))
         : tx.TransactionType === "Payment"
           ? movedOf(l.delivered, destination, hash)
           : undefined;
@@ -619,7 +624,7 @@ export async function xrplChannelStatus(
       if (!created || met.some((s) => s.transaction === d.hash)) return true;
       const delegate = typeof tx["Delegate"] === "string" ? (tx["Delegate"] as string) : undefined;
       const destination = typeof tx["Destination"] === "string" ? (tx["Destination"] as string) : undefined;
-      const moved = movedOf(tx["Amount"] as XrplAmount, destination, d.hash);
+      const moved = deposited(movedOf(tx["Amount"] as XrplAmount, destination, d.hash));
       const authority = authorityOf(tx, l);
       met.push({
         transaction: d.hash,

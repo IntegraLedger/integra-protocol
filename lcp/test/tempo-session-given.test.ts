@@ -35,6 +35,12 @@ describe("the Tempo session read of an opening given as another act by its refer
   });
   const query = { act: "payment", finality: "finalized", after: BLOCK - 1n } as const;
 
+  it("records the channel's payee, ChannelOpened's topic 3, as the deposit's beneficiary (mpp-session-evm-tempo.md rule 6)", async () => {
+    const payee = `0x${opened.topics[3]!.slice(26)}`;
+    const answer = await sessionTempo.status(ref as never, reader as never, query);
+    expect(answer.state === "unreadable" ? undefined : answer.moved?.map((m) => [m.to, m.beneficiary])).toEqual([[payee, payee]]);
+  });
+
   it("settles on the opening; given by its reference as another act, names it a foreign item, given", async () => {
     expect((await sessionTempo.status(ref as never, reader as never, query)).state).toBe("settled");
     const answer = await sessionTempo.status(ref as never, reader as never, { ...query, others: [{ ref: { signed } }] } as never);

@@ -25,6 +25,11 @@ export interface Moved {
   readonly amount: string;
   /** The account it reached, or the beneficiary a contract names. */
   readonly to: string;
+  /**
+   * On a deposit into a contract, the account that contract names as the payment's beneficiary, where the act states
+   * one; absent on a transfer, and on a deposit that names none. Observed, and never judged.
+   */
+  readonly beneficiary?: string;
   /** The transaction it was read from. */
   readonly transaction?: string;
   /**
@@ -53,6 +58,8 @@ export interface ForeignItem<Position> {
   /** The authority the ledger records for its signer, where the read records one. */
   readonly authority?: string;
   readonly moved?: readonly Moved[];
+  /** The account it names apart from what it moved, where the read records one, as `Named.named` states it. */
+  readonly named?: string;
   readonly reason: ForeignReason;
 }
 
@@ -78,6 +85,12 @@ export interface Named<Position, Mark> {
   /** The mark the read reached for the transaction it names. */
   readonly finality?: Mark;
   readonly moved?: readonly Moved[];
+  /**
+   * The account the act names apart from what it moved, where the read records one: on an activation, the one
+   * recipient the key authorization it carries lets its key pay, whether or not the act moved anything to it. Absent
+   * where the act names no such account. Observed, and never judged.
+   */
+  readonly named?: string;
   readonly signer?: string;
   readonly authority?: string;
 }
@@ -153,6 +166,8 @@ export interface Seen<Position, Mark> {
    */
   readonly presented: "yes" | "no" | "unshown";
   readonly moved?: readonly Moved[];
+  /** The account it names apart from what it moved, where the read records one, as `Named.named` states it. */
+  readonly named?: string;
   readonly signer?: string;
   readonly authority?: string;
 }
@@ -394,6 +409,7 @@ function namedOf<Position, Mark>(s: Seen<Position, Mark>): Named<Position, Mark>
     ...(s.position === undefined ? {} : { position: s.position }),
     finality: s.mark,
     ...(s.moved === undefined ? {} : { moved: s.moved }),
+    ...(s.named === undefined ? {} : { named: s.named }),
     ...(s.signer === undefined ? {} : { signer: s.signer }),
     ...(s.authority === undefined ? {} : { authority: s.authority }),
   };
@@ -406,6 +422,7 @@ function itemOf<Position, Mark>(s: Seen<Position, Mark>, reason: ForeignReason):
     ...(s.signer === undefined ? {} : { signer: s.signer }),
     ...(s.authority === undefined ? {} : { authority: s.authority }),
     ...(s.moved === undefined ? {} : { moved: s.moved }),
+    ...(s.named === undefined ? {} : { named: s.named }),
     reason,
   };
 }
