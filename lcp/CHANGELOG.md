@@ -3,34 +3,28 @@
 Every release of `@integraledger/lcp`, newest first. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). While the version is 0.x, a minor release may remove or
 rename exports and pairing ids and change a function's arguments or answers; a patch release does not.
-[Upgrading](../docs/upgrading.md) gives each change a caller of 0.5.x makes for 0.6.0.
+[Upgrading](../docs/upgrading.md) states what 0.6's patch releases add, and each change a caller of 0.5.x makes for
+0.6.0.
 
-## [Unreleased]
+## [0.6.2] - 2026-11-19
 
 ### Added
 
 - An agreement option's served member (profile `legal-context-return`, rule 6) names a charge option `<slot>/<i>` for
-  every ATR binding slot that holds charge options: `x402/<i>` (`accepts`) and `mpp/<i>` (`challenges`), as before, and
-  `ack/<i>` (`paymentOptions`), `acp/<i>`, `ap2/<i>`, `card/<i>` and `ucp/<i>` (`options`), so a card or checkout
+  every ATR binding slot that holds charge options: `x402/<i>` (`accepts`) and `mpp/<i>` (`challenges`), as before,
+  and `ack/<i>` (`paymentOptions`), `acp/<i>`, `ap2/<i>`, `card/<i>` and `ucp/<i>` (`options`), so a card or checkout
   sale offered an agreement as an x402 option or an MPP challenge names its card or checkout options. `servesOf` reads
   the new names, and takes the ATR's bytes as an optional second argument, `servesOf(option, atr?)`, against which it
   resolves each name: a slot that is not the ATR's binding slot, or an index not below the number of options that slot
-  holds, is `return/serves-malformed`. `legal-context-return.json` gains a card ATR and its rows.
-- `@integraledger/lcp/mpp` writes and reads MPP's three HTTP fields, so a resource server writes and reads MPP's
-  forms from this package: `encodeChallenge(challenge)` writes one challenge as a `WWW-Authenticate` field value, as
-  the `mppx` SDK 0.17.6 writes it, and refuses one `parseChallenges` would not read back as the same members, or whose
-  `header` is not `Payment-Authorization` (`mpp/challenge-malformed`); `decodeCredential(fieldValue)` reads the credential from an `Authorization` or
-  `Payment-Authorization` field value, held to the shape every `bound` reads first (`mpp/credential-malformed`); and
-  `encodeReceipt(receipt)` writes a successful response's `Payment-Receipt` field value (`mpp/receipt-malformed`),
-  with the type `MppReceipt`. No existing export changes.
-### Fixed
-
-- Every XRP Ledger read (the `status` of each XRPL pairing, and `xrplStatus`, `xrplChargeStatus`, `xrplOpenStatus` and
-  `xrplChannelStatus` of `@integraledger/lcp/xrpl`) answers `unreadable`, `history-gap` where the reader rejects with
-  `ReaderError` of kind `history`, as the EVM reads do, where it answered `transport`. `XrplReader` states when a reader
-  rejects so: where the server refuses a call for ledgers it does not hold, as rippled on API version 2 refuses
-  `account_tx` from a ledger below those it holds with `lgrIdxMalformed`. The caller then reads again through a server
-  that holds the ledgers.
+  holds, is `return/serves-malformed`. `legal-context-return.json` gains a card ATR and its rows. A reader on 0.6.1 or
+  earlier refuses the new names ([Upgrading](../docs/upgrading.md#within-06)).
+- `@integraledger/lcp/mpp` writes and reads MPP's three HTTP fields, so a resource server writes and reads MPP's forms
+  from this package: `encodeChallenge(challenge)` writes one challenge as a `WWW-Authenticate` field value, as the
+  `mppx` SDK 0.17.6 writes it, and refuses one `parseChallenges` would not read back as the same members, or whose
+  `header` is not `Payment-Authorization` (`mpp/challenge-malformed`); `decodeCredential(fieldValue)` reads the
+  credential from an `Authorization` or `Payment-Authorization` field value, held to the shape every `bound` reads
+  first (`mpp/credential-malformed`); and `encodeReceipt(receipt)` writes a successful response's `Payment-Receipt`
+  field value (`mpp/receipt-malformed`), with the type `MppReceipt`. No existing export changes.
 - Four registry facts as data, beside the prose that states them. `data.agreement.feePayer` (`FeePayer`): the parties
   that may pay an agreement's fee (`FeeParty`: `buyer`, `settler`, `paymaster` or `none`) and the one that pays where
   the option names none, on every pairing whose payment can be an agreement, so a resource server can check the fee
@@ -38,16 +32,16 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   before it can be paid, where the profile states it (`x402/exact/hedera`, `mpp/charge/lcp/hedera`,
   `x402/exact/polkadot/lcp-assets-remark`, `x402/upto/xrpl`). `data.read.chains`: the networks, as CAIP-2 ids, each
   contract the read names is deployed on, where the profile or the package states them, so an option on a network the
-  contract is not on can be refused by data. `data.cardLike`: `true` on the card-like pairings, which are on no network
-  a CAIP-2 id names, telling them from Lightning's, whose invoice is on an `lnbtc` network. The
-  root exports the types `FeePayer` and `FeeParty`. No existing member changes.
+  contract is not on can be refused by data. `data.cardLike`: `true` on the card-like pairings, which are on no
+  network a CAIP-2 id names, telling them from Lightning's, whose invoice is on an `lnbtc` network. The root exports
+  the types `FeePayer` and `FeeParty`. No existing member changes.
 - `MAX_ATR_BYTES` (1,048,576) and `MAX_SLOT_NAME_LENGTH` (64), from the root: the largest ATR `assemble` writes and
   the longest slot name it accepts, so a server sizes its own limits from them. `assemble`'s rules do not change.
 - `suiFloor` (`@integraledger/lcp/sui`) and `starknetFloor` (`@integraledger/lcp/starknet`): the agreement's floor
   that each pairing's data gives as `rule`, as `cardanoFloor` gives Cardano's. `suiFloor` takes the option's gas path
   and, on the gasless path, the coin type's smallest transfer that Sui's protocol configuration lists, answering the
-  larger of it and 1; `starknetFloor` takes the token and answers 1. A new code, `sui/floor-input`, refuses a gas path or parameter `suiFloor` cannot
-  read.
+  larger of it and 1; `starknetFloor` takes the token and answers 1. A new code, `sui/floor-input`, refuses a gas path
+  or parameter `suiFloor` cannot read.
 - `cardanoInputs` (`@integraledger/lcp/cardano`): the inputs a transaction's body spends, as `<id>#<index>` in the
   body's order, read from the transaction's bytes with the Cardano reader's bounds, so a `CardanoReader` answers
   `inputAddresses` from an indexer that returns a transaction's CBOR.
@@ -66,6 +60,19 @@ rename exports and pairing ids and change a function's arguments or answers; a p
 - `named`, optional, on `Named`, `Seen` and `ForeignItem`: the account an act names apart from what it moved. The read
   of `mpp/subscription/tempo` sets it to the activation's one recipient, the account the key authorization it carries
   lets its key pay. The profile `read-status` (rules 13 and 14) and each pairing's profile state what is recorded.
+
+### Fixed
+
+- Every XRP Ledger read (the `status` of each XRPL pairing, and `xrplStatus`, `xrplChargeStatus`, `xrplOpenStatus` and
+  `xrplChannelStatus` of `@integraledger/lcp/xrpl`) answers `unreadable`, `history-gap` where the reader rejects with
+  `ReaderError` of kind `history`, as the EVM reads do, where it answered `transport`. `XrplReader` states when a
+  reader rejects so: where the server refuses a call for ledgers it does not hold, as rippled on API version 2 refuses
+  `account_tx` from a ledger below those it holds with `lgrIdxMalformed`. The caller then reads again through a server
+  that holds the ledgers.
+- `TonTx`'s `before` and `after`, and the profile `x402-exact-tvm`'s expiry read, state where a reader takes the
+  account's status: TON Center v3's `orig_status` and `end_status`. A deploy's `account_state_before` states no
+  status, so a reader that took it from there gave the expiry read's search no status before the deploy, and the
+  search held there.
 
 ## [0.6.1] - 2026-11-18
 
@@ -254,7 +261,8 @@ rename exports and pairing ids and change a function's arguments or answers; a p
 
 - The earliest release tagged in this repository. Versions before it have no tag and are not recorded here.
 
-[Unreleased]: https://github.com/IntegraLedger/integra-protocol/compare/v0.6.1...HEAD
+[Unreleased]: https://github.com/IntegraLedger/integra-protocol/compare/v0.6.2...HEAD
+[0.6.2]: https://github.com/IntegraLedger/integra-protocol/compare/v0.6.1...v0.6.2
 [0.6.1]: https://github.com/IntegraLedger/integra-protocol/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/IntegraLedger/integra-protocol/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/IntegraLedger/integra-protocol/compare/v0.5.0...v0.5.1
