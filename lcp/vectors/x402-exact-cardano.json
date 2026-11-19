@@ -659,5 +659,47 @@
     "expect": "x402/option-not-this-pairing"
    }
   ]
+ },
+ "inputs": {
+  "about": "The inputs a transaction's body spends, read by cardanoInputs from the transaction's bytes, each <id hex>#<index> in the body's order. Each expect is cborg 6.1.3's decode of the transaction (useMaps, tags 24, 121 to 127, 258 and 259 read through), body key 0, each [id, index] written so; V2's is fixed.nonce, the input payload.nonce names. V3 is the real preprod transaction, whose inputs are a tag 258 set. The datum row is V2's transaction with its witness set given key 4, plutus_data, holding V7's datum exactly as the scheme encodes it, with indefinite-length arrays: the bytes are 0x84, V2's body, the witness map's head raised from one entry to two, V2's witness entry, 04 81 and V7's datum, then V2's validity and auxiliary data, the body and so its id unchanged; built and checked with cborg 6.1.3's decodeFirst and decode. The trailing-byte row is V4's row 3. expect is the list of inputs, or the refusal code.",
+  "rows": [
+   {
+    "case": "V2",
+    "of": "V2",
+    "expect": [
+     "1111111111111111111111111111111111111111111111111111111111111111#0"
+    ]
+   },
+   {
+    "case": "V3, a real preprod transaction whose inputs are a tag 258 set",
+    "of": "V3",
+    "expect": [
+     "8007bbc2392cbca8b50a78f30261d84d1977f665a5a7e6c58d9fe51f4c884af6#5",
+     "8007bbc2392cbca8b50a78f30261d84d1977f665a5a7e6c58d9fe51f4c884af6#0",
+     "8007bbc2392cbca8b50a78f30261d84d1977f665a5a7e6c58d9fe51f4c884af6#1",
+     "8007bbc2392cbca8b50a78f30261d84d1977f665a5a7e6c58d9fe51f4c884af6#4",
+     "8007bbc2392cbca8b50a78f30261d84d1977f665a5a7e6c58d9fe51f4c884af6#3"
+    ]
+   },
+   {
+    "case": "V6, V2's body without its TTL",
+    "of": "V6",
+    "expect": [
+     "1111111111111111111111111111111111111111111111111111111111111111#0"
+    ]
+   },
+   {
+    "case": "V2 with V7's indefinite-length datum in its witness set",
+    "transactionBase64": "hKUAgYJYIBERERERERERERERERERERERERERERERERERERERERERAAGCglgdYA1qV36UQa2O2WY5MZBuTUPs6PgscSsdAjWv+wYaAB6EgIJYHWDLk1hSnfRynDJGoqAzy5ghq7/RbeSIgAWQSrxBGgB3BMACGgADDUADGggGI2AHWCCXVIKogQuSvI+hLs7ggmuTbvWE6K87Wr1FMLn0Dmn4+6IAgYJYIEiDry0WSRqJGOMZVboYBbiqQ4FQNUow4lsG4x/8PeFaWEAW8JbBC9TS4B4cOAHsJZL/AGlojnCjvUlTlUTCO6G0X8ZS+qqcTOh52TrOhB3zNrG1eyjiE0+hpc216GYrwGAKBIHYeZ/YeZ/YeZ9YHBERERERERERERERERERERERERERERERERERERH/2HqA/9h6gNh5n9h5n1gcIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIiIv/YeoD/2HqAQ6EBAVBVVVVVVVVVVVVVVVVVVVVVWCAzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzMzM0BAGgAV5l5YIEREREREREREREREREREREREREREREREREREREREREREQBsAAAGfx1ofABsAAAGfx5ENgBsAAAGfx8f8ABsAAAGfx/7qgAAA2HmA//XZAQOhAKEZAqKhY21zZ4JtbGNwOnNoYTI1NjoweHhAYmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZA==",
+    "expect": [
+     "1111111111111111111111111111111111111111111111111111111111111111#0"
+    ]
+   },
+   {
+    "case": "V4's row 3, a trailing byte after the array",
+    "of": "V4/3",
+    "expect": "cardano/tx-malformed"
+   }
+  ]
  }
 }

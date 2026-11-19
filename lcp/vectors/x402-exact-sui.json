@@ -1734,7 +1734,7 @@
   ]
  },
  "floor": {
-  "about": "The agreement's floor by gas path, read by suiFloor (the profile x402-exact-sui.md, rules 7 and 16): zero where the buyer or a sponsor pays gas; on the gasless path the coin type's smallest transfer on the network. Each gasless row's smallestTransfer is the minimum Sui's protocol configuration lists for its coin type in gasless_allowed_token_types, \"Allowed token types for gasless transactions, with minimum transfer sizes per token\" (MystenLabs/sui a0516ffd, crates/sui-protocol-config/src/lib.rs:2355-2357): testnet USDC (TESTNET_USDC, lib.rs:43-44) at 0 (lib.rs:4709) and mainnet USDC (MAINNET_USDC, lib.rs:46-47) at 10000, \"$0.01 minimum transfer per stable\" (lib.rs:4774-4778). The buyer and sponsored rows give no parameter, which their floor does not read. expect is the floor as a decimal, or the refusal code.",
+  "about": "The agreement's floor by gas path, read by suiFloor (the profile x402-exact-sui.md, rules 7 and 16): zero where the buyer or a sponsor pays gas; on the gasless path the larger of 1 and the coin type's smallest transfer on the network, since the option filter refuses an amount of \"0\" there. Each gasless row's smallestTransfer is the minimum Sui's protocol configuration lists for its coin type in gasless_allowed_token_types, \"Allowed token types for gasless transactions, with minimum transfer sizes per token\" (MystenLabs/sui a0516ffd, crates/sui-protocol-config/src/lib.rs:2355-2357): testnet USDC (TESTNET_USDC, lib.rs:43-44) at 0 (lib.rs:4709), whose floor is therefore 1, and mainnet USDC (MAINNET_USDC, lib.rs:46-47) at 10000, \"$0.01 minimum transfer per stable\" (lib.rs:4774-4778). The buyer and sponsored rows give no parameter, which their floor does not read. expect is the floor as a decimal, or the refusal code.",
   "rows": [
    {
     "case": "gasless, mainnet USDC",
@@ -1750,7 +1750,7 @@
     "coinType": "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC",
     "gasPath": "gasless",
     "smallestTransfer": "0",
-    "expect": "0"
+    "expect": "1"
    },
    {
     "case": "the buyer pays gas",

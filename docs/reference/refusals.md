@@ -579,8 +579,8 @@ Cardano (`@integraledger/lcp/cardano`).
 | `cardano/not-found` | **Read to repeat.** The Cardano reader answers that the indexer does not hold the transaction (its not-found answer). |
 | `cardano/not-valid` | The Cardano transaction the reference names is on chain as invalid (its collateral was taken). |
 | `cardano/ttl-missing` | A Cardano lock's transaction sets no TTL, which x402's Cardano scheme requires of a lock. |
-| `cardano/tx-malformed` | A Cardano transaction, as base64 text or as the CBOR bytes a reader returns to `cardanoRecover` whose body has the id the reference names, is not one CBOR array `[body, witness set, validity, auxiliary data]` with a map body of unique unsigned keys, a valid TTL and a 32-byte auxiliary data hash. |
-| `cardano/tx-too-large` | `decodeCardanoTx` is given a transaction larger than the size bound. |
+| `cardano/tx-malformed` | A Cardano transaction, as base64 text or as the CBOR bytes a reader returns to `cardanoRecover` whose body has the id the reference names, is not one CBOR array `[body, witness set, validity, auxiliary data]` with a map body of unique unsigned keys, a valid TTL and a 32-byte auxiliary data hash. Or `cardanoInputs` is given bytes that are not one CBOR array of four items whose body is a map of unique unsigned keys holding at key 0 a set of inputs, each `[32-byte id, index]`. |
+| `cardano/tx-too-large` | `decodeCardanoTx` or `cardanoInputs` is given a transaction larger than the size bound. |
 | `cardano/unreadable` | **Read to repeat.** The Cardano reader threw, gave an answer of neither documented shape (a transaction, or a not-found answer), or returned a transaction with no CBOR bytes, more bytes than the size bound, or bytes that are not one CBOR array whose first item, the body, has the reference's id as its Blake2b-256, before any decoding refusal. |
 | `cardano/wrong-reader` | The Cardano reader answers for a different network than the reference names, or the reference given to `recover` names a `txId` that is not a 32-byte hash. |
 

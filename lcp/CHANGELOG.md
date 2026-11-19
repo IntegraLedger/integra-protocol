@@ -45,9 +45,12 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   the longest slot name it accepts, so a server sizes its own limits from them. `assemble`'s rules do not change.
 - `suiFloor` (`@integraledger/lcp/sui`) and `starknetFloor` (`@integraledger/lcp/starknet`): the agreement's floor
   that each pairing's data gives as `rule`, as `cardanoFloor` gives Cardano's. `suiFloor` takes the option's gas path
-  and, on the gasless path, the coin type's smallest transfer that Sui's protocol configuration lists; `starknetFloor`
-  takes the token and answers 1. A new code, `sui/floor-input`, refuses a gas path or parameter `suiFloor` cannot
+  and, on the gasless path, the coin type's smallest transfer that Sui's protocol configuration lists, answering the
+  larger of it and 1; `starknetFloor` takes the token and answers 1. A new code, `sui/floor-input`, refuses a gas path or parameter `suiFloor` cannot
   read.
+- `cardanoInputs` (`@integraledger/lcp/cardano`): the inputs a transaction's body spends, as `<id>#<index>` in the
+  body's order, read from the transaction's bytes with the Cardano reader's bounds, so a `CardanoReader` answers
+  `inputAddresses` from an indexer that returns a transaction's CBOR.
 
 ## [0.6.1] - 2026-11-18
 

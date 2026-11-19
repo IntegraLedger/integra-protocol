@@ -9,6 +9,7 @@ import {
   LCP_MARKER,
   auxiliaryData,
   cardanoFloor,
+  cardanoInputs,
   decodeCardanoTx,
   exactCardano,
   exactCardanoLock,
@@ -795,5 +796,17 @@ describe("the read kit's lock form runs the script lock's read", () => {
     }
     rowsOf(ran, "the lock's cases on the script lock", { exact: 47 });
     expect([...SCRIPT_RAN].sort()).toEqual(ran.sort());
+  });
+});
+
+describe("inputs: the inputs a transaction's body spends", () => {
+  it("reads body key 0 in the body's order, through indefinite lengths in the witness set", () => {
+    type Row = { case: string; of?: string; transactionBase64?: string; expect: string[] | string };
+    for (const row of rowsOf<Row>(V.inputs.rows, "x402-exact-cardano.json inputs.rows")) {
+      const source = row.of === undefined ? row : row.of.split("/").reduce((o: any, k) => o[k], V);
+      const bytes = new Uint8Array(Buffer.from(source.transactionBase64, "base64"));
+      const expected = typeof row.expect === "string" ? refused(row.expect) : row.expect;
+      expect([row.case, cardanoInputs(bytes)]).toEqual([row.case, expected]);
+    }
   });
 });

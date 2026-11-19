@@ -233,6 +233,31 @@ export async function decodeCardanoTx(base64: string): Promise<CardanoTx | Refus
   return decodeBytes(bytes);
 }
 
+/**
+ * The inputs a transaction's body spends (body key 0), each as `<transaction id hex>#<index>`, in the body's order: the
+ * inputs whose addresses `CardanoReader.inputAddresses` answers. `tx` is the transaction's CBOR bytes as included
+ * (`CardanoOnChain.cbor`), `[body, witness set, validity, auxiliary data]`, read with definite and indefinite lengths
+ * and at most 64 levels of nesting. Bytes over `CARDANO_MAX_TX_BYTES` are `cardano/tx-too-large`; bytes that are not one
+ * such array whose body is a map of unique unsigned keys holding, at key 0, a set of `[32-byte id, index]` inputs, an
+ * array or one under tag 258, are `cardano/tx-malformed`.
+ */
+export function cardanoInputs(tx: Uint8Array): readonly string[] | Refusal {
+  if (!(tx instanceof Uint8Array)) return refusal("cardano/tx-malformed");
+  if (tx.length > MAX_TX_BYTES) return refusal("cardano/tx-too-large");
+  const top = oneItem(tx);
+  if (top === null || top.kind !== "array" || top.items.length !== 4) return refusal("cardano/tx-malformed");
+  const body = top.items[0]!;
+  if (body.kind !== "map") return refusal("cardano/tx-malformed");
+  const keys = new Set<bigint>();
+  let inputs: string[] | undefined;
+  for (const [key, v] of body.entries) {
+    if (key.kind !== "uint" || keys.has(key.value)) return refusal("cardano/tx-malformed");
+    keys.add(key.value);
+    if (key.value === 0n) inputs = inputsOf(v);
+  }
+  return inputs === undefined ? refusal("cardano/tx-malformed") : Object.freeze(inputs);
+}
+
 export type CardanoQuery = StatusQuery<CardanoRef, bigint, bigint, bigint>;
 
 /** An answer of the reader outside its documented shape: the read is `unreadable`, `unparseable`. */

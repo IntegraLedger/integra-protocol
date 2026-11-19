@@ -435,9 +435,9 @@
     {
       "unit": "Cardano",
       "exports": {
-        "./cardano": ["CARDANO_MAX_TX_BYTES", "CARDANO_SEARCH_BOUND", "CardanoMethod", "CardanoNetwork", "CardanoOnChain", "CardanoOutput", "CardanoPage", "CardanoPayload", "CardanoReader", "CardanoRef", "CardanoStatus", "CardanoTx", "CardanoUnsigned", "LCP_MARKER", "auxiliaryData", "cardanoFloor", "cardanoRecover", "cardanoStatus", "decodeCardanoTx", "exactCardano", "exactCardanoLock", "CardanoPaymentPayload", "CardanoQuery", "X402Read"]
+        "./cardano": ["CARDANO_MAX_TX_BYTES", "CARDANO_SEARCH_BOUND", "CardanoMethod", "CardanoNetwork", "CardanoOnChain", "CardanoOutput", "CardanoPage", "CardanoPayload", "CardanoReader", "CardanoRef", "CardanoStatus", "CardanoTx", "CardanoUnsigned", "LCP_MARKER", "auxiliaryData", "cardanoFloor", "cardanoInputs", "cardanoRecover", "cardanoStatus", "decodeCardanoTx", "exactCardano", "exactCardanoLock", "CardanoPaymentPayload", "CardanoQuery", "X402Read"]
       },
-      "use": "Any Cardano buyer's client builds a transaction whose signed body commits to H as a CIP-20 message, on x402's address method or its two lock methods, any server checks it and prices the smallest agreement by the ledger's minimum output, and anyone reads the payment through its own indexer, by the input it spends and the payer's credential, or reads H back from the included transaction.",
+      "use": "Any Cardano buyer's client builds a transaction whose signed body commits to H as a CIP-20 message, on x402's address method or its two lock methods, any server checks it and prices the smallest agreement by the ledger's minimum output, and anyone reads the payment through its own indexer, by the input it spends and the payer's credential, reading a transaction's inputs from its bytes for that indexer, or reads H back from the included transaction.",
       "fixedBy": "x402-exact-cardano.md; CIP-20."
     },
     {
