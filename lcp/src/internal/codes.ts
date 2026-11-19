@@ -396,6 +396,7 @@ export const REFUSAL_CODES: ReadonlySet<string> = new Set([
   "stellar/wrong-reader",
   "sui/aborted",
   "sui/ambiguous",
+  "sui/floor-input",
   "sui/hash-not-carried",
   "sui/network-malformed",
   "sui/not-as-sent",

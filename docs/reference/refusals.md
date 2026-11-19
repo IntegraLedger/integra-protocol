@@ -13,7 +13,7 @@ The writers whose type carries no refusal, such as `toLcpString`, throw a
 `TypeError` on an argument outside their type instead ([What throws](../concepts/refusals.md#what-throws)).
 A link is an absolute URL, on this page, when the WHATWG URL Standard's basic URL parser reads it with no base, as the
 package's own copy of that parser reads it ([The link](../concepts/atr-hash.md#the-link)), on every runtime alike.
-This page lists all 559 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
+This page lists all 560 codes the package can return, by namespace. CI checks that every `refusal(…)` call in the
 source passes its code as a string literal, that this page lists exactly those codes, each once, and that this total
 and the namespace counts below match its rows.
 
@@ -49,7 +49,7 @@ of the rail that may answer differently later, with nothing the caller must chan
 | [`near`](#near) | 16 | NEAR (`@integraledger/lcp/near`, and `chargeNearIntents` in `@integraledger/lcp/mpp`). |
 | [`polkadot`](#polkadot) | 17 | Polkadot Asset Hub (`@integraledger/lcp/polkadot`). |
 | [`starknet`](#starknet) | 17 | Starknet (`@integraledger/lcp/starknet`). |
-| [`sui`](#sui) | 12 | Sui (`@integraledger/lcp/sui`). |
+| [`sui`](#sui) | 13 | Sui (`@integraledger/lcp/sui`). |
 | [`tron`](#tron) | 15 | Tron (`@integraledger/lcp/tron`). |
 | [`tvm`](#tvm) | 16 | TON (`@integraledger/lcp/tvm`). |
 | [`ln`](#ln) | 25 | Lightning: BOLT11 invoices and the Lightning pairings (`@integraledger/lcp/lightning`, and the Lightning challenge checks of `@integraledger/lcp/mpp`). |
@@ -708,6 +708,7 @@ Sui (`@integraledger/lcp/sui`).
 |---|---|
 | `sui/aborted` | The Sui transaction the reference names executed with status `FAILURE`. |
 | `sui/ambiguous` | The Sui transaction has more than one unused `Pure` input. |
+| `sui/floor-input` | `suiFloor` is given a gas path that is not `buyer`, `sponsored` or `gasless`, or, on the gasless path, a `smallestTransfer` that is not a non-negative bigint. |
 | `sui/hash-not-carried` | The Sui transaction has no unused `Pure` input, or its one unused `Pure` input is not 32 bytes. |
 | `sui/network-malformed` | A Sui option's network starts with `sui:` but is not `sui:mainnet`, `sui:testnet` or `sui:devnet`. |
 | `sui/not-as-sent` | x402 `complete` is given, on an option with `extra.gasStation`, no transaction the client sent to the gas station, or a signed transaction that differs from the one sent in its sender, its kind (inputs and commands) or its expiration; only the gas data may differ. |

@@ -8,7 +8,7 @@
 
 import { refusal } from "../refusal.js";
 import { readUrl } from "./url-host.js";
-import { MAX_JSON_DEPTH, MAX_LINK_LENGTH } from "./bounds.js";
+import { MAX_ATR_BYTES, MAX_JSON_DEPTH, MAX_LINK_LENGTH, MAX_SLOT_NAME_LENGTH } from "./bounds.js";
 export { MAX_JSON_DEPTH };
 
 /** `0x` followed by 64 hex digits. Every hash this module emits is lowercase. */
@@ -33,9 +33,8 @@ export type CoreRefusal = {
     | "core/too-large";
 };
 
-const MIB = 1_048_576;
 const MAX_PARTY_SLOTS = 64;
-const SLOT_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
+const SLOT_NAME = new RegExp(`^[A-Za-z0-9][A-Za-z0-9._-]{0,${MAX_SLOT_NAME_LENGTH - 1}}$`);
 const HASH = /^0x[0-9a-fA-F]{64}$/;
 const HEX_DIGITS = "0123456789abcdef";
 
@@ -51,11 +50,11 @@ export function newAtrId(): string {
  * is returned as a refusal, from the first check that fails, in this order:
  *
  * 1. `limits.maxBytes`, when given, is a non-negative safe integer (`core/too-large`). The limit applied is the
- *    smaller of it and 1 MiB.
+ *    smaller of it and 1 MiB (`MAX_ATR_BYTES`).
  * 2. `id` is a string (`core/binding-not-json`), `binding` is an array of two (`core/slot-name`), and `content` is an
  *    array (`core/content-not-json`).
- * 3. The binding's slot name matches the slot-name pattern (`core/slot-name`) and is not `atrVersion` or `id`
- *    (`core/slot-reserved`).
+ * 3. The binding's slot name matches the slot-name pattern, 1 to 64 characters (`MAX_SLOT_NAME_LENGTH`)
+ *    (`core/slot-name`), and is not `atrVersion` or `id` (`core/slot-reserved`).
  * 4. There are at most 64 party slots (`core/too-large`).
  * 5. Each party slot, in the order given, is an array of two (`core/slot-name`); its name matches the pattern
  *    (`core/slot-name`), is not `atrVersion`, `id` or the binding's slot name (`core/slot-reserved`) and has not
@@ -77,9 +76,9 @@ export async function assemble(
   content: readonly (readonly [slot: string, bytes: Uint8Array])[],
   limits?: { maxBytes?: number },
 ): Promise<{ bytes: Uint8Array<ArrayBuffer>; atrHash: AtrHash } | CoreRefusal> {
-  const maxBytes = limits?.maxBytes ?? MIB;
+  const maxBytes = limits?.maxBytes ?? MAX_ATR_BYTES;
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 0) return refusal("core/too-large");
-  const limit = Math.min(maxBytes, MIB);
+  const limit = Math.min(maxBytes, MAX_ATR_BYTES);
 
   if (typeof id !== "string") return refusal("core/binding-not-json");
   if (!isPair(binding)) return refusal("core/slot-name");

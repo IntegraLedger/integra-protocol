@@ -90,6 +90,7 @@ export type {
   UnreadableReason,
 } from "./internal/read.js";
 export {
+  MAX_ATR_BYTES,
   MAX_CHALLENGE_DEPTH,
   MAX_CHALLENGES,
   MAX_CREDENTIAL_BYTES,
@@ -99,6 +100,7 @@ export {
   MAX_OPTIONS,
   MAX_REQUEST_BYTES,
   MAX_SIGNATURE_BYTES,
+  MAX_SLOT_NAME_LENGTH,
 } from "./internal/bounds.js";
 export type { AptosPaymentPayload } from "./internal/aptos.js";
 export type { AvmPaymentPayload } from "./internal/avm.js";

@@ -9,7 +9,7 @@ import { Transaction, TransactionDataBuilder } from "@mysten/sui/transactions";
 import { fromBase58, toBase58, toBase64 } from "@mysten/sui/utils";
 import { ReaderError } from "../src/evm.js";
 import { pairingOf } from "../src/index.js";
-import { decodeSuiTx, exactSui, suiCarrier, type SuiReader, type SuiRef } from "../src/sui.js";
+import { decodeSuiTx, exactSui, suiCarrier, suiFloor, type SuiReader, type SuiRef } from "../src/sui.js";
 import type { PaymentRequired, PaymentRequirements } from "../src/x402.js";
 import { rowsOf } from "./rows.js";
 
@@ -844,4 +844,18 @@ describe("x402-exact-sui.json agreedRefusals: every row that gives no transactio
       for (const r of results) expect(r).toEqual({ refused: true, code: row.expect });
     });
   }
+});
+
+describe("floor: the agreement's floor by gas path", () => {
+  it("is zero where the buyer or a sponsor pays gas, and the coin type's smallest transfer on the gasless path", () => {
+    type Row = { case: string; gasPath: "buyer" | "sponsored" | "gasless"; smallestTransfer?: string; expect: string };
+    for (const row of rowsOf<Row>(V.floor.rows, "x402-exact-sui.json floor.rows")) {
+      const floor = suiFloor({
+        gasPath: row.gasPath,
+        ...(row.smallestTransfer === undefined ? {} : { smallestTransfer: BigInt(row.smallestTransfer) }),
+      });
+      const expected = /^[0-9]+$/.test(row.expect) ? BigInt(row.expect) : { refused: true, code: row.expect };
+      expect([row.case, floor]).toEqual([row.case, expected]);
+    }
+  });
 });

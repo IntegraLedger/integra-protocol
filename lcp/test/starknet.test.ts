@@ -20,6 +20,7 @@ import {
   STARKNET_MAX_CANDIDATES,
   exactStarknet,
   snNonce,
+  starknetFloor,
   starknetLandedNonce,
   type Felt,
   type OutsideExecutionTypedData,
@@ -562,6 +563,15 @@ describe("x402-exact-starknet.json", () => {
       } else {
         throw new Error(`no runner for ${row.case}`);
       }
+    }
+  });
+});
+
+describe("floor: the agreement's floor", () => {
+  it("is 1 base unit on every token, no run having shown a token that emits a Transfer for a transfer of zero", () => {
+    for (const row of rowsOf<{ case: string; asset: string; expect: string }>(V.floor.rows, "x402-exact-starknet.json floor.rows")) {
+      const expected = /^[0-9]+$/.test(row.expect) ? BigInt(row.expect) : { refused: true, code: row.expect };
+      expect([row.case, starknetFloor({ asset: row.asset })]).toEqual([row.case, expected]);
     }
   });
 });

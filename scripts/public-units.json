@@ -120,11 +120,11 @@
     {
       "unit": "The resource bounds",
       "exports": {
-        ".": ["MAX_CHALLENGES", "MAX_CHALLENGE_DEPTH", "MAX_CREDENTIAL_BYTES", "MAX_HEADER_BYTES", "MAX_JSON_DEPTH", "MAX_LINK_LENGTH", "MAX_OPTIONS", "MAX_REQUEST_BYTES", "MAX_SIGNATURE_BYTES"],
+        ".": ["MAX_ATR_BYTES", "MAX_CHALLENGES", "MAX_CHALLENGE_DEPTH", "MAX_CREDENTIAL_BYTES", "MAX_HEADER_BYTES", "MAX_JSON_DEPTH", "MAX_LINK_LENGTH", "MAX_OPTIONS", "MAX_REQUEST_BYTES", "MAX_SIGNATURE_BYTES", "MAX_SLOT_NAME_LENGTH"],
         "./card": ["MAX_CHARGE_REFERENCE", "MAX_CHECKOUT_ID", "MAX_CHECKOUT_JWT", "MAX_TAP_COMPONENTS", "MAX_TAP_FIELD", "MAX_TAP_PATH", "MAX_TAP_MEMBERS", "MAX_VI_DISCLOSURES", "MAX_VI_LAYER"]
       },
-      "use": "Any server sizes its own limits from the largest input the package's decoders accept, a card agent's signed headers and Verifiable Intent layers among them.",
-      "fixedBy": "Each bound's stated reason, against the format it bounds: MPP's challenge and credential, x402's accepts and request commitment, JSON, the ATR's link, TAP's signed headers and Verifiable Intent's layers; decoder-caps.json."
+      "use": "Any server sizes its own limits from the largest input the package's decoders accept, the largest ATR and the longest slot name assemble accepts, a card agent's signed headers and Verifiable Intent layers among them.",
+      "fixedBy": "Each bound's stated reason, against the format it bounds: MPP's challenge and credential, x402's accepts and request commitment, JSON, the ATR's size, slot names and link, TAP's signed headers and Verifiable Intent's layers; decoder-caps.json."
     },
     {
       "unit": "A2A",
@@ -483,17 +483,17 @@
     {
       "unit": "Starknet",
       "exports": {
-        "./starknet": ["ANY_CALLER", "EVENT_TRANSFER", "FELT_P", "Felt", "Field", "MASK_250", "OutsideExecutionTypedData", "SELECTOR_EXECUTE_FROM_OUTSIDE_V2", "SELECTOR_TRANSFER", "STARKNET_MAX_CANDIDATES", "STARKNET_MAX_CONTINUATION", "STARKNET_MAX_EVENTS", "STARKNET_MAX_EVENT_PAGES", "STARKNET_MAX_SIGNATURE_FELTS", "STARKNET_MAX_TRACE_DEPTH", "STARKNET_MAX_TRACE_INVOCATIONS", "STARKNET_MAX_TYPED_DATA_BYTES", "StarknetCall", "StarknetCursor", "StarknetEmittedEvent", "StarknetEvent", "StarknetEventPage", "StarknetEventQuery", "StarknetHead", "StarknetInvocation", "StarknetMark", "StarknetNetwork", "StarknetOutsideExecution", "StarknetReader", "StarknetReceipt", "StarknetRef", "StarknetStatus", "StarknetUnsigned", "chainIdFelt", "exactStarknet", "outsideExecution", "snNonce", "starknetIdDigest", "starknetLandedNonce", "starknetRecover", "starknetStatus", "StarknetPayment", "StarknetRefRead", "X402Payment", "X402Read"]
+        "./starknet": ["ANY_CALLER", "EVENT_TRANSFER", "FELT_P", "Felt", "Field", "MASK_250", "OutsideExecutionTypedData", "SELECTOR_EXECUTE_FROM_OUTSIDE_V2", "SELECTOR_TRANSFER", "STARKNET_MAX_CANDIDATES", "STARKNET_MAX_CONTINUATION", "STARKNET_MAX_EVENTS", "STARKNET_MAX_EVENT_PAGES", "STARKNET_MAX_SIGNATURE_FELTS", "STARKNET_MAX_TRACE_DEPTH", "STARKNET_MAX_TRACE_INVOCATIONS", "STARKNET_MAX_TYPED_DATA_BYTES", "StarknetCall", "StarknetCursor", "StarknetEmittedEvent", "StarknetEvent", "StarknetEventPage", "StarknetEventQuery", "StarknetHead", "StarknetInvocation", "StarknetMark", "StarknetNetwork", "StarknetOutsideExecution", "StarknetReader", "StarknetReceipt", "StarknetRef", "StarknetStatus", "StarknetUnsigned", "chainIdFelt", "exactStarknet", "outsideExecution", "snNonce", "starknetFloor", "starknetIdDigest", "starknetLandedNonce", "starknetRecover", "starknetStatus", "StarknetPayment", "StarknetRefRead", "X402Payment", "X402Read"]
       },
-      "use": "Any Starknet buyer's client builds the SNIP-12 outside execution whose nonce carries H's low 250 bits, or its agreement value's, any server checks it, anyone reads the payment back through a node by the payer's nonce and the asset's Transfer events, with lcp's bounds on that read, and a holder of the ATR confirms H's low bits against the landed nonce.",
+      "use": "Any Starknet buyer's client builds the SNIP-12 outside execution whose nonce carries H's low 250 bits, or its agreement value's, any server checks it, anyone reads the payment back through a node by the payer's nonce and the asset's Transfer events, with lcp's bounds on that read, and a holder of the ATR confirms H's low bits against the landed nonce, and a resource server evaluates the agreement's floor on a token.",
       "fixedBy": "x402-exact-starknet.md; SNIP-9; SNIP-12."
     },
     {
       "unit": "Sui",
       "exports": {
-        "./sui": ["MAX_SUI_BALANCE_CHANGES", "MAX_SUI_COIN_TYPE_LENGTH", "MAX_SUI_SEARCH_PAGES", "SuiBalanceChange", "SuiExecuted", "SuiFound", "SuiNetwork", "SuiPage", "SuiPayload", "SuiReader", "SuiRef", "SuiSearchRange", "SuiStatus", "SuiTransfer", "SuiTx", "SuiUnsigned", "decodeSuiTx", "exactSui", "suiCarrier", "suiRecover", "suiStatus", "SuiMark", "SuiPaymentPayload", "X402Read"]
+        "./sui": ["MAX_SUI_BALANCE_CHANGES", "MAX_SUI_COIN_TYPE_LENGTH", "MAX_SUI_SEARCH_PAGES", "SuiBalanceChange", "SuiExecuted", "SuiFound", "SuiNetwork", "SuiPage", "SuiPayload", "SuiReader", "SuiRef", "SuiSearchRange", "SuiStatus", "SuiTransfer", "SuiTx", "SuiUnsigned", "decodeSuiTx", "exactSui", "suiCarrier", "suiFloor", "suiRecover", "suiStatus", "SuiMark", "SuiPaymentPayload", "X402Read"]
       },
-      "use": "Any Sui buyer's client builds a programmable transaction holding H as an unused input, any server checks it, and anyone reads H back from the executed transaction, what it moved and to whom, and searches the payer's transactions for H through a GraphQL endpoint.",
+      "use": "Any Sui buyer's client builds a programmable transaction holding H as an unused input, any server checks it, and anyone reads H back from the executed transaction, what it moved and to whom, and searches the payer's transactions for H through a GraphQL endpoint; a resource server evaluates the agreement's floor by the option's gas path.",
       "fixedBy": "x402-exact-sui.md."
     },
     {

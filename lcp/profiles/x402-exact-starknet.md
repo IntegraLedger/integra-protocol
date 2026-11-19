@@ -37,7 +37,7 @@
 
 **The agreement**
 
-24. The payment can be an agreement: one outside execution the payer signs, paying the payee directly a fixed amount, with no hold, landing whole on one network. The floor is 0 only on a token a run has shown to emit a `Transfer` for a transfer of zero, since the search finds a payment by its `Transfer` alone, and 1 base unit on any other; no run has shown one, so the floor is 1 base unit on every token, and the option filter refuses an amount of `"0"`. The settler pays the fee, always, through the `Caller` fixed in what the payer signs. The transaction must succeed (rule 7). An outside execution the payee's account signed is no agreement.
+24. The payment can be an agreement: one outside execution the payer signs, paying the payee directly a fixed amount, with no hold, landing whole on one network. The floor is 0 only on a token a run has shown to emit a `Transfer` for a transfer of zero, since the search finds a payment by its `Transfer` alone, and 1 base unit on any other; no run has shown one, so the floor is 1 base unit on every token, and the option filter refuses an amount of `"0"`. `starknetFloor` evaluates the rule for a token, and refuses an asset that is not a felt (`starknet/felt-malformed`). The settler pays the fee, always, through the `Caller` fixed in what the payer signs. The transaction must succeed (rule 7). An outside execution the payee's account signed is no agreement.
 
 **What a settler checks**
 

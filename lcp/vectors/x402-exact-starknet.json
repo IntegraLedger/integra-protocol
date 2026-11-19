@@ -7731,5 +7731,20 @@
    "reason": "instrument-live",
    "foreign": []
   }
+ },
+ "floor": {
+  "about": "The agreement's floor, read by starknetFloor (the profile x402-exact-starknet.md, rule 24): 0 only on a token a run has shown to emit a Transfer for a transfer of zero, 1 base unit on any other; no run has shown one, so 1 on every token. The asset row's token is fixed.O's asset, x402's Starknet example (scheme_exact_starknet.md at 0cb1a1f0). expect is the floor as a decimal, or the refusal code.",
+  "rows": [
+   {
+    "case": "fixed.O's asset",
+    "asset": "0x0512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343",
+    "expect": "1"
+   },
+   {
+    "case": "an asset that is not a felt: the STARK prime itself",
+    "asset": "0x800000000000011000000000000000000000000000000000000000000000001",
+    "expect": "starknet/felt-malformed"
+   }
+  ]
  }
 }

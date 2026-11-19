@@ -48,3 +48,15 @@ export const MAX_JSON_DEPTH = 64;
  * is read before anything is bound to it, so it is held to less depth than an ATR.
  */
 export const MAX_CHALLENGE_DEPTH = 16;
+
+/**
+ * The largest ATR `assemble` writes, in bytes: 1 MiB. A smaller `limits.maxBytes` lowers it for one call; no larger
+ * one raises it.
+ */
+export const MAX_ATR_BYTES = 1_048_576;
+
+/**
+ * The longest slot name `assemble` accepts, in characters: 64, each from `A-Z`, `a-z`, `0-9`, `.`, `_` and `-`, the
+ * first a letter or a digit. It bounds the binding's slot and every party slot alike.
+ */
+export const MAX_SLOT_NAME_LENGTH = 64;

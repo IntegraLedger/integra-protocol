@@ -299,6 +299,17 @@ export function snNonce(h: AtrHash): Felt | Refusal {
   return feltOf(BigInt(nh) & MASK_250);
 }
 
+/**
+ * The agreement's floor on the token `asset`, in its base units (the profile `x402-exact-starknet`, rule 24): 0 only on
+ * a token a run has shown to emit a `Transfer` for a transfer of zero, since the search finds a payment by its
+ * `Transfer` alone, and 1 on any other. No run has shown one, so the floor is 1 on every token. An `asset` that is not
+ * a felt is `starknet/felt-malformed`.
+ */
+export function starknetFloor(input: { asset: string }): bigint | Refusal {
+  if (!isObject(input) || feltValue(input.asset) === undefined) return refusal("starknet/felt-malformed");
+  return 1n;
+}
+
 /** The network's reference as a short-string felt. Throws TypeError on a network that is not a `StarknetNetwork`. */
 export function chainIdFelt(n: StarknetNetwork): Felt {
   if (!NETWORKS.includes(n)) throw new TypeError("not a Starknet network");

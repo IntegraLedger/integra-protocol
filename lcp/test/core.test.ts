@@ -12,6 +12,8 @@ import {
   fromRawBytes,
   hash,
   hashEquals,
+  MAX_ATR_BYTES,
+  MAX_SLOT_NAME_LENGTH,
   newAtrId,
   toLcpString,
   toLegalContext,
@@ -383,6 +385,18 @@ describe("slot names and content form", () => {
   it("refuses more than 64 party slots", async () => {
     const slots = Array.from({ length: 65 }, (_, i) => [`s${i}`, utf8("1")] as const);
     expect(await assemble(id, ["bind", {}], slots)).toEqual({ refused: true, code: "core/too-large" });
+  });
+  // The bounds as docs/concepts/atr.md and docs/reference/refusals.md state them: a slot name of 1 to 64 characters
+  // (core/slot-name), and the whole record at most 1 MiB, 1,048,576 bytes (core/too-large).
+  it("exports the slot-name and ATR bounds assemble applies", async () => {
+    expect([MAX_SLOT_NAME_LENGTH, MAX_ATR_BYTES]).toEqual([64, 1_048_576]);
+    expect(await assemble(id, ["bind", {}], [["a".repeat(64), utf8("1")]])).not.toHaveProperty("refused");
+    expect(await assemble(id, ["bind", {}], [["a".repeat(65), utf8("1")]])).toEqual({ refused: true, code: "core/slot-name" });
+    const head = `{"atrVersion":"1","id":"${id}","bind":{},"x":""}`.length;
+    const filled = (n: number) => utf8(`"${"a".repeat(n - head)}"`);
+    const at = await assemble(id, ["bind", {}], [["x", filled(1_048_576)]]);
+    expect("refused" in at ? at.code : at.bytes.length).toBe(1_048_576);
+    expect(await assemble(id, ["bind", {}], [["x", filled(1_048_577)]])).toEqual({ refused: true, code: "core/too-large" });
   });
 });
 

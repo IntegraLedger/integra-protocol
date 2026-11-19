@@ -41,6 +41,13 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   contract is not on can be refused by data. `data.cardLike`: `true` on the card-like pairings, which are on no network
   a CAIP-2 id names, telling them from Lightning's, whose invoice is on an `lnbtc` network. The
   root exports the types `FeePayer` and `FeeParty`. No existing member changes.
+- `MAX_ATR_BYTES` (1,048,576) and `MAX_SLOT_NAME_LENGTH` (64), from the root: the largest ATR `assemble` writes and
+  the longest slot name it accepts, so a server sizes its own limits from them. `assemble`'s rules do not change.
+- `suiFloor` (`@integraledger/lcp/sui`) and `starknetFloor` (`@integraledger/lcp/starknet`): the agreement's floor
+  that each pairing's data gives as `rule`, as `cardanoFloor` gives Cardano's. `suiFloor` takes the option's gas path
+  and, on the gasless path, the coin type's smallest transfer that Sui's protocol configuration lists; `starknetFloor`
+  takes the token and answers 1. A new code, `sui/floor-input`, refuses a gas path or parameter `suiFloor` cannot
+  read.
 
 ## [0.6.1] - 2026-11-18
 
