@@ -120,9 +120,14 @@ export interface TonTx {
   lt?: string;
   /** Its predecessor on the account (`prev_trans_hash`, `prev_trans_lt`); null for the account's first. */
   prev?: { hash: string; lt: string } | null;
-  /** The account's state before it (`account_state_before`, with `orig_status`). */
+  /**
+   * The account's state before it: its status TON Center v3's `orig_status`, its data hash `account_state_before`'s
+   * `data_hash`. A transaction whose account did not exist before it, the account's deploy, carries it with the status
+   * `nonexist`, its `orig_status`, though `account_state_before` then states no `account_status`; so given, the expiry
+   * read does not hold its search there.
+   */
   before?: TonAccountState;
-  /** The account's state after it (`account_state_after`, with `end_status`). */
+  /** The account's state after it: its status TON Center v3's `end_status`, its data hash `account_state_after`'s `data_hash`. */
   after?: TonAccountState;
 }
 
