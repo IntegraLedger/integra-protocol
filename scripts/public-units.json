@@ -265,9 +265,9 @@
     {
       "unit": "MPP challenges and credentials",
       "exports": {
-        "./mpp": ["MppChallenge", "MppCredential", "MppMethod", "MppChoice", "MppUnsigned", "LEGAL_CONTEXT_METADATA_KEY", "LandedCredential", "CARRIER", "parseChallenges", "problem", "read", "network", "pairingsOf", "pairingsOfPlaced", "place", "issuedDigest", "tie", "challengeBound", "MppIntent"]
+        "./mpp": ["MppChallenge", "MppCredential", "MppMethod", "MppChoice", "MppUnsigned", "LEGAL_CONTEXT_METADATA_KEY", "LandedCredential", "CARRIER", "parseChallenges", "problem", "read", "network", "pairingsOf", "pairingsOfPlaced", "place", "issuedDigest", "tie", "challengeBound", "MppIntent", "encodeChallenge", "decodeCredential", "encodeReceipt", "MppReceipt"]
       },
-      "use": "Any MPP server and client reads challenges as the stock clients read them, places H in a challenge and checks that a challenge is bound to it, names the request member a pairing writes H into, and answers a refusal in MPP's problem types.",
+      "use": "Any MPP server and client reads challenges as the stock clients read them, places H in a challenge and checks that a challenge is bound to it, names the request member a pairing writes H into, answers a refusal in MPP's problem types, and writes a challenge and a receipt, and reads a credential, in MPP's HTTP fields as the stock clients do.",
       "fixedBy": "The MPP specification; mpp-charge.md; mpp-challenge.json."
     },
     {
