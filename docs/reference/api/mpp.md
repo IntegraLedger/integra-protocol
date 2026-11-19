@@ -1,12 +1,14 @@
 ---
 title: "@integraledger/lcp/mpp"
-description: "The `mpp` entry point: MPP's challenge pieces and its pairings: the EVM charges, defined here, and every other MPP charge, session and subscription pairing but Lightning's, re-exported from its module."
+description: "The `mpp` entry point: MPP's challenge pieces, its three fields (`encodeChallenge` writes a `WWW-Authenticate` value, `decodeCredential` reads an `Authorization` value, `encodeReceipt` writes a `Payment-Receipt` value) and its pairings: the EVM charges, defined here, and every other MPP charge, session and subscription pairing but Lightning's, re-exported from its module."
 ---
 
 # @integraledger/lcp/mpp
 
-The `mpp` entry point: MPP's challenge pieces and its pairings: the EVM charges, defined here, and every other MPP
-charge, session and subscription pairing but Lightning's, re-exported from its module.
+The `mpp` entry point: MPP's challenge pieces, its three fields (`encodeChallenge` writes a `WWW-Authenticate`
+value, `decodeCredential` reads an `Authorization` value, `encodeReceipt` writes a `Payment-Receipt` value) and its
+pairings: the EVM charges, defined here, and every other MPP charge, session and subscription pairing but
+Lightning's, re-exported from its module.
 
 The EVM charges are `authorization` (the signed nonce is keccak256 of the JSON array [id, realm]), `permit2` (the
 signed witness carries that value), and `transaction` and `hash` (nothing signed carries H). The re-exported charges
@@ -740,6 +742,7 @@ A transaction a read met, as the pairing's read classified it against the refere
 | <a id="property-kind"></a> `kind` | `readonly` | `"other"` \| `"same"` | Whether it is an act of the reference's pairing and of the act's kind. |
 | <a id="property-mark"></a> `mark` | `readonly` | `Mark` | The highest mark the read reached for it. |
 | <a id="property-moved"></a> `moved?` | `readonly` | readonly [`Moved`](index.md#moved)[] | - |
+| <a id="property-named"></a> `named?` | `readonly` | `string` | The account it names apart from what it moved, where the read records one, as `Named.named` states it. |
 | <a id="property-party"></a> `party` | `readonly` | `"other"` \| `"payer"` \| `"payee"` | Its signer against the reference's payer and the option's payee. |
 | <a id="property-position"></a> `position?` | `readonly` | `Position` | - |
 | <a id="property-presented-3"></a> `presented` | `readonly` | `"no"` \| `"yes"` \| `"unshown"` | Whether the message signed in it equals, member by member as the pairing's form names them, the payment presented: `yes`; `no` where a member differs; `unshown` where the read could not read every member. A `settled` answer states the act's. |
@@ -1089,7 +1092,7 @@ as `expiringNonceHash` computes it; on push also `named`, the transaction the cr
 | ------ | ------ |
 | <a id="property-currency"></a> `currency` | `` `0x${string}` `` |
 | <a id="property-h-1"></a> `h` | `` `0x${string}` `` |
-| <a id="property-named"></a> `named?` | `` `0x${string}` `` |
+| <a id="property-named-1"></a> `named?` | `` `0x${string}` `` |
 | <a id="property-network-10"></a> `network` | `` `eip155:${number}` `` |
 | <a id="property-nonce-1"></a> `nonce` | `object` |
 | `nonce.key` | `string` |
@@ -1347,6 +1350,28 @@ The MPP payment methods this package knows a challenge's `method` as: the method
 > **MppPairingId** = `"mpp/charge/evm/permit2"` \| `"mpp/charge/evm/authorization"` \| `"mpp/charge/evm/transaction"` \| `"mpp/charge/evm/hash"` \| `"mpp/session/evm"` \| `"mpp/charge/tempo/split-memo"` \| `"mpp/charge/tempo/split-memo/push"` \| `"mpp/session/tempo"` \| `"mpp/subscription/tempo"` \| `"mpp/charge/lightning"` \| `"mpp/session/lightning"` \| `"mpp/charge/solana"` \| `"mpp/charge/solana/unsponsored"` \| `"mpp/subscription/solana"` \| `"mpp/session/solana/memo"` \| `"mpp/session/solana/stock"` \| `"mpp/charge/xrpl"` \| `"mpp/charge/nearintents"` \| `"mpp/session/xrpl"` \| `"mpp/session/xrpl/stock"` \| `"mpp/session/hedera/stock"` \| `"mpp/charge/lcp/hedera"` \| `"mpp/charge/card"` \| `"mpp/charge/stripe"` \| `"mpp/subscription/stripe"` \| `"mpp/charge/usdc/evm"` \| `"mpp/charge/usdc/solana"` \| `"mpp/charge/usdc/stacks"` \| `"mpp/charge/usdc/gateway"`
 
 The id of each MPP pairing `pairingsOf` can name.
+
+***
+
+### MppReceipt
+
+> **MppReceipt** = `object`
+
+MPP's `Payment-Receipt` payload: `status` `success`, the payment `method`, the RFC 3339 `timestamp` of settlement and
+the method's `reference`, such as a transaction hash. A method's specification may define other members.
+
+#### Indexable
+
+> \[`k`: `string`\]: [`Json`](index.md#json) \| `undefined`
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-method-2"></a> `method` | `string` |
+| <a id="property-reference-1"></a> `reference` | `string` |
+| <a id="property-status-1"></a> `status` | `"success"` |
+| <a id="property-timestamp-1"></a> `timestamp` | `string` |
 
 ***
 
@@ -1969,6 +1994,85 @@ surrogate. No pairing in this package calls it.
 
 ***
 
+### decodeCredential()
+
+> **decodeCredential**(`fieldValue`): [`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential)
+
+The credential a `Payment` credential field value carries: `Payment`, matched without regard to case, one or more
+spaces, then base64url without padding in its canonical form, of at most 65,536 bytes, that are well-formed UTF-8 of
+a JSON object, held to `credentialShape`'s gate, which every MPP `bound` applies first. It reads a field's value,
+not its name: the caller holds a credential to the field its challenge selected, `Authorization`, or
+`Payment-Authorization` where the challenge carries `header`, and `issuedDigest` compares the `header` the
+credential echoes with the one issued. Any other value is `mpp/credential-malformed`, which `problem` answers 402 `malformed-credential`. Nothing else is
+read: H, the challenge's id and the payment are the reads of `challengeBound`, `issuedDigest` and the pairing's
+`bound`.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `fieldValue` | `string` |
+
+#### Returns
+
+[`Refusal`](index.md#refusal) \| [`MppCredential`](#mppcredential)
+
+***
+
+### encodeChallenge()
+
+> **encodeChallenge**(`challenge`): `string` \| [`Refusal`](index.md#refusal)
+
+One `Payment` challenge as a `WWW-Authenticate` field value: `Payment`, a space, then each member the challenge holds
+as an auth-param whose value is a quoted-string, `"` and `\` written as quoted-pairs, joined by `, `, in the order
+`id`, `realm`, `method`, `intent`, `request`, `description`, `digest`, `expires`, `header`, `opaque`: the form
+`mppx` 0.17.6's `Challenge.serialize` writes. The challenge is read as its JSON form carries it, its own members only
+(as a pairing's `build` reads a chosen challenge), and each member is written as given: `request` and `opaque` stay
+the base64url that `place` and each pairing's `advertise` write. `parseChallenges` reads the value back as the same
+members. A challenge that is not an object, carries a `refused` member, lacks a string `id`, `realm`, `method`,
+`intent` or `request` or holds one empty, has another member that is not a string, has a `header` other than
+`Payment-Authorization`, the one value MPP allows it, holds a character no quoted-string carries (a control
+character other than tab, DEL, or one above U+00FF), or whose field value is over 8,192 characters, which
+`parseChallenges` refuses, is `mpp/challenge-malformed`. A response offering several challenges sends one
+`WWW-Authenticate` field line for each.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `challenge` | [`MppChallenge`](#mppchallenge) |
+
+#### Returns
+
+`string` \| [`Refusal`](index.md#refusal)
+
+***
+
+### encodeReceipt()
+
+> **encodeReceipt**(`receipt`): `string` \| [`Refusal`](index.md#refusal)
+
+A receipt as a `Payment-Receipt` field value: `JSON.stringify` of the receipt, in its own member order, as UTF-8, in
+base64url without padding, the form `mppx` 0.17.6's `Receipt.serialize` writes. A member whose value is `undefined`
+is left out, as `JSON.stringify` leaves it out, and every other member is written as given. A receipt is issued on
+success alone: one whose `status` is not `success`, whose `method` is not a method identifier (lowercase ASCII
+letters), whose `timestamp` is not an RFC 3339 date-time or whose `reference` is not a string, one that carries a
+`refused` member or an enumerable symbol-keyed member, and one that is not then a JSON object (no other `undefined`,
+function, `bigint`, non-finite number, lone surrogate or instance of a class, and at most 64 levels deep) is
+`mpp/receipt-malformed`.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `receipt` | [`MppReceipt`](#mppreceipt) |
+
+#### Returns
+
+`string` \| [`Refusal`](index.md#refusal)
+
+***
+
 ### evmChannelId()
 
 > **evmChannelId**(`c`): [`Refusal`](index.md#refusal) \| `` `0x${string}` ``
@@ -2038,8 +2142,9 @@ same signed bytes can still land under the same hash: with the value unread and 
 escrow naming the channel, whose members give the channel id it names, is the opening: its signer is the account id
 the mirror resolves its payer to, or the payer's address where the mirror resolves none, an address of no account; it
 is the payee's own act where that account is the one the challenge's `recipient` resolves to; and it names the
-payee's account where its `payee` is the `recipient` or resolves to the same account. What moved is the deposit, by
-the transaction and the log's place among the receipt's logs. Any other receipt that succeeded consumed the opening's
+payee's account where its `payee` is the `recipient` or resolves to the same account. What moved is the deposit, its
+beneficiary the log's `payee` (no contract, the read resolving no id for the escrow), by the transaction and the
+log's place among the receipt's logs. Any other receipt that succeeded consumed the opening's
 transaction and is no opening of the channel. No receipt is `not-found` where the mirror holds the blocks after the
 position the caller gives, or is archival, and `history-gap` otherwise. The read reads no nonce state and makes no
 search, the named transaction's receipt, and for a revert its contract result, being all it reads of the opening's

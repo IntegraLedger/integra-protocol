@@ -383,6 +383,29 @@ parameter that is not a positive bigint is `cardano/floor-input`. An agreement's
 
 ***
 
+### cardanoInputs()
+
+> **cardanoInputs**(`tx`): readonly `string`[] \| [`Refusal`](index.md#refusal)
+
+The inputs a transaction's body spends (body key 0), each as `<transaction id hex>#<index>`, in the body's order: the
+inputs whose addresses `CardanoReader.inputAddresses` answers. `tx` is the transaction's CBOR bytes as included
+(`CardanoOnChain.cbor`), `[body, witness set, validity, auxiliary data]`, read with definite and indefinite lengths
+and at most 64 levels of nesting. Bytes over `CARDANO_MAX_TX_BYTES` are `cardano/tx-too-large`; bytes that are not one
+such array whose body is a map of unique unsigned keys holding, at key 0, a set of `[32-byte id, index]` inputs, an
+array or one under tag 258, are `cardano/tx-malformed`.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `tx` | `Uint8Array` |
+
+#### Returns
+
+readonly `string`[] \| [`Refusal`](index.md#refusal)
+
+***
+
 ### cardanoRecover()
 
 > **cardanoRecover**(`input`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>

@@ -25,7 +25,8 @@ Present where the pairing's payment can itself be an agreement.
 | Property | Modifier | Type | Description |
 | ------ | ------ | ------ | ------ |
 | <a id="property-fee"></a> `fee` | `readonly` | `string` | Who can pay the fee, by the chain and the published scheme. |
-| <a id="property-floor"></a> `floor` | `readonly` | `"0"` \| `` `1${string}` `` \| `` `2${string}` `` \| `` `3${string}` `` \| `` `4${string}` `` \| `` `5${string}` `` \| `` `6${string}` `` \| `` `7${string}` `` \| `` `8${string}` `` \| `` `9${string}` `` \| `"rule"` | The smallest amount the scheme and token admit, in base units: `"0"`, or a decimal with no sign and no leading zero; or `rule`, which `advertise` evaluates. |
+| <a id="property-feepayer"></a> `feePayer?` | `readonly` | [`FeePayer`](#feepayer) | `fee` as data: the parties that can pay it, and the one that pays where the option names none. |
+| <a id="property-floor"></a> `floor` | `readonly` | `"0"` \| `` `1${string}` `` \| `` `2${string}` `` \| `` `3${string}` `` \| `` `4${string}` `` \| `` `5${string}` `` \| `` `6${string}` `` \| `` `7${string}` `` \| `` `8${string}` `` \| `` `9${string}` `` \| `"rule"` | The smallest amount the scheme and token admit, in base units: `"0"`, or a decimal with no sign and no leading zero; or `rule`, a rule over a ledger parameter that the pairing's profile states and its entry point's floor function evaluates: `cardanoFloor`, `suiFloor` or `starknetFloor`. |
 | <a id="property-only"></a> `only?` | `readonly` | `true` | Present where the form is offered as an agreement and never as a charge. |
 | <a id="property-succeeded"></a> `succeeded` | `readonly` | `string` | The fields that show the transaction succeeded. |
 
@@ -218,10 +219,12 @@ The members of a pairing's data that do not turn on its coverage.
 | ------ | ------ | ------ | ------ |
 | <a id="property-asset"></a> `asset?` | `readonly` | `string` | How the asset is identified in the landed transaction. |
 | <a id="property-broadcasts"></a> `broadcasts` | `readonly` | [`Broadcaster`](#broadcaster) \| `"either"` | The answers the codec's `broadcaster` can give over every credential type the pairing takes. |
+| <a id="property-cardlike"></a> `cardLike?` | `readonly` | `true` | Present where the pairing's payment is card-like: a card, checkout or processor payment, on no ledger or payment network a CAIP-2 id names, which the seller or its processor takes and reports. Lightning's pairings, whose invoice is on an `lnbtc` network, do not have it. |
 | <a id="property-carrier"></a> `carrier` | `readonly` | [`Carrier`](#carrier) | - |
 | <a id="property-confirmed"></a> `confirmed` | `readonly` | `"no"` \| `"yes"` | Whether something outside lcp has shown the form as its profile defines it. |
 | <a id="property-destination"></a> `destination?` | `readonly` | `string` | How the account the act names is identified in the landed transaction. |
 | <a id="property-nonce"></a> `nonce` | `readonly` | `"unshown"` \| `"single-use"` \| `"reusable"` | Whether the identical instrument can land more than once; `unshown` until a vector or a run shows single use. |
+| <a id="property-payeepreconditions"></a> `payeePreconditions?` | `readonly` | readonly `string`[] | What the payee's account must hold or be on chain before a payment through the pairing can reach it, each in the profile's words: an account, a token association, an asset already held, a funded key. Absent where the pairing's profile states none. |
 | <a id="property-payer"></a> `payer?` | `readonly` | `string` | How the payer is identified in the landed transaction. |
 | <a id="property-proves"></a> `proves` | `readonly` | `string` | What the read establishes of a payment through the pairing. |
 | <a id="property-read-1"></a> `read?` | `readonly` | [`ReadData`](#readdata) | Absent where no public ledger records the payment. |
@@ -255,6 +258,19 @@ the option a payment answers, and what `status` and `recover` take and answer.
 
 ***
 
+### FeePayer
+
+Who can pay an agreement's fee, as data.
+
+#### Properties
+
+| Property | Modifier | Type | Description |
+| ------ | ------ | ------ | ------ |
+| <a id="property-default"></a> `default?` | `readonly` | [`FeeParty`](#feeparty) | The party that pays it where the option names no fee payer, one of `may`; absent where the option always names one, or the pairing's profile states none. |
+| <a id="property-may"></a> `may` | `readonly` | readonly [`FeeParty`](#feeparty)[] | Each party that can pay it, by the chain and the published scheme, each once. |
+
+***
+
 ### ForeignItem
 
 A transaction that carries H, succeeded, and is not the act asked about.
@@ -271,6 +287,7 @@ A transaction that carries H, succeeded, and is not the act asked about.
 | ------ | ------ | ------ | ------ |
 | <a id="property-authority"></a> `authority?` | `readonly` | `string` | The authority the ledger records for its signer, where the read records one. |
 | <a id="property-moved"></a> `moved?` | `readonly` | readonly [`Moved`](#moved)[] | - |
+| <a id="property-named"></a> `named?` | `readonly` | `string` | The account it names apart from what it moved, where the read records one, as `Named.named` states it. |
 | <a id="property-position"></a> `position?` | `readonly` | `Position` | - |
 | <a id="property-reason"></a> `reason` | `readonly` | [`ForeignReason`](#foreignreason) | - |
 | <a id="property-signer"></a> `signer?` | `readonly` | `string` | - |
@@ -329,10 +346,12 @@ two answers that name one transfer are told from two transfers.
 | ------ | ------ | ------ | ------ |
 | <a id="property-amount"></a> `amount` | `readonly` | `string` | - |
 | <a id="property-asset-1"></a> `asset` | `readonly` | `string` | - |
+| <a id="property-beneficiary"></a> `beneficiary?` | `readonly` | `string` | On a deposit into a contract, the account that contract names as the payment's beneficiary, where the act names one; absent on a transfer, and on a deposit that names none. Observed, and never judged. |
+| <a id="property-contract"></a> `contract?` | `readonly` | `string` | On a deposit into a contract, the contract it was deposited into, in the chain's own spelling, as the act names it: on EVM the contract's address, on the XRP Ledger the channel's id, on Solana the channel's account, on Cardano the script's address in Bech32. Absent on a transfer, so that its presence marks a deposit. Observed, and never judged. |
 | <a id="property-decimals"></a> `decimals?` | `readonly` | `number` | Where the ledger states it for the asset, the number of decimals in which `amount` is written: `amount` counts the asset's smallest unit, and the amount in the asset's own unit is `amount` × 10^-`decimals`. Observed, and never compared with anything. |
 | <a id="property-partial"></a> `partial?` | `readonly` | `true` | True where the ledger records that the payer signed the payment as one that may deliver less than the amount it names, and `amount` is then what it delivered; absent otherwise. Observed, and never judged. |
 | <a id="property-place"></a> `place?` | `readonly` | `string` \| `number` | Its place in that transaction, in the pairing's own spelling: on EVM the position of its `Transfer` log among the receipt's logs; elsewhere the position of the instruction, operation, output or event it was read from. |
-| <a id="property-to"></a> `to` | `readonly` | `string` | The account it reached, or the beneficiary a contract names. |
+| <a id="property-to"></a> `to` | `readonly` | `string` | The account it reached; on a deposit into a contract, as each pairing's profile states, the beneficiary the contract names or the contract itself. `contract` and `beneficiary` name the two apart. |
 | <a id="property-transaction-1"></a> `transaction?` | `readonly` | `string` | The transaction it was read from. |
 
 ***
@@ -353,6 +372,7 @@ two answers that name one transfer are told from two transfers.
 | <a id="property-authority-1"></a> `authority?` | `readonly` | `string` | - |
 | <a id="property-finality"></a> `finality?` | `readonly` | `Mark` | The mark the read reached for the transaction it names. |
 | <a id="property-moved-1"></a> `moved?` | `readonly` | readonly [`Moved`](#moved)[] | - |
+| <a id="property-named-1"></a> `named?` | `readonly` | `string` | The account the act names apart from what it moved, where the read records one: on an activation, the one recipient the key authorization it carries lets its key pay, whether or not the act moved anything to it. Absent where the act names no such account. Observed, and never judged. |
 | <a id="property-position-1"></a> `position?` | `readonly` | `Position` | - |
 | <a id="property-signer-1"></a> `signer?` | `readonly` | `string` | - |
 | <a id="property-transaction-2"></a> `transaction?` | `readonly` | `string` | - |
@@ -410,6 +430,7 @@ What a read of the pairing needs.
 
 | Property | Modifier | Type | Description |
 | ------ | ------ | ------ | ------ |
+| <a id="property-chains"></a> `chains?` | `readonly` | `object` | The networks, as CAIP-2 ids, each contract it names is deployed on, keyed by its name in `contracts`, where the pairing's profile or the package states them; a contract it does not key has no networks stated here. |
 | <a id="property-contracts"></a> `contracts` | `readonly` | readonly `string`[] | The contracts the read names. |
 | <a id="property-endpoint"></a> `endpoint` | `readonly` | readonly [`EndpointKind`](#endpointkind)[] | The endpoint kinds the read goes through, each of which a network declares for the read to be made there. |
 | <a id="property-fallback"></a> `fallback?` | `readonly` | [`EndpointKind`](#endpointkind) | The kind of a declared archival endpoint the read goes on to where the endpoint does not hold the history or state it needs; absent where the read has none. |
@@ -736,6 +757,16 @@ The reasons of a `failed` answer.
 
 ***
 
+### FeeParty
+
+> **FeeParty** = `"buyer"` \| `"settler"` \| `"paymaster"` \| `"none"`
+
+A party that can pay an agreement's fee: the buyer; the settler, the party that submits the payment the buyer
+signed; a paymaster the buyer's user operation names; or `none`, on a path where the chain charges the buyer's
+transaction no fee.
+
+***
+
 ### ForeignReason
 
 > **ForeignReason** = `"payee-signed"` \| `"other-signer"` \| `"given"` \| `"other-kind"` \| `"other-account"`
@@ -856,7 +887,9 @@ codec's `broadcaster` can give over every credential type the pairing takes; `co
 lcp has shown the form as its profile defines it (`yes` or `no`); and `proves`, what the read establishes of a
 payment through the pairing. Where a public ledger records the payment it has `read` (`ReadData`), what a read of
 the pairing needs; and, where the pairing's entry states them, `destination`, `asset` and `payer`: how the account
-the act names, the asset and the payer are identified in the landed transaction.
+the act names, the asset and the payer are identified in the landed transaction. Where the pairing's profile states
+them it has `payeePreconditions`, what the payee's account must hold before it can be paid; and where the payment is
+card-like, on no network a CAIP-2 id names, `cardLike`.
 
 ***
 
@@ -1107,6 +1140,15 @@ The member by which an agreement option names the charge options it serves: in a
 
 ***
 
+### MAX\_ATR\_BYTES
+
+> `const` **MAX\_ATR\_BYTES**: `1048576` = `1_048_576`
+
+The largest ATR `assemble` writes, in bytes: 1 MiB. A smaller `limits.maxBytes` lowers it for one call; no larger
+one raises it.
+
+***
+
 ### MAX\_CHALLENGE\_DEPTH
 
 > `const` **MAX\_CHALLENGE\_DEPTH**: `16` = `16`
@@ -1185,6 +1227,15 @@ form) has no length its standard fixes, so lcp bounds it here, for every pairing
 
 ***
 
+### MAX\_SLOT\_NAME\_LENGTH
+
+> `const` **MAX\_SLOT\_NAME\_LENGTH**: `64` = `64`
+
+The longest slot name `assemble` accepts, in characters: 64, each from `A-Z`, `a-z`, `0-9`, `.`, `_` and `-`, the
+first a letter or a digit. It bounds the binding's slot and every party slot alike.
+
+***
+
 ### RETURN\_VALUE\_BYTES
 
 > `const` **RETURN\_VALUE\_BYTES**: `32` = `32`
@@ -1223,11 +1274,11 @@ Writes the ATR's bytes and hashes them. The same inputs always give the same byt
 is returned as a refusal, from the first check that fails, in this order:
 
 1. `limits.maxBytes`, when given, is a non-negative safe integer (`core/too-large`). The limit applied is the
-   smaller of it and 1 MiB.
+   smaller of it and 1 MiB (`MAX_ATR_BYTES`).
 2. `id` is a string (`core/binding-not-json`), `binding` is an array of two (`core/slot-name`), and `content` is an
    array (`core/content-not-json`).
-3. The binding's slot name matches the slot-name pattern (`core/slot-name`) and is not `atrVersion` or `id`
-   (`core/slot-reserved`).
+3. The binding's slot name matches the slot-name pattern, 1 to 64 characters (`MAX_SLOT_NAME_LENGTH`)
+   (`core/slot-name`), and is not `atrVersion` or `id` (`core/slot-reserved`).
 4. There are at most 64 party slots (`core/too-large`).
 5. Each party slot, in the order given, is an array of two (`core/slot-name`); its name matches the pattern
    (`core/slot-name`), is not `atrVersion`, `id` or the binding's slot name (`core/slot-reserved`) and has not
@@ -1817,19 +1868,24 @@ and fragment states accept every input, so they are not read.
 
 ### servesOf()
 
-> **servesOf**(`option`): readonly `string`[] \| [`Refusal`](#refusal) \| `undefined`
+> **servesOf**(`option`, `atr?`): readonly `string`[] \| [`Refusal`](#refusal) \| `undefined`
 
-The charge options an agreement option names as those it serves: each `x402/<i>` or `mpp/<i>`, the option at index
-`i` of the ATR binding slot of that name (`accepts` of `x402`, `challenges` of `mpp`). On an x402 option the member is
-`extra.legalContextServes`, an array of those strings; on an MPP challenge it is `opaque`'s `legalContextServes`, those
-strings joined by one space. Undefined where the option carries no such member; `return/serves-malformed` where the
-member is not 1 to 32 distinct such strings.
+The charge options an agreement option names as those it serves: each `<slot>/<i>`, the option at index `i` of the
+charge options the ATR binding slot of that name holds: `accepts` of `x402`, `challenges` of `mpp`, `paymentOptions`
+of `ack`, and `options` of `acp`, `ap2`, `card` and `ucp`. On an x402 option the member is
+`extra.legalContextServes`, an array of those strings; on an MPP challenge it is `opaque`'s `legalContextServes`,
+those strings joined by one space. Undefined where the option carries no such member; `return/serves-malformed`
+where the member is not 1 to 32 distinct such strings. Where `atr`, the ATR's bytes, is given, each name is also
+resolved against it: a name whose slot is not the ATR's binding slot (its member after `atrVersion` and `id`), or
+whose index is not below the number of charge options that slot holds, is `return/serves-malformed`, and so is every
+name where `atr` is not the bytes of a UTF-8 JSON object of at most 1 MiB.
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
 | `option` | `unknown` |
+| `atr?` | `Uint8Array`\<`ArrayBufferLike`\> |
 
 #### Returns
 

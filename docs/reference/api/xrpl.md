@@ -80,8 +80,10 @@ One page of `account_tx`, forward, in binary form: the transactions, the ledgers
 ### XrplReader
 
 Bounded, read-only calls against one network's server. Every failure rejects, for example with `ReaderError` from
-`@integraledger/lcp/evm`; any rejection reads as unreadable. A call that names a ledger answers with the index of the
-ledger it read.
+`@integraledger/lcp/evm`; any rejection reads as unreadable. A call the server refuses because it names ledgers the
+server does not hold, as rippled on API version 2 refuses `account_tx` from a ledger below those it holds with
+`lgrIdxMalformed`, rejects with `ReaderError` of kind `history`, which reads as `history-gap`. A call that names a
+ledger answers with the index of the ledger it read.
 
 #### Properties
 

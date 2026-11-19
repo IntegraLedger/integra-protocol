@@ -111,8 +111,8 @@ placed, linked or classed, and the read holds its search there.
 | ------ | ------ | ------ |
 | <a id="property-aborted"></a> `aborted` | `boolean` | - |
 | <a id="property-account"></a> `account` | `string` | - |
-| <a id="property-after"></a> `after?` | [`TonAccountState`](#tonaccountstate) | The account's state after it (`account_state_after`, with `end_status`). |
-| <a id="property-before"></a> `before?` | [`TonAccountState`](#tonaccountstate) | The account's state before it (`account_state_before`, with `orig_status`). |
+| <a id="property-after"></a> `after?` | [`TonAccountState`](#tonaccountstate) | The account's state after it: its status TON Center v3's `end_status`, its data hash `account_state_after`'s `data_hash`. |
+| <a id="property-before"></a> `before?` | [`TonAccountState`](#tonaccountstate) | The account's state before it: its status TON Center v3's `orig_status`, its data hash `account_state_before`'s `data_hash`. A transaction whose account did not exist before it, the account's deploy, carries it with the status `nonexist`, its `orig_status`, though `account_state_before` then states no `account_status`; so given, the expiry read does not hold its search there. |
 | <a id="property-finality"></a> `finality` | `0` \| `1` \| `2` | TON Center v3's `FinalityState`: 0 pending, 1 confirmed, 2 finalized. |
 | <a id="property-hash-2"></a> `hash` | `string` | - |
 | <a id="property-inbody"></a> `inBody` | `Uint8Array`\<`ArrayBufferLike`\> \| `null` | - |

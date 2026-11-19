@@ -373,6 +373,33 @@ object whose `unusedPure` is an array of `Uint8Array`s, is `sui/tx-malformed`.
 
 ***
 
+### suiFloor()
+
+> **suiFloor**(`input`): `bigint` \| [`Refusal`](index.md#refusal)
+
+The agreement's floor, the smallest amount an agreement option can name, in the coin type's base units, by the gas
+path the option fixes (the profile `x402-exact-sui`, rules 7 and 16): 0 where the buyer pays gas (`buyer`, the option
+carrying neither `extra.gasStation` nor `extra.gasless`) or a sponsor does (`sponsored`, `extra.gasStation`); on the
+gasless path (`gasless`, `extra.gasless` true) the larger of 1 and the coin type's smallest transfer on the network,
+`smallestTransfer`: the minimum Sui's protocol configuration lists beside the coin type among the tokens a gasless
+transaction may move (`gasless_allowed_token_types`), which the caller reads for the option's network, since a
+protocol upgrade can change it; the option filter refuses an amount of `"0"` on that path. A gas path not one of the
+three, or on the gasless path a `smallestTransfer` that is not a non-negative bigint, is `sui/floor-input`.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `input` | \{ `gasPath`: `"buyer"` \| `"gasless"` \| `"sponsored"`; `smallestTransfer?`: `bigint`; \} |
+| `input.gasPath` | `"buyer"` \| `"gasless"` \| `"sponsored"` |
+| `input.smallestTransfer?` | `bigint` |
+
+#### Returns
+
+`bigint` \| [`Refusal`](index.md#refusal)
+
+***
+
 ### suiRecover()
 
 > **suiRecover**(`input`, `reader`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
