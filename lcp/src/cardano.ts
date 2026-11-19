@@ -460,6 +460,7 @@ async function readStatus(r: CardanoRef, reader: CardanoReader, query: CardanoQu
           asset: a.asset,
           amount: a.amount.toString(),
           to: to ?? cred ?? hexOf(o.address),
+          ...(o.lock ? { contract: addressText(o.address) } : {}),
           ...(escrowed && o.seller !== undefined ? { beneficiary: o.seller } : {}),
           transaction: txId,
           place: index,
@@ -1070,6 +1071,11 @@ function addressBytes(text: string): Uint8Array | null {
   } catch {
     return null;
   }
+}
+
+/** An address's bytes in Bech32, `addr` on mainnet and `addr_test` elsewhere by its header's network id (CIP-19). */
+function addressText(address: Uint8Array): string {
+  return bech32.encode((address[0]! & 0x0f) === 1 ? "addr" : "addr_test", bech32.toWords(address), 1023);
 }
 
 /** The payment credential of an address in Bech32, or null. */

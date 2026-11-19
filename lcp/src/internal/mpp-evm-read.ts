@@ -905,7 +905,7 @@ function openingNonce(c: OpenCall): Hex {
  * nonce, and that the receipt does not show so makes the transaction an item the read cannot decode: calldata alone
  * shows no opening ran. A counted call carries H where its salt is H; its signer is its payer; it names the payee's
  * account where its `payee` is the option's payee; what moved is the deposit, recorded with the channel's `payee` as the
- * beneficiary; it is of the pairing's kind where an `authorization` or a `permit2` funds it, and of another where its
+ * beneficiary and the escrow its `Transfer` reaches as the contract; it is of the pairing's kind where an `authorization` or a `permit2` funds it, and of another where its
  * payer sent it itself (`hash`). It consumed the reference's value where its funding is the reference's, of the
  * payer and the nonce: on an `authorization` the token logged `AuthorizationUsed` of the payer and the nonce, on a
  * `permit2` the payer's bit for the nonce is set at its block and unset at the block before. What the payer signed is
@@ -995,7 +995,7 @@ async function openingClassify(ref: MppSessionOpeningRef, view: TxView, reader: 
       party: party(c),
       kind: c.funding === "hash" ? "other" : "same",
       account: account(c),
-      moved: [{ asset: c.token, amount: c.deposit.toString(), to: c.payee, beneficiary: c.payee, transaction: view.hash, place: t.log }],
+      moved: [{ asset: c.token, amount: c.deposit.toString(), to: c.payee, contract: lower(t.to), beneficiary: c.payee, transaction: view.hash, place: t.log }],
       signer: c.from,
       ...(signed === undefined ? {} : { signed }),
     });

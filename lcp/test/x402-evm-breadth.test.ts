@@ -1206,7 +1206,7 @@ describe("x402-auth-capture-eip155-eip3009.json and x402-auth-capture-eip155-per
   });
   // The escrow records a deposit as one event naming one amount to its PaymentInfo.receiver (x402-auth-capture-eip155.md
   // rule 11): EV6's `authorized` event, landed at block 110, is the deposit, its receiver the option's payTo.
-  it("EV6 status: the authorized event's deposit names the PaymentInfo's receiver, the option's payTo, as its beneficiary", async () => {
+  it("EV6 status: the authorized event's deposit names the PaymentInfo's receiver, the option's payTo, as its beneficiary, and the escrow that logs it as its contract", async () => {
     const d = ESCROW["v1.1"];
     const i = info(f.payer, A3.EV3.expectBindSalt as Hex);
     const values = [
@@ -1231,7 +1231,7 @@ describe("x402-auth-capture-eip155-eip3009.json and x402-auth-capture-eip155-per
     });
     const answer = await authCaptureEip3009.status!(ref as never, ledger, { act: "payment", finality: "finalized", after: 100n } as never);
     const payTo = (f.option.payTo as string).toLowerCase();
-    expect(answer).toMatchObject({ state: "settled", moved: [{ to: payTo, beneficiary: payTo, amount: "10000" }] });
+    expect(answer).toMatchObject({ state: "settled", moved: [{ to: payTo, contract: d.escrow.toLowerCase(), beneficiary: payTo, amount: "10000" }] });
   });
   it("EV3 unbound: build with an option whose extra names no receiverAuthorizer signs the payer-agnostic hash of salt H", async () => {
     const unbound = structuredClone(f.option) as any;

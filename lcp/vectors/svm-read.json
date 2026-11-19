@@ -1810,6 +1810,7 @@
       "asset": "mint",
       "amount": "5",
       "to": "payee",
+      "contract": "channel",
       "beneficiary": "payee",
       "transaction": "t1",
       "place": 0

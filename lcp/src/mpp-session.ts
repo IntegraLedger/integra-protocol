@@ -696,7 +696,7 @@ async function readSession(ref: SessionRef & { transaction: Hex }, reader: EvmRe
 
 // ── The read of an opening by its search (read-status; mpp-session-evm-tempo.md rule 6).
 
-/** One deposit an opening made: the channel's token, the deposit, and the channel's payee as the beneficiary. */
+/** One deposit an opening made: the channel's token, the deposit, the contract that logs it, and the channel's payee as the beneficiary. */
 type OpeningMoved = Moved & { readonly transaction: Hex; readonly place: number };
 
 /** The final, `safe` and latest blocks, with their times; a network that serves no `safe` reads it as the final one. */
@@ -793,7 +793,8 @@ async function tempoTxOf(
  * payer and the option's payee; it is of the pairing's kind where that transaction is a Tempo transaction holding an
  * open call to the escrow, or one whose signed bytes the node does not hold, and of another where the channel was opened
  * otherwise; it names the payee's account where the event's `payee` is the option's payee, and moved the deposit,
- * recorded with the channel's token and its `payee` as the beneficiary, the token compared with nothing. `presented` is
+ * recorded with the channel's token, its `payee` as the beneficiary and the event's emitter as the contract, the token
+ * compared with nothing. `presented` is
  * `yes` where the hash the transaction's sender-signed fields give (`expiringNonceHash`) is the reference's `signed`,
  * `no` where it is another, and `unshown` where the node holds no signed bytes for it; a reference without `signed` is
  * unparseable. A reverted transaction the reference names is the payer's failed opening.
@@ -952,7 +953,7 @@ async function tempoOpeningFacts(
       const moved: OpeningMoved[] =
         token === undefined || deposit === undefined || payee === undefined
           ? []
-          : [{ asset: token, amount: uintOf(deposit).toString(), to: payee, beneficiary: payee, transaction: hash, place: i }];
+          : [{ asset: token, amount: uintOf(deposit).toString(), to: payee, contract: l.address.toLowerCase(), beneficiary: payee, transaction: hash, place: i }];
       seen.push({
         ...place,
         ...common,

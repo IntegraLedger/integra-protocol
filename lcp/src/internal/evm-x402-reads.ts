@@ -467,7 +467,7 @@ async function authCaptureClassify(ref: AuthCaptureRef, values: Values, view: Pa
       party: partyOf(payer, ref.payer, ref.payee),
       kind: own ? "same" : "other",
       account: same(receiver, ref.payee) ? "payee" : "other",
-      moved: [movedAt(token, uintOf(amountW), receiver, view.hash, i)],
+      moved: [movedAt(token, uintOf(amountW), receiver, lower(l.address) as Hex, view.hash, i)],
       signer: payer,
       signed: { paymentId },
     });
@@ -560,9 +560,12 @@ export interface BatchEvmRef extends X402EvmRefBase {
   readonly amount: string;
 }
 
-/** What a deposit moved: the token, the amount and the beneficiary it names, as `to` and `beneficiary`, by its log. */
-export function movedAt(asset: Hex, amount: bigint, to: Hex, transaction: Hex, place: number): Moved {
-  return { asset, amount: amount.toString(), to, beneficiary: to, transaction, place };
+/**
+ * What a deposit moved: the token, the amount, the beneficiary it names, as `to` and `beneficiary`, and the contract
+ * whose log records it, by that log.
+ */
+export function movedAt(asset: Hex, amount: bigint, to: Hex, contract: Hex, transaction: Hex, place: number): Moved {
+  return { asset, amount: amount.toString(), to, contract, beneficiary: to, transaction, place };
 }
 
 // ── `exact` over ERC-7710: the salt level and the level that signs no H.

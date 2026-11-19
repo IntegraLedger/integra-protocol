@@ -322,8 +322,9 @@ async function namesPayee(address: Hex, recipient: Hex, reader: HederaStockReade
  * escrow naming the channel, whose members give the channel id it names, is the opening: its signer is the account id
  * the mirror resolves its payer to, or the payer's address where the mirror resolves none, an address of no account; it
  * is the payee's own act where that account is the one the challenge's `recipient` resolves to; and it names the
- * payee's account where its `payee` is the `recipient` or resolves to the same account. What moved is the deposit, by
- * the transaction and the log's place among the receipt's logs. Any other receipt that succeeded consumed the opening's
+ * payee's account where its `payee` is the `recipient` or resolves to the same account. What moved is the deposit, its
+ * beneficiary the log's `payee` (no contract, the read resolving no id for the escrow), by the transaction and the
+ * log's place among the receipt's logs. Any other receipt that succeeded consumed the opening's
  * transaction and is no opening of the channel. No receipt is `not-found` where the mirror holds the blocks after the
  * position the caller gives, or is archival, and `history-gap` otherwise. The read reads no nonce state and makes no
  * search, the named transaction's receipt, and for a revert its contract result, being all it reads of the opening's

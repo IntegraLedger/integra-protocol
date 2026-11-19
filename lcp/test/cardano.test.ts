@@ -294,7 +294,7 @@ describe("status over a constructed ledger", () => {
   it("history-gap where the endpoint holds no block at the position given", async () => {
     expect(await read(world({ held: 1001n }))).toEqual({ state: "unreadable", reason: "history-gap", foreign: [] });
   });
-  it("a Masumi lock pays where its escrow datum's seller (V7, the scheme's own vector) has the payee's payment credential, recorded as the deposit's beneficiary", async () => {
+  it("a Masumi lock pays where its escrow datum's seller (V7, the scheme's own vector) has the payee's payment credential, recorded as the deposit's beneficiary, the escrow's script address its contract", async () => {
     const datumBytes = Uint8Array.from(Buffer.from(V.V7.datumHex, "hex"));
     const L = pay({ outputs: [{ to: "escrow", coin: 3000000n, datumBytes }] });
     const w = world({ txs: new Map([[L.id, at(L, 1050n)]]), output: { address: bech(addressOf("payer")), spentBy: L.id } });
@@ -302,7 +302,7 @@ describe("status over a constructed ledger", () => {
     expect(V.V7.expectSeller).toBe(credOf(seller));
     expect(await read(w, { ...refFor(L.id, H, "masumi", TTL), payee: bech(addressOf(seller)) })).toMatchObject({
       state: "settled",
-      moved: [{ asset: "lovelace", amount: "3000000", to: V.V7.expectSeller, beneficiary: V.V7.expectSeller, transaction: L.id, place: 0 }],
+      moved: [{ asset: "lovelace", amount: "3000000", to: V.V7.expectSeller, contract: bech(addressOf("escrow")), beneficiary: V.V7.expectSeller, transaction: L.id, place: 0 }],
     });
     const held = { state: "pending", reason: "search-incomplete" } as const;
     expect(await read(w, refFor(L.id, H, "masumi", TTL))).toMatchObject({ ...held, foreign: [{ transaction: L.id, reason: "other-account" }] });

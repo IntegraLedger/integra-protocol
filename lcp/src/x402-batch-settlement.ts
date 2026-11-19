@@ -981,7 +981,7 @@ async function batchClassify(ref: BatchEvmRef, view: TxView, reader: EvmReader):
         party: partyOf(signer, ref.payer, ref.payee),
         kind: "same",
         account: same(c.config.receiver, ref.payee) ? "payee" : "other",
-        moved: [movedAt(c.config.token.toLowerCase() as Hex, amount, c.config.receiver.toLowerCase() as Hex, view.hash, at)],
+        moved: [movedAt(c.config.token.toLowerCase() as Hex, amount, c.config.receiver.toLowerCase() as Hex, logs[at]!.address.toLowerCase() as Hex, view.hash, at)],
         ...(signer === undefined ? {} : { signer }),
         signed: { channel: c.channelId.toLowerCase(), amount: amount.toString() },
       });
@@ -998,7 +998,7 @@ async function batchClassify(ref: BatchEvmRef, view: TxView, reader: EvmReader):
         party: partyOf(signer, ref.payer, ref.payee),
         kind: consumed ? "same" : "other",
         account: same(own.receiver, ref.payee) ? "payee" : "other",
-        moved: [movedAt(own.token.toLowerCase() as Hex, amount, own.receiver.toLowerCase() as Hex, view.hash, i)],
+        moved: [movedAt(own.token.toLowerCase() as Hex, amount, own.receiver.toLowerCase() as Hex, l.address.toLowerCase() as Hex, view.hash, i)],
         ...(signer === undefined ? {} : { signer }),
         signed: { channel: ref.channel, amount: amount.toString() },
       });

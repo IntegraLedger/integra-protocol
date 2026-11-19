@@ -153,9 +153,16 @@ function movedOf(amount: XrplAmount | undefined, to: string | undefined, transac
   return undefined;
 }
 
-/** A PaymentChannelCreate's deposit, its channel's `Destination` recorded as the beneficiary beside `to`. */
-function deposited(m: Moved | undefined): Moved | undefined {
-  return m === undefined ? undefined : { ...m, beneficiary: m.to };
+/**
+ * A PaymentChannelCreate's deposit: its channel's `Destination` recorded as the beneficiary beside `to`, and the channel
+ * as the contract, by the id XRPL derives from the create's `Account`, `Destination` and sequence (or ticket), where
+ * that derives.
+ */
+function deposited(m: Moved | undefined, tx: XrplTxJson): Moved | undefined {
+  if (m === undefined) return undefined;
+  const seq = tx["Sequence"] === 0 ? tx["TicketSequence"] : tx["Sequence"];
+  const id = typeof tx["Destination"] === "string" && typeof seq === "number" ? xrplChannelId(tx.Account, tx["Destination"], seq) : undefined;
+  return { ...m, ...(id === undefined || isRefusal(id) ? {} : { contract: id }), beneficiary: m.to };
 }
 
 /**
@@ -257,7 +264,7 @@ async function classify(
   if (result === "succeeded") {
     const m =
       tx.TransactionType === "PaymentChannelCreate"
-        ? deposited(movedOf(tx["Amount"] as XrplAmount, destination, hash))
+        ? deposited(movedOf(tx["Amount"] as XrplAmount, destination, hash), tx)
         : tx.TransactionType === "Payment"
           ? movedOf(l.delivered, destination, hash)
           : undefined;
@@ -624,7 +631,7 @@ export async function xrplChannelStatus(
       if (!created || met.some((s) => s.transaction === d.hash)) return true;
       const delegate = typeof tx["Delegate"] === "string" ? (tx["Delegate"] as string) : undefined;
       const destination = typeof tx["Destination"] === "string" ? (tx["Destination"] as string) : undefined;
-      const moved = deposited(movedOf(tx["Amount"] as XrplAmount, destination, d.hash));
+      const moved = deposited(movedOf(tx["Amount"] as XrplAmount, destination, d.hash), tx);
       const authority = authorityOf(tx, l);
       met.push({
         transaction: d.hash,

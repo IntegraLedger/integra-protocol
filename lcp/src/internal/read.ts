@@ -23,10 +23,19 @@ export type ForeignReason = "payee-signed" | "other-signer" | "given" | "other-k
 export interface Moved {
   readonly asset: string;
   readonly amount: string;
-  /** The account it reached, or the beneficiary a contract names. */
+  /**
+   * The account it reached; on a deposit into a contract, as each pairing's profile states, the beneficiary the contract
+   * names or the contract itself. `contract` and `beneficiary` name the two apart.
+   */
   readonly to: string;
   /**
-   * On a deposit into a contract, the account that contract names as the payment's beneficiary, where the act states
+   * On a deposit into a contract, the contract it was deposited into, in the chain's own spelling, as the act names it:
+   * on EVM the contract's address, on the XRP Ledger the channel's id, on Solana the channel's account, on Cardano the
+   * script's address in Bech32. Absent on a transfer, so that its presence marks a deposit. Observed, and never judged.
+   */
+  readonly contract?: string;
+  /**
+   * On a deposit into a contract, the account that contract names as the payment's beneficiary, where the act names
    * one; absent on a transfer, and on a deposit that names none. Observed, and never judged.
    */
   readonly beneficiary?: string;
