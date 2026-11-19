@@ -196,12 +196,12 @@ the history the payment would be in; otherwise it is `unreadable`, `history-gap`
 
 A reader that throws or times out never makes a payment failed: a rejected read of the transaction makes `status` answer
 `unreadable`, with the reason `transport`, or, where the reader rejects with lcp's `ReaderError`, `too-large` for its
-kind `too-large` and `unparseable` for its kind `malformed` (on EVM chains, `history-gap` for its kind `history`). A
-later read can settle it; a rejected read of a finality mark counts as that mark not reached. On EVM chains and Tempo,
-a reader answer that is not a receipt (a `status` of 0 or 1, a bigint `blockNumber` and a list of logs), or a receipt
-holding a log that is not an object with a string `address`, an array of string `topics` and a string `data`, makes
-`status` answer `unreadable`, `unparseable`, and `recover` refuses it as `evm/unreadable` or `tempo/unreadable`, the
-code its rail gives a failed read.
+kind `too-large` and `unparseable` for its kind `malformed` (on EVM chains and the XRP Ledger, `history-gap` for its
+kind `history`). A later read can settle it; a rejected read of a finality mark counts as that mark not reached. On EVM
+chains and Tempo, a reader answer that is not a receipt (a `status` of 0 or 1, a bigint `blockNumber` and a list of
+logs), or a receipt holding a log that is not an object with a string `address`, an array of string `topics` and a
+string `data`, makes `status` answer `unreadable`, `unparseable`, and `recover` refuses it as `evm/unreadable` or
+`tempo/unreadable`, the code its rail gives a failed read.
 A reader that declares a network other than the reference's makes `status` answer `unreadable`, `chain-mismatch`, with nothing read,
 so no later read through it settles the payment. The package compares only the `network` a reader declares and never
 asks its endpoint which network it serves, so a reader declares its endpoint's own: one that declares the payment's
@@ -368,10 +368,12 @@ but `before-position` is `failed`.
 | TON | `TvmReader` | the masterchain head, read first; the index's statement of the blocks it holds; Toncenter's transactions by message body hash (the signed W5 request's); the wallet's state and its transactions by account, each with its predecessor and the account's state before and after it; by message hash (the Jetton transfer a run sent, then the `internal_transfer` it led to) and by hash; and `runGetMethod`'s `get_wallet_data` and `get_wallet_address` | `confirmed` or `finalized` |
 | Stacks | `StacksReader` | the chain tip's Stacks and Bitcoin heights (`GET /extended`), read first; the reference's transaction by id with its events and bytes, a hint; the origin's last executed nonce at the tip or at a height; the lookup by origin and nonce, or for nonce 0 a scan of the origin's transactions; a block's transactions, the lookup's fallback; the Bitcoin height of the burn block of the tenure after a block's | `block` or `bitcoin` |
 
-On EVM chains, a reader rejects with `ReaderError` and one of the kinds `timeout`, `too-large`, `transport`,
-`malformed` or `history` (the endpoint does not hold the range or block asked for). The other rails' readers may reject
-with it too, as each interface's documentation states. The [seller guide](./seller.md#the-whole-flow) builds an `EvmReader` from one receipt and reads a
-settlement through it.
+On EVM chains, a reader rejects with `ReaderError` and one of the kinds `timeout`, `too-large`, `transport`, `malformed`
+or `history` (the endpoint does not hold the range or block asked for). The other rails' readers may reject with it too,
+as each interface's documentation states. An `XrplReader` rejects with the kind `history` where the server refuses a
+call for ledgers it does not hold: rippled on API version 2 answers `account_tx` from a ledger below those it holds with
+`lgrIdxMalformed`, and the read answers `unreadable`, `history-gap`, so you read again through a server that holds them.
+The [seller guide](./seller.md#the-whole-flow) builds an `EvmReader` from one receipt and reads a settlement through it.
 
 A Solana message lives until its recent blockhash's validity ends, 150 blocks after the blockhash's own block, unless it
 uses a durable nonce: its first instruction is the System program's `AdvanceNonceAccount`, naming a writable nonce

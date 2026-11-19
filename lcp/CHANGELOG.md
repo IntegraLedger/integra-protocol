@@ -23,6 +23,14 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   `Payment-Authorization` field value, held to the shape every `bound` reads first (`mpp/credential-malformed`); and
   `encodeReceipt(receipt)` writes a successful response's `Payment-Receipt` field value (`mpp/receipt-malformed`),
   with the type `MppReceipt`. No existing export changes.
+### Fixed
+
+- Every XRP Ledger read (the `status` of each XRPL pairing, and `xrplStatus`, `xrplChargeStatus`, `xrplOpenStatus` and
+  `xrplChannelStatus` of `@integraledger/lcp/xrpl`) answers `unreadable`, `history-gap` where the reader rejects with
+  `ReaderError` of kind `history`, as the EVM reads do, where it answered `transport`. `XrplReader` states when a reader
+  rejects so: where the server refuses a call for ledgers it does not hold, as rippled on API version 2 refuses
+  `account_tx` from a ledger below those it holds with `lgrIdxMalformed`. The caller then reads again through a server
+  that holds the ledgers.
 
 ## [0.6.1] - 2026-11-18
 

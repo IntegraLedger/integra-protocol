@@ -1,0 +1,212 @@
+{
+ "description": "rippled's JSON-RPC answers to one read of an x402/exact/xrpl payment on the XRPL testnet, recorded from the public server testnet.xrpl-labs.com on 2026-11-19 (api_version 2). The server's complete_ledgers starts above the reference's fromLedger, and it refuses account_tx from that ledger with lgrIdxMalformed.",
+ "reference": {
+  "network": "xrpl:1",
+  "transaction": "2409BB4B410166CB3CE15A5703333518C2C7A58ED67F7B0039BB851C4EEFAC8E",
+  "h": "0x21df5228cee17201cfebe95cc6d63a4a876f68fc533798012b8553a48211c546",
+  "payee": "rKaxE8cpE9E5qW3K28SpfF8vtABeWoavki",
+  "signed": {
+   "account": "rQ9LRdERCuAY1ZzBDDfjKiJepNiwejf9aQ",
+   "sequence": 22406405,
+   "lastLedgerSequence": 22406584,
+   "body": "1200002200000000240155E505201B0155E5B85011BD6513E3B69A2033B7C48D16F69B54CAD55F81FE76D5443CF60966B85E25C76361400000000000000168400000000000000A8114FDDE6F7F300CAD24497EBA9FE4294CF0FF9A599F8314C69277EA02F591555D6810F8923EA367A4A5DB40"
+  },
+  "fromLedger": 22406573
+ },
+ "calls": [
+  {
+   "request": {
+    "method": "server_info",
+    "params": [
+     {
+      "api_version": 2
+     }
+    ]
+   },
+   "answer": {
+    "result": {
+     "info": {
+      "build_version": "3.4.1",
+      "complete_ledgers": "22448033-22449299",
+      "hostid": "SOME",
+      "initial_sync_duration_us": "484592334",
+      "io_latency_ms": 1,
+      "jq_trans_overflow": "31234",
+      "last_close": {
+       "converge_time_s": 2.001,
+       "proposers": 6
+      },
+      "load_factor": 1,
+      "network_id": 1,
+      "peer_disconnects": "937",
+      "peer_disconnects_resources": "3",
+      "peers": 22,
+      "ports": [
+       {
+        "port": "51235",
+        "protocol": [
+         "peer"
+        ]
+       },
+       {
+        "port": "8080",
+        "protocol": [
+         "ws"
+        ]
+       },
+       {
+        "port": "8181",
+        "protocol": [
+         "http"
+        ]
+       }
+      ],
+      "pubkey_node": "n9JeTbe3DCrroz27gq811ogRnw9sqK1usKE37qhbksF5WYDarJAP",
+      "server_state": "full",
+      "server_state_duration_us": "106822258",
+      "state_accounting": {
+       "connected": {
+        "duration_us": "481335515",
+        "transitions": "2"
+       },
+       "disconnected": {
+        "duration_us": "1052804",
+        "transitions": "2"
+       },
+       "full": {
+        "duration_us": "3719318423266",
+        "transitions": "1036"
+       },
+       "syncing": {
+        "duration_us": "2368494796",
+        "transitions": "1036"
+       },
+       "tracking": {
+        "duration_us": "126601",
+        "transitions": "1036"
+       }
+      },
+      "time": "2026-Nov-19 14:24:28.184961 UTC",
+      "uptime": 3722169,
+      "validated_ledger": {
+       "age": 2,
+       "base_fee_xrp": 1e-05,
+       "hash": "579B7182AB1B6C3961F2374CC1B4A3E7BC8165FD7177E6E4E7EEF323E7BBC03D",
+       "reserve_base_xrp": 1,
+       "reserve_inc_xrp": 0.2,
+       "seq": 22449299
+      },
+      "validation_quorum": 5
+     },
+     "status": "success"
+    }
+   }
+  },
+  {
+   "request": {
+    "method": "tx",
+    "params": [
+     {
+      "transaction": "2409BB4B410166CB3CE15A5703333518C2C7A58ED67F7B0039BB851C4EEFAC8E",
+      "binary": true,
+      "api_version": 2
+     }
+    ]
+   },
+   "answer": {
+    "result": {
+     "error": "txnNotFound",
+     "error_code": 29,
+     "error_message": "Transaction not found.",
+     "request": {
+      "api_version": 2,
+      "binary": true,
+      "command": "tx",
+      "transaction": "2409BB4B410166CB3CE15A5703333518C2C7A58ED67F7B0039BB851C4EEFAC8E"
+     },
+     "status": "error"
+    }
+   }
+  },
+  {
+   "request": {
+    "method": "account_info",
+    "params": [
+     {
+      "account": "rQ9LRdERCuAY1ZzBDDfjKiJepNiwejf9aQ",
+      "ledger_index": "validated",
+      "api_version": 2
+     }
+    ]
+   },
+   "answer": {
+    "result": {
+     "account_data": {
+      "Account": "rQ9LRdERCuAY1ZzBDDfjKiJepNiwejf9aQ",
+      "Balance": "99999978",
+      "Flags": 0,
+      "LedgerEntryType": "AccountRoot",
+      "OwnerCount": 0,
+      "PreviousTxnID": "2409BB4B410166CB3CE15A5703333518C2C7A58ED67F7B0039BB851C4EEFAC8E",
+      "PreviousTxnLgrSeq": 22406576,
+      "Sequence": 22406406,
+      "index": "77CDE0AFACA20A32F238B5D50D207DEE52B36037F1A354D1B84C18C8090F8C66"
+     },
+     "account_flags": {
+      "allowTrustLineClawback": false,
+      "allowTrustLineLocking": false,
+      "defaultRipple": false,
+      "depositAuth": false,
+      "disableMasterKey": false,
+      "disallowIncomingCheck": false,
+      "disallowIncomingNFTokenOffer": false,
+      "disallowIncomingPayChan": false,
+      "disallowIncomingTrustline": false,
+      "disallowIncomingXRP": false,
+      "globalFreeze": false,
+      "noFreeze": false,
+      "passwordSpent": false,
+      "requireAuthorization": false,
+      "requireDestinationTag": false
+     },
+     "ledger_hash": "579B7182AB1B6C3961F2374CC1B4A3E7BC8165FD7177E6E4E7EEF323E7BBC03D",
+     "ledger_index": 22449299,
+     "status": "success",
+     "validated": true
+    }
+   }
+  },
+  {
+   "request": {
+    "method": "account_tx",
+    "params": [
+     {
+      "account": "rQ9LRdERCuAY1ZzBDDfjKiJepNiwejf9aQ",
+      "ledger_index_min": 22406573,
+      "ledger_index_max": 22449299,
+      "binary": true,
+      "forward": true,
+      "api_version": 2
+     }
+    ]
+   },
+   "answer": {
+    "result": {
+     "error": "lgrIdxMalformed",
+     "error_code": 58,
+     "error_message": "Ledger index malformed.",
+     "request": {
+      "account": "rQ9LRdERCuAY1ZzBDDfjKiJepNiwejf9aQ",
+      "api_version": 2,
+      "binary": true,
+      "command": "account_tx",
+      "forward": true,
+      "ledger_index_max": 22449299,
+      "ledger_index_min": 22406573
+     },
+     "status": "error"
+    }
+   }
+  }
+ ]
+}

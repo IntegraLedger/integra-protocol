@@ -85,8 +85,10 @@ export interface XrplChannelEntry {
 
 /**
  * Bounded, read-only calls against one network's server. Every failure rejects, for example with `ReaderError` from
- * `@integraledger/lcp/evm`; any rejection reads as unreadable. A call that names a ledger answers with the index of the
- * ledger it read.
+ * `@integraledger/lcp/evm`; any rejection reads as unreadable. A call the server refuses because it names ledgers the
+ * server does not hold, as rippled on API version 2 refuses `account_tx` from a ledger below those it holds with
+ * `lgrIdxMalformed`, rejects with `ReaderError` of kind `history`, which reads as `history-gap`. A call that names a
+ * ledger answers with the index of the ledger it read.
  */
 export interface XrplReader {
   readonly network: XrplNetwork;
@@ -156,12 +158,12 @@ export type XrplQuery<Ref> = StatusQuery<Ref, number, XrplMark>;
 
 /**
  * The reason a rejected read gives: a `ReaderError` of kind `too-large` is `too-large`, one of kind `malformed`
- * `unparseable`, and any other rejection, a timeout among them, `transport`.
+ * `unparseable`, one of kind `history` `history-gap`, and any other rejection, a timeout among them, `transport`.
  */
 export function rejectedAs(e: unknown): UnreadableReason {
   if (typeof e !== "object" || e === null || (e as { name?: unknown }).name !== "ReaderError") return "transport";
   const kind = (e as { kind?: unknown }).kind;
-  return kind === "too-large" ? "too-large" : kind === "malformed" ? "unparseable" : "transport";
+  return kind === "too-large" ? "too-large" : kind === "malformed" ? "unparseable" : kind === "history" ? "history-gap" : "transport";
 }
 
 /**
