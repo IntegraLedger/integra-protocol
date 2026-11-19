@@ -1,6 +1,8 @@
 /**
- * The `mpp` entry point: MPP's challenge pieces and its pairings: the EVM charges, defined here, and every other MPP
- * charge, session and subscription pairing but Lightning's, re-exported from its module.
+ * The `mpp` entry point: MPP's challenge pieces, its three fields (`encodeChallenge` writes a `WWW-Authenticate`
+ * value, `decodeCredential` reads an `Authorization` value, `encodeReceipt` writes a `Payment-Receipt` value) and its
+ * pairings: the EVM charges, defined here, and every other MPP charge, session and subscription pairing but
+ * Lightning's, re-exported from its module.
  *
  * The EVM charges are `authorization` (the signed nonce is keccak256 of the JSON array [id, realm]), `permit2` (the
  * signed witness carries that value), and `transaction` and `hash` (nothing signed carries H). The re-exported charges
@@ -108,6 +110,9 @@ export {
   challengeHash,
   challengeId,
   checkAttribution,
+  decodeCredential,
+  encodeChallenge,
+  encodeReceipt,
   issuedDigest,
   pairingsOf,
   pairingsOfPlaced,
@@ -117,7 +122,7 @@ export {
   read,
   tie,
 } from "./mpp-challenge.js";
-export type { MppChallenge, MppChoice, MppCredential, MppIntent, MppMethod, MppPairingId } from "./mpp-challenge.js";
+export type { MppChallenge, MppChoice, MppCredential, MppIntent, MppMethod, MppPairingId, MppReceipt } from "./mpp-challenge.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 export { LEGAL_CONTEXT_METADATA_KEY, chargeCard, chargeStripe, subscriptionStripe } from "./mpp-card-stripe.js";
 export type { StripeSubscriptionReceipt } from "./mpp-card-stripe.js";

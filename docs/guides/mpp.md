@@ -114,8 +114,29 @@ ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0 true
 true 1
 ```
 
-`parseChallenges(fieldValues)` parses `WWW-Authenticate` field values into challenges, and `problem(code)` gives the
-Payment scheme's problem type and HTTP status for a refusal code this package returns
+## The fields
+
+MPP carries its three forms in HTTP fields, and the package writes and reads each as the `mppx` SDK (0.17.6) does:
+
+- `encodeChallenge(challenge)` writes one challenge as a `WWW-Authenticate` field value: `Payment`, then each member
+  the challenge holds as a quoted-string, in the order `id`, `realm`, `method`, `intent`, `request`, `description`,
+  `digest`, `expires`, `header`, `opaque`. It writes the members as given, `request` and `opaque` in the base64url
+  `place` and `advertise` write, and only a value `parseChallenges` reads back as the same members: a challenge missing
+  `id`, `realm`, `method`, `intent` or `request`, or holding one empty, a member holding a control character or a
+  character above U+00FF, which no quoted-string carries, or a value over 8,192 characters is
+  `mpp/challenge-malformed`. A 402 offering several challenges sends one `WWW-Authenticate` field line for each.
+  `parseChallenges(fieldValues)` parses `WWW-Authenticate` field values into challenges.
+- `decodeCredential(fieldValue)` reads the credential from the field the challenge selected, `Authorization`, or
+  `Payment-Authorization` where the challenge carries `header`: `Payment`, in any case, one or more spaces and the
+  credential's JSON in base64url without padding, at most 65,536 bytes, held to the shape every `bound` reads first.
+  Any other value is `mpp/credential-malformed`. It reads nothing else: the challenge's id and H are
+  `challengeBound`'s to check ([The server's order](#the-servers-order)).
+- `encodeReceipt(receipt)` writes the `Payment-Receipt` field value of a successful response: the receipt's JSON, in
+  its own member order, in base64url without padding. A receipt whose `status` is not `success`, whose `method` is not
+  lowercase ASCII letters, whose `timestamp` is not an RFC 3339 date-time or whose `reference` is not a string is
+  `mpp/receipt-malformed`. A method's own receipt members, such as `externalId`, are written as given.
+
+`problem(code)` gives the Payment scheme's problem type and HTTP status for a refusal code this package returns
 ([Answering the buyer](#answering-the-buyer)).
 
 ## The MPP pairings
@@ -251,7 +272,8 @@ read it, with the same bound and code, except the Stripe subscription's, which r
 A resource server makes two checks a stock MPP server does not make, and makes them before anything can move money
 ([`mpp/charge`](../../lcp/profiles/mpp-charge.md), rule 10):
 
-1. **The challenge belongs to this agreement.** `challengeBound(credential, recorded)` gives `{ h, request }`, H and
+1. **The challenge belongs to this agreement.** `challengeBound(credential, recorded)`, given the credential
+   `decodeCredential` reads from the request, gives `{ h, request }`, H and
    the echoed challenge's decoded request, where the echoed challenge's id and `opaque` name H and the id is, whole,
    `recorded`, the id the server recorded when it issued that challenge (else `mpp/id-not-ours`; a `recorded` that is
    not such an id is `mpp/input-malformed`); and `issuedDigest` of the echoed challenge equals the digest the server recorded
@@ -302,6 +324,6 @@ bytes, on Solana, 64 hex digits on XRPL) (`<rail>/wrong-reader`), or `bound` or 
 read it (`<rail>/read-first`). The same call gives the same code until the
 seller changes it. In both, the payment may already have moved, so the seller sends no fresh challenge the buyer could
 pay a second time. Answer a 402 with a fresh challenge and a 500 with none: a challenge goes out only with a 402, and
-neither carries `Payment-Receipt`. Any other code is the caller's to answer: `problem` gives it 500
-`internal-payment-error`, never a 402.
+neither carries `Payment-Receipt`, which only a successful response carries (`encodeReceipt`). Any other code is the
+caller's to answer: `problem` gives it 500 `internal-payment-error`, never a 402.
 

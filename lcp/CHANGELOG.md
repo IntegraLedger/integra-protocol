@@ -16,6 +16,13 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   the new names, and takes the ATR's bytes as an optional second argument, `servesOf(option, atr?)`, against which it
   resolves each name: a slot that is not the ATR's binding slot, or an index not below the number of options that slot
   holds, is `return/serves-malformed`. `legal-context-return.json` gains a card ATR and its rows.
+- `@integraledger/lcp/mpp` writes and reads MPP's three HTTP fields, so a resource server writes and reads MPP's
+  forms from this package: `encodeChallenge(challenge)` writes one challenge as a `WWW-Authenticate` field value, as
+  the `mppx` SDK 0.17.6 writes it, and refuses one `parseChallenges` would not read back as the same members
+  (`mpp/challenge-malformed`); `decodeCredential(fieldValue)` reads the credential from an `Authorization` or
+  `Payment-Authorization` field value, held to the shape every `bound` reads first (`mpp/credential-malformed`); and
+  `encodeReceipt(receipt)` writes a successful response's `Payment-Receipt` field value (`mpp/receipt-malformed`),
+  with the type `MppReceipt`. No existing export changes.
 
 ## [0.6.1] - 2026-11-18
 
@@ -204,6 +211,7 @@ rename exports and pairing ids and change a function's arguments or answers; a p
 
 - The earliest release tagged in this repository. Versions before it have no tag and are not recorded here.
 
+[Unreleased]: https://github.com/IntegraLedger/integra-protocol/compare/v0.6.1...HEAD
 [0.6.1]: https://github.com/IntegraLedger/integra-protocol/compare/v0.6.0...v0.6.1
 [0.6.0]: https://github.com/IntegraLedger/integra-protocol/compare/v0.5.1...v0.6.0
 [0.5.1]: https://github.com/IntegraLedger/integra-protocol/compare/v0.5.0...v0.5.1

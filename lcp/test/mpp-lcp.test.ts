@@ -2,10 +2,23 @@
 // file's; mppx 0.17.6 and canonicalize 5.1.0 are its oracles, run again here.
 import { readFileSync } from "node:fs";
 import canonicalize from "canonicalize";
-import { Credential, Receipt } from "mppx";
+import { Challenge, Credential, Receipt } from "mppx";
 import { describe, expect, it } from "vitest";
 import { decodeHederaTx, txIdText } from "../src/hedera.js";
-import { chargeLcpHedera, network, pairingsOf, pairingsOfPlaced, parseChallenges, problem, type MppChallenge, type MppCredential } from "../src/mpp.js";
+import {
+  chargeLcpHedera,
+  decodeCredential,
+  encodeChallenge,
+  encodeReceipt,
+  network,
+  pairingsOf,
+  pairingsOfPlaced,
+  parseChallenges,
+  problem,
+  type MppChallenge,
+  type MppCredential,
+  type MppReceipt,
+} from "../src/mpp.js";
 import { rowsOf } from "./rows.js";
 
 const V = JSON.parse(readFileSync(new URL("../vectors/mpp-method-lcp.json", import.meta.url), "utf8"));
@@ -20,6 +33,10 @@ describe("mpp-method-lcp.json: the challenges", () => {
       expect(canonicalize(JSON.parse(c.requestJcs))).toBe(c.requestJcs);
       expect(pairingsOfPlaced(c.wire)).toEqual(["mpp/charge/lcp/hedera"]);
       expect(network(c.wire)).toBe("hedera:testnet");
+    });
+
+    it(`${name}: encodeChallenge writes the members mppx parsed as the header mppx wrote`, () => {
+      expect(encodeChallenge(c.wire)).toBe(c.header);
     });
   }
 });
@@ -47,6 +64,14 @@ describe("mpp-method-lcp.json: the credential and the receipt", () => {
     }
   });
 
+  it("decodeCredential reads each header mppx wrote, and the one mppx writes answering encodeChallenge's, as the wire credential", () => {
+    for (const c of [tx, hash]) expect(decodeCredential(c.header)).toEqual(c.wire);
+    const issued = V.challenges.hedera as { header: string; wire: MppChallenge };
+    const written = encodeChallenge(issued.wire) as string;
+    const answer = Credential.serialize(Credential.from({ challenge: Challenge.deserialize(written), payload: hash.wire.payload }));
+    expect(decodeCredential(answer)).toEqual({ challenge: issued.wire, payload: hash.wire.payload });
+  });
+
   it("the transaction credential carries H and takes the payee as broadcaster; the hash credential the payer, read first", async () => {
     expect(await chargeLcpHedera.bound(tx.wire)).toBe(V.fixed.H);
     expect(await chargeLcpHedera.broadcaster(tx.wire)).toBe("payee");
@@ -62,9 +87,10 @@ describe("mpp-method-lcp.json: the credential and the receipt", () => {
     expect(await chargeLcpHedera.broadcaster(other)).toEqual({ refused: true, code: "mpp/credential-type" });
   });
 
-  it("the receipt mppx writes names the transaction id as the SDK spells it, from the credential's signed body", () => {
-    const r = V.receipts.hedera as { encoded: string; decoded: { method: string; reference: string } };
+  it("the receipt mppx writes, which encodeReceipt writes alike, names the transaction id as the SDK spells it, from the credential's signed body", () => {
+    const r = V.receipts.hedera as { encoded: string; decoded: MppReceipt };
     expect(Receipt.deserialize(r.encoded)).toEqual(r.decoded);
+    expect(encodeReceipt(r.decoded)).toBe(r.encoded);
     expect(r.decoded.method).toBe("lcp");
     const body = decodeHederaTx(Buffer.from(tx.wire.payload["transaction"] as string, "base64")) as unknown as { bodies: { id: Parameters<typeof txIdText>[0] }[] };
     expect(r.decoded.reference).toBe(txIdText(body.bodies[0]!.id));

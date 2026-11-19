@@ -1,7 +1,8 @@
 /**
- * MPP's `Payment` challenge, shared by every MPP pairing: parsing the `WWW-Authenticate` field, the challenge `id`
- * derived from the ATR hash, the LCP reference in `opaque`, the binding slot, the digest of what was issued, the
- * buyer's reading, the check on an echoed challenge, the attribution memo and the problem types.
+ * MPP's `Payment` challenge, shared by every MPP pairing: writing and parsing the `WWW-Authenticate` field, reading
+ * the credential's field and writing the `Payment-Receipt` field, the challenge `id` derived from the ATR hash, the LCP
+ * reference in `opaque`, the binding slot, the digest of what was issued, the buyer's reading, the check on an echoed
+ * challenge, the attribution memo and the problem types.
  */
 import {
   canonicalJson,
@@ -397,6 +398,56 @@ function isTchar(c: number): boolean {
 
 function isToken68Char(c: number): boolean {
   return (c >= 0x30 && c <= 0x39) || (c >= 0x41 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a) || "-._~+/".includes(String.fromCharCode(c));
+}
+
+/** The members `encodeChallenge` writes, in the order it writes them. */
+const WRITTEN = ["id", "realm", "method", "intent", "request", "description", "digest", "expires", "header", "opaque"] as const;
+
+/**
+ * One `Payment` challenge as a `WWW-Authenticate` field value: `Payment`, a space, then each member the challenge holds
+ * as an auth-param whose value is a quoted-string, `"` and `\` written as quoted-pairs, joined by `, `, in the order
+ * `id`, `realm`, `method`, `intent`, `request`, `description`, `digest`, `expires`, `header`, `opaque`: the form
+ * `mppx` 0.17.6's `Challenge.serialize` writes. The challenge is read as its JSON form carries it, its own members only
+ * (as a pairing's `build` reads a chosen challenge), and each member is written as given: `request` and `opaque` stay
+ * the base64url that `place` and each pairing's `advertise` write. `parseChallenges` reads the value back as the same
+ * members. A challenge that is not an object, carries a `refused` member, lacks a string `id`, `realm`, `method`,
+ * `intent` or `request` or holds one empty, has another member that is not a string, holds a character no
+ * quoted-string carries (a control character other than tab, DEL, or one above U+00FF), or whose field value is over
+ * 8,192 characters, which `parseChallenges` refuses, is `mpp/challenge-malformed`. A response offering several
+ * challenges sends one `WWW-Authenticate` field line for each.
+ */
+export function encodeChallenge(challenge: MppChallenge): string | Refusal {
+  if (!isObject(challenge) || carriesRefused(challenge)) return refusal("mpp/challenge-malformed");
+  const own = challengeSnapshot(challenge)!;
+  if (!isChallengeShape(own)) return refusal("mpp/challenge-malformed");
+  const params: string[] = [];
+  for (const k of WRITTEN) {
+    const v = own[k];
+    if (v === undefined || v === "") {
+      if (REQUIRED.includes(k)) return refusal("mpp/challenge-malformed");
+      if (v === undefined) continue;
+    }
+    const quoted = quotedString(v);
+    if (quoted === undefined) return refusal("mpp/challenge-malformed");
+    params.push(`${k}=${quoted}`);
+  }
+  const value = `Payment ${params.join(", ")}`;
+  return value.length > MAX_FIELD ? refusal("mpp/challenge-malformed") : value;
+}
+
+/**
+ * `v` as an RFC 9110 quoted-string: `"` and `\` as quoted-pairs, tab, space, visible ASCII and U+0080 to U+00FF as
+ * they are; undefined for a string holding any other character.
+ */
+function quotedString(v: string): string | undefined {
+  let out = '"';
+  for (let i = 0; i < v.length; i++) {
+    const c = v.charCodeAt(i);
+    if (c === 0x22 || c === 0x5c) out += "\\" + v[i];
+    else if (c === 0x09 || (c >= 0x20 && c <= 0x7e) || (c >= 0x80 && c <= 0xff)) out += v[i];
+    else return undefined;
+  }
+  return out + '"';
 }
 
 // ── The id.
@@ -1228,6 +1279,30 @@ export function credentialShape(c: unknown): MppCredential | Refusal {
 }
 
 /**
+ * The credential a `Payment` credential field value carries: `Payment`, matched without regard to case, one or more
+ * spaces, then base64url without padding in its canonical form, of at most 65,536 bytes, that are well-formed UTF-8 of
+ * a JSON object, held to `credentialShape`'s gate, which every MPP `bound` applies first. The value given is that of
+ * the field the challenge selected: `Authorization`, or `Payment-Authorization` where the challenge carries `header`.
+ * Any other value is `mpp/credential-malformed`, which `problem` answers 402 `malformed-credential`. Nothing else is
+ * read: H, the challenge's id and the payment are the reads of `challengeBound`, `issuedDigest` and the pairing's
+ * `bound`.
+ */
+export function decodeCredential(fieldValue: string): MppCredential | Refusal {
+  if (typeof fieldValue !== "string") return refusal("mpp/credential-malformed");
+  const scheme = /^payment +/i.exec(fieldValue);
+  if (scheme === null) return refusal("mpp/credential-malformed");
+  const bytes = base64UrlBytes(fieldValue.slice(scheme[0].length), MAX_CREDENTIAL_BYTES);
+  if (typeof bytes === "string") return refusal("mpp/credential-malformed");
+  let text: string;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+  } catch {
+    return refusal("mpp/credential-malformed");
+  }
+  return credentialShape(parseJson(text));
+}
+
+/**
  * `credentialShape`'s gate, with `credentialOf`'s checks in its order and the size last. Without `bound`, as
  * `issuedFor` reads an issued challenge, which need not carry H, the challenge's id is not read.
  */
@@ -1536,6 +1611,52 @@ export function chosenHeld(challenge: unknown, pairing: MppPairingId): { h: AtrH
   if (own === undefined) return refusal("mpp/credential-malformed");
   const held = heldFor({ challenge: own, payload: {} }, pairing, true);
   return isRefusal(held) ? held : { h: held.h!, checked: held.checked as Chosen };
+}
+
+// ── The receipt.
+
+/**
+ * MPP's `Payment-Receipt` payload: `status` `success`, the payment `method`, the RFC 3339 `timestamp` of settlement and
+ * the method's `reference`, such as a transaction hash. A method's specification may define other members.
+ */
+export type MppReceipt = {
+  status: "success";
+  method: string;
+  timestamp: string;
+  reference: string;
+  [k: string]: Json | undefined;
+};
+
+/**
+ * A receipt as a `Payment-Receipt` field value: `JSON.stringify` of the receipt, in its own member order, as UTF-8, in
+ * base64url without padding, the form `mppx` 0.17.6's `Receipt.serialize` writes. A member whose value is `undefined`
+ * is left out, as `JSON.stringify` leaves it out, and every other member is written as given. A receipt is issued on
+ * success alone: one whose `status` is not `success`, whose `method` is not a method identifier (lowercase ASCII
+ * letters), whose `timestamp` is not an RFC 3339 date-time or whose `reference` is not a string, one that carries a
+ * `refused` member or an enumerable symbol-keyed member, and one that is not then a JSON object (no other `undefined`,
+ * function, `bigint`, non-finite number, lone surrogate or instance of a class, and at most 64 levels deep) is
+ * `mpp/receipt-malformed`.
+ */
+export function encodeReceipt(receipt: MppReceipt): string | Refusal {
+  if (!isObject(receipt) || carriesRefused(receipt)) return refusal("mpp/receipt-malformed");
+  const proto = Object.getPrototypeOf(receipt);
+  if (proto !== Object.prototype && proto !== null) return refusal("mpp/receipt-malformed");
+  if (Object.getOwnPropertySymbols(receipt).some((s) => Object.prototype.propertyIsEnumerable.call(receipt, s))) {
+    return refusal("mpp/receipt-malformed");
+  }
+  const written: { [k: string]: unknown } = {};
+  for (const k of Object.keys(receipt)) {
+    const v = receipt[k];
+    if (v !== undefined) Object.defineProperty(written, k, { value: v, enumerable: true, writable: true, configurable: true });
+  }
+  if (written["status"] !== "success") return refusal("mpp/receipt-malformed");
+  if (typeof written["method"] !== "string" || !/^[a-z]+$/.test(written["method"])) return refusal("mpp/receipt-malformed");
+  if (typeof written["timestamp"] !== "string" || unixOf(written["timestamp"]) === undefined) {
+    return refusal("mpp/receipt-malformed");
+  }
+  if (typeof written["reference"] !== "string") return refusal("mpp/receipt-malformed");
+  if (typeof canonicalJson(written) !== "string") return refusal("mpp/receipt-malformed");
+  return toBase64Url(new TextEncoder().encode(JSON.stringify(written)));
 }
 
 // ── Problem types.
