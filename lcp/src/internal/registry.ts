@@ -99,7 +99,8 @@ export interface FeePayer {
 export interface AgreementData {
   /**
    * The smallest amount the scheme and token admit, in base units: `"0"`, or a decimal with no sign and no leading
-   * zero; or `rule`, which `advertise` evaluates.
+   * zero; or `rule`, a rule over a ledger parameter that the pairing's profile states and its entry point's floor
+   * function evaluates: `cardanoFloor`, `suiFloor` or `starknetFloor`.
    */
   readonly floor: "0" | `${NonZeroDigit}${string}` | "rule";
   /** Who can pay the fee, by the chain and the published scheme. */
