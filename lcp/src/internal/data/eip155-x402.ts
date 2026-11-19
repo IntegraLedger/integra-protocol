@@ -22,6 +22,18 @@ const belowPosition = (logs: string): string =>
 const ESCROW_LAPSE =
   "`preApprovalExpiry`: the value unconsumed at a final block past it; no `failed` is answered while no search for H is defined";
 
+/** The networks of the reference DelegationManager's deployments, `DELEGATION_MANAGER_CHAINS` as CAIP-2 ids. */
+const DELEGATION_MANAGER_NETWORKS = [
+  "eip155:1", "eip155:10", "eip155:56", "eip155:97", "eip155:100", "eip155:130", "eip155:137", "eip155:143",
+  "eip155:146", "eip155:1155", "eip155:1301", "eip155:1328", "eip155:1329", "eip155:2020", "eip155:2021",
+  "eip155:4114", "eip155:4217", "eip155:4663", "eip155:5000", "eip155:5003", "eip155:5042", "eip155:5115",
+  "eip155:6342", "eip155:6343", "eip155:8453", "eip155:10143", "eip155:10200", "eip155:13579", "eip155:14601",
+  "eip155:42161", "eip155:42170", "eip155:42220", "eip155:42431", "eip155:46630", "eip155:50312", "eip155:57073",
+  "eip155:59141", "eip155:59144", "eip155:80002", "eip155:80069", "eip155:80094", "eip155:84532", "eip155:421614",
+  "eip155:560048", "eip155:737373", "eip155:747474", "eip155:763373", "eip155:5042002", "eip155:11142220",
+  "eip155:11155111", "eip155:11155420",
+];
+
 export const EIP155_X402 = /* @__PURE__ */ freeze({
   "x402/exact/eip155/eip3009": {
     coverage: "full",
@@ -57,6 +69,7 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     agreement: {
       floor: "0",
       fee: "the party that submits, always; the buyer needs a key, and no funds where the amount is zero",
+      feePayer: { may: ["settler"], default: "settler" },
       succeeded:
         "the receipt's `status` is 1, and in it the token called emitted `AuthorizationUsed(authorizer, nonce)`, `nonce` the " +
         "agreement's digest and `authorizer` the buyer's `from`, paired with its `Transfer`, recorded as what moved",
@@ -101,6 +114,7 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     agreement: {
       floor: "1",
       fee: "the party that submits; the buyer's one-time approval of Permit2 is the buyer's unless x402's gas-sponsoring extension covers it",
+      feePayer: { may: ["settler"], default: "settler" },
       succeeded:
         "`status` 1; the payer's `Transfer`, recorded as what moved; the transaction's input carrying the digest as the " +
         "nonce of the proxy call whose owner is the payer, the payer's bit for it set at the receipt's block and unset before",
@@ -281,6 +295,7 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
         "the leaf's (its delegate the redeemer or the wildcard) the act; searched for as long as the caller asks, never " +
         "read whole, so never `failed`.",
       contracts: ["the reference delegation manager"],
+      chains: { "the reference delegation manager": DELEGATION_MANAGER_NETWORKS },
       lapse: "none: a delegation signs no bound, so it is searched for as long as the caller asks and is never `failed`",
     },
     destination: "the token's `Transfer` from the payment's `delegator`, its `to` compared on a charge with the option's `payTo`",
@@ -385,6 +400,7 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
       fee:
         "the party that submits: the spender on the signature route, which calls `approveWithSignature`; the account, " +
         "or the paymaster its user operation names, on the transaction route",
+      feePayer: { may: ["settler", "buyer", "paymaster"] },
       succeeded:
         "the receipt's `status` is 1, and in it the SpendPermissionManager emitted `SpendPermissionApproved` with the " +
         "permission's hash as its topic and the permission whole, `salt` H, as its data",

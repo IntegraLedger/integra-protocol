@@ -30,6 +30,7 @@ export const STACKS = /* @__PURE__ */ freeze({
     agreement: {
       floor: "1",
       fee: "a sponsor (sponsored authorization) or the origin (standard), as the resource server's offer asks",
+      feePayer: { may: ["settler", "buyer"] },
       succeeded:
         "the transaction at the mark is on the canonical chain with status `success`, its origin not the option's payee, " +
         "calling a SIP-010 `transfer` with `(some H)` as memo, or a token transfer whose memo is H followed by two zero " +

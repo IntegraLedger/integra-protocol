@@ -34,6 +34,7 @@ export const ALGORAND = /* @__PURE__ */ freeze({
     agreement: {
       floor: "0",
       fee: "the settler, by fee pooling, where the option names `extra.feePayer`, fixed in what the buyer signs; else the buyer",
+      feePayer: { may: ["settler", "buyer"], default: "buyer" },
       succeeded:
         "the transaction id is confirmed in a round, its note H and its signer not the payee; on a charge `arcv` is the " +
         "payee; on an agreement `arcv` is recorded and held to no account",

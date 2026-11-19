@@ -37,6 +37,7 @@ export const STARKNET = /* @__PURE__ */ freeze({
     agreement: {
       floor: "rule",
       fee: "the seller's settler, always, through the named `Caller`",
+      feePayer: { may: ["settler"], default: "settler" },
       succeeded:
         "the receipt's execution status is `SUCCEEDED` at the mark, its trace holding the payer's `execute_from_outside_v2` " +
         "under the signed nonce with nothing on its path reverted; each `Transfer` from the payer recorded as what moved",

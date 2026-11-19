@@ -69,7 +69,12 @@ export const SOLANA = /* @__PURE__ */ freeze({
     asset: "the transfer's mint, recorded and compared with nothing",
     payer: "the buyer's account",
     confirmed: "yes",
-    agreement: { floor: "0", fee: "the seller's settler (`extra.feePayer`)", succeeded: SUCCEEDED },
+    agreement: {
+      floor: "0",
+      fee: "the seller's settler (`extra.feePayer`)",
+      feePayer: { may: ["settler"], default: "settler" },
+      succeeded: SUCCEEDED,
+    },
     proves: PAID,
   },
   "x402/upto/solana": {
@@ -87,6 +92,7 @@ export const SOLANA = /* @__PURE__ */ freeze({
       search: SEARCH,
       history: HISTORY,
       contracts: ["the Memo Program (version 3 or 4)", "the payment-channels program (devnet only)"],
+      chains: { "the payment-channels program (devnet only)": ["solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"] },
       lapse: lapse("open", ""),
       life: LIFE,
     },
@@ -116,6 +122,7 @@ export const SOLANA = /* @__PURE__ */ freeze({
       search: SEARCH,
       history: HISTORY,
       contracts: ["the Memo Program (version 3 or 4)", "the payment-channels program (devnet only)"],
+      chains: { "the payment-channels program (devnet only)": ["solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"] },
       lapse: lapse("opening", ""),
       life: LIFE,
     },
@@ -150,6 +157,7 @@ export const SOLANA = /* @__PURE__ */ freeze({
     agreement: {
       floor: "1",
       fee: "the seller's settler, under `feePayer: true`, named in every challenge of this id",
+      feePayer: { may: ["settler"], default: "settler" },
       succeeded: SUCCEEDED,
     },
     proves: PAID,
@@ -190,6 +198,7 @@ export const SOLANA = /* @__PURE__ */ freeze({
       search: SEARCH,
       history: HISTORY,
       contracts: ["the Memo Program (version 3 or 4)", "the payment-channels program (devnet only)"],
+      chains: { "the payment-channels program (devnet only)": ["solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"] },
       lapse: lapse("open", ""),
       life: LIFE,
     },
@@ -216,6 +225,7 @@ export const SOLANA = /* @__PURE__ */ freeze({
       search: "the opening named by its signature; no search for H, which no stock open carries",
       history: HISTORY,
       contracts: ["the payment-channels program (devnet only)"],
+      chains: { "the payment-channels program (devnet only)": ["solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"] },
       lapse:
         "the named opening, looked up at `finalized` and at the latest head: consumed where it landed, whatever its " +
         "result; a lookup that finds nothing on a node holding the history is `not-found`, since the read makes no search",
@@ -284,6 +294,7 @@ export const SOLANA = /* @__PURE__ */ freeze({
     agreement: {
       floor: "1",
       fee: "the settler where the challenge names it fee payer, else the buyer",
+      feePayer: { may: ["settler", "buyer"], default: "buyer" },
       succeeded: SUCCEEDED,
     },
     proves: PAID,

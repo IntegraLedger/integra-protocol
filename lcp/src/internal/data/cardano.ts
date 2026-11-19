@@ -41,6 +41,7 @@ export const CARDANO = /* @__PURE__ */ freeze({
     agreement: {
       floor: "rule",
       fee: "the buyer, as a field of the body balanced against the buyer's own inputs; the published scheme sponsors no fee",
+      feePayer: { may: ["buyer"], default: "buyer" },
       succeeded:
         "the transaction whose id is the Blake2b-256 of the signed body is in a block at the mark with `valid_contract` true " +
         "and its metadata 674 holds H; what its outputs pay is recorded as observed and compared with nothing",

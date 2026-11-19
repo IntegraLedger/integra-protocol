@@ -60,7 +60,7 @@
     {
       "unit": "The registry entry as data and its codec",
       "exports": {
-        ".": ["Codec", "Entry", "Family", "PairingData", "Carrier", "Coverage", "ReadData", "EndpointKind", "Life", "AgreementData", "ChannelKind", "DataMembers", "IsNever", "NonZeroDigit", "NoneWhereNever"]
+        ".": ["Codec", "Entry", "Family", "PairingData", "Carrier", "Coverage", "ReadData", "EndpointKind", "Life", "AgreementData", "FeePayer", "FeeParty", "ChannelKind", "DataMembers", "IsNever", "NonZeroDigit", "NoneWhereNever"]
       },
       "use": "The registry entry as data and its codec, typed per family as Codec<Presented, Ref, Reader, F>, F being one descriptor of the family's documents, offers, inputs and read types: any caller reads a pairing's facts (which signed field carries H, whether a payment through it is itself a public proof of H, what reading it back needs and how long a signed payment can stay payable, and the agreement payment it admits) and calls its members with no cast.",
       "fixedBy": "Each pairing's profile; the Legal Context Protocol's binding patterns."

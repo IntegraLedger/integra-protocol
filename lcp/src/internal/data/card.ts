@@ -41,6 +41,7 @@ export const CARD = /* @__PURE__ */ freeze({
     broadcasts: "payee",
     agreementOn: "any",
     confirmed: "no",
+    cardLike: true,
     proves:
       AGREEMENT_FIRST +
       "The Verifiable Intent L2 mandate presented lists a checkout mandate whose checkout_hash is the SHA-256 " +
@@ -59,6 +60,7 @@ export const CARD = /* @__PURE__ */ freeze({
     broadcasts: "payee",
     agreementOn: "any",
     confirmed: "no",
+    cardLike: true,
     proves:
       AGREEMENT_FIRST +
       "An agent signed a Verifiable Intent L3b checkout mandate whose checkout_hash is the SHA-256 of a " +
@@ -80,6 +82,7 @@ export const CARD = /* @__PURE__ */ freeze({
     broadcasts: "payee",
     agreementOn: "any",
     confirmed: "no",
+    cardLike: true,
     proves:
       AGREEMENT_FIRST +
       "Every TAP agent-payer-auth message signature in the agent's checkout request covers this ATR's hash: " +
@@ -102,6 +105,7 @@ export const CARD = /* @__PURE__ */ freeze({
     broadcasts: "payee",
     agreementOn: "any",
     confirmed: "no",
+    cardLike: true,
     proves:
       AGREEMENT_FIRST +
       "Every Mastercard Agent Pay message signature in the agent's checkout request, tagged Agent-pay-auth or " +
@@ -122,6 +126,7 @@ export const CARD = /* @__PURE__ */ freeze({
     broadcasts: "payee",
     agreementOn: "any",
     confirmed: "no",
+    cardLike: true,
     proves:
       AGREEMENT_FIRST +
       "The agent's Visa Intelligent Commerce credential request carried this ATR's hash as its " +
@@ -141,6 +146,7 @@ export const CARD = /* @__PURE__ */ freeze({
     broadcasts: "payee",
     agreementOn: "any",
     confirmed: "no",
+    cardLike: true,
     proves:
       AGREEMENT_FIRST +
       "This ATR's hash and link are for the seller to show the buyer before payment and to put in its " +
@@ -157,6 +163,7 @@ export const CARD = /* @__PURE__ */ freeze({
     broadcasts: "payee",
     agreementOn: "any",
     confirmed: "no",
+    cardLike: true,
     proves:
       AGREEMENT_FIRST +
       "The seller's MPP challenge carried this ATR's hash in its id and its opaque reference, bound to the " +
@@ -174,6 +181,7 @@ export const CARD = /* @__PURE__ */ freeze({
     broadcasts: "payee",
     agreementOn: "any",
     confirmed: "no",
+    cardLike: true,
     proves:
       AGREEMENT_FIRST +
       "The seller's MPP challenge carried this ATR's hash in its id and its opaque reference, bound to the " +
@@ -191,6 +199,7 @@ export const CARD = /* @__PURE__ */ freeze({
     broadcasts: "payee",
     agreementOn: "any",
     confirmed: "no",
+    cardLike: true,
     proves:
       AGREEMENT_FIRST +
       "The seller's MPP challenge carried this ATR's hash in its id and its opaque reference, bound to the " +
@@ -269,6 +278,7 @@ export const CARD = /* @__PURE__ */ freeze({
     broadcasts: "payee",
     agreementOn: "any",
     confirmed: "no",
+    cardLike: true,
     proves:
       AGREEMENT_FIRST +
       "The checkout session this payment completed has this ATR's hash as its id, and its responses carried the " +
@@ -285,6 +295,7 @@ export const CARD = /* @__PURE__ */ freeze({
     broadcasts: "payee",
     agreementOn: "any",
     confirmed: "no",
+    cardLike: true,
     proves:
       AGREEMENT_FIRST +
       "The checkout response carried this ATR's hash and link as its legal_context link. UCP without the AP2 " +

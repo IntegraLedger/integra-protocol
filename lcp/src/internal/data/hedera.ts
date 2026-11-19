@@ -1,6 +1,15 @@
 /** The data of the Hedera pairings. */
 import { freeze } from "./freeze.js";
 
+/** The payee's preconditions, which no validation reads (x402-exact-hedera.md rule 18, mpp-method-lcp.md rule 23). */
+const HEDERA_PAYEE = [
+  "the account exists",
+  "for an HTS asset, the account is associated with the token or holds a free automatic association",
+  "the account does not require a receiver's signature, since a credited account with `receiverSigRequired` set " +
+    "must sign the transaction",
+  "for an HTS token, the account is granted KYC where the token has a KYC key, and is not frozen for the token",
+];
+
 export const HEDERA = /* @__PURE__ */ freeze({
   "x402/exact/hedera": {
     coverage: "full",
@@ -36,10 +45,12 @@ export const HEDERA = /* @__PURE__ */ freeze({
       "option's payee",
     asset: "HBAR (0.0.0) from `transfers`, or the token id from `token_transfers`; recorded and compared with nothing",
     payer: "the one account the signed body debits (`is_approval` false), never the account the transaction id names (the settler's)",
+    payeePreconditions: HEDERA_PAYEE,
     confirmed: "yes",
     agreement: {
       floor: "1",
       fee: "the seller's settler (the account the transaction id names)",
+      feePayer: { may: ["settler"], default: "settler" },
       succeeded:
         "the mirror's record of the transaction id with nonce 0 and `scheduled` false has result `SUCCESS`, its " +
         "`memo_base64` decodes to H's LCP string, and its transfers debit the buyer with `is_approval` false; what they " +
@@ -87,10 +98,12 @@ export const HEDERA = /* @__PURE__ */ freeze({
     payer:
       "the one account the signed body debits (`is_approval` false): never the account the transaction id names where " +
       "`feePayer` is true, and that account where it is not",
+    payeePreconditions: HEDERA_PAYEE,
     confirmed: "no",
     agreement: {
       floor: "1",
       fee: "the account the transaction id names: the submitter's `feePayerAccountId` where `feePayer` is true, else the buyer",
+      feePayer: { may: ["settler", "buyer"], default: "buyer" },
       succeeded:
         "the mirror's record of the transaction id with nonce 0 and `scheduled` false has result `SUCCESS`, its " +
         "`memo_base64` decodes to H's LCP string, and its transfers debit the buyer with `is_approval` false; what they " +

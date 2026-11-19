@@ -32,6 +32,7 @@ export const CASPER = /* @__PURE__ */ freeze({
     agreement: {
       floor: "0",
       fee: "the settler, always",
+      feePayer: { may: ["settler"], default: "settler" },
       succeeded:
         "the transaction executed with no `error_message`, calling `transfer_with_authorization` or " +
         "`receive_with_authorization` with `from` not the option's payee and the signed nonce, which sets " +

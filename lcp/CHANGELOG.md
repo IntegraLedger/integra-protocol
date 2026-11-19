@@ -31,6 +31,16 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   rejects so: where the server refuses a call for ledgers it does not hold, as rippled on API version 2 refuses
   `account_tx` from a ledger below those it holds with `lgrIdxMalformed`. The caller then reads again through a server
   that holds the ledgers.
+- Four registry facts as data, beside the prose that states them. `data.agreement.feePayer` (`FeePayer`): the parties
+  that may pay an agreement's fee (`FeeParty`: `buyer`, `settler`, `paymaster` or `none`) and the one that pays where
+  the option names none, on every pairing whose payment can be an agreement, so a resource server can check the fee
+  payer it declares against the pairing. `data.payeePreconditions`: what the payee's account must hold or be on chain
+  before it can be paid, where the profile states it (`x402/exact/hedera`, `mpp/charge/lcp/hedera`,
+  `x402/exact/polkadot/lcp-assets-remark`, `x402/upto/xrpl`). `data.read.chains`: the networks, as CAIP-2 ids, each
+  contract the read names is deployed on, where the profile or the package states them, so an option on a network the
+  contract is not on can be refused by data. `data.cardLike`: `true` on the card-like pairings, which are on no network
+  a CAIP-2 id names, telling them from Lightning's, whose invoice is on an `lnbtc` network. The
+  root exports the types `FeePayer` and `FeeParty`. No existing member changes.
 
 ## [0.6.1] - 2026-11-18
 

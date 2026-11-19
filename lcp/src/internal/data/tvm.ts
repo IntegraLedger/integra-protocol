@@ -30,6 +30,7 @@ export const TVM = /* @__PURE__ */ freeze({
     agreement: {
       floor: "0",
       fee: "the settler, always",
+      feePayer: { may: ["settler"], default: "settler" },
       succeeded:
         "three transactions at the mark, none aborted: the payer's W5 wallet took the signed request and sent the Jetton " +
         "transfer, the payer's Jetton wallet sent `internal_transfer`, and the Jetton wallet it was sent to took it",

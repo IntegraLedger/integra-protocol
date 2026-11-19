@@ -74,11 +74,13 @@ typed `PairingData`:
 | `source` | Who writes H: lcp's client, or a stock client and release, with the member it copies H from. |
 | `nonce` | Whether the identical instrument can land more than once: `single-use`, `reusable`, or `unshown` until a vector or a run shows single use. |
 | `broadcasts` | The answers the pairing's `broadcaster` can give: `payee`, `payer` or `either`. |
-| `read` | What a read of the pairing needs: the endpoint kind, the search key and its bound, the history, the contracts, the signed fact after which the payment can no longer land, and, where the rail bounds it, how long a signed payment stays payable. |
+| `read` | What a read of the pairing needs: the endpoint kind, the search key and its bound, the history, the contracts and, where the profile or the package states them, the networks each is deployed on (`chains`, CAIP-2 ids keyed by the contract), the signed fact after which the payment can no longer land, and, where the rail bounds it, how long a signed payment stays payable. |
 | `destination`, `asset`, `payer` | How each is identified in the landed transaction. |
+| `payeePreconditions` | Where the profile states them: what the payee's account must hold or be on chain before a payment can reach it, such as a token association or an asset already held. |
+| `cardLike` | `true` where the payment is card-like: a card, checkout or processor payment on no network a CAIP-2 id names. Lightning's pairings, on an `lnbtc` network, do not have it. |
 | `agreementOn` | At coverage `none`: which agreement the charge can follow: `any`, one on the `same-network`, or one pairing's. |
 | `confirmed` | Whether something outside this package has shown the form as its profile defines it. |
-| `agreement` | Where the pairing's payment can itself be an agreement: the smallest amount, who pays the fee, and the fields that show it succeeded. |
+| `agreement` | Where the pairing's payment can itself be an agreement: the smallest amount, who pays the fee (`fee`, and as data `feePayer`: the parties that may pay it, `buyer`, `settler`, `paymaster` or `none`, and the one that pays where the option names none), and the fields that show it succeeded. |
 | `proves` | One paragraph stating what the payment shows and what it does not. At coverage `none`, it opens with the agreement payment the buyer gate requires before the full payment, and the record fills in that payment's `<network>` and `<transaction>`. |
 
 Where the buyer's approval does not sign H, the record says so, and says what the payment does show. For example,

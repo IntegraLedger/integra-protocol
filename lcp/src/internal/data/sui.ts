@@ -34,6 +34,7 @@ export const SUI = /* @__PURE__ */ freeze({
       fee:
         "by gas path, the seller's option fixed in the option: the buyer, a sponsor (the seller's settler) owning the gas " +
         "data, or gasless; by default sponsored where the settler declares a gas key, else gasless where eligible, else the buyer",
+      feePayer: { may: ["buyer", "settler", "none"], default: "buyer" },
       succeeded:
         "the transaction with the digest is in a checkpoint after the position with effects status success, its one unused " +
         "`Pure` input H and its sender not the option's payee; what it moved is recorded as observed",

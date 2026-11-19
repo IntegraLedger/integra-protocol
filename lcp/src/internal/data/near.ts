@@ -38,6 +38,7 @@ export const NEAR = /* @__PURE__ */ freeze({
     agreement: {
       floor: "1",
       fee: "the relayer, always",
+      feePayer: { may: ["settler"], default: "settler" },
       succeeded:
         "the relayer's transaction at the mark, the delegate's `ft_transfer` receipt with outcome success and its memo H; " +
         "its token and `receiver_id` recorded as observed",

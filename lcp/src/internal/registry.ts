@@ -63,6 +63,11 @@ export interface ReadData {
   readonly history?: string;
   /** The contracts the read names. */
   readonly contracts: readonly string[];
+  /**
+   * The networks, as CAIP-2 ids, each contract it names is deployed on, keyed by its name in `contracts`, where the
+   * pairing's profile or the package states them; a contract it does not key has no networks stated here.
+   */
+  readonly chains?: { readonly [contract: string]: readonly string[] };
   /** The signed fact after which the payment can no longer land; absent where the pairing's entry states none. */
   readonly lapse?: string;
   /** Absent where the rail sets no bound or the pairing's entry states none. */
@@ -71,6 +76,24 @@ export interface ReadData {
 
 /** A decimal digit other than zero. */
 export type NonZeroDigit = "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9";
+
+/**
+ * A party that can pay an agreement's fee: the buyer; the settler, the party that submits the payment the buyer
+ * signed; a paymaster the buyer's user operation names; or `none`, on a path where the chain charges the buyer's
+ * transaction no fee.
+ */
+export type FeeParty = "buyer" | "settler" | "paymaster" | "none";
+
+/** Who can pay an agreement's fee, as data. */
+export interface FeePayer {
+  /** Each party that can pay it, by the chain and the published scheme, each once. */
+  readonly may: readonly FeeParty[];
+  /**
+   * The party that pays it where the option names no fee payer, one of `may`; absent where the option always names
+   * one, or the pairing's profile states none.
+   */
+  readonly default?: FeeParty;
+}
 
 /** Present where the pairing's payment can itself be an agreement. */
 export interface AgreementData {
@@ -81,6 +104,8 @@ export interface AgreementData {
   readonly floor: "0" | `${NonZeroDigit}${string}` | "rule";
   /** Who can pay the fee, by the chain and the published scheme. */
   readonly fee: string;
+  /** `fee` as data: the parties that can pay it, and the one that pays where the option names none. */
+  readonly feePayer?: FeePayer;
   /** The fields that show the transaction succeeded. */
   readonly succeeded: string;
   /** Present where the form is offered as an agreement and never as a charge. */
@@ -104,6 +129,18 @@ export interface DataMembers {
   readonly asset?: string;
   /** How the payer is identified in the landed transaction. */
   readonly payer?: string;
+  /**
+   * What the payee's account must hold or be on chain before a payment through the pairing can reach it, each in the
+   * profile's words: an account, a token association, an asset already held, a funded key. Absent where the pairing's
+   * profile states none.
+   */
+  readonly payeePreconditions?: readonly string[];
+  /**
+   * Present where the pairing's payment is card-like: a card, checkout or processor payment, on no ledger or payment
+   * network a CAIP-2 id names, which the seller or its processor takes and reports. Lightning's pairings, whose
+   * invoice is on an `lnbtc` network, do not have it.
+   */
+  readonly cardLike?: true;
   /** Whether something outside lcp has shown the form as its profile defines it. */
   readonly confirmed: "yes" | "no";
   /** What the read establishes of a payment through the pairing. */
@@ -121,7 +158,9 @@ export interface DataMembers {
  * lcp has shown the form as its profile defines it (`yes` or `no`); and `proves`, what the read establishes of a
  * payment through the pairing. Where a public ledger records the payment it has `read` (`ReadData`), what a read of
  * the pairing needs; and, where the pairing's entry states them, `destination`, `asset` and `payer`: how the account
- * the act names, the asset and the payer are identified in the landed transaction.
+ * the act names, the asset and the payer are identified in the landed transaction. Where the pairing's profile states
+ * them it has `payeePreconditions`, what the payee's account must hold before it can be paid; and where the payment is
+ * card-like, on no network a CAIP-2 id names, `cardLike`.
  */
 export type PairingData = DataMembers &
   (

@@ -66,6 +66,8 @@ export type {
   EndpointKind,
   Entry,
   Family,
+  FeeParty,
+  FeePayer,
   IsNever,
   Life,
   NoneWhereNever,

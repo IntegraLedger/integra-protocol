@@ -36,6 +36,9 @@ const TEMPO_SPLIT_PROVES =
   "executed the call. The record states \"paid\" where value moved, with the account it reached, and \"signed\" where " +
   "nothing moved. This does not show that amount, payee, asset or timing match the ATR's content.";
 
+/** Tempo mainnet and Moderato, the networks mpp-charge-tempo-split-memo.md rule 2 names. */
+const TEMPO = ["eip155:4217", "eip155:42431"];
+
 export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
   "mpp/charge/evm/authorization": {
     coverage: "full",
@@ -62,6 +65,7 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
     agreement: {
       floor: "0",
       fee: "the settler",
+      feePayer: { may: ["settler"], default: "settler" },
       succeeded:
         "`status` 1 with `AuthorizationUsed(authorizer, nonce)`, the nonce derived from the challenge, paired with its " +
         "`Transfer`, recorded as what moved",
@@ -104,6 +108,7 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
     agreement: {
       floor: "1",
       fee: "the seller's settler (the `spender`), with the seller's gas key",
+      feePayer: { may: ["settler"], default: "settler" },
       succeeded: "as the `mpp/charge` profile states for `permit2`",
     },
     proves:
@@ -239,6 +244,7 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
         "`eth_getStorageAt`, `eth_call` and `eth_getTransactionCount` at the blocks the value is read at",
       search: TEMPO_SPLIT_SEARCH,
       contracts: ["the receive-policy guard", "the nonce precompile"],
+      chains: { "the nonce precompile": TEMPO },
       lapse: TEMPO_SPLIT_LAPSE,
     },
     destination:
@@ -250,6 +256,7 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
     agreement: {
       floor: "2",
       fee: "the resource server's settler under `feePayer: true`, the payer in the fee token under `feePayer: false`",
+      feePayer: { may: ["settler", "buyer"] },
       succeeded:
         "the receipt's `status` is 1 for the act's own transaction, whose sender is the payer, a `source` the credential carries " +
         "naming the same account, and in it a token emitted `TransferWithMemo` from the payer with memo H, its recipient recorded as observed",
@@ -274,6 +281,7 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
         "`eth_getStorageAt`, `eth_call` and `eth_getTransactionCount` at the blocks the value is read at",
       search: TEMPO_SPLIT_SEARCH,
       contracts: ["the receive-policy guard", "the nonce precompile"],
+      chains: { "the nonce precompile": TEMPO },
       lapse: TEMPO_SPLIT_LAPSE,
     },
     destination:
@@ -300,6 +308,7 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
         NO_SEARCH_FOR_H +
         ".",
       contracts: ["the session's escrow", "the nonce precompile"],
+      chains: { "the nonce precompile": TEMPO },
       lapse:
         "the opening's signed `validBefore`; its value, the opening transaction's nonce, is read by its nonce key at " +
         "`finalized` and at `latest`; no `failed` is answered while no search for H is defined",
@@ -338,6 +347,7 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
         "consumed at, by halving the blocks, as the payer's transaction there whose key authorization names the key or " +
         "whose own keychain call authorizes it, its receipt deciding: a reverted activation is `transaction-failed`.",
       contracts: ["the account keychain"],
+      chains: { "the account keychain": TEMPO },
       lapse:
         "the key authorization's signed `expiry`; one that signs none has no bound. The single-use value is the key slot " +
         "the presented key authorization names in the payer's keychain, `getKey(account, keyId)` at `finalized` and at " +
@@ -390,6 +400,7 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
     agreement: {
       floor: "1",
       fee: "the settler",
+      feePayer: { may: ["settler"], default: "settler" },
       succeeded: "as `mpp/charge/evm/authorization`, with the nonce derived from the challenge",
     },
     proves:

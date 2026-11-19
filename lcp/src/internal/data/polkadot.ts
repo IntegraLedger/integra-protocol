@@ -38,10 +38,15 @@ export const POLKADOT = /* @__PURE__ */ freeze({
     payer:
       "the account the extrinsic's call runs as, its signer, a `proxy.proxy`'s `real` or an `as_multi_threshold_1`'s " +
       "multisig account, read from its signed bytes, against the signer lcp's reference names",
+    payeePreconditions: [
+      "for an agreement at the floor, the asset already held, since a transfer of one unit cannot open an asset " +
+        "account below the asset's minimum balance",
+    ],
     confirmed: "yes",
     agreement: {
       floor: "1",
       fee: "the signer only: no other party can pay on Polkadot Asset Hub, and the seller has no option",
+      feePayer: { may: ["buyer"], default: "buyer" },
       succeeded:
         "the extrinsic at the mark succeeded (`system.ExtrinsicSuccess`) and carries the remark of H with " +
         "`system.Remarked` for it; what its transfers from the payer moved is recorded as observed",

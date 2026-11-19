@@ -35,6 +35,7 @@ export const STELLAR = /* @__PURE__ */ freeze({
     agreement: {
       floor: "0",
       fee: "the settler, as the transaction's source; the buyer needs a key, and no funds where the amount is zero",
+      feePayer: { may: ["settler"], default: "settler" },
       succeeded:
         "`getTransaction` answers `SUCCESS` (`txSUCCESS`, or `txFEE_BUMP_INNER_SUCCESS` under a fee bump, with " +
         "`INVOKE_HOST_FUNCTION_SUCCESS`), and the five checks hold: one signed-payload signer whose payload is H and " +

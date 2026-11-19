@@ -34,6 +34,7 @@ export const TRON = /* @__PURE__ */ freeze({
     agreement: {
       floor: "1",
       fee: "the buyer; the seller has no option",
+      feePayer: { may: ["buyer"], default: "buyer" },
       succeeded:
         "the receipt's result is `SUCCESS`, `raw_data.data` is H, and the owner is the payer lcp's reference names; the " +
         "owner's `Transfer` logs are recorded as what moved",

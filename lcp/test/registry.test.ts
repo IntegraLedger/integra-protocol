@@ -4,8 +4,9 @@
 // is named once; no codec satisfies it with another family's reader; no removed id is a PairingId; a floor admits no
 // negative; and a function generic over Entry calls every member with no cast. The run-time half holds OWN to
 // BINDINGS, runs that function on three entries, and holds each datum to its member's values, the data to its own
-// rules, CARRIER to the entries' carrier datum, `broadcasts` to the broadcaster vectors, and the root's bounds to their
-// values.
+// rules, CARRIER to the entries' carrier datum, `broadcasts` to the broadcaster vectors, the root's bounds to their
+// values, the fee payer, payee preconditions, contract chains and card-like mark to their own rules, and one pairing's
+// value of each to the sentence of its profile that states it.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { paymentRequest } from "../src/ack.js";
@@ -32,6 +33,7 @@ import {
   type EndpointKind,
   type Entry,
   type Family,
+  type FeeParty,
   type PairingData,
   type PairingId,
   type Refusal,
@@ -115,6 +117,7 @@ import { uptoSvm } from "../src/x402-upto-solana.js";
 import { uptoXrpl, type UptoXrplPaymentPayload } from "../src/x402-upto-xrpl.js";
 import type { StacksReader, StacksRef } from "../src/stacks.js";
 import type { TempoSearchReader } from "../src/tempo.js";
+import { DELEGATION_MANAGER_CHAINS } from "../src/internal/evm.js";
 import { rowsOf } from "./rows.js";
 
 // ── Compile time: each codec satisfies Entry with its own family's types.
@@ -392,6 +395,7 @@ const NONCE: { readonly [v in PairingData["nonce"]]: true } = { "single-use": tr
 const BROADCASTS: { readonly [v in PairingData["broadcasts"]]: true } = { payee: true, payer: true, either: true };
 const CONFIRMED: { readonly [v in PairingData["confirmed"]]: true } = { yes: true, no: true };
 const LINK: { readonly [v in NonNullable<PairingData["link"]>]: true } = { h: true, pointer: true, none: true };
+const FEE_PARTY: { readonly [v in FeeParty]: true } = { buyer: true, settler: true, paymaster: true, none: true };
 const ENDPOINT: { readonly [v in EndpointKind]: true } = {
   "fullnode-http": true,
   "fullnode-rest": true,
@@ -615,5 +619,107 @@ describe("the registry's type test", () => {
       MAX_JSON_DEPTH: 64,
       MAX_CHALLENGE_DEPTH: 16,
     });
+  });
+});
+
+/** A sentence of a profile, read from the file, with the member value it states for a pairing. */
+interface ProfileRow {
+  readonly id: string;
+  readonly profile: string;
+  readonly text: string;
+  readonly member: (d: PairingData) => unknown;
+  readonly states: unknown;
+}
+
+const PROFILE_ROWS: readonly ProfileRow[] = [
+  {
+    id: "mpp/charge/usdc/solana",
+    profile: "mpp-charge-usdc-solana.md",
+    text: "the fee is paid by the settler where the challenge names it fee payer, else by the buyer",
+    member: (d) => d.agreement?.feePayer,
+    states: { may: ["settler", "buyer"], default: "buyer" },
+  },
+  {
+    id: "x402/upto/xrpl",
+    profile: "x402-upto-xrpl.md",
+    text: "The payee's precondition, which no check of lcp's reads: an account at `payTo`, funded for the settlement's fee, whose key signs the settlement.",
+    member: (d) => d.payeePreconditions,
+    states: ["an account at `payTo`, funded for the settlement's fee, whose key signs the settlement"],
+  },
+  {
+    id: "x402/upto/solana",
+    profile: "x402-upto-solana.md",
+    text: "The payment-channels program is on devnet only",
+    member: (d) => d.read?.chains?.["the payment-channels program (devnet only)"],
+    states: ["solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1"],
+  },
+  {
+    id: "card/seller-reference",
+    profile: "card-seller-reference.md",
+    text: "the seller writes the link into its own processor's record",
+    member: (d) => d.cardLike,
+    states: true,
+  },
+  {
+    id: "x402/exact/lnbtc/payment-hash",
+    profile: "x402-exact-lnbtc-payment-hash.md",
+    text: "An option on an `lnbtc` network that fails one is refused with its code",
+    member: (d) => d.cardLike,
+    states: undefined,
+  },
+];
+
+describe("the registry's facts as data", () => {
+  it("an agreement's fee payer names each party once, its default one of them, on every entry with an agreement", () => {
+    const fees = rowsOf(
+      ENTRIES.flatMap((b) => (b.data.agreement === undefined ? [] : [[b.id, b.data.agreement.feePayer] as const])),
+      "the entries with an agreement",
+    );
+    for (const [id, fee] of fees) {
+      expect(fee, id).toBeDefined();
+      expect(fee!.may.length > 0 && new Set(fee!.may).size === fee!.may.length, id).toBe(true);
+      for (const party of fee!.may) expect(Object.hasOwn(FEE_PARTY, party), id).toBe(true);
+      if (fee!.default !== undefined) expect(fee!.may, id).toContain(fee!.default);
+      if (fee!.may.length === 1) expect(fee!.default, id).toBe(fee!.may[0]);
+    }
+  });
+
+  it("a payee precondition is a non-empty string, and the member, where present, holds one or more", () => {
+    const stated = rowsOf(ENTRIES.filter((b) => b.data.payeePreconditions !== undefined), "the entries with payee preconditions");
+    for (const b of stated) {
+      const p = b.data.payeePreconditions!;
+      expect(p.length > 0 && p.every((x) => typeof x === "string" && x !== ""), b.id).toBe(true);
+    }
+  });
+
+  it("chains keys contracts the read names, each to CAIP-2 ids, once each", () => {
+    const stated = rowsOf(
+      ENTRIES.flatMap((b) => (b.data.read?.chains === undefined ? [] : [[b.id, b.data.read] as const])),
+      "the entries with contract chains",
+    );
+    for (const [id, read] of stated) {
+      for (const [contract, networks] of Object.entries(read.chains!)) {
+        expect(read.contracts, id).toContain(contract);
+        expect(networks.length > 0 && new Set(networks).size === networks.length, id).toBe(true);
+        for (const n of networks) expect(/^[-a-z0-9]{3,8}:[-_a-zA-Z0-9]{1,32}$/.test(n), `${id} ${n}`).toBe(true);
+      }
+    }
+    const manager = BINDINGS.find((b) => b.id === "x402/exact/eip155/erc7710-salt")!.data.read!.chains!;
+    expect(manager["the reference delegation manager"]).toEqual(DELEGATION_MANAGER_CHAINS.map((c) => `eip155:${c}`));
+  });
+
+  it("a card-like pairing is at coverage none with no read", () => {
+    const cardLike = rowsOf(ENTRIES.filter((b) => b.data.cardLike !== undefined), "the card-like entries");
+    for (const b of cardLike) expect([b.id, b.data.cardLike, b.data.coverage, b.data.read]).toEqual([b.id, true, "none", undefined]);
+  });
+
+  it("each member states what its pairing's profile states", () => {
+    for (const r of PROFILE_ROWS) {
+      const text = readFileSync(new URL(`../profiles/${r.profile}`, import.meta.url), "utf8");
+      expect(text.includes(r.text), `${r.profile}: ${r.text}`).toBe(true);
+      const b = BINDINGS.find((x) => x.id === r.id);
+      expect(b, r.id).toBeDefined();
+      expect(r.member(b!.data), r.id).toEqual(r.states);
+    }
   });
 });

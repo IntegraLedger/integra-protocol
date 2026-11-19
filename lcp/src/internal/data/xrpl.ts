@@ -48,6 +48,7 @@ export const XRPL = /* @__PURE__ */ freeze({
     agreement: {
       floor: "1",
       fee: "the buyer, in the Payment it signs",
+      feePayer: { may: ["buyer"], default: "buyer" },
       succeeded:
         "the transaction is in a validated ledger with `meta.TransactionResult` `tesSUCCESS`, a Payment whose `InvoiceID` " +
         "is the pairing's carrier for H; its `Destination` and `meta.delivered_amount` are recorded as observed",
@@ -176,6 +177,7 @@ export const XRPL = /* @__PURE__ */ freeze({
     asset: "XRP, the only asset of a channel; the create's `Amount` recorded as observed",
     payer: PAYER,
     agreementOn: "same-network",
+    payeePreconditions: ["an account at `payTo`, funded for the settlement's fee, whose key signs the settlement"],
     confirmed: "no",
     proves:
       "Before this payment, an account signed an agreement transaction carrying this ATR's hash on the payment's " +
