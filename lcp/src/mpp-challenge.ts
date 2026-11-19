@@ -400,6 +400,9 @@ function isToken68Char(c: number): boolean {
   return (c >= 0x30 && c <= 0x39) || (c >= 0x41 && c <= 0x5a) || (c >= 0x61 && c <= 0x7a) || "-._~+/".includes(String.fromCharCode(c));
 }
 
+/** The one value a challenge's `header` may hold: the field it selects for the credential. */
+const CREDENTIAL_FIELD = "Payment-Authorization";
+
 /** The members `encodeChallenge` writes, in the order it writes them. */
 const WRITTEN = ["id", "realm", "method", "intent", "request", "description", "digest", "expires", "header", "opaque"] as const;
 
@@ -411,15 +414,17 @@ const WRITTEN = ["id", "realm", "method", "intent", "request", "description", "d
  * (as a pairing's `build` reads a chosen challenge), and each member is written as given: `request` and `opaque` stay
  * the base64url that `place` and each pairing's `advertise` write. `parseChallenges` reads the value back as the same
  * members. A challenge that is not an object, carries a `refused` member, lacks a string `id`, `realm`, `method`,
- * `intent` or `request` or holds one empty, has another member that is not a string, holds a character no
- * quoted-string carries (a control character other than tab, DEL, or one above U+00FF), or whose field value is over
- * 8,192 characters, which `parseChallenges` refuses, is `mpp/challenge-malformed`. A response offering several
- * challenges sends one `WWW-Authenticate` field line for each.
+ * `intent` or `request` or holds one empty, has another member that is not a string, has a `header` other than
+ * `Payment-Authorization`, the one value MPP allows it, holds a character no quoted-string carries (a control
+ * character other than tab, DEL, or one above U+00FF), or whose field value is over 8,192 characters, which
+ * `parseChallenges` refuses, is `mpp/challenge-malformed`. A response offering several challenges sends one
+ * `WWW-Authenticate` field line for each.
  */
 export function encodeChallenge(challenge: MppChallenge): string | Refusal {
   if (!isObject(challenge) || carriesRefused(challenge)) return refusal("mpp/challenge-malformed");
   const own = challengeSnapshot(challenge)!;
   if (!isChallengeShape(own)) return refusal("mpp/challenge-malformed");
+  if (own.header !== undefined && own.header !== CREDENTIAL_FIELD) return refusal("mpp/challenge-malformed");
   const params: string[] = [];
   for (const k of WRITTEN) {
     const v = own[k];
@@ -1281,9 +1286,10 @@ export function credentialShape(c: unknown): MppCredential | Refusal {
 /**
  * The credential a `Payment` credential field value carries: `Payment`, matched without regard to case, one or more
  * spaces, then base64url without padding in its canonical form, of at most 65,536 bytes, that are well-formed UTF-8 of
- * a JSON object, held to `credentialShape`'s gate, which every MPP `bound` applies first. The value given is that of
- * the field the challenge selected: `Authorization`, or `Payment-Authorization` where the challenge carries `header`.
- * Any other value is `mpp/credential-malformed`, which `problem` answers 402 `malformed-credential`. Nothing else is
+ * a JSON object, held to `credentialShape`'s gate, which every MPP `bound` applies first. It reads a field's value,
+ * not its name: the caller holds a credential to the field its challenge selected, `Authorization`, or
+ * `Payment-Authorization` where the challenge carries `header`, and `issuedDigest` compares the `header` the
+ * credential echoes with the one issued. Any other value is `mpp/credential-malformed`, which `problem` answers 402 `malformed-credential`. Nothing else is
  * read: H, the challenge's id and the payment are the reads of `challengeBound`, `issuedDigest` and the pairing's
  * `bound`.
  */

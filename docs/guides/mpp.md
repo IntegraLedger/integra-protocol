@@ -122,9 +122,9 @@ MPP carries its three forms in HTTP fields, and the package writes and reads eac
   the challenge holds as a quoted-string, in the order `id`, `realm`, `method`, `intent`, `request`, `description`,
   `digest`, `expires`, `header`, `opaque`. It writes the members as given, `request` and `opaque` in the base64url
   `place` and `advertise` write, and only a value `parseChallenges` reads back as the same members: a challenge missing
-  `id`, `realm`, `method`, `intent` or `request`, or holding one empty, a member holding a control character or a
-  character above U+00FF, which no quoted-string carries, or a value over 8,192 characters is
-  `mpp/challenge-malformed`. A 402 offering several challenges sends one `WWW-Authenticate` field line for each.
+  `id`, `realm`, `method`, `intent` or `request`, or holding one empty, a `header` other than
+  `Payment-Authorization`, the one value MPP allows it, a member holding a control character or a character above
+  U+00FF, which no quoted-string carries, or a value over 8,192 characters is `mpp/challenge-malformed`. A 402 offering several challenges sends one `WWW-Authenticate` field line for each.
   `parseChallenges(fieldValues)` parses `WWW-Authenticate` field values into challenges.
 - `decodeCredential(fieldValue)` reads the credential from the field the challenge selected, `Authorization`, or
   `Payment-Authorization` where the challenge carries `header`: `Payment`, in any case, one or more spaces and the

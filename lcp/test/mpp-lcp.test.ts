@@ -39,6 +39,15 @@ describe("mpp-method-lcp.json: the challenges", () => {
       expect(encodeChallenge(c.wire)).toBe(c.header);
     });
   }
+
+  // A challenge's `header`, "When present, the value MUST be `Payment-Authorization`" (draft-httpauth-payment-01 at
+  // 08e7dd87, lines 332-333): encodeChallenge writes that value and refuses any other.
+  it("encodeChallenge writes the one header value MPP allows, Payment-Authorization, and refuses another", () => {
+    const wire = (V.challenges.hedera as { wire: MppChallenge }).wire;
+    const written = encodeChallenge({ ...wire, header: "Payment-Authorization" }) as string;
+    expect(parseChallenges([written])).toEqual([{ ...wire, header: "Payment-Authorization" }]);
+    expect(encodeChallenge({ ...wire, header: "Authorization" })).toEqual({ refused: true, code: "mpp/challenge-malformed" });
+  });
 });
 
 describe("mpp-method-lcp.json: the filter", () => {

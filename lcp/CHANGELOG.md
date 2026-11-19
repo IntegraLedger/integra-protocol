@@ -18,8 +18,8 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   holds, is `return/serves-malformed`. `legal-context-return.json` gains a card ATR and its rows.
 - `@integraledger/lcp/mpp` writes and reads MPP's three HTTP fields, so a resource server writes and reads MPP's
   forms from this package: `encodeChallenge(challenge)` writes one challenge as a `WWW-Authenticate` field value, as
-  the `mppx` SDK 0.17.6 writes it, and refuses one `parseChallenges` would not read back as the same members
-  (`mpp/challenge-malformed`); `decodeCredential(fieldValue)` reads the credential from an `Authorization` or
+  the `mppx` SDK 0.17.6 writes it, and refuses one `parseChallenges` would not read back as the same members, or whose
+  `header` is not `Payment-Authorization` (`mpp/challenge-malformed`); `decodeCredential(fieldValue)` reads the credential from an `Authorization` or
   `Payment-Authorization` field value, held to the shape every `bound` reads first (`mpp/credential-malformed`); and
   `encodeReceipt(receipt)` writes a successful response's `Payment-Receipt` field value (`mpp/receipt-malformed`),
   with the type `MppReceipt`. No existing export changes.
