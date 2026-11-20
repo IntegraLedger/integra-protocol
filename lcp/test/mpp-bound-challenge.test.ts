@@ -66,7 +66,7 @@ function credentials(v: unknown, at: string, out: [string, MppCredential][]): [s
 const CREDENTIALS = rowsOf(
   FILES.flatMap((f) => credentials(vector(f), "", []).map(([at, c]) => ({ file: f, at, credential: c }))),
   "every credential the MPP vector files hold",
-  { exact: 33 },
+  { exact: 34 },
 );
 
 const decoded = (c: MppChallenge): Record<string, Json> => JSON.parse(Buffer.from(c.request, "base64url").toString("utf8"));

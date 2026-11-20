@@ -28,7 +28,10 @@ export const MAX_CHALLENGES = 32;
 /** The largest MPP credential lcp decodes, in bytes. The MPP draft sets no size. */
 export const MAX_CREDENTIAL_BYTES = 65_536;
 
-/** The largest JSON lcp decodes from an x402 header, `PAYMENT-REQUIRED` and the others, in bytes. x402 sets no size. */
+/**
+ * The largest JSON lcp decodes from a header field value, in bytes: an x402 header, `PAYMENT-REQUIRED` and the others,
+ * and MPP's `Payment-Receipt`. Neither x402 nor MPP sets a size.
+ */
 export const MAX_HEADER_BYTES = 65_536;
 
 /**

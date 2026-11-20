@@ -28,9 +28,10 @@ rename exports and pairing ids and change a function's arguments or answers; a p
 - `encodeCredential(credential)` and `decodeReceipt(fieldValue)` (`@integraledger/lcp/mpp`), the other halves of
   `decodeCredential` and `encodeReceipt`, so a buyer's client answers a challenge and reads the receipt with this
   package: `encodeCredential` writes the `Authorization` or `Payment-Authorization` field value as the `mppx` SDK
-  0.17.6 writes it and refuses a credential `decodeCredential` would not read back (`mpp/credential-malformed`);
-  `decodeReceipt` reads a `Payment-Receipt` field value and refuses one that does not decode to a receipt
-  `encodeReceipt` writes (`mpp/receipt-malformed`).
+  0.17.6 writes it, leaving out the echoed challenge's `meta` and an empty `source`, and refuses a credential
+  `decodeCredential` would not read back (`mpp/credential-malformed`); `decodeReceipt` reads a `Payment-Receipt` field
+  value of at most `MAX_HEADER_BYTES` (65,536) bytes, canonical base64url without padding, and refuses one that does
+  not decode to a receipt `encodeReceipt` writes (`mpp/receipt-malformed`).
 - Four registry facts as data, beside the prose that states them. `data.agreement.feePayer` (`FeePayer`): the parties
   that may pay an agreement's fee (`FeeParty`: `buyer`, `settler`, `paymaster` or `none`) and the one that pays where
   the option names none, on every pairing whose payment can be an agreement, so a resource server can check the fee

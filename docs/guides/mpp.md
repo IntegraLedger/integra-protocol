@@ -131,18 +131,20 @@ MPP carries its three forms in HTTP fields, and the package writes and reads eac
   credential's JSON in base64url without padding, at most 65,536 bytes, held to the shape every `bound` reads first.
   Any other value is `mpp/credential-malformed`. It reads nothing else: the challenge's id and H are
   `challengeBound`'s to check ([The server's order](#the-servers-order)).
-- `encodeCredential(credential)` writes the value a buyer's client sends in that field, the one `decodeCredential`
-  reads back as the same credential: `Payment`, a space and the credential's JSON in base64url without padding, the
-  challenge's members in their order with `opaque` and then `request` last, then `payload`, then `source` where the
-  credential has one. A credential `decodeCredential` would refuse, or one that is not JSON (a `bigint`, an
-  `undefined` inside the payload), is `mpp/credential-malformed`.
+- `encodeCredential(credential)` writes the value a buyer's client sends in that field, which `decodeCredential`
+  reads back, as `mppx` writes it: `Payment`, a space and the credential's JSON in base64url without padding, the
+  challenge's members in their order with `opaque` and then `request` last, then `payload`, then `source`. It leaves
+  out the echoed challenge's `meta` and an empty `source`, as `mppx` does, and writes every other member as given. A
+  credential `decodeCredential` would refuse, or one that is not JSON (a `bigint`, an `undefined` inside the payload),
+  is `mpp/credential-malformed`.
 - `encodeReceipt(receipt)` writes the `Payment-Receipt` field value of a successful response: the receipt's JSON, in
   its own member order, in base64url without padding. A receipt whose `status` is not `success`, whose `method` is not
   lowercase ASCII letters, whose `timestamp` is not an RFC 3339 date-time or whose `reference` is not a string is
   `mpp/receipt-malformed`. A method's own receipt members, such as `externalId`, are written as given.
 - `decodeReceipt(fieldValue)` reads the receipt a buyer's client finds in a successful response's `Payment-Receipt`
-  field: base64url without padding in its canonical form of a JSON object that `encodeReceipt` would write, every
-  member kept as given. Any other value is `mpp/receipt-malformed`. The receipt is what the seller reports; it reads
+  field: base64url without padding in its canonical form, at most 65,536 bytes (`MAX_HEADER_BYTES`), of a JSON object
+  that `encodeReceipt` would write, every member kept as given. Any other value, a longer or padded one among them, is
+  `mpp/receipt-malformed`. The receipt is what the seller reports; it reads
   no payment.
 
 `problem(code)` gives the Payment scheme's problem type and HTTP status for a refusal code this package returns

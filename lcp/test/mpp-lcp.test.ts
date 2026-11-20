@@ -83,11 +83,13 @@ describe("mpp-method-lcp.json: the credential and the receipt", () => {
     expect(decodeCredential(answer)).toEqual({ challenge: issued.wire, payload: hash.wire.payload });
   });
 
-  it("encodeCredential writes each credential decodeCredential read as the header mppx wrote", () => {
+  it("encodeCredential writes each credential decodeCredential read, and one carrying meta and an empty source, as the header mppx wrote", () => {
     for (const c of [tx, hash]) {
       expect(encodeCredential(c.wire)).toBe(c.header);
       expect(encodeCredential(decodeCredential(c.header) as MppCredential)).toBe(c.header);
     }
+    const dropped = V.credentials.hashMetaSource as { input: MppCredential; header: string };
+    expect(encodeCredential(dropped.input)).toBe(dropped.header);
   });
 
   it("the transaction credential carries H and takes the payee as broadcaster; the hash credential the payer, read first", async () => {
