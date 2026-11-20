@@ -108,7 +108,7 @@ describe("x402/upto/xrpl through the XRPL module", () => {
       x402Version: 2,
       scheme: "upto",
       network: NETWORK,
-      extra: { key: "none", acceptsZero: false, pairings: ["x402/upto/xrpl"] },
+      extra: { key: "none", acceptsZero: [], pairings: ["x402/upto/xrpl"] },
     });
   });
 

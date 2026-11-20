@@ -98,7 +98,7 @@ await settler.close();
       "extra": {
         "assetTransferMethod": "lcp-assets-remark",
         "key": "none",
-        "acceptsZero": false,
+        "acceptsZero": [],
         "pairings": [
           "x402/exact/polkadot/lcp-assets-remark"
         ]
@@ -111,7 +111,7 @@ await settler.close();
       "extra": {
         "assetTransferMethod": "lcp-trc20-memo",
         "key": "none",
-        "acceptsZero": false,
+        "acceptsZero": [],
         "pairings": [
           "x402/exact/tron/lcp-trc20-memo"
         ]
@@ -200,7 +200,7 @@ set, and a class's settle takes no deadline from the settler, so the sample sets
       "network": "eip155:84532",
       "extra": {
         "key": "relayer",
-        "acceptsZero": false,
+        "acceptsZero": ["x402/exact/eip155/eip3009"],
         "pairings": ["x402/exact/eip155/eip3009", "x402/exact/eip155/permit2"],
         "feeBudget": true
       }
@@ -254,24 +254,24 @@ names, and the table gives the ones each module takes.
 
 | Member | Chain | Networks | Scheme: pairings (`confirmed`) | `extra.key` | `extra.acceptsZero` | Facilitator |
 |---|---|---|---|---|---|---|
-| `algorand` | Algorand | `algorand:<genesis hash prefix>` | `exact`: `x402/exact/algorand` (yes) | `fee-payer` | `true` | `@x402/avm`'s class; the settler's own path for a rekeyed payer signing with one key and a Falcon-key payer |
-| `aptos` | Aptos | `aptos:<chain id>` | `exact`: `x402/exact/aptos` (yes) | `fee-payer`, or `none` with `sponsor: false` | `false` | `@x402/aptos`'s class |
-| `cardano` | Cardano | `cardano:mainnet`, `cardano:preprod`, `cardano:preview` | `exact`: `x402/exact/cardano` (yes), `x402/exact/cardano/lock` (yes) | `none` | `false` | `@x402/cardano`'s class |
-| `casper` | Casper | `casper:casper-test` | `exact`: `x402/exact/casper` (no) | `relayer` | `false` | `@x402/casper`'s class |
-| `concordium` | Concordium | `ccd:<genesis hash prefix>` | `exact`: `x402/exact/ccd` (no) | `fee-payer` | `true` | `@x402/concordium`'s class |
-| `evm` | EVM | `eip155:<chain id>` | `exact`: `x402/exact/eip155/eip3009` (yes), `x402/exact/eip155/permit2` (yes); `upto`: `x402/upto/eip155/permit2` (yes); `auth-capture`: `x402/auth-capture/eip155/eip3009` (yes), `x402/auth-capture/eip155/permit2` (yes); `batch-settlement`: `x402/batch-settlement/eip155` (yes) | `relayer` | `false` | `@x402/evm`'s classes |
-| `erc7710` | EVM | `eip155:<chain id>`, where `evm` registers `exact` | `exact` with `erc7710`: `x402/exact/eip155/erc7710` (yes), `x402/exact/eip155/erc7710-salt` (yes) | `relayer` | `false` | the settler's own, behind the `evm` module's `exact` |
-| `hedera` | Hedera | `hedera:mainnet`, `hedera:testnet`, `hedera:previewnet`, `hedera:devnet` | `exact`: `x402/exact/hedera` (yes) | `fee-payer` | `false` | `@x402/hedera`'s class |
-| `lnbtc` | Lightning | `lnbtc:000000000019d6689c085ae165831e93`, `lnbtc:000000000933ea01ad0ee984209779ba` | `exact`: `x402/exact/lnbtc/payment-hash` (yes) | `none` | `false` | the settler's own |
-| `near` | NEAR | `near:mainnet`, `near:testnet` | `exact`: `x402/exact/near` (yes) | `relayer` | `false` | `@x402/near`'s class |
-| `polkadot` | Polkadot Asset Hub | `polkadot:68d56f15f85d3136970ec16946040bc1`, `polkadot:67f9723393ef76214df0118c34bbbd3d` | `exact`: `x402/exact/polkadot/lcp-assets-remark` (yes) | `none` | `false` | the settler's own |
-| `solana` | Solana | `solana:<genesis hash prefix>`; `upto` and `batch-settlement` not on `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` | `exact`: `x402/exact/solana` (yes); `upto`: `x402/upto/solana` (no); `batch-settlement`: `x402/batch-settlement/solana` (no) | `fee-payer` | `true` on `exact`, `false` on the others | `@x402/svm`'s classes |
-| `starknet` | Starknet | `starknet:SN_MAIN`, `starknet:SN_SEPOLIA` | `exact`: `x402/exact/starknet` (yes) | `relayer` | `false` | the settler's own |
-| `stellar` | Stellar | `stellar:pubnet`, `stellar:testnet` | `exact` with `lcp-precondition`: `x402/exact/stellar/precondition` (yes) | `relayer` | `true` | the settler's own |
-| `sui` | Sui | `sui:mainnet`, `sui:testnet`, `sui:devnet` | `exact`: `x402/exact/sui` (yes) | `none` | `true` | the settler's own |
-| `ton` | TON | `tvm:-239`, `tvm:-3` | `exact`: `x402/exact/tvm` (yes) | `relayer` | `true` | `@x402/tvm`'s class |
-| `tron` | Tron | `tron:<chain id in decimal>` | `exact`: `x402/exact/tron/lcp-trc20-memo` (yes) | `none` | `false` | the settler's own |
-| `xrpl` | XRP Ledger | `xrpl:<NetworkID>` | `exact`: `x402/exact/xrpl` (yes); `upto`: `x402/upto/xrpl` (yes) | `none` | `false` | `@x402/xrpl`'s class for a payer signing with one key; the settler's own for a multisigned payer and for `upto` |
+| `algorand` | Algorand | `algorand:<genesis hash prefix>` | `exact`: `x402/exact/algorand` (yes) | `fee-payer` | `x402/exact/algorand` | `@x402/avm`'s class; the settler's own path for a rekeyed payer signing with one key and a Falcon-key payer |
+| `aptos` | Aptos | `aptos:<chain id>` | `exact`: `x402/exact/aptos` (yes) | `fee-payer`, or `none` with `sponsor: false` | `[]` | `@x402/aptos`'s class |
+| `cardano` | Cardano | `cardano:mainnet`, `cardano:preprod`, `cardano:preview` | `exact`: `x402/exact/cardano` (yes), `x402/exact/cardano/lock` (yes) | `none` | `[]` | `@x402/cardano`'s class |
+| `casper` | Casper | `casper:casper-test` | `exact`: `x402/exact/casper` (no) | `relayer` | `[]` | `@x402/casper`'s class |
+| `concordium` | Concordium | `ccd:<genesis hash prefix>` | `exact`: `x402/exact/ccd` (no) | `fee-payer` | `x402/exact/ccd` | `@x402/concordium`'s class |
+| `evm` | EVM | `eip155:<chain id>` | `exact`: `x402/exact/eip155/eip3009` (yes), `x402/exact/eip155/permit2` (yes); `upto`: `x402/upto/eip155/permit2` (yes); `auth-capture`: `x402/auth-capture/eip155/eip3009` (yes), `x402/auth-capture/eip155/permit2` (yes); `batch-settlement`: `x402/batch-settlement/eip155` (yes) | `relayer` | `x402/exact/eip155/eip3009` on `exact`; `[]` on the others | `@x402/evm`'s classes |
+| `erc7710` | EVM | `eip155:<chain id>`, where `evm` registers `exact` | `exact` with `erc7710`: `x402/exact/eip155/erc7710` (yes), `x402/exact/eip155/erc7710-salt` (yes) | `relayer` | `[]` | the settler's own, behind the `evm` module's `exact` |
+| `hedera` | Hedera | `hedera:mainnet`, `hedera:testnet`, `hedera:previewnet`, `hedera:devnet` | `exact`: `x402/exact/hedera` (yes) | `fee-payer` | `[]` | `@x402/hedera`'s class |
+| `lnbtc` | Lightning | `lnbtc:000000000019d6689c085ae165831e93`, `lnbtc:000000000933ea01ad0ee984209779ba` | `exact`: `x402/exact/lnbtc/payment-hash` (yes) | `none` | `[]` | the settler's own |
+| `near` | NEAR | `near:mainnet`, `near:testnet` | `exact`: `x402/exact/near` (yes) | `relayer` | `[]` | `@x402/near`'s class |
+| `polkadot` | Polkadot Asset Hub | `polkadot:68d56f15f85d3136970ec16946040bc1`, `polkadot:67f9723393ef76214df0118c34bbbd3d` | `exact`: `x402/exact/polkadot/lcp-assets-remark` (yes) | `none` | `[]` | the settler's own |
+| `solana` | Solana | `solana:<genesis hash prefix>`; `upto` and `batch-settlement` not on `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` | `exact`: `x402/exact/solana` (yes); `upto`: `x402/upto/solana` (no); `batch-settlement`: `x402/batch-settlement/solana` (no) | `fee-payer` | `x402/exact/solana` on `exact`; `[]` on the others | `@x402/svm`'s classes |
+| `starknet` | Starknet | `starknet:SN_MAIN`, `starknet:SN_SEPOLIA` | `exact`: `x402/exact/starknet` (yes) | `relayer` | `[]` | the settler's own |
+| `stellar` | Stellar | `stellar:pubnet`, `stellar:testnet` | `exact` with `lcp-precondition`: `x402/exact/stellar/precondition` (yes) | `relayer` | `x402/exact/stellar/precondition` | the settler's own |
+| `sui` | Sui | `sui:mainnet`, `sui:testnet`, `sui:devnet` | `exact`: `x402/exact/sui` (yes) | `none` | `x402/exact/sui` | the settler's own |
+| `ton` | TON | `tvm:-239`, `tvm:-3` | `exact`: `x402/exact/tvm` (yes) | `relayer` | `x402/exact/tvm` | `@x402/tvm`'s class |
+| `tron` | Tron | `tron:<chain id in decimal>` | `exact`: `x402/exact/tron/lcp-trc20-memo` (yes) | `none` | `[]` | the settler's own |
+| `xrpl` | XRP Ledger | `xrpl:<NetworkID>` | `exact`: `x402/exact/xrpl` (yes); `upto`: `x402/upto/xrpl` (yes) | `none` | `[]` | `@x402/xrpl`'s class for a payer signing with one key; the settler's own for a multisigned payer and for `upto` |
 
 `confirmed` is lcp's registry's: whether something outside lcp has shown the form as its profile defines it
 ([the pairing registry](../reference/pairings.md)). The
@@ -337,12 +337,12 @@ Each member, one entry per network unless it says otherwise:
   other than the asset), which no published EVM class settles. At `/settle`, `upto` settles the amount its requirements
   state, the charge: requirements that are the option the payment accepted in every member but an `amount` at or below
   the accepted one are held as that option, and the class checks the permit against the accepted maximum, as its own
-  settle does; any other requirements are refused `invalid_payload`. Every kind states `acceptsZero` false. At zero, on
-  Base Sepolia at block 61194449 (an `eth_call`, and `eth_simulateV1` for the logs): USDC's EIP-3009
-  `transferWithAuthorization` of 0 succeeds, emitting `AuthorizationUsed` and a `Transfer` of 0; x402's `exact` and
-  `upto` Permit2 proxies revert `InvalidAmount`; the commerce-payments escrow's `authorize` reverts `ZeroAmount`; and
-  batch settlement's facilitator requires a deposit above 0. `exact` serves the Permit2 form beside EIP-3009's, so it
-  states false.
+  settle does; any other requirements are refused `invalid_payload`. `exact`'s `extra.acceptsZero` names
+  `x402/exact/eip155/eip3009` alone, and every other kind's is `[]`. On Base Sepolia, USDC's EIP-3009
+  `transferWithAuthorization` of 0 succeeds, emitting `AuthorizationUsed` and a `Transfer` of 0 (`eth_simulateV1` at
+  block 61198157); at block 61194449, x402's `exact` and `upto` Permit2 proxies revert `InvalidAmount` and the
+  commerce-payments escrow's `authorize` reverts `ZeroAmount`; batch settlement's facilitator requires a deposit above
+  0.
 - **`erc7710`**: `network`; `rpc`; `signer`, the seller's gas key, whose node must answer `eth_simulateV1`. The key
   sends from its first address, so that address is the delegate the leaf delegation must name (or the reference
   implementation's wildcard delegate), and the account the simulation runs from. It registers nothing of its own: on
@@ -371,7 +371,7 @@ Each member, one entry per network unless it says otherwise:
   pruning node discards the state of older blocks, and a block that holds the extrinsic and whose state is discarded
   keeps the answer `settlement_pending`. The runtime metadata is loaded on the first payment for the network, and again
   whenever the node's runtime version changes. A success names `<block hash>-<extrinsic index>`; a pending answer
-  names the extrinsic's hash. The kind states `acceptsZero` false: lcp's option filter takes a positive amount only
+  names the extrinsic's hash. The kind's `extra.acceptsZero` is `[]`: lcp's option filter takes a positive amount only
   (its profile's rule 1), and a `transfer_keep_alive` of 0, dry-run on Westend Asset Hub at block 19635446, dispatches
   and emits no event.
 - **`solana`**: `network`; `node`, the seller's JSON-RPC endpoint, one whose `getFirstAvailableBlock` is at or below the
@@ -390,9 +390,9 @@ Each member, one entry per network unless it says otherwise:
   sends and pays for the transaction that executes it; `maxFee`, optional, the most one settlement's resource bounds
   may pay, in fri; `skewMarginSeconds` (default 60) and `minSettleMarginSeconds` (default 30), optional, the scheme's
   margins. x402 specifies Starknet and publishes no code for it, so the module is written to x402's scheme text and
-  lcp's profile. The kind states `acceptsZero` false: lcp's option filter refuses an amount of `"0"` on every token (its
-  profile's rule 24). A `transfer` of 0 of STRK and of USDC, simulated on Starknet Sepolia at block 18422300, emits a
-  `Transfer` of 0.
+  lcp's profile. The kind's `extra.acceptsZero` is `[]`: lcp's option filter refuses an amount of `"0"` on every token
+  (its profile's rule 24). A `transfer` of 0 of STRK and of USDC, simulated on Starknet Sepolia at block 18422300,
+  emits a `Transfer` of 0.
 - **`stellar`**: an object `{ networks }`: `network`; `rpc`, a Stellar RPC endpoint that holds the history the read
   searches; `source`, the seller's funded account as a signer (`address` and `signTransaction`, such as x402's
   `createEd25519Signer` of `@x402/stellar` or a SEP-43 wallet), the transaction's source, which pays its fee;
@@ -403,10 +403,10 @@ Each member, one entry per network unless it says otherwise:
 - **`sui`**: an object `{ networks }`: `network` (`sui:mainnet`, `sui:testnet` or `sui:devnet`); `graphql`, the seller's
   GraphQL endpoint. It serves the path where the buyer pays gas and the gasless path (`extra.gasless`), and holds no
   key. A transaction the buyer already executed is judged at `/verify` by its effects, and not refused for having
-  executed; its `/settle` answers a failure naming it. The kind states `acceptsZero` true: a transfer of 0 executes
-  where the buyer pays gas (Sui testnet transaction `7EjfN1kqGng3phZjqgCzy8RRRXCP2Ybt7mikGgjBUwKA`, status `SUCCESS`,
-  its only balance change the sender's gas), and at 0 the signed transfer must name the option's payee. lcp's option
-  filter refuses 0 on the gasless path.
+  executed; its `/settle` answers a failure naming it. The kind's `extra.acceptsZero` names `x402/exact/sui`: a
+  transfer of 0 executes where the buyer pays gas (Sui testnet transaction
+  `7EjfN1kqGng3phZjqgCzy8RRRXCP2Ybt7mikGgjBUwKA`, status `SUCCESS`, its only balance change the sender's gas), and at
+  0 the signed transfer must name the option's payee. lcp's option filter refuses 0 on the gasless path.
 - **`ton`**: `network`; `signer`, the seller's highload-v3 wallet and its node (`FacilitatorTvmSigner`), which relays
   the payer's W5 request in a message of its own and pays its gas; `reader`, lcp's `TvmReader` over the seller's TON
   Center v3 index.

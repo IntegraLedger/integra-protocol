@@ -46,7 +46,7 @@ x402 codec reads, and 1,024 bytes for the envelope.
 | `invalid_x402_version` | yes | yes | `x402Version` is not 2 in the request or the payload. |
 | `invalid_network` | yes | yes | No configured module serves the network. |
 | `unsupported_scheme` | yes | yes | No module registers the scheme on the network. On `lnbtc`, every `/verify`. |
-| `invalid_payment_requirements` | yes | yes | The requirements are not ones the pairing's profile admits; an amount of zero where the kind does not take zero; a form outside the kind's pairings; an option the module refuses ([each module](../guides/settler.md#the-modules)). |
+| `invalid_payment_requirements` | yes | yes | The requirements are not ones the pairing's profile admits; an amount of zero whose pairing the kind's `extra.acceptsZero` does not name; a form outside the kind's pairings; an option the module refuses ([each module](../guides/settler.md#the-modules)). |
 | `invalid_payload` | yes | yes | The payload does not match the profile or the requirements. |
 | `unsupported_permission` | yes | yes | Tron: the owner's permission does not accept the transaction's signatures. |
 | `invalid_transaction` | yes | yes | The node refuses the transaction in simulation or validation, in a module of the settler's own. |
@@ -68,7 +68,7 @@ published class's own reasons, such as `invalid_exact_evm_payload_signature`, pa
 |---|---|
 | `extra.pairings` | The lcp pairing ids the kind submits. A scheme on one network can hold several forms, so the scheme alone does not name them. |
 | `extra.key` | `none`, `relayer` or `fee-payer` ([Keys](../guides/settler.md#keys)). |
-| `extra.acceptsZero` | Whether the kind settles a payment of amount zero: true only where every pairing behind it does. A kind that states false refuses an option of amount zero `invalid_payment_requirements`. |
+| `extra.acceptsZero` | The pairings of `extra.pairings` the kind settles at an amount of zero; `[]` where none does. An option of amount zero whose pairing it does not name is refused `invalid_payment_requirements`. |
 | `extra.feeBudget` | `true` on each kind of a network whose fee budget the operator set; absent otherwise. Neither the amount nor what remains is stated. |
 | The class's own members | Kept unchanged, such as `assetTransferMethod` on Tron and Polkadot, `feePayer` where a fee payer co-signs, and `areFeesSponsored` on the XRP Ledger and Stellar. No module's class may state one of the four members above: the settler refuses one that does at start. |
 
@@ -91,8 +91,8 @@ which forms it can offer with this settler, and `extra.acceptsZero` before choos
    `invalidMessage` (on `starknet` and `sui`, the module's own code where its own check refused).
 4. The record: a payment it holds, claimed or final, is refused `invalid_transaction_state`, since `isValid: true`
    tells the caller that a settle may follow.
-5. What the kind declares: an amount of zero where it does not take zero, and a form outside the pairings of the module
-   the payment goes to, are refused `invalid_payment_requirements`.
+5. What the kind declares: an amount of zero whose pairing `extra.acceptsZero` does not name, and a form outside the
+   pairings of the module the payment goes to, are refused `invalid_payment_requirements`.
 6. The fee budget, where the module's key pays the fee: a spent budget is refused `fee_budget_spent`.
 7. The class's verify, unchanged, with its own reasons.
 8. lcp's read of the chain: a payment the chain shows final (landed, or consumed by another act) is refused

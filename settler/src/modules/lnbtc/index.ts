@@ -121,7 +121,7 @@ const record: Module["record"] = {
 
 function moduleOn(network: Network): Module {
   return {
-    descriptor: { name: "lnbtc", key: "none", pairings: [exactLnbtcPaymentHash.id], acceptsZero: false, verifyForbidden: true },
+    descriptor: { name: "lnbtc", key: "none", pairings: [exactLnbtcPaymentHash.id], acceptsZero: [], verifyForbidden: true },
     network,
     facilitator,
     record,

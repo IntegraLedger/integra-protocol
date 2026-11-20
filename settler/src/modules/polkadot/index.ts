@@ -91,7 +91,7 @@ export function polkadotModules(rail: PolkadotRail, log: OperatorLog): Module[] 
         pairings: [exactPolkadotRemark.id],
         // The assets pallet returns early on a transfer of zero and emits no `Transferred` event, so the smallest
         // amount is one base unit (polkadot-sdk `substrate/frame/assets/src/functions.rs`, `do_transfer`).
-        acceptsZero: false,
+        acceptsZero: [],
       },
       network,
       facilitator,

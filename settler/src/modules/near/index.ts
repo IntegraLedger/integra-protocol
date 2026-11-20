@@ -188,7 +188,7 @@ export function nearModule(c: NearConfig): Module {
   const network = c.network as Network;
   return {
     // The standard token refuses a zero ft_transfer, so the kind does not take zero.
-    descriptor: { name: "near", key: "relayer", pairings: [exactNear.id], acceptsZero: false },
+    descriptor: { name: "near", key: "relayer", pairings: [exactNear.id], acceptsZero: [] },
     network,
     facilitator: new ExactNearScheme(c.signer),
     record: {

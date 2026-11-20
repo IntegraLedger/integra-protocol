@@ -51,7 +51,7 @@ describe("the Aptos module", () => {
   it("states the pairing it submits, its fee-payer key and address where it sponsors, and that it does not take zero", async () => {
     await start([{ network: NETWORK, signer: signerStub([]), node: "http://127.0.0.1:9" }]);
     expect(await settler!.supported()).toEqual({
-      kinds: [{ x402Version: 2, scheme: "exact", network: NETWORK, extra: { feePayer: FEE_PAYER, key: "fee-payer", acceptsZero: false, pairings: ["x402/exact/aptos"] } }],
+      kinds: [{ x402Version: 2, scheme: "exact", network: NETWORK, extra: { feePayer: FEE_PAYER, key: "fee-payer", acceptsZero: [], pairings: ["x402/exact/aptos"] } }],
       extensions: [],
       signers: { "aptos:*": [FEE_PAYER] },
     });
@@ -85,7 +85,7 @@ describe("the Aptos module", () => {
     const calls: string[] = [];
     await start([{ network: NETWORK, signer: signerStub(calls), node: "http://127.0.0.1:9", sponsor: false }]);
     expect(await settler!.supported()).toEqual({
-      kinds: [{ x402Version: 2, scheme: "exact", network: NETWORK, extra: { key: "none", acceptsZero: false, pairings: ["x402/exact/aptos"] } }],
+      kinds: [{ x402Version: 2, scheme: "exact", network: NETWORK, extra: { key: "none", acceptsZero: [], pairings: ["x402/exact/aptos"] } }],
       extensions: [],
       signers: { "aptos:*": [] },
     });

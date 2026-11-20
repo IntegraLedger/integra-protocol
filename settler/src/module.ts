@@ -66,10 +66,10 @@ export interface Descriptor {
    */
   readonly pairings: readonly PairingId[];
   /**
-   * `extra.acceptsZero`: whether the module settles a payment of amount zero, as a seller choosing a zero agreement
-   * needs to know. True only where every pairing in `pairings` takes zero.
+   * `extra.acceptsZero`: the pairings of `pairings` the module settles at an amount of zero, as a seller choosing a zero
+   * agreement needs to know; empty where none does.
    */
-  readonly acceptsZero: boolean;
+  readonly acceptsZero: readonly PairingId[];
   /**
    * Set where the module's `/verify` judges a payment that has already landed, by what the chain shows of it, and does
    * not refuse it for having landed: the core then asks neither its record nor the chain whether the instrument is

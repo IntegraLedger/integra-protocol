@@ -249,7 +249,7 @@ describe("the Stellar module through the settler's HTTP surface", () => {
       x402Version: 2,
       scheme: "exact",
       network: NETWORK,
-      extra: { areFeesSponsored: true, key: "relayer", acceptsZero: true, pairings: [exactStellarPrecondition.id], feeBudget: true },
+      extra: { areFeesSponsored: true, key: "relayer", acceptsZero: [exactStellarPrecondition.id], pairings: [exactStellarPrecondition.id], feeBudget: true },
     });
     expect(s.signers["stellar:*"]).toEqual([source.publicKey()]);
   });

@@ -276,7 +276,7 @@ function moduleOf(
   c: SolanaConfig,
   pairing: Pairing,
   cls: SchemeNetworkFacilitator,
-  acceptsZero: boolean,
+  acceptsZero: readonly PairingId[],
   isOpening: (p: X402Payment) => boolean,
   atSettle?: SettleCheck,
 ): Module {
@@ -380,7 +380,7 @@ export function solanaModules(config: SolanaConfig, state?: SolanaChannelState, 
   const pending = state === undefined ? {} : { pendingSettlementStore: state.pending };
   const exact = new ExactSvmScheme(c.signer, undefined, { ...versions, ...pending });
   // lcp's floor on x402/exact/solana is 0: a zero TransferChecked lands, and the class compares amounts by equality.
-  const modules = [moduleOf(c, exactSvm, exact, true, () => true)];
+  const modules = [moduleOf(c, exactSvm, exact, [exactSvm.id], () => true)];
   if (c.network === SOLANA_MAINNET || state === undefined) return modules;
   const upto = new UptoSvmScheme(c.signer, { ...versions, channelStorage: state.channels, pendingSettlementStore: state.pending });
   const batch = new BatchSvmScheme(c.signer, {
@@ -389,8 +389,8 @@ export function solanaModules(config: SolanaConfig, state?: SolanaChannelState, 
     pendingSettlementStore: state.batchPending,
   });
   // upto: lcp's filter admits a positive amount only. Batch settlement: zero through it has not been read.
-  modules.push(moduleOf(c, uptoSvm, upto, false, uptoOpening, uptoAtSettle));
-  modules.push(moduleOf(c, batchSvm, batch, false, batchOpening));
+  modules.push(moduleOf(c, uptoSvm, upto, [], uptoOpening, uptoAtSettle));
+  modules.push(moduleOf(c, batchSvm, batch, [], batchOpening));
   return modules;
 }
 

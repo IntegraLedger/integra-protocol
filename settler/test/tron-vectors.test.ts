@@ -423,7 +423,7 @@ describe("lcp's V2 payment through the settler's /supported, /verify and /settle
           x402Version: 2,
           scheme: "exact",
           network: NETWORK,
-          extra: { assetTransferMethod: "lcp-trc20-memo", key: "none", acceptsZero: false, pairings: ["x402/exact/tron/lcp-trc20-memo"] },
+          extra: { assetTransferMethod: "lcp-trc20-memo", key: "none", acceptsZero: [], pairings: ["x402/exact/tron/lcp-trc20-memo"] },
         },
       ],
       extensions: [],

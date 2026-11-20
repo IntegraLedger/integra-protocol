@@ -69,7 +69,7 @@ export function tronModules(rail: TronRail, log: OperatorLog): Module[] {
         pairings: [exactTronMemo.id],
         // The profile's floor is 1 base unit until a run shows a contract's transfer(to, 0) succeeding with a Transfer
         // log (rule 1); no contract is so shown, so no payment of zero is settled.
-        acceptsZero: false,
+        acceptsZero: [],
       },
       network,
       facilitator,

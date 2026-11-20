@@ -234,7 +234,7 @@ export function uptoModule(network: XrplNetwork, node: XrplNode): Module {
   const n = network as Network;
   return {
     // The maximum a payment authorises is a positive number of drops (lcp's option filter); zero is not established.
-    descriptor: { name: "xrpl", key: "none", pairings: [uptoXrpl.id], acceptsZero: false },
+    descriptor: { name: "xrpl", key: "none", pairings: [uptoXrpl.id], acceptsZero: [] },
     network: n,
     facilitator: uptoFacilitator(network, node),
     record: {

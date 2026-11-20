@@ -268,7 +268,7 @@ describe("the Sui module through the settler's HTTP surface", () => {
   it("/supported states the kind: the pairing, no key, and zero", async () => {
     await serve();
     expect(await call("/supported")).toEqual({
-      kinds: [{ x402Version: 2, scheme: "exact", network: NETWORK, extra: { key: "none", pairings: ["x402/exact/sui"], acceptsZero: true } }],
+      kinds: [{ x402Version: 2, scheme: "exact", network: NETWORK, extra: { key: "none", pairings: ["x402/exact/sui"], acceptsZero: ["x402/exact/sui"] } }],
       extensions: [],
       // x402's class keys signers by CAIP family, an empty list where the module holds no key.
       signers: { "sui:*": [] },

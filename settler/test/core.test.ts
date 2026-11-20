@@ -219,12 +219,12 @@ describe("GET /supported", () => {
   it("states each kind's pairings, its key, whether it takes zero, its fee budget and its fee payer, and keeps the class's members", async () => {
     node = await stub((path, b) => ledger.answer(path, b));
     await start(
-      { key: "fee-payer", acceptsZero: true, signers: [FEE_PAYER], extra: { feePayer: FEE_PAYER } },
+      { key: "fee-payer", acceptsZero: [PAIRING], signers: [FEE_PAYER], extra: { feePayer: FEE_PAYER } },
       {
         credential: CREDENTIAL,
         feeBudgets: [{ network: NETWORK, amount: "1000000", periodSeconds: 3600 }],
         // An own module another starter offers to the same kind.
-        erc7710: { network: NETWORK, node: node.url, key: "fee-payer", acceptsZero: false, signers: [OWN_FEE_PAYER] },
+        erc7710: { network: NETWORK, node: node.url, key: "fee-payer", acceptsZero: [], signers: [OWN_FEE_PAYER] },
       },
     );
     const res = await fetch(`${base}/supported`, { headers: { authorization: `Bearer ${CREDENTIAL}` } });
@@ -238,8 +238,8 @@ describe("GET /supported", () => {
             form: "offered",
             feePayer: FEE_PAYER,
             key: "fee-payer",
-            // The offered module takes no zero, so the kind does not.
-            acceptsZero: false,
+            // The published module's pairing takes zero; the offered module's does not.
+            acceptsZero: [PAIRING],
             pairings: [OTHER_PAIRING, PAIRING],
             feeBudget: true,
           },
@@ -321,7 +321,7 @@ describe("the record", () => {
   });
 
   it("answers a success that names no transaction, as x402's upto class answers a settle of zero, only once it is stored final: a repeat sends nothing", async () => {
-    await start({ acceptsZero: true });
+    await start({ acceptsZero: [PAIRING] });
     // @x402/evm's upto Permit2 settle of a zero amount: a success naming no transaction, nothing sent to the chain.
     ledger.sending = () => ({ transaction: "", included: true });
     const zero = body(V2, { amount: "0" });

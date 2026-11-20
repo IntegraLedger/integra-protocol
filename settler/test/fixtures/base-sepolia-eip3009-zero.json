@@ -1,0 +1,57 @@
+{
+  "source": "Base Sepolia (eip155:84532), https://sepolia.base.org: eth_call and eth_simulateV1 at block 61198157 (0xf55e5500b98bc889864dff1ca4a78a0b2e4f8c2e21a94d790b689fc65cf2505a, timestamp 1795161500) of USDC's transferWithAuthorization carrying this payment's authorization and signature, sent from 0x22E38206D9Fba44DA9CC128A8EC3B6fE08B1DbC5; read 2026-11-20T07:58:20.159Z. The payer's key was made for this read and holds nothing.",
+  "block": {
+    "number": 61198157,
+    "hash": "0xf55e5500b98bc889864dff1ca4a78a0b2e4f8c2e21a94d790b689fc65cf2505a",
+    "timestamp": 1795161500
+  },
+  "payment": {
+    "x402Version": 2,
+    "accepted": {
+      "scheme": "exact",
+      "network": "eip155:84532",
+      "amount": "0",
+      "asset": "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+      "payTo": "0xc9fe467344773DBFa925dC3d1bed766B26db64DA",
+      "maxTimeoutSeconds": 300,
+      "extra": {
+        "name": "USDC",
+        "version": "2"
+      }
+    },
+    "payload": {
+      "signature": "0xfcbcb2b5c47a824e2f892560a3ebd68cc544e95f44f7912aeeeb228a09168c155a36ac1f1ecce04c9b1284b19055088a0bdebf3e95f0d9dc1d5bfd1b13eccc5e1c",
+      "authorization": {
+        "from": "0x3591f96BA7297d072bfCE280E546DFE4f81A6003",
+        "to": "0xc9fe467344773DBFa925dC3d1bed766B26db64DA",
+        "value": "0",
+        "validAfter": "0",
+        "validBefore": "1795161800",
+        "nonce": "0xdfe512bb8c69d9e7b4e2b5c33d9c92f23442b395814891ef9ae1d0d60141a4ba"
+      }
+    }
+  },
+  "simulation": {
+    "status": "success",
+    "logs": [
+      {
+        "address": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+        "topics": [
+          "0x98de503528ee59b575ef0c0a2576a82497bfc029a5685b209e9ec333479b10a5",
+          "0x0000000000000000000000003591f96ba7297d072bfce280e546dfe4f81a6003",
+          "0xdfe512bb8c69d9e7b4e2b5c33d9c92f23442b395814891ef9ae1d0d60141a4ba"
+        ],
+        "data": "0x"
+      },
+      {
+        "address": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+        "topics": [
+          "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+          "0x0000000000000000000000003591f96ba7297d072bfce280e546dfe4f81a6003",
+          "0x000000000000000000000000c9fe467344773dbfa925dc3d1bed766b26db64da"
+        ],
+        "data": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    ]
+  }
+}

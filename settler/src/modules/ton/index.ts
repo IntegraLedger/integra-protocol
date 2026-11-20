@@ -41,7 +41,7 @@ export function tonModule(c: TonConfig): Module {
   const network = c.network as Network;
   if (c.reader.network !== c.network) throw new TypeError(`the TON reader serves ${c.reader.network}, not ${c.network}`);
   return {
-    descriptor: { name: "ton", key: "relayer", pairings: [exactTvm.id], acceptsZero: true },
+    descriptor: { name: "ton", key: "relayer", pairings: [exactTvm.id], acceptsZero: [exactTvm.id] },
     network,
     facilitator: new ExactTvmScheme(c.signer),
     record: {

@@ -74,7 +74,7 @@ describe("the NEAR module", () => {
   it("states the pairing it submits, its relayer key and account, and that it does not take zero", async () => {
     await start([{ network: NETWORK, signer: signerStub([]), rpc: "http://127.0.0.1:9" }]);
     expect(await settler!.supported()).toEqual({
-      kinds: [{ x402Version: 2, scheme: "exact", network: NETWORK, extra: { key: "relayer", acceptsZero: false, pairings: ["x402/exact/near"] } }],
+      kinds: [{ x402Version: 2, scheme: "exact", network: NETWORK, extra: { key: "relayer", acceptsZero: [], pairings: ["x402/exact/near"] } }],
       extensions: [],
       signers: { "near:*": [RELAYER] },
     });

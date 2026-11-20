@@ -120,9 +120,9 @@ describe("the Solana module's kinds", () => {
   it("states each pairing it submits, the fee-payer key, its signer and whether it takes zero", async () => {
     const ms = await modulesOn();
     expect(ms.map((m) => [m.facilitator.scheme, m.network, m.descriptor])).toEqual([
-      ["exact", DEVNET, { name: "solana", key: "fee-payer", pairings: ["x402/exact/solana"], acceptsZero: true }],
-      ["upto", DEVNET, { name: "solana", key: "fee-payer", pairings: ["x402/upto/solana"], acceptsZero: false }],
-      ["batch-settlement", DEVNET, { name: "solana", key: "fee-payer", pairings: ["x402/batch-settlement/solana"], acceptsZero: false }],
+      ["exact", DEVNET, { name: "solana", key: "fee-payer", pairings: ["x402/exact/solana"], acceptsZero: ["x402/exact/solana"] }],
+      ["upto", DEVNET, { name: "solana", key: "fee-payer", pairings: ["x402/upto/solana"], acceptsZero: [] }],
+      ["batch-settlement", DEVNET, { name: "solana", key: "fee-payer", pairings: ["x402/batch-settlement/solana"], acceptsZero: [] }],
     ]);
     for (const m of ms) {
       expect(m.facilitator.getSigners(DEVNET)).toEqual([EXACT.fixed.feePayer]);
@@ -148,9 +148,9 @@ describe("the Solana module through the settler's HTTP surface", () => {
     const s = await serve();
     const supported = (await s.supported()) as { kinds: { scheme: string; extra: Record<string, unknown> }[]; signers: unknown };
     expect(supported.kinds.map((k) => [k.scheme, k.extra["key"], k.extra["pairings"], k.extra["acceptsZero"], k.extra["feePayer"]])).toEqual([
-      ["exact", "fee-payer", ["x402/exact/solana"], true, EXACT.fixed.feePayer],
-      ["upto", "fee-payer", ["x402/upto/solana"], false, EXACT.fixed.feePayer],
-      ["batch-settlement", "fee-payer", ["x402/batch-settlement/solana"], false, EXACT.fixed.feePayer],
+      ["exact", "fee-payer", ["x402/exact/solana"], ["x402/exact/solana"], EXACT.fixed.feePayer],
+      ["upto", "fee-payer", ["x402/upto/solana"], [], EXACT.fixed.feePayer],
+      ["batch-settlement", "fee-payer", ["x402/batch-settlement/solana"], [], EXACT.fixed.feePayer],
     ]);
     expect(supported.signers).toEqual({ "solana:*": [EXACT.fixed.feePayer] });
   });

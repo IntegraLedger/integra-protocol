@@ -430,7 +430,7 @@ export function stellarModule(c: StellarNetworkConfig, core: Core): Module {
       key: "relayer",
       pairings: [ID],
       // The Stellar Asset Contract refuses only a negative amount and emits its event at zero (the profile, rule 13).
-      acceptsZero: true,
+      acceptsZero: [ID],
     },
     network: network as Network,
     facilitator,

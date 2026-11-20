@@ -13,9 +13,13 @@ configuration, the answers or the storage.
   `x402/auth-capture/eip155/eip3009`, `x402/auth-capture/eip155/permit2`, `x402/batch-settlement/eip155`,
   `x402/exact/eip155/erc7710`, `x402/exact/eip155/erc7710-salt` and `x402/upto/xrpl`, each shown end to end by a
   recorded run on a test network. No module's behaviour changes.
-- `sui`: the kind states `extra.acceptsZero` true, and takes an option of amount zero where the buyer pays gas; a
-  transfer of zero executed on Sui testnet. The `evm`, `starknet` and `polkadot` kinds state false, each with its
-  evidence in [The modules](./README.md#the-modules).
+- `GET /supported`: each kind's `extra.acceptsZero` is the list of its pairings that take an amount of zero, `[]`
+  where none does, where 0.5.0 stated a boolean for the kind. An option of amount zero is refused
+  `invalid_payment_requirements` where its pairing is not in the list. `exact` on an `eip155` network names
+  `x402/exact/eip155/eip3009`, whose transfer of zero Base Sepolia's USDC takes, and not `x402/exact/eip155/permit2`,
+  whose proxy reverts at zero; `sui` names `x402/exact/sui`, a transfer of zero having executed on Sui testnet where the
+  buyer pays gas. `starknet` and `polkadot` state `[]`. Each module's list and its evidence are in
+  [The modules](./README.md#the-modules).
 
 ### Fixed
 

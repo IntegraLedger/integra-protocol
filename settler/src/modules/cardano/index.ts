@@ -81,7 +81,7 @@ export function cardanoModule(c: CardanoConfig, state: ModuleState): Module {
   if (c.reader.network !== c.network) throw new TypeError(`the Cardano reader serves ${c.reader.network}, not ${c.network}`);
   return {
     // Every output carries at least the ledger's smallest, so neither pairing takes zero.
-    descriptor: { name: "cardano", key: "none", pairings: [exactCardano.id, exactCardanoLock.id], acceptsZero: false },
+    descriptor: { name: "cardano", key: "none", pairings: [exactCardano.id, exactCardanoLock.id], acceptsZero: [] },
     network,
     facilitator: new ExactCardanoScheme(c.signer, { settlementStore: settlementStore(state, c.network) }),
     record: {

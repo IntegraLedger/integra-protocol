@@ -44,7 +44,7 @@ export function concordiumModule(c: ConcordiumConfig): Module {
     throw new TypeError(`the Concordium signer and reader must serve ${c.network}`);
   }
   return {
-    descriptor: { name: "concordium", key: "fee-payer", pairings: [exactCcd.id], acceptsZero: true },
+    descriptor: { name: "concordium", key: "fee-payer", pairings: [exactCcd.id], acceptsZero: [exactCcd.id] },
     network,
     facilitator: new ExactConcordiumScheme({ signer: c.signer }),
     record: {

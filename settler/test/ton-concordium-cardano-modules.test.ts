@@ -86,9 +86,9 @@ describe("the TON, Concordium and Cardano modules", () => {
     await start([]);
     const s = (await settler!.supported()) as { kinds: { network: Network; extra: Record<string, unknown> }[]; signers: Record<string, string[]> };
     const kind = (network: string) => s.kinds.find((k) => k.network === network)?.extra;
-    expect(kind(TVM.fixed.O.network)).toEqual({ areFeesSponsored: true, key: "relayer", acceptsZero: true, pairings: ["x402/exact/tvm"] });
-    expect(kind(CCD.fixed.network)).toEqual({ feePayer: CCD.fixed.sponsor, key: "fee-payer", acceptsZero: true, pairings: ["x402/exact/ccd"] });
-    expect(kind(ADA.fixed.O.network)).toMatchObject({ key: "none", acceptsZero: false, pairings: ["x402/exact/cardano", "x402/exact/cardano/lock"] });
+    expect(kind(TVM.fixed.O.network)).toEqual({ areFeesSponsored: true, key: "relayer", acceptsZero: ["x402/exact/tvm"], pairings: ["x402/exact/tvm"] });
+    expect(kind(CCD.fixed.network)).toEqual({ feePayer: CCD.fixed.sponsor, key: "fee-payer", acceptsZero: ["x402/exact/ccd"], pairings: ["x402/exact/ccd"] });
+    expect(kind(ADA.fixed.O.network)).toMatchObject({ key: "none", acceptsZero: [], pairings: ["x402/exact/cardano", "x402/exact/cardano/lock"] });
     expect([s.signers["tvm:*"], s.signers["ccd:*"]]).toEqual([[RELAY_WALLET], [CCD.fixed.sponsor]]);
   });
 

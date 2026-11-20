@@ -111,7 +111,7 @@ describe("POST /verify", () => {
 
 describe("GET /supported", () => {
   it("states each network's kind: lcp's pairing, no key, no zero, no signer", async () => {
-    const extra = { key: "none", acceptsZero: false, pairings: ["x402/exact/lnbtc/payment-hash"] };
+    const extra = { key: "none", acceptsZero: [], pairings: ["x402/exact/lnbtc/payment-hash"] };
     expect(await (await fetch(`${base}/supported`)).json()).toEqual({
       kinds: [
         { x402Version: 2, scheme: "exact", network: VALID.network, extra },

@@ -261,7 +261,7 @@ function multisignedModule(c: XrplConfig, node: XrplNode): Module {
 
 /** One kind for both paths: x402/exact/xrpl, no key; zero is no Payment (a Payment of zero is malformed). */
 function descriptor(): Module["descriptor"] {
-  return { name: "xrpl", key: "none", pairings: [exactXrpl.id], acceptsZero: false };
+  return { name: "xrpl", key: "none", pairings: [exactXrpl.id], acceptsZero: [] };
 }
 
 /** The published class with the module's pure checks before it on both calls. */

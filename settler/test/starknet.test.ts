@@ -346,7 +346,7 @@ describe("the Starknet module through the settler's HTTP surface", () => {
           x402Version: 2,
           scheme: "exact",
           network: NETWORK,
-          extra: { feePayer: shortest(EXECUTOR), key: "relayer", pairings: ["x402/exact/starknet"], acceptsZero: false },
+          extra: { feePayer: shortest(EXECUTOR), key: "relayer", pairings: ["x402/exact/starknet"], acceptsZero: [] },
         },
       ],
       extensions: [],

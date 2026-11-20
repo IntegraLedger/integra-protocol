@@ -18,7 +18,7 @@ export interface TestModuleConfig {
   readonly sender?: string;
   readonly key?: KeyPurpose;
   readonly paysFee?: boolean;
-  readonly acceptsZero?: boolean;
+  readonly acceptsZero?: readonly PairingId[];
   readonly signers?: readonly string[];
   readonly extra?: Record<string, unknown>;
   /** False where the module shows no fee it paid (`FeeNeeds.charged` left out). */
@@ -87,7 +87,7 @@ function moduleOf(c: TestModuleConfig, pairing: PairingId, form: string | undefi
     },
   };
   return {
-    descriptor: { name: "evm", key: c.key ?? "none", pairings: [pairing], acceptsZero: c.acceptsZero ?? false },
+    descriptor: { name: "evm", key: c.key ?? "none", pairings: [pairing], acceptsZero: c.acceptsZero ?? [] },
     network: c.network,
     facilitator,
     record: {

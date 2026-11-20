@@ -524,7 +524,7 @@ export function starknetModule(c: StarknetNetworkConfig, core: Core): Module {
       key: "relayer",
       pairings: [ID],
       // lcp's option filter refuses an amount of "0" on every token (the profile's rule 24).
-      acceptsZero: false,
+      acceptsZero: [],
     },
     network: network as Network,
     facilitator,

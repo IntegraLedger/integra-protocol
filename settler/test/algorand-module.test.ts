@@ -86,7 +86,7 @@ describe("the Algorand module through the settler's HTTP surface", () => {
   it("states the pairing it submits, the fee-payer key and its signer, and that it takes zero", async () => {
     const s = await serve([]);
     expect(await s.supported()).toEqual({
-      kinds: [{ x402Version: 2, scheme: "exact", network: NETWORK, extra: { feePayer: FEE_PAYER, key: "fee-payer", acceptsZero: true, pairings: ["x402/exact/algorand"] } }],
+      kinds: [{ x402Version: 2, scheme: "exact", network: NETWORK, extra: { feePayer: FEE_PAYER, key: "fee-payer", acceptsZero: ["x402/exact/algorand"], pairings: ["x402/exact/algorand"] } }],
       extensions: [],
       signers: { "algorand:*": [FEE_PAYER] },
     });

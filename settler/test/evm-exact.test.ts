@@ -5,6 +5,7 @@
 // `exact` refuses on EVM; one payer's agreement and payment under one H as two rows; lcp's read and the fee the budget
 // counts for a transaction whose receipt the node withholds; and what /supported states of the evm and erc7710 kinds.
 import { exactEip3009, type PaymentPayload as LcpPayload } from "@integraledger/lcp/x402";
+import { readFileSync } from "node:fs";
 import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
 import { decodeFunctionData, encodeAbiParameters, parseSignature, serializeErc6492Signature, type Hex } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
@@ -258,8 +259,29 @@ describe("x402/exact/eip155/permit2 through the evm module", () => {
   });
 });
 
+describe("x402/exact/eip155/eip3009 at zero, as Base Sepolia's USDC takes it", () => {
+  // A payment of amount 0 and its transferWithAuthorization's logs, as Base Sepolia's node simulated it (the fixture names it).
+  const Z = JSON.parse(readFileSync(new URL("./fixtures/base-sepolia-eip3009-zero.json", import.meta.url), "utf8")) as {
+    block: { timestamp: number };
+    payment: PaymentPayload;
+    simulation: { logs: unknown[] };
+  };
+
+  it("verifies and settles the payment of 0, sending its authorization, which leaves the logs the chain's simulation shows", async () => {
+    vi.setSystemTime(Z.block.timestamp * 1000);
+    const { settler } = await exactOn();
+    const payer = (Z.payment.payload as { authorization: { from: string } }).authorization.from;
+    expect(await settler.verify(Z.payment)).toMatchObject({ isValid: true, payer });
+    const settled = await settler.settle(Z.payment);
+    expect(settled).toMatchObject({ success: true, network: NETWORK, payer });
+    const tx = chain.sent.at(-1)!;
+    expect(settled.transaction).toBe(tx.hash);
+    expect(profileLogs(tx.to, tx.input)).toEqual(Z.simulation.logs);
+  });
+});
+
 describe("what /supported states of the evm and erc7710 modules", () => {
-  it("states each configured scheme on each network once, with the gas key as relayer and as its signer, no zero, and its pairings; erc7710's behind exact", async () => {
+  it("states each configured scheme on each network once, with the gas key as relayer and as its signer, its pairings, and the one that takes zero; erc7710's behind exact", async () => {
     chain = chainOf(FIXED.now, [TOKEN]);
     node = await evmNode(chain);
     const signer = gasKey(node.url);
@@ -273,15 +295,16 @@ describe("what /supported states of the evm and erc7710 modules", () => {
     const supported = await settler.supported();
     const exact = ["x402/exact/eip155/eip3009", "x402/exact/eip155/permit2"];
     const erc7710 = ["x402/exact/eip155/erc7710", "x402/exact/eip155/erc7710-salt"];
-    expect(supported.kinds.map((k) => [k.scheme, k.network, k.extra?.["pairings"]])).toEqual([
-      ["exact", NETWORK, [...erc7710, ...exact]],
-      ["upto", NETWORK, ["x402/upto/eip155/permit2"]],
-      ["auth-capture", NETWORK, ["x402/auth-capture/eip155/eip3009", "x402/auth-capture/eip155/permit2"]],
-      ["batch-settlement", NETWORK, ["x402/batch-settlement/eip155"]],
-      ["exact", "eip155:8453", exact],
-      ["upto", "eip155:8453", ["x402/upto/eip155/permit2"]],
+    const zero = ["x402/exact/eip155/eip3009"];
+    expect(supported.kinds.map((k) => [k.scheme, k.network, k.extra?.["pairings"], k.extra?.["acceptsZero"]])).toEqual([
+      ["exact", NETWORK, [...erc7710, ...exact], zero],
+      ["upto", NETWORK, ["x402/upto/eip155/permit2"], []],
+      ["auth-capture", NETWORK, ["x402/auth-capture/eip155/eip3009", "x402/auth-capture/eip155/permit2"], []],
+      ["batch-settlement", NETWORK, ["x402/batch-settlement/eip155"], []],
+      ["exact", "eip155:8453", exact, zero],
+      ["upto", "eip155:8453", ["x402/upto/eip155/permit2"], []],
     ]);
-    for (const k of supported.kinds) expect(k.extra, `${k.scheme} ${k.network}`).toMatchObject({ key: "relayer", acceptsZero: false });
+    for (const k of supported.kinds) expect(k.extra, `${k.scheme} ${k.network}`).toMatchObject({ key: "relayer" });
     expect(supported.signers).toEqual({ "eip155:*": [signer.address] });
   });
 });

@@ -228,7 +228,7 @@ function feesOf(c: AlgorandConfig): FeeNeeds {
 /** The descriptor of `x402/exact/algorand`, one kind for both paths. */
 function descriptor(): Module["descriptor"] {
   // lcp's floor is 0: the scheme sets none, the class compares amounts by equality, and a zero transfer needs no opt-in.
-  return { name: "algorand", key: "fee-payer", pairings: [exactAvm.id], acceptsZero: true };
+  return { name: "algorand", key: "fee-payer", pairings: [exactAvm.id], acceptsZero: [exactAvm.id] };
 }
 
 /**

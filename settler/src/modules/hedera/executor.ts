@@ -317,7 +317,7 @@ export function transferExecutorModule(c: HederaConfig, offering: ExecutorOfferi
   };
 
   return {
-    descriptor: { name: "hedera", key: "relayer", pairings: [exactHederaExecutor.id], acceptsZero: false },
+    descriptor: { name: "hedera", key: "relayer", pairings: [exactHederaExecutor.id], acceptsZero: [] },
     network,
     facilitator,
     record: {

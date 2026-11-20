@@ -95,7 +95,7 @@ export function hederaModule(c: HederaConfig): Module {
   const mirror = mirrorOf(c);
   return {
     // A zero transfer is not established on Hedera, so the kind does not take zero.
-    descriptor: { name: "hedera", key: "fee-payer", pairings: [exactHedera.id], acceptsZero: false },
+    descriptor: { name: "hedera", key: "fee-payer", pairings: [exactHedera.id], acceptsZero: [] },
     network,
     facilitator: naming(new ExactHederaScheme(c.signer)),
     record: {

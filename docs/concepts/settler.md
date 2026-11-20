@@ -67,8 +67,8 @@ with the class's own members:
   payer pays the fee. `relayer`: the key sends the transaction and pays its network fee. `fee-payer`: the key co-signs
   the payer's transaction as the account that pays its fee. The key is always the seller's, given to the module as the
   signer object its class takes.
-- `extra.acceptsZero`: whether the kind settles a payment of amount zero, which a seller choosing a zero agreement
-  amount needs to know.
+- `extra.acceptsZero`: the pairings the kind settles at an amount of zero, `[]` where none does, which a seller
+  choosing a zero agreement amount needs to know.
 - `extra.feeBudget`: present, and `true`, where the operator capped the fees its keys pay on the network, so that the
   settler may refuse every payment there for a period.
 

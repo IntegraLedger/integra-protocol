@@ -193,7 +193,7 @@ export function aptosModule(c: AptosConfig, meter?: FeeMeter): Module {
   const cls = new ExactAptosScheme(meter === undefined ? c.signer : counted(c, meter), sponsor);
   return {
     // A zero amount is not established on Aptos, so the kind does not take zero.
-    descriptor: { name: "aptos", key: sponsor ? "fee-payer" : "none", pairings: [exactAptos.id], acceptsZero: false },
+    descriptor: { name: "aptos", key: sponsor ? "fee-payer" : "none", pairings: [exactAptos.id], acceptsZero: [] },
     network,
     facilitator: sponsor ? cls : unsponsored(cls),
     record: {

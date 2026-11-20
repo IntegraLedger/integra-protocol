@@ -270,7 +270,7 @@ export function suiModule(c: SuiNetworkConfig, core: Core): Module {
       pairings: [ID],
       // A transfer of 0 executes where the buyer pays gas: Sui testnet transaction 7EjfN1kqGng3phZjqgCzy8RRRXCP2Ybt7mikGgjBUwKA,
       // status SUCCESS, its only balance change the sender's gas. lcp's option filter refuses 0 on the gasless path.
-      acceptsZero: true,
+      acceptsZero: [ID],
       verifiesLanded: true,
     },
     network: network as Network,

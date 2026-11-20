@@ -26,8 +26,8 @@ export interface Kind {
   readonly scheme: string;
   readonly network: Network;
   readonly key: KeyPurpose;
-  /** True only where every module behind the kind takes zero. */
-  readonly acceptsZero: boolean;
+  /** The kind's pairings that take an amount of zero: each one every module submitting it names so. */
+  readonly acceptsZero: readonly PairingId[];
   /** Every pairing a module behind the kind submits, each once. */
   readonly pairings: readonly PairingId[];
   /** Whether the network has a fee budget. */
@@ -55,7 +55,7 @@ export function kindOf(r: Registration, feeBudget: boolean): Kind {
     scheme: r.module.facilitator.scheme,
     network: r.network,
     key: keys[0] ?? "none",
-    acceptsZero: modules.every((m) => m.descriptor.acceptsZero),
+    acceptsZero: pairings.filter((id) => modules.every((m) => !m.descriptor.pairings.includes(id) || m.descriptor.acceptsZero.includes(id))),
     pairings,
     feeBudget,
   };
@@ -83,12 +83,12 @@ function optionAmount(kind: Kind, p: X402Payment, phase: Phase): string {
 }
 
 /**
- * The kind's declaration, held to a payment before the class is asked: an option of amount zero where the kind does
- * not take zero, and a form outside the pairings the module the payment goes to submits, are refused
+ * The kind's declaration, held to a payment before the class is asked: an option of amount zero whose pairing the kind
+ * does not name as taking zero, and a form outside the pairings the module the payment goes to submits, are refused
  * `invalid_payment_requirements`.
  */
 export function declared(kind: Kind, module: Module, p: X402Payment, i: Instrumented, phase: Phase): string | undefined {
-  if (!kind.acceptsZero && /^0+$/.test(optionAmount(kind, p, phase))) return "invalid_payment_requirements";
+  if (/^0+$/.test(optionAmount(kind, p, phase)) && !kind.acceptsZero.includes(i.pairing)) return "invalid_payment_requirements";
   if (!module.descriptor.pairings.includes(i.pairing)) return "invalid_payment_requirements";
   return undefined;
 }

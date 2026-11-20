@@ -91,7 +91,7 @@ describe("the Hedera module, x402/exact/hedera", () => {
           x402Version: 2,
           scheme: "exact",
           network: NETWORK,
-          extra: { feePayer: FEE_PAYER, key: "fee-payer", acceptsZero: false, pairings: ["x402/exact/hedera"] },
+          extra: { feePayer: FEE_PAYER, key: "fee-payer", acceptsZero: [], pairings: ["x402/exact/hedera"] },
         },
       ],
       extensions: [],
@@ -259,7 +259,7 @@ describe("the Hedera module, x402/exact/hedera/transfer-executor, given one exec
     node = await routes(exampleMirror(null));
     await startExecutor([]);
     expect(await settler!.supported()).toMatchObject({
-      kinds: [{ network: NETWORK, extra: { assetTransferMethod: "transferExecutor", executors: [EXECUTOR], key: "relayer", acceptsZero: false, pairings: ["x402/exact/hedera/transfer-executor"] } }],
+      kinds: [{ network: NETWORK, extra: { assetTransferMethod: "transferExecutor", executors: [EXECUTOR], key: "relayer", acceptsZero: [], pairings: ["x402/exact/hedera/transfer-executor"] } }],
       signers: { "hedera:*": [EXECUTOR_FEE_PAYER] },
     });
   });

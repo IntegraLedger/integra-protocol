@@ -111,7 +111,7 @@ describe("the XRPL module through the settler's HTTP surface", () => {
     expect(kinds.find((k) => k.scheme === "exact")).toMatchObject({
       x402Version: 2,
       network: NETWORK,
-      extra: { key: "none", acceptsZero: false, pairings: ["x402/exact/xrpl"] },
+      extra: { key: "none", acceptsZero: [], pairings: ["x402/exact/xrpl"] },
     });
   });
 

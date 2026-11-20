@@ -19,6 +19,7 @@ import { UptoEvmScheme } from "@x402/evm/upto/facilitator";
 import type { FacilitatorEvmSigner } from "@x402/evm";
 import { NODE_TIMEOUT_MS } from "../../http.js";
 import { phaseOf, type FeeMeter, type FeeNeeds, type Module, type ModuleStarter, type RecordNeeds, type Registration } from "../../module.js";
+import { exactEip3009 } from "@integraledger/lcp/x402";
 import { admit, instrumentOf, PAIRINGS, readOf, type EvmScheme } from "./forms.js";
 import { chargedFrom, evmReader, feeShown } from "./node.js";
 
@@ -164,10 +165,10 @@ export function evmModules(c: EvmConfig, meter: FeeMeter, pending?: PendingSettl
         name: "evm",
         key: "relayer",
         pairings,
-        // A kind takes zero only where each of its pairings does. At 0 on Base Sepolia: EIP-3009's transfer lands, x402's
-        // Permit2 proxies revert `InvalidAmount`, the escrow's `authorize` reverts `ZeroAmount`; batch settlement's
-        // facilitator requires a deposit above 0. `exact` holds the Permit2 form beside EIP-3009's.
-        acceptsZero: false,
+        // At 0 on Base Sepolia: EIP-3009's transfer lands (test/fixtures/base-sepolia-eip3009-zero.json), x402's Permit2
+        // proxies revert `InvalidAmount`, the escrow's `authorize` reverts `ZeroAmount`; batch settlement's facilitator
+        // requires a deposit above 0.
+        acceptsZero: scheme === "exact" ? [exactEip3009.id] : [],
       },
       network,
       facilitator: checked(scheme, classOf(scheme, c, signer, pending), pairings),

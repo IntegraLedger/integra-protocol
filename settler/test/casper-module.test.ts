@@ -288,7 +288,7 @@ describe("the Casper module", () => {
     const { signer, key } = await relayer(node.url);
     await start([{ network: NETWORK, signer, rpc: node.url }]);
     expect(await settler!.supported()).toEqual({
-      kinds: [{ x402Version: 2, scheme: "exact", network: NETWORK, extra: { key: "relayer", acceptsZero: false, pairings: ["x402/exact/casper"] } }],
+      kinds: [{ x402Version: 2, scheme: "exact", network: NETWORK, extra: { key: "relayer", acceptsZero: [], pairings: ["x402/exact/casper"] } }],
       extensions: [],
       signers: { "casper:*": [key.publicKey.accountHash().toHex()] },
     });

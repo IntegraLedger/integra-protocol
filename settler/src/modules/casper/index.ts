@@ -449,7 +449,7 @@ export function casperModule(c: CasperConfig, p: Awaited<ReturnType<typeof publi
     meter === undefined ? c.signer : counted(c.signer, meter, (hash) => chargedOf(c.rpc, hash, bound, performance.now() + NODE_TIMEOUT_MS));
   return {
     // x402's Casper settler refuses a zero amount, so the kind does not take zero (the profile, rule 24).
-    descriptor: { name: "casper", key: "relayer", pairings: [exactCasper.id], acceptsZero: false },
+    descriptor: { name: "casper", key: "relayer", pairings: [exactCasper.id], acceptsZero: [] },
     network,
     facilitator: new p.Scheme(signer, c.paymentMotes === undefined ? {} : { limitedPaymentMotes: c.paymentMotes }),
     record: {

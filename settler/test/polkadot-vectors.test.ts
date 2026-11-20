@@ -318,7 +318,7 @@ describe("lcp's V3 payment through the settler's /supported, /verify and /settle
           x402Version: 2,
           scheme: "exact",
           network: NETWORK,
-          extra: { assetTransferMethod: "lcp-assets-remark", key: "none", acceptsZero: false, pairings: ["x402/exact/polkadot/lcp-assets-remark"] },
+          extra: { assetTransferMethod: "lcp-assets-remark", key: "none", acceptsZero: [], pairings: ["x402/exact/polkadot/lcp-assets-remark"] },
         },
       ],
       extensions: [],

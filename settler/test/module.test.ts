@@ -131,7 +131,7 @@ describe("the module contract", () => {
     expectTypeOf<Descriptor["key"]>().toEqualTypeOf<KeyPurpose>();
     expectTypeOf<KeyPurpose>().toEqualTypeOf<"none" | "relayer" | "fee-payer">();
     expectTypeOf<Descriptor["pairings"]>().toEqualTypeOf<readonly PairingId[]>();
-    expectTypeOf<Descriptor["acceptsZero"]>().toEqualTypeOf<boolean>();
+    expectTypeOf<Descriptor["acceptsZero"]>().toEqualTypeOf<readonly PairingId[]>();
     expectTypeOf<RecordNeeds["instrument"]>().parameter(0).toEqualTypeOf<X402Payment>();
     expectTypeOf<RecordNeeds["instrument"]>().returns.resolves.toEqualTypeOf<Instrumented | Refused>();
     expectTypeOf<RecordNeeds["read"]>().returns.resolves.toEqualTypeOf<ChainRead>();
@@ -182,7 +182,7 @@ describe("the Tron module", () => {
   it("has every member, and states its kind as the rail's /supported does, with the settler's members added", async () => {
     const m = await tronOn(() => ({}));
     expect(Object.keys(m).sort()).toEqual(["descriptor", "facilitator", "fees", "network", "record"]);
-    expect(m.descriptor).toEqual({ name: "tron", key: "none", pairings: ["x402/exact/tron/lcp-trc20-memo"], acceptsZero: false });
+    expect(m.descriptor).toEqual({ name: "tron", key: "none", pairings: ["x402/exact/tron/lcp-trc20-memo"], acceptsZero: [] });
     expect(m.network).toBe(NETWORK);
     expect([m.facilitator.scheme, m.facilitator.caipFamily]).toEqual(["exact", "tron:*"]);
     expect(m.facilitator.getExtra(NETWORK)).toEqual({ assetTransferMethod: "lcp-trc20-memo" });

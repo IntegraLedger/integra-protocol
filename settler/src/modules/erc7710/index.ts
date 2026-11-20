@@ -216,7 +216,7 @@ export function erc7710Handoff(c: Erc7710Config): Handoff & { readonly module: E
     },
   };
   const module: EvmModule = {
-    descriptor: { name: "erc7710", key: "relayer", pairings: ERC7710_PAIRINGS, acceptsZero: false },
+    descriptor: { name: "erc7710", key: "relayer", pairings: ERC7710_PAIRINGS, acceptsZero: [] },
     network,
     facilitator: facilitatorOf(c),
     record,
