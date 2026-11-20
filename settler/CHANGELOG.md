@@ -4,6 +4,16 @@ Every release of `@integraledger/profile-facilitator`, the settler, with what an
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The package is 0.x: a minor release may change the
 configuration, the answers or the storage.
 
+## [Unreleased]
+
+### Changed
+
+- The README's module table gives each pairing's `confirmed` as `@integraledger/lcp`'s registry now states it: `yes`
+  on `x402/exact/cardano/lock`, `x402/exact/eip155/permit2`, `x402/upto/eip155/permit2`,
+  `x402/auth-capture/eip155/eip3009`, `x402/auth-capture/eip155/permit2`, `x402/batch-settlement/eip155`,
+  `x402/exact/eip155/erc7710`, `x402/exact/eip155/erc7710-salt` and `x402/upto/xrpl`, each shown end to end by a
+  recorded run on a test network. No module's behaviour changes.
+
 ## [0.5.0] - 2026-11-18
 
 The settler for the x402 pairings `@integraledger/lcp` 0.6.0 ships, on x402's own facilitator class (`@x402/core`
