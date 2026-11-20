@@ -29,6 +29,15 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   option's `extra.requestHash`, the invoice's `h` and the requirements it validates a payment against (profile
   `x402/exact/lnbtc/payment-hash`, rule 10). Its refusals are `build`'s: `ln/request-hash-mismatch` and
   `ln/request-binding-malformed`.
+- `data.option.extra` (type `OptionData`, from the root): on each pairing whose option filter requires members of the
+  option's `extra` to hold fixed values, those members and values, as the pairing's profile states them, so a resource
+  server writes them into its option from the data: `x402/exact/polkadot/lcp-assets-remark`, `assetTransferMethod`
+  `lcp-assets-remark`; `x402/exact/tron/lcp-trc20-memo`, `assetTransferMethod` `lcp-trc20-memo`;
+  `x402/exact/stellar/precondition`, `assetTransferMethod` `lcp-precondition` and `areFeesSponsored` `true`;
+  `x402/exact/tvm`, `areFeesSponsored` `true`; `x402/exact/xrpl` and `x402/upto/xrpl`, `areFeesSponsored` `false`. No
+  filter changes.
+- `LCP_PRECONDITION` (`@integraledger/lcp/x402-exact-stellar`): `x402/exact/stellar/precondition`'s
+  `assetTransferMethod`, `"lcp-precondition"`, beside Polkadot's `LCP_ASSETS_REMARK` and Tron's `LCP_TRC20_MEMO`.
 
 ### Fixed
 

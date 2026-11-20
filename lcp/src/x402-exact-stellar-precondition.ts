@@ -44,6 +44,8 @@ import { tie, type LcpPattern, type PaymentRequired, type PaymentRequirements } 
 export type { Broadcaster } from "./internal/broadcaster.js";
 
 const ID = "x402/exact/stellar/precondition" as const;
+/** The profile's `assetTransferMethod`, which tells this form's option from every other Stellar option. */
+export const LCP_PRECONDITION = "lcp-precondition";
 /** The option's `amount`: zero, or a decimal integer with no sign and no leading zero, below 2^127 (a `transfer`'s `i128`). */
 const AMOUNT = /^(0|[1-9][0-9]{0,38})$/;
 const I128_LIMIT = 1n << 127n;
@@ -73,7 +75,7 @@ export interface StellarPreconditionChoice {
 const filter: OptionFilter = (o) => {
   if (!isObject(o) || o.scheme !== "exact" || !isStellarNetwork(o.network)) return undefined;
   const extra: unknown = o.extra;
-  if (!isObject(extra) || extra["assetTransferMethod"] !== "lcp-precondition") return undefined;
+  if (!isObject(extra) || extra["assetTransferMethod"] !== LCP_PRECONDITION) return undefined;
   if (extra["areFeesSponsored"] !== true) return refusal("x402/option-malformed");
   if (unmux(o.payTo) !== null) return refusal("stellar/option-malformed");
   if (!isContract(o.asset) || !isAccount(o.payTo)) return refusal("x402/option-malformed");

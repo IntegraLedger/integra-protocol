@@ -4,11 +4,12 @@
  * authorization's nonce.
  *
  * The transaction carries that payload as a signed-payload precondition. The entry point also exports the pairing's
- * choice type `StellarPreconditionChoice`, and the `Broadcaster` type, which every pairing's `broadcaster` answers.
+ * choice type `StellarPreconditionChoice`, its `assetTransferMethod` `LCP_PRECONDITION`, and the `Broadcaster` type,
+ * which every pairing's `broadcaster` answers.
  *
  * @module
  */
-export { exactStellarPrecondition } from "./x402-exact-stellar-precondition.js";
+export { exactStellarPrecondition, LCP_PRECONDITION } from "./x402-exact-stellar-precondition.js";
 export type { StellarPreconditionChoice } from "./x402-exact-stellar-precondition.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
 export type { X402Read } from "./internal/x402.js";

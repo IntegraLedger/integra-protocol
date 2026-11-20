@@ -39,6 +39,7 @@ export const XRPL = /* @__PURE__ */ freeze({
     source: "stock `@x402/xrpl` 2.30.0, copying `extra.invoiceId`, which lcp's `advertise` sets to H's LCP string",
     nonce: "single-use",
     broadcasts: "payee",
+    option: { extra: { areFeesSponsored: false } },
     read: { endpoint: ["rippled"], note: NOTE, search: SEARCH, history: HISTORY, contracts: [], lapse: LAPSE },
     destination: "the Payment's `Destination`, compared on a charge with the option's payee",
     asset: ASSET,
@@ -152,6 +153,7 @@ export const XRPL = /* @__PURE__ */ freeze({
     source: "none: the payer's client opens the channel to `payTo` itself, and neither its create nor its claim carries H",
     nonce: "single-use",
     broadcasts: "payer",
+    option: { extra: { areFeesSponsored: false } },
     read: {
       endpoint: ["rippled"],
       note: NOTE,

@@ -104,7 +104,7 @@ import { exactStarknet, type StarknetReader, type StarknetRef } from "../src/sta
 import { spendPermissionsEip155, type SpendPermissionRef, type SpendPermissionReturn } from "../src/spend-permissions.js";
 import type { StellarPaymentPayload } from "../src/internal/stellar.js";
 import type { StellarReader, StellarRef } from "../src/stellar.js";
-import { exactStellarPrecondition } from "../src/x402-exact-stellar.js";
+import { exactStellarPrecondition, LCP_PRECONDITION } from "../src/x402-exact-stellar.js";
 import { exactSui, type SuiReader, type SuiRef } from "../src/sui.js";
 import { exactTronMemo, type TronReader, type TronRef } from "../src/tron.js";
 import { exactTvm, type TvmReader, type TvmRef } from "../src/tvm.js";
@@ -666,6 +666,55 @@ const PROFILE_ROWS: readonly ProfileRow[] = [
     text: "An option on an `lnbtc` network that fails one is refused with its code",
     member: (d) => d.cardLike,
     states: undefined,
+  },
+  {
+    id: "x402/exact/polkadot/lcp-assets-remark",
+    profile: "x402-exact-polkadot-lcp-assets-remark.md",
+    text: '`extra.assetTransferMethod` `"lcp-assets-remark"` (required)',
+    member: (d) => d.option?.extra,
+    states: { assetTransferMethod: "lcp-assets-remark" },
+  },
+  {
+    id: "x402/exact/tron/lcp-trc20-memo",
+    profile: "x402-exact-tron-lcp-trc20-memo.md",
+    text: '`extra.assetTransferMethod` `"lcp-trc20-memo"` (required)',
+    member: (d) => d.option?.extra,
+    states: { assetTransferMethod: "lcp-trc20-memo" },
+  },
+  {
+    id: "x402/exact/stellar/precondition",
+    profile: "x402-exact-stellar-precondition.md",
+    text: '`extra` an object holding `assetTransferMethod` `"lcp-precondition"` and `areFeesSponsored` `true`',
+    member: (d) => d.option?.extra,
+    states: { assetTransferMethod: "lcp-precondition", areFeesSponsored: true },
+  },
+  {
+    id: "x402/exact/stellar/precondition",
+    profile: "x402-exact-stellar-precondition.md",
+    text: '`extra` an object holding `assetTransferMethod` `"lcp-precondition"`',
+    member: () => LCP_PRECONDITION,
+    states: "lcp-precondition",
+  },
+  {
+    id: "x402/exact/tvm",
+    profile: "x402-exact-tvm.md",
+    text: "its `extra.areFeesSponsored` is `true`",
+    member: (d) => d.option?.extra,
+    states: { areFeesSponsored: true },
+  },
+  {
+    id: "x402/exact/xrpl",
+    profile: "x402-exact-xrpl.md",
+    text: "whose `extra.areFeesSponsored` is present and `false` (the payer pays the fee)",
+    member: (d) => d.option?.extra,
+    states: { areFeesSponsored: false },
+  },
+  {
+    id: "x402/upto/xrpl",
+    profile: "x402-upto-xrpl.md",
+    text: "the option's `extra.areFeesSponsored` is present and `false`",
+    member: (d) => d.option?.extra,
+    states: { areFeesSponsored: false },
   },
 ];
 

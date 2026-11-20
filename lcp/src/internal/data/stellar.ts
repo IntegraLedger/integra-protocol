@@ -13,6 +13,7 @@ export const STELLAR = /* @__PURE__ */ freeze({
     source: "lcp's client; no stock client builds it, and the buyer's own software signs the raw payload",
     nonce: "single-use",
     broadcasts: "payee",
+    option: { extra: { assetTransferMethod: "lcp-precondition", areFeesSponsored: true } },
     read: {
       endpoint: ["json-rpc"],
       note: "a Stellar RPC: `getNetwork`, `getLatestLedger`, `getEvents` and `getTransaction`",

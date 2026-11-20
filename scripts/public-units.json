@@ -60,7 +60,7 @@
     {
       "unit": "The registry entry as data and its codec",
       "exports": {
-        ".": ["Codec", "Entry", "Family", "PairingData", "Carrier", "Coverage", "ReadData", "EndpointKind", "Life", "AgreementData", "FeePayer", "FeeParty", "ChannelKind", "DataMembers", "IsNever", "NonZeroDigit", "NoneWhereNever"]
+        ".": ["Codec", "Entry", "Family", "PairingData", "Carrier", "Coverage", "ReadData", "EndpointKind", "Life", "AgreementData", "FeePayer", "FeeParty", "OptionData", "ChannelKind", "DataMembers", "IsNever", "NonZeroDigit", "NoneWhereNever"]
       },
       "use": "The registry entry as data and its codec, typed per family as Codec<Presented, Ref, Reader, F>, F being one descriptor of the family's documents, offers, inputs and read types: any caller reads a pairing's facts (which signed field carries H, whether a payment through it is itself a public proof of H, what reading it back needs and how long a signed payment can stay payable, and the agreement payment it admits) and calls its members with no cast.",
       "fixedBy": "Each pairing's profile; the Legal Context Protocol's binding patterns."
@@ -395,7 +395,7 @@
     {
       "unit": "x402/exact/stellar/precondition",
       "exports": {
-        "./x402-exact-stellar": ["StellarPreconditionChoice", "exactStellarPrecondition", "X402Read"]
+        "./x402-exact-stellar": ["LCP_PRECONDITION", "StellarPreconditionChoice", "exactStellarPrecondition", "X402Read"]
       },
       "use": "Any seller offering an agreement on Stellar under x402, any buyer's client signing it, and any settler or third party checking it, with no Integra software: the profile x402-exact-stellar-precondition defines the form.",
       "fixedBy": "The profile x402-exact-stellar-precondition; x402's exact scheme on Stellar."

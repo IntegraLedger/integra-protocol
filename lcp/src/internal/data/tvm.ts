@@ -11,6 +11,7 @@ export const TVM = /* @__PURE__ */ freeze({
     source: "the stock `@x402/tvm` client, copying `extra.forwardPayload`",
     nonce: "single-use",
     broadcasts: "payee",
+    option: { extra: { areFeesSponsored: true } },
     read: {
       endpoint: ["toncenter-v3"],
       note: "with its `runGetMethod`",

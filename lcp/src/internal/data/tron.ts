@@ -15,6 +15,7 @@ export const TRON = /* @__PURE__ */ freeze({
     source: "lcp's client; no stock client writes the form",
     nonce: "single-use",
     broadcasts: "payee",
+    option: { extra: { assetTransferMethod: "lcp-trc20-memo" } },
     read: {
       endpoint: ["fullnode-http"],
       search:

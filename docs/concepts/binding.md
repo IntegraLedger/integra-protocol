@@ -77,6 +77,7 @@ typed `PairingData`:
 | `read` | What a read of the pairing needs: the endpoint kind, the search key and its bound, the history, the contracts and, where the profile or the package states them, the networks each is deployed on (`chains`, CAIP-2 ids keyed by the contract), the signed fact after which the payment can no longer land, and, where the rail bounds it, how long a signed payment stays payable. |
 | `destination`, `asset`, `payer` | How each is identified in the landed transaction. |
 | `payeePreconditions` | Where the profile states them: what the payee's account must hold or be on chain before a payment can reach it, such as a token association or an asset already held. |
+| `option` | Where the pairing's option filter requires members of the option's `extra` to hold fixed values: `extra`, each such member with its value, as the profile states them, so a resource server writes them into its option. For example `x402/exact/stellar/precondition`'s is `{ assetTransferMethod: "lcp-precondition", areFeesSponsored: true }`. |
 | `cardLike` | `true` where the payment is card-like: a card, checkout or processor payment on no network a CAIP-2 id names. Lightning's pairings, on an `lnbtc` network, do not have it. |
 | `agreementOn` | At coverage `none`: which agreement the charge can follow: `any`, one on the `same-network`, or one pairing's. |
 | `confirmed` | Whether something outside this package has shown the form as its profile defines it. |

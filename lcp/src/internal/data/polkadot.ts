@@ -12,6 +12,7 @@ export const POLKADOT = /* @__PURE__ */ freeze({
     source: "lcp's client; no stock client writes the form, and `build` gives the call",
     nonce: "single-use",
     broadcasts: "payee",
+    option: { extra: { assetTransferMethod: "lcp-assets-remark" } },
     read: {
       endpoint: ["rest-api", "json-rpc"],
       note:

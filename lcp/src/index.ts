@@ -72,6 +72,7 @@ export type {
   Life,
   NoneWhereNever,
   NonZeroDigit,
+  OptionData,
   PairingData,
   ReadData,
 } from "./internal/registry.js";

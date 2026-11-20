@@ -113,6 +113,15 @@ export interface AgreementData {
   readonly only?: true;
 }
 
+/** What an option of the pairing holds, as data. */
+export interface OptionData {
+  /**
+   * The members of the option's `extra` the pairing's option filter requires, each with the one value it takes, as the
+   * pairing's profile states them: an option that lacks one, or holds another value, is not served as this pairing.
+   */
+  readonly extra: { readonly [member: string]: string | boolean };
+}
+
 /** The members of a pairing's data that do not turn on its coverage. */
 export interface DataMembers {
   readonly carrier: Carrier;
@@ -122,6 +131,11 @@ export interface DataMembers {
   readonly nonce: "single-use" | "reusable" | "unshown";
   /** The answers the codec's `broadcaster` can give over every credential type the pairing takes. */
   readonly broadcasts: Broadcaster | "either";
+  /**
+   * Present where the pairing's option filter requires members of the option's `extra` to hold fixed values, which
+   * `extra` names, so a resource server writes them into the option from the data.
+   */
+  readonly option?: OptionData;
   /** Absent where no public ledger records the payment. */
   readonly read?: ReadData;
   /** How the account the act names is identified in the landed transaction. */
@@ -160,8 +174,9 @@ export interface DataMembers {
  * payment through the pairing. Where a public ledger records the payment it has `read` (`ReadData`), what a read of
  * the pairing needs; and, where the pairing's entry states them, `destination`, `asset` and `payer`: how the account
  * the act names, the asset and the payer are identified in the landed transaction. Where the pairing's profile states
- * them it has `payeePreconditions`, what the payee's account must hold before it can be paid; and where the payment is
- * card-like, on no network a CAIP-2 id names, `cardLike`.
+ * them it has `payeePreconditions`, what the payee's account must hold before it can be paid; where the payment is
+ * card-like, on no network a CAIP-2 id names, `cardLike`; and where the pairing's option filter requires members of the
+ * option's `extra` to hold fixed values, `option` (`OptionData`), whose `extra` names each with its value.
  */
 export type PairingData = DataMembers &
   (
