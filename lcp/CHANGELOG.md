@@ -25,6 +25,12 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   credential from an `Authorization` or `Payment-Authorization` field value, held to the shape every `bound` reads
   first (`mpp/credential-malformed`); and `encodeReceipt(receipt)` writes a successful response's `Payment-Receipt`
   field value (`mpp/receipt-malformed`), with the type `MppReceipt`. No existing export changes.
+- `encodeCredential(credential)` and `decodeReceipt(fieldValue)` (`@integraledger/lcp/mpp`), the other halves of
+  `decodeCredential` and `encodeReceipt`, so a buyer's client answers a challenge and reads the receipt with this
+  package: `encodeCredential` writes the `Authorization` or `Payment-Authorization` field value as the `mppx` SDK
+  0.17.6 writes it and refuses a credential `decodeCredential` would not read back (`mpp/credential-malformed`);
+  `decodeReceipt` reads a `Payment-Receipt` field value and refuses one that does not decode to a receipt
+  `encodeReceipt` writes (`mpp/receipt-malformed`).
 - Four registry facts as data, beside the prose that states them. `data.agreement.feePayer` (`FeePayer`): the parties
   that may pay an agreement's fee (`FeeParty`: `buyer`, `settler`, `paymaster` or `none`) and the one that pays where
   the option names none, on every pairing whose payment can be an agreement, so a resource server can check the fee
@@ -82,6 +88,9 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   account's status: TON Center v3's `orig_status` and `end_status`. A deploy's `account_state_before` states no
   status, so a reader that took it from there gave the expiry read's search no status before the deploy, and the
   search held there.
+- `network` (`@integraledger/lcp/mpp`) gives a Hedera session challenge (`session` on `hedera`) its network from
+  `methodDetails.chainId`, `hedera:mainnet` for 295 or none and `hedera:testnet` for 296, the network `sessionResume`
+  reads, where it answered `mpp/network-unnamed`.
 
 ## [0.6.1] - 2026-11-18
 

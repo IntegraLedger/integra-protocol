@@ -191,6 +191,14 @@
      "code": "mpp/network-unnamed"
     },
     "source": "this package's refusal code"
+   },
+   {
+    "case": "a Hedera stock session on chain 296, the hedera challenge of mpp-session-hedera-solana-xrpl.json's SS1",
+    "method": "hedera",
+    "intent": "session",
+    "request": "{\"amount\":\"25\",\"currency\":\"0x0000000000000000000000000000000000001549\",\"methodDetails\":{\"chainId\":296,\"escrowContract\":\"0x8Aaf6690C2a6397d595F97E224fC19759De6fdaE\"},\"recipient\":\"0x742d35cc6634c0532925a3b844bc9e7595f8fe00\",\"suggestedDeposit\":\"10000000\",\"unitType\":\"llm_token\"}",
+    "expect": "hedera:testnet",
+    "source": "draft-hedera-session-00 at tempoxyz/mpp-specs 08e7dd87: methodDetails.chainId 296 is Hedera testnet, 295 mainnet"
    }
   ]
  },

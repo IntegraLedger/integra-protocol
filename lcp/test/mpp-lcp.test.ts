@@ -8,7 +8,9 @@ import { decodeHederaTx, txIdText } from "../src/hedera.js";
 import {
   chargeLcpHedera,
   decodeCredential,
+  decodeReceipt,
   encodeChallenge,
+  encodeCredential,
   encodeReceipt,
   network,
   pairingsOf,
@@ -81,6 +83,13 @@ describe("mpp-method-lcp.json: the credential and the receipt", () => {
     expect(decodeCredential(answer)).toEqual({ challenge: issued.wire, payload: hash.wire.payload });
   });
 
+  it("encodeCredential writes each credential decodeCredential read as the header mppx wrote", () => {
+    for (const c of [tx, hash]) {
+      expect(encodeCredential(c.wire)).toBe(c.header);
+      expect(encodeCredential(decodeCredential(c.header) as MppCredential)).toBe(c.header);
+    }
+  });
+
   it("the transaction credential carries H and takes the payee as broadcaster; the hash credential the payer, read first", async () => {
     expect(await chargeLcpHedera.bound(tx.wire)).toBe(V.fixed.H);
     expect(await chargeLcpHedera.broadcaster(tx.wire)).toBe("payee");
@@ -96,10 +105,12 @@ describe("mpp-method-lcp.json: the credential and the receipt", () => {
     expect(await chargeLcpHedera.broadcaster(other)).toEqual({ refused: true, code: "mpp/credential-type" });
   });
 
-  it("the receipt mppx writes, which encodeReceipt writes alike, names the transaction id as the SDK spells it, from the credential's signed body", () => {
+  it("the receipt mppx writes, which encodeReceipt writes alike and decodeReceipt reads back, names the transaction id as the SDK spells it, from the credential's signed body", () => {
     const r = V.receipts.hedera as { encoded: string; decoded: MppReceipt };
     expect(Receipt.deserialize(r.encoded)).toEqual(r.decoded);
     expect(encodeReceipt(r.decoded)).toBe(r.encoded);
+    expect(decodeReceipt(r.encoded)).toEqual(r.decoded);
+    expect(encodeReceipt(decodeReceipt(r.encoded) as MppReceipt)).toBe(r.encoded);
     expect(r.decoded.method).toBe("lcp");
     const body = decodeHederaTx(Buffer.from(tx.wire.payload["transaction"] as string, "base64")) as unknown as { bodies: { id: Parameters<typeof txIdText>[0] }[] };
     expect(r.decoded.reference).toBe(txIdText(body.bodies[0]!.id));

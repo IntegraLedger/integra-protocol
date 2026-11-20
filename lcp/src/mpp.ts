@@ -1,8 +1,8 @@
 /**
  * The `mpp` entry point: MPP's challenge pieces, its three fields (`encodeChallenge` writes a `WWW-Authenticate`
- * value, `decodeCredential` reads an `Authorization` value, `encodeReceipt` writes a `Payment-Receipt` value) and its
- * pairings: the EVM charges, defined here, and every other MPP charge, session and subscription pairing but
- * Lightning's, re-exported from its module.
+ * value, `encodeCredential` and `decodeCredential` write and read an `Authorization` value, `encodeReceipt` and
+ * `decodeReceipt` write and read a `Payment-Receipt` value) and its pairings: the EVM charges, defined here, and every
+ * other MPP charge, session and subscription pairing but Lightning's, re-exported from its module.
  *
  * The EVM charges are `authorization` (the signed nonce is keccak256 of the JSON array [id, realm]), `permit2` (the
  * signed witness carries that value), and `transaction` and `hash` (nothing signed carries H). The re-exported charges
@@ -69,7 +69,7 @@ import { stacksNetworkOf, usdcProfile } from "./mpp-method-checks.js";
 import { chargeNearIntents } from "./mpp-nearintents.js";
 import { chargeUsdcEvm, chargeUsdcGateway, chargeUsdcSolana, chargeUsdcStacks } from "./mpp-usdc.js";
 import { evmSessionResume, sessionEvm, sessionNetwork, sessionTempo, subscriptionTempo } from "./mpp-session.js";
-import { solanaNetworkOf, xrplNetworkOf } from "./mpp-rail-checks.js";
+import { hederaSessionNetworkOf, solanaNetworkOf, xrplNetworkOf } from "./mpp-rail-checks.js";
 import { chargeLightning, sessionLightning } from "./lightning.js";
 import { railSessionResume, sessionXrpl, sessionXrplStock } from "./mpp-session-rails.js";
 import { hederaSessionResume, sessionHederaStock } from "./hedera-session.js";
@@ -111,7 +111,9 @@ export {
   challengeId,
   checkAttribution,
   decodeCredential,
+  decodeReceipt,
   encodeChallenge,
+  encodeCredential,
   encodeReceipt,
   issuedDigest,
   pairingsOf,
@@ -395,6 +397,8 @@ export function network(challenge: MppChallenge): string | Refusal {
     case "charge/xrpl":
     case "session/xrpl":
       return xrplNetworkOf(d);
+    case "session/hedera":
+      return hederaSessionNetworkOf(d);
     case "charge/nearintents":
       return d["originNetwork"] as string;
     case "charge/lcp":

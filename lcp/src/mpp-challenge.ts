@@ -1,8 +1,8 @@
 /**
- * MPP's `Payment` challenge, shared by every MPP pairing: writing and parsing the `WWW-Authenticate` field, reading
- * the credential's field and writing the `Payment-Receipt` field, the challenge `id` derived from the ATR hash, the LCP
- * reference in `opaque`, the binding slot, the digest of what was issued, the buyer's reading, the check on an echoed
- * challenge, the attribution memo and the problem types.
+ * MPP's `Payment` challenge, shared by every MPP pairing: writing and parsing the `WWW-Authenticate` field, writing
+ * and reading the credential's field and the `Payment-Receipt` field, the challenge `id` derived from the ATR hash, the
+ * LCP reference in `opaque`, the binding slot, the digest of what was issued, the buyer's reading, the check on an
+ * echoed challenge, the attribution memo and the problem types.
  */
 import {
   canonicalJson,
@@ -1309,6 +1309,34 @@ export function decodeCredential(fieldValue: string): MppCredential | Refusal {
 }
 
 /**
+ * A credential as a `Payment` credential field value, the one `decodeCredential` reads back as the same credential:
+ * `Payment`, a space, then base64url without padding of the UTF-8 of its JSON, in the form `mppx` 0.17.6's
+ * `Credential.serialize` writes: `challenge`, its own members in their order with `opaque` and then `request` last,
+ * then `payload`, then `source` where the credential has one. Each member is written as given: `request` and `opaque`
+ * stay the base64url the challenge carries, and a member whose value is `undefined` is left out of the challenge. The
+ * client sends it in the field its challenge selects, `Authorization`, or `Payment-Authorization` where the challenge
+ * carries `header`. A credential `credentialShape`'s gate refuses, one that is not then JSON (an `undefined` inside the
+ * payload, a function, a `bigint`, a non-finite number, a lone surrogate or an instance of a class), and one whose value
+ * `decodeCredential` refuses, over 65,536 bytes among them, is `mpp/credential-malformed`.
+ */
+export function encodeCredential(credential: MppCredential): string | Refusal {
+  const c = credentialShape(credential);
+  if (isRefusal(c)) return c;
+  const challenge: { [k: string]: unknown } = {};
+  const echoed = c.challenge as unknown as { [k: string]: unknown };
+  for (const k of Object.keys(echoed)) {
+    if (k !== "opaque" && k !== "request" && echoed[k] !== undefined) challenge[k] = echoed[k];
+  }
+  if (echoed["opaque"] !== undefined) challenge["opaque"] = echoed["opaque"];
+  challenge["request"] = echoed["request"];
+  const wire: { [k: string]: unknown } = { challenge, payload: c.payload };
+  if (c.source !== undefined) wire["source"] = c.source;
+  if (typeof canonicalJson(wire) !== "string") return refusal("mpp/credential-malformed");
+  const value = `Payment ${toBase64Url(new TextEncoder().encode(JSON.stringify(wire)))}`;
+  return isRefusal(decodeCredential(value)) ? refusal("mpp/credential-malformed") : value;
+}
+
+/**
  * `credentialShape`'s gate, with `credentialOf`'s checks in its order and the size last. Without `bound`, as
  * `issuedFor` reads an issued challenge, which need not carry H, the challenge's id is not read.
  */
@@ -1644,6 +1672,35 @@ export type MppReceipt = {
  * `mpp/receipt-malformed`.
  */
 export function encodeReceipt(receipt: MppReceipt): string | Refusal {
+  const written = receiptWritten(receipt);
+  return isRefusal(written) ? written : toBase64Url(new TextEncoder().encode(JSON.stringify(written)));
+}
+
+/**
+ * The receipt a `Payment-Receipt` field value carries, the inverse of `encodeReceipt`: base64url without padding in its
+ * canonical form, the form `mppx` 0.17.6's `Receipt.serialize` writes, of well-formed UTF-8 of one JSON object nested
+ * at most 64 levels deep, held to the receipt `encodeReceipt` writes: `status` `success`, a `method` of lowercase ASCII
+ * letters, an RFC 3339 `timestamp` and a string `reference`; every other member is kept as given. A value that does
+ * not decode so, and a receipt `encodeReceipt` refuses, is `mpp/receipt-malformed`. A buyer's client reads it from a
+ * successful response; the receipt says what the seller reports, and nothing here reads the payment.
+ */
+export function decodeReceipt(fieldValue: string): MppReceipt | Refusal {
+  if (typeof fieldValue !== "string") return refusal("mpp/receipt-malformed");
+  const bytes = fromBase64Url(fieldValue);
+  if (bytes === null) return refusal("mpp/receipt-malformed");
+  let text: string;
+  try {
+    text = new TextDecoder("utf-8", { fatal: true, ignoreBOM: true }).decode(bytes);
+  } catch {
+    return refusal("mpp/receipt-malformed");
+  }
+  const receipt = parseJson(text);
+  if (!isObject(receipt) || isRefusal(receiptWritten(receipt as MppReceipt))) return refusal("mpp/receipt-malformed");
+  return receipt as MppReceipt;
+}
+
+/** The receipt's members `encodeReceipt` writes, `undefined` ones left out, or `mpp/receipt-malformed`. */
+function receiptWritten(receipt: MppReceipt): { [k: string]: unknown } | Refusal {
   if (!isObject(receipt) || carriesRefused(receipt)) return refusal("mpp/receipt-malformed");
   const proto = Object.getPrototypeOf(receipt);
   if (proto !== Object.prototype && proto !== null) return refusal("mpp/receipt-malformed");
@@ -1662,7 +1719,7 @@ export function encodeReceipt(receipt: MppReceipt): string | Refusal {
   }
   if (typeof written["reference"] !== "string") return refusal("mpp/receipt-malformed");
   if (typeof canonicalJson(written) !== "string") return refusal("mpp/receipt-malformed");
-  return toBase64Url(new TextEncoder().encode(JSON.stringify(written)));
+  return written;
 }
 
 // ── Problem types.

@@ -234,7 +234,7 @@ The protocol and rail entry points:
 | `@integraledger/lcp/x402-batch-settlement` | x402 `batch-settlement` on EVM, Solana and Cloudflare: one ATR per channel. |
 | `@integraledger/lcp/x402-exact-solana`, `…/x402-upto-solana`, `…/x402-exact-xrpl`, `…/x402-upto-xrpl` | The x402 pairings on Solana and the XRP Ledger. |
 | `@integraledger/lcp/x402-exact-stellar` | The Stellar x402 pairing `exactStellarPrecondition` (`x402/exact/stellar/precondition`), its `StellarPreconditionChoice` type, and the `Broadcaster` type. |
-| `@integraledger/lcp/mpp` | MPP challenges, the `WWW-Authenticate`, credential and `Payment-Receipt` field values, H as the challenge id, and every MPP charge, session and subscription pairing. |
+| `@integraledger/lcp/mpp` | MPP challenges, the `WWW-Authenticate` field value written, the credential and `Payment-Receipt` field values written and read, H as the challenge id, and every MPP charge, session and subscription pairing. |
 | `@integraledger/lcp/acp`, `…/ucp`, `…/ap2`, `…/ack` | Agentic checkouts: ACP, UCP, AP2 and ACK, each with `issuedDigest`, the digest a seller keeps of an option it issued. |
 | `@integraledger/lcp/card` | Visa TAP, Visa Intelligent Commerce, Mastercard Agent Pay, Mastercard Verifiable Intent and the plain card checkout, with `issuedDigest`, the digest a seller keeps of a card option it issued. |
 | `@integraledger/lcp/spend-permissions` | `spend-permissions/eip155`: an account's Spend Permission whose `salt` is H, as the sale's agreement, with the `Spend-Permission` header, the read of the approval, and `issuedDigest`, the digest a resource server keeps of an offer it issued, one for the offer as issued, as placed and as returned. |
