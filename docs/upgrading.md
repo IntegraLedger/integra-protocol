@@ -30,12 +30,19 @@ npm install @integraledger/lcp@~0.6.0
 
 ## Within 0.6
 
-0.6.1 and 0.6.2 add exports and registry members and correct reads; no call your code makes changes, and the
+0.6.1, 0.6.2 and 0.6.3 add exports and registry members and correct reads; no call your code makes changes, and the
 [changelog](../lcp/CHANGELOG.md) lists each addition. One addition in 0.6.2 is visible on the wire. An agreement
 option's served member may name the charge options of any ATR binding slot as `<slot>/<i>`, such as `card/0` or
 `acp/1`, where 0.6.0 and 0.6.1 read only `x402/<i>` and `mpp/<i>`. Their `servesOf` refuses an agreement option
 that names another slot's options (`return/serves-malformed`), so a buyer that reads a card or checkout sale's
 agreement option needs 0.6.2.
+
+0.6.3 corrects three of lcp's MPP forms to what the stock library on the other side takes, each visible on the wire.
+`mpp/session/tempo`'s v1 funding carries `approve`, the currency's `approve(escrow, deposit)`, which the opening sends
+before `call`, the escrow's `open`. `mpp/session/xrpl`'s voucher and close carry `source`, naming the channel's payer.
+`mpp/subscription/solana` reads `@solana/pay-kit` 0.13.1's request, with `planAddress` and `subscriptionProgram`, and
+refuses one in the earlier form (`mpp/request-malformed`), so the seller and the buyer of a Solana subscription both
+need 0.6.3.
 
 ## From 0.5.x to 0.6.0
 
