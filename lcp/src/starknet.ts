@@ -300,14 +300,32 @@ export function snNonce(h: AtrHash): Felt | Refusal {
 }
 
 /**
- * The agreement's floor on the token `asset`, in its base units (the profile `x402-exact-starknet`, rule 24): 0 only on
- * a token a run has shown to emit a `Transfer` for a transfer of zero, since the search finds a payment by its
- * `Transfer` alone, and 1 on any other. No run has shown one, so the floor is 1 on every token. An `asset` that is not
- * a felt is `starknet/felt-malformed`.
+ * The tokens a run has shown to emit a `Transfer` for a transfer of zero, by network: on Starknet Sepolia, STRK and
+ * USDC, each of whose `transfer(to, 0)` emits a `Transfer` of 0 (`starknet_simulateTransactions` at block 18422698,
+ * `test/fixtures/starknet-zero-transfer-sepolia.json`).
  */
-export function starknetFloor(input: { asset: string }): bigint | Refusal {
-  if (!isObject(input) || feltValue(input.asset) === undefined) return refusal("starknet/felt-malformed");
-  return 1n;
+const ZERO_TRANSFER_SHOWN: Readonly<Record<StarknetNetwork, readonly bigint[]>> = {
+  "starknet:SN_MAIN": [],
+  "starknet:SN_SEPOLIA": [
+    0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938dn,
+    0x53b40a647cedfca6ca84f542a0fe36736031905a9639a7f19a3c1e66bfd5080n,
+  ],
+};
+
+/**
+ * The agreement's floor on the token `asset` of `network`, in its base units (the profile `x402-exact-starknet`, rule
+ * 24): 0 on a token a run has shown to emit a `Transfer` for a transfer of zero on that network (`ZERO_TRANSFER_SHOWN`),
+ * since the search finds a payment by its `Transfer` alone, and 1 on any other, and on any token where no network is
+ * given. An `asset` that is not a felt is `starknet/felt-malformed`; a `network` given that is not a Starknet network,
+ * `starknet/network-malformed`.
+ */
+export function starknetFloor(input: { asset: string; network?: StarknetNetwork }): bigint | Refusal {
+  if (!isObject(input)) return refusal("starknet/felt-malformed");
+  const asset = feltValue(input.asset);
+  if (asset === undefined) return refusal("starknet/felt-malformed");
+  if (input.network === undefined) return 1n;
+  if (!NETWORKS.includes(input.network)) return refusal("starknet/network-malformed");
+  return ZERO_TRANSFER_SHOWN[input.network].includes(asset) ? 0n : 1n;
 }
 
 /** The network's reference as a short-string felt. Throws TypeError on a network that is not a `StarknetNetwork`. */
@@ -1108,7 +1126,8 @@ const check: OptionFilter = (o) => {
     return refusal("starknet/felt-malformed");
   }
   if (feePayer === 0n || feePayer === BigInt(ANY_CALLER)) return refusal("starknet/caller-forbidden");
-  if (!isAmount(o.amount) || decimalBelow(o.amount, U256_LIMIT) === undefined) return refusal("starknet/option-malformed");
+  const zero = o.amount === "0" && starknetFloor({ asset: o.asset as string, network: o.network as StarknetNetwork }) === 0n;
+  if (!zero && (!isAmount(o.amount) || decimalBelow(o.amount, U256_LIMIT) === undefined)) return refusal("starknet/option-malformed");
   if (!isTimeoutSeconds(o.maxTimeoutSeconds)) return refusal("starknet/option-malformed");
   return true;
 };

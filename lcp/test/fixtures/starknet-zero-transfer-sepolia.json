@@ -1,0 +1,321 @@
+{
+ "description": "Starknet Sepolia JSON-RPC answers to starknet_simulateTransactions, recorded from the public endpoint api.zan.top/public/starknet-sepolia (RPC v0.9) on 2026-11-20 at block 18422698: an account's INVOKE v3 calling transfer(payee, 0) on STRK and on USDC, simulated with SKIP_VALIDATE and SKIP_FEE_CHARGE, so nothing was sent. Each trace's execute_invocation succeeds, and the token's call emits one event keyed by the Transfer selector, from the account to the payee, of amount 0 (two zero u256 words). `calls` holds each request and the server's answer.",
+ "network": "starknet:SN_SEPOLIA",
+ "block": 18422698,
+ "account": "0x73fd0eb55282fc0868e7aa438787cec54afce3688a52f3367807a1f0a4d0136",
+ "payee": "0x5eed1ac51fc5dbc71e6a63354258a21fdfdc4d445e73951fb596ab84edff1a1",
+ "tokens": {
+  "STRK": "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+  "USDC": "0x53b40a647cedfca6ca84f542a0fe36736031905a9639a7f19a3c1e66bfd5080"
+ },
+ "calls": [
+  {
+   "request": {
+    "method": "starknet_simulateTransactions",
+    "params": {
+     "block_id": {
+      "block_number": 18422698
+     },
+     "transactions": [
+      {
+       "type": "INVOKE",
+       "version": "0x3",
+       "sender_address": "0x73fd0eb55282fc0868e7aa438787cec54afce3688a52f3367807a1f0a4d0136",
+       "signature": [],
+       "nonce": "0x2",
+       "calldata": [
+        "0x1",
+        "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+        "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+        "0x3",
+        "0x5eed1ac51fc5dbc71e6a63354258a21fdfdc4d445e73951fb596ab84edff1a1",
+        "0x0",
+        "0x0"
+       ],
+       "resource_bounds": {
+        "l1_gas": {
+         "max_amount": "0x0",
+         "max_price_per_unit": "0x0"
+        },
+        "l2_gas": {
+         "max_amount": "0x0",
+         "max_price_per_unit": "0x0"
+        },
+        "l1_data_gas": {
+         "max_amount": "0x0",
+         "max_price_per_unit": "0x0"
+        }
+       },
+       "tip": "0x0",
+       "paymaster_data": [],
+       "account_deployment_data": [],
+       "nonce_data_availability_mode": "L1",
+       "fee_data_availability_mode": "L1"
+      }
+     ],
+     "simulation_flags": [
+      "SKIP_VALIDATE",
+      "SKIP_FEE_CHARGE"
+     ]
+    }
+   },
+   "answer": {
+    "id": 3,
+    "jsonrpc": "2.0",
+    "result": [
+     {
+      "fee_estimation": {
+       "l1_data_gas_consumed": "0x80",
+       "l1_data_gas_price": "0xd6d0",
+       "l1_gas_consumed": "0x0",
+       "l1_gas_price": "0x32040abb4516",
+       "l2_gas_consumed": "0x1416c2",
+       "l2_gas_price": "0x678d5e4b0",
+       "overall_fee": "0x8203ffd1e9d560",
+       "unit": "FRI"
+      },
+      "transaction_trace": {
+       "execute_invocation": {
+        "call_type": "CALL",
+        "calldata": [
+         "0x1",
+         "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+         "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+         "0x3",
+         "0x5eed1ac51fc5dbc71e6a63354258a21fdfdc4d445e73951fb596ab84edff1a1",
+         "0x0",
+         "0x0"
+        ],
+        "caller_address": "0x0",
+        "calls": [
+         {
+          "call_type": "CALL",
+          "calldata": [
+           "0x5eed1ac51fc5dbc71e6a63354258a21fdfdc4d445e73951fb596ab84edff1a1",
+           "0x0",
+           "0x0"
+          ],
+          "caller_address": "0x73fd0eb55282fc0868e7aa438787cec54afce3688a52f3367807a1f0a4d0136",
+          "calls": [],
+          "class_hash": "0x2e77ee61d4df3d988ee1f42ea5442e913862cc82c2584d212ecda76666498fc",
+          "contract_address": "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+          "entry_point_selector": "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+          "entry_point_type": "EXTERNAL",
+          "events": [
+           {
+            "data": [
+             "0x0",
+             "0x0"
+            ],
+            "keys": [
+             "0x99cd8bde557814842a3121e8ddfd433a539b8c9f14bf31ebf108d12e6196e9",
+             "0x73fd0eb55282fc0868e7aa438787cec54afce3688a52f3367807a1f0a4d0136",
+             "0x5eed1ac51fc5dbc71e6a63354258a21fdfdc4d445e73951fb596ab84edff1a1"
+            ],
+            "order": 0
+           }
+          ],
+          "execution_resources": {
+           "l1_gas": 0,
+           "l2_gas": 453960
+          },
+          "is_reverted": false,
+          "messages": [],
+          "result": [
+           "0x1"
+          ]
+         }
+        ],
+        "class_hash": "0x79a9a12fdfa0481e8d8d46599b90226cd7247b2667358bb00636dd864002314",
+        "contract_address": "0x73fd0eb55282fc0868e7aa438787cec54afce3688a52f3367807a1f0a4d0136",
+        "entry_point_selector": "0x15d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad",
+        "entry_point_type": "EXTERNAL",
+        "events": [],
+        "execution_resources": {
+         "l1_gas": 0,
+         "l2_gas": 601020
+        },
+        "is_reverted": false,
+        "messages": [],
+        "result": []
+       },
+       "execution_resources": {
+        "l1_data_gas": 128,
+        "l1_gas": 0,
+        "l2_gas": 1196860
+       },
+       "state_diff": {
+        "declared_classes": [],
+        "deployed_contracts": [],
+        "deprecated_declared_classes": [],
+        "nonces": [
+         {
+          "contract_address": "0x73fd0eb55282fc0868e7aa438787cec54afce3688a52f3367807a1f0a4d0136",
+          "nonce": "0x3"
+         }
+        ],
+        "replaced_classes": [],
+        "storage_diffs": []
+       },
+       "type": "INVOKE"
+      }
+     }
+    ]
+   }
+  },
+  {
+   "request": {
+    "method": "starknet_simulateTransactions",
+    "params": {
+     "block_id": {
+      "block_number": 18422698
+     },
+     "transactions": [
+      {
+       "type": "INVOKE",
+       "version": "0x3",
+       "sender_address": "0x73fd0eb55282fc0868e7aa438787cec54afce3688a52f3367807a1f0a4d0136",
+       "signature": [],
+       "nonce": "0x2",
+       "calldata": [
+        "0x1",
+        "0x53b40a647cedfca6ca84f542a0fe36736031905a9639a7f19a3c1e66bfd5080",
+        "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+        "0x3",
+        "0x5eed1ac51fc5dbc71e6a63354258a21fdfdc4d445e73951fb596ab84edff1a1",
+        "0x0",
+        "0x0"
+       ],
+       "resource_bounds": {
+        "l1_gas": {
+         "max_amount": "0x0",
+         "max_price_per_unit": "0x0"
+        },
+        "l2_gas": {
+         "max_amount": "0x0",
+         "max_price_per_unit": "0x0"
+        },
+        "l1_data_gas": {
+         "max_amount": "0x0",
+         "max_price_per_unit": "0x0"
+        }
+       },
+       "tip": "0x0",
+       "paymaster_data": [],
+       "account_deployment_data": [],
+       "nonce_data_availability_mode": "L1",
+       "fee_data_availability_mode": "L1"
+      }
+     ],
+     "simulation_flags": [
+      "SKIP_VALIDATE",
+      "SKIP_FEE_CHARGE"
+     ]
+    }
+   },
+   "answer": {
+    "id": 4,
+    "jsonrpc": "2.0",
+    "result": [
+     {
+      "fee_estimation": {
+       "l1_data_gas_consumed": "0x80",
+       "l1_data_gas_price": "0xd6d0",
+       "l1_gas_consumed": "0x0",
+       "l1_gas_price": "0x32040abb4516",
+       "l2_gas_consumed": "0x1416c2",
+       "l2_gas_price": "0x678d5e4b0",
+       "overall_fee": "0x8203ffd1e9d560",
+       "unit": "FRI"
+      },
+      "transaction_trace": {
+       "execute_invocation": {
+        "call_type": "CALL",
+        "calldata": [
+         "0x1",
+         "0x53b40a647cedfca6ca84f542a0fe36736031905a9639a7f19a3c1e66bfd5080",
+         "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+         "0x3",
+         "0x5eed1ac51fc5dbc71e6a63354258a21fdfdc4d445e73951fb596ab84edff1a1",
+         "0x0",
+         "0x0"
+        ],
+        "caller_address": "0x0",
+        "calls": [
+         {
+          "call_type": "CALL",
+          "calldata": [
+           "0x5eed1ac51fc5dbc71e6a63354258a21fdfdc4d445e73951fb596ab84edff1a1",
+           "0x0",
+           "0x0"
+          ],
+          "caller_address": "0x73fd0eb55282fc0868e7aa438787cec54afce3688a52f3367807a1f0a4d0136",
+          "calls": [],
+          "class_hash": "0xb45dbc3714180381c5680e41931172d67194d77d504413465390e0bef194ec",
+          "contract_address": "0x53b40a647cedfca6ca84f542a0fe36736031905a9639a7f19a3c1e66bfd5080",
+          "entry_point_selector": "0x83afd3f4caedc6eebf44246fe54e38c95e3179a5ec9ea81740eca5b482d12e",
+          "entry_point_type": "EXTERNAL",
+          "events": [
+           {
+            "data": [
+             "0x0",
+             "0x0"
+            ],
+            "keys": [
+             "0x99cd8bde557814842a3121e8ddfd433a539b8c9f14bf31ebf108d12e6196e9",
+             "0x73fd0eb55282fc0868e7aa438787cec54afce3688a52f3367807a1f0a4d0136",
+             "0x5eed1ac51fc5dbc71e6a63354258a21fdfdc4d445e73951fb596ab84edff1a1"
+            ],
+            "order": 0
+           }
+          ],
+          "execution_resources": {
+           "l1_gas": 0,
+           "l2_gas": 453960
+          },
+          "is_reverted": false,
+          "messages": [],
+          "result": [
+           "0x1"
+          ]
+         }
+        ],
+        "class_hash": "0x79a9a12fdfa0481e8d8d46599b90226cd7247b2667358bb00636dd864002314",
+        "contract_address": "0x73fd0eb55282fc0868e7aa438787cec54afce3688a52f3367807a1f0a4d0136",
+        "entry_point_selector": "0x15d40a3d6ca2ac30f4031e42be28da9b056fef9bb7357ac5e85627ee876e5ad",
+        "entry_point_type": "EXTERNAL",
+        "events": [],
+        "execution_resources": {
+         "l1_gas": 0,
+         "l2_gas": 601020
+        },
+        "is_reverted": false,
+        "messages": [],
+        "result": []
+       },
+       "execution_resources": {
+        "l1_data_gas": 128,
+        "l1_gas": 0,
+        "l2_gas": 1196860
+       },
+       "state_diff": {
+        "declared_classes": [],
+        "deployed_contracts": [],
+        "deprecated_declared_classes": [],
+        "nonces": [
+         {
+          "contract_address": "0x73fd0eb55282fc0868e7aa438787cec54afce3688a52f3367807a1f0a4d0136",
+          "nonce": "0x3"
+         }
+        ],
+        "replaced_classes": [],
+        "storage_diffs": []
+       },
+       "type": "INVOKE"
+      }
+     }
+    ]
+   }
+  }
+ ]
+}

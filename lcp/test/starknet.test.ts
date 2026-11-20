@@ -568,10 +568,12 @@ describe("x402-exact-starknet.json", () => {
 });
 
 describe("floor: the agreement's floor", () => {
-  it("is 1 base unit on every token, no run having shown a token that emits a Transfer for a transfer of zero", () => {
-    for (const row of rowsOf<{ case: string; asset: string; expect: string }>(V.floor.rows, "x402-exact-starknet.json floor.rows")) {
+  it("is 0 on a token shown to emit a Transfer for a transfer of zero on the network given, and 1 base unit on any other", () => {
+    type Row = { case: string; asset: string; network?: "starknet:SN_MAIN" | "starknet:SN_SEPOLIA"; expect: string };
+    for (const row of rowsOf<Row>(V.floor.rows, "x402-exact-starknet.json floor.rows")) {
       const expected = /^[0-9]+$/.test(row.expect) ? BigInt(row.expect) : { refused: true, code: row.expect };
-      expect([row.case, starknetFloor({ asset: row.asset })]).toEqual([row.case, expected]);
+      const input = row.network === undefined ? { asset: row.asset } : { asset: row.asset, network: row.network };
+      expect([row.case, starknetFloor(input)]).toEqual([row.case, expected]);
     }
   });
 });

@@ -5414,7 +5414,7 @@
       "decline": "signed-not-bound"
      }
     ],
-    "note": "presented is this file's S4 payment, as the file holds it; no signature was made for this row. It is also written by hand in Python 3.12.3 from x402-specification-v2.md \u00a75.2.1 and scheme_exact_starknet.md L95-160 at x402-foundation/x402 751590a2: from fixed.from; the typed data's types, primaryType and domain as the scheme gives them, Caller extra.feePayer, Nonce H below 2^251, Execute After 1, Execute Before now + maxTimeoutSeconds, and one Call to the asset with Selector sn_keccak(\"transfer\") (eth-utils 6.0.0's keccak, 250 bits) and Calldata [payTo, the amount's low and high 128 bits]; the signature S3.signature. Felts compare as integers, and the domain's version and revision as the integers 2 and 1 the scheme's hash-encoding note gives. complete gives it whole."
+    "note": "presented is this file's S4 payment, as the file holds it; no signature was made for this row. It is also written by hand in Python 3.12.3 from x402-specification-v2.md §5.2.1 and scheme_exact_starknet.md L95-160 at x402-foundation/x402 751590a2: from fixed.from; the typed data's types, primaryType and domain as the scheme gives them, Caller extra.feePayer, Nonce H below 2^251, Execute After 1, Execute Before now + maxTimeoutSeconds, and one Call to the asset with Selector sn_keccak(\"transfer\") (eth-utils 6.0.0's keccak, 250 bits) and Calldata [payTo, the amount's low and high 128 bits]; the signature S3.signature. Felts compare as integers, and the domain's version and revision as the integers 2 and 1 the scheme's hash-encoding note gives. complete gives it whole."
    }
   ]
  },
@@ -7733,11 +7733,35 @@
   }
  },
  "floor": {
-  "about": "The agreement's floor, read by starknetFloor (the profile x402-exact-starknet.md, rule 24): 0 only on a token a run has shown to emit a Transfer for a transfer of zero, 1 base unit on any other; no run has shown one, so 1 on every token. The asset row's token is fixed.O's asset, x402's Starknet example (scheme_exact_starknet.md at 0cb1a1f0). expect is the floor as a decimal, or the refusal code.",
+  "about": "The agreement's floor, read by starknetFloor (the profile x402-exact-starknet.md, rule 24): 0 on a token a run has shown to emit a Transfer for a transfer of zero on the network given, 1 base unit on any other and where no network is given. The asset row's token is fixed.O's asset, x402's Starknet example (scheme_exact_starknet.md at 0cb1a1f0); the STRK and USDC rows are the tokens test/fixtures/starknet-zero-transfer-sepolia.json shows on Starknet Sepolia. expect is the floor as a decimal, or the refusal code.",
   "rows": [
    {
-    "case": "fixed.O's asset",
+    "case": "fixed.O's asset, no network given",
     "asset": "0x0512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343",
+    "expect": "1"
+   },
+   {
+    "case": "fixed.O's asset on Starknet Sepolia, a token no run has shown",
+    "asset": "0x0512feac6339ff7889822cb5aa2a86c848e9d392bb0e3e237c008674feed8343",
+    "network": "starknet:SN_SEPOLIA",
+    "expect": "1"
+   },
+   {
+    "case": "STRK on Starknet Sepolia, whose transfer of zero emits a Transfer",
+    "asset": "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+    "network": "starknet:SN_SEPOLIA",
+    "expect": "0"
+   },
+   {
+    "case": "USDC on Starknet Sepolia, whose transfer of zero emits a Transfer",
+    "asset": "0x53b40a647cedfca6ca84f542a0fe36736031905a9639a7f19a3c1e66bfd5080",
+    "network": "starknet:SN_SEPOLIA",
+    "expect": "0"
+   },
+   {
+    "case": "STRK on Starknet mainnet, where no run has shown it",
+    "asset": "0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d",
+    "network": "starknet:SN_MAIN",
     "expect": "1"
    },
    {

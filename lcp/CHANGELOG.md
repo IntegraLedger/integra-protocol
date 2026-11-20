@@ -31,6 +31,13 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   ledger shows whose create the search, read whole from the position, does not hold is `failed`, `before-position`.
   The profiles `x402-exact-xrpl` (rule 15), `x402-upto-xrpl`, `mpp-charge-xrpl` and `mpp-session-hedera-solana-xrpl`
   state it, and the read kit runs the cases they declared inapplicable while the search proved no absence.
+- `x402/exact/starknet` takes an option of amount `"0"` on a token whose transfer of zero emits a `Transfer`, as the
+  profile `x402-exact-starknet` (rule 24) states the agreement's floor: on Starknet Sepolia, STRK and USDC, each of
+  whose `transfer(to, 0)` emits a `Transfer` of 0 (`starknet_simulateTransactions`,
+  `test/fixtures/starknet-zero-transfer-sepolia.json`). `starknetFloor` (`@integraledger/lcp/starknet`) takes an
+  optional `network` beside `asset` and answers 0 for those tokens on that network, 1 on any other and where no
+  network is given, and refuses a network that is not Starknet's (`starknet/network-malformed`). The option filter
+  refused `"0"` on every token.
 
 ## [0.6.2] - 2026-11-19
 
