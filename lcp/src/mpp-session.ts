@@ -177,7 +177,21 @@ export type SessionUnsigned = {
          */
         opening?: { payee: Hex; salt: Hex; authorizedSigner: Hex };
       }
-    | { kind: "tempo-call"; chainId: number; call: { to: Hex; data: Hex }; validBefore: number; broadcast: false };
+    | {
+        kind: "tempo-call";
+        chainId: number;
+        /**
+         * On a v1 challenge, the currency's `approve(escrow, deposit)`, the wallet's first call, before `call` in the
+         * same transaction: the v1 escrow takes the deposit from the payer with the currency's `transferFrom`, which
+         * reverts without that allowance. A v2 funding has none: the TIP-20 channel reserve's `open` takes the deposit
+         * without an allowance.
+         */
+        approve?: { to: Hex; data: Hex };
+        /** The `open` call to the escrow. */
+        call: { to: Hex; data: Hex };
+        validBefore: number;
+        broadcast: false;
+      };
   /**
    * `funded`: the funding signature, transaction hash or signed `0x76` transaction. A `tempo-call` funding's `complete`
    * returns no credential `bound` refuses: it gives the code `bound` gives the credential it would give for the signed
@@ -355,6 +369,8 @@ const ZERO = "0x0000000000000000000000000000000000000000" as const;
  * uint256,bytes32)`, the selectors Tempo's subscription draft lets the access key call.
  */
 const TRANSFER_SELECTORS: readonly Hex[] = ["0xa9059cbb", TRANSFER_WITH_MEMO_SELECTOR];
+/** `approve(address,uint256)`, the TIP-20 allowance call a v1 opening makes before its `open`. */
+const APPROVE_SELECTOR = "0x095ea7b3";
 /**
  * The EVM session escrow's functions that finalize a channel, each taking the channel id as its first argument:
  * `close(bytes32,uint128,bytes)`, `closeWithAuthorization(bytes32,uint128,uint256,uint256,bytes,bytes)` and
@@ -2155,7 +2171,14 @@ async function tempoBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUns
     return isRefusal(c) ? c : credential;
   };
   return {
-    funding: { kind: "tempo-call", chainId: p.chainId, call: { to: p.escrow, data }, validBefore, broadcast: false },
+    funding: {
+      kind: "tempo-call",
+      chainId: p.chainId,
+      ...(p.version === "v1" ? { approve: { to: currency, data: words(APPROVE_SELECTOR, [addressWord(p.escrow), uintWord(deposit)]) } } : {}),
+      call: { to: p.escrow, data },
+      validBefore,
+      broadcast: false,
+    },
     voucher(signedTx: Hex): VoucherTypedData | Refusal {
       const c = held(signedTx, SHORTEST_SIGNATURE);
       if (isRefusal(c)) return c;

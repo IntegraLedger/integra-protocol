@@ -1,5 +1,5 @@
 {
- "about": "Vectors for mpp/session/tempo and the tempo entry point's channel pieces. Expected values were computed with eth-abi 6.0.0, eth-account 0.14.0, eth-hash 0.8.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.57.4 and its ox 0.14.54 on Node 26.10.0, and GNU coreutils 9.4. Where a value is truncated, the row holds its prefix and suffix. The payer key is the published Anvil development key #0. L1 is a live v2 open on Tempo Moderato (eip155:42431), transaction 0x274c152568833e92246fdb8a01271e4af32c60edd2e561a53dcac3346865e1d1, read with eth_getRawTransactionByHash and eth_getTransactionReceipt from https://rpc.moderato.tempo.xyz on 2026-09-25 at 08:01Z; the receipt keeps status, block and logs. Under the profile read-status, TS6's settled answer names the transaction, its block as the position and its mark, and TS6.expectNotFound, failed binding-log-not-found before (a ChannelOpened of another salt or from another contract), is pending search-incomplete: at coverage full no failed is answered until the search for H is read whole (rule 24). A close reference names the challenge's recipient as the payee. CHANNEL_OPENED_V1 is the v1 escrow's event as it is deployed: the signature mppx 0.15.0's legacy escrow ABI gives (dist/tempo/legacy/session/escrow.abi.js:517-561: channelId, payer and payee indexed; token, authorizedSigner, salt and deposit not), whose topic, keccak256 of the signature by viem 2.57.4's toEventSelector, is the one Hedera's escrow of the same source emits (mpp-session-hedera-solana-xrpl.json); its salt is data word 2.",
+ "about": "Vectors for mpp/session/tempo and the tempo entry point's channel pieces. Expected values were computed with eth-abi 6.0.0, eth-account 0.14.0, eth-hash 0.8.0 and pyrlp 5.0.0 on Python 3.12.3, viem 2.57.4 and its ox 0.14.54 on Node 26.10.0, and GNU coreutils 9.4. Where a value is truncated, the row holds its prefix and suffix. The payer key is the published Anvil development key #0. L1 is a live v2 open on Tempo Moderato (eip155:42431), transaction 0x274c152568833e92246fdb8a01271e4af32c60edd2e561a53dcac3346865e1d1, read with eth_getRawTransactionByHash and eth_getTransactionReceipt from https://rpc.moderato.tempo.xyz on 2026-09-25 at 08:01Z; the receipt keeps status, block and logs. Under the profile read-status, TS6's settled answer names the transaction, its block as the position and its mark, and TS6.expectNotFound, failed binding-log-not-found before (a ChannelOpened of another salt or from another contract), is pending search-incomplete: at coverage full no failed is answered until the search for H is read whole (rule 24). A close reference names the challenge's recipient as the payee. CHANNEL_OPENED_V1 is the v1 escrow's event as it is deployed: the signature mppx 0.15.0's legacy escrow ABI gives (dist/tempo/legacy/session/escrow.abi.js:517-561: channelId, payer and payee indexed; token, authorizedSigner, salt and deposit not), whose topic, keccak256 of the signature by viem 2.57.4's toEventSelector, is the one Hedera's escrow of the same source emits (mpp-session-hedera-solana-xrpl.json); its salt is data word 2. L2 is a live v1 open on fixed.escrowV1, the escrow deployed on Moderato, its source in its case.",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "H2": "0x88d4266fd4e6338d13b845fcf289579d209c897823b9217da3e161936f031589",
@@ -11,10 +11,10 @@
   "pathUSD": "0x20c0000000000000000000000000000000000000",
   "recipient": "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00",
   "escrowV2": "0x4D50500000000000000000000000000000000000",
-  "escrowV1": "0x9d136eEa063eDE5418A6BC7bEafF009bBb6CFa70",
+  "escrowV1": "0xe1c4d3dce17BC111181DdF716F75Bae49e61a336",
   "deposit": "10000000",
   "requestV2": "{\"amount\":\"100\",\"currency\":\"0x20c0000000000000000000000000000000000000\",\"methodDetails\":{\"chainId\":42431,\"escrowContract\":\"0x4D50500000000000000000000000000000000000\",\"sessionProtocol\":\"v2\"},\"recipient\":\"0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00\"}",
-  "requestV1": "{\"amount\":\"100\",\"currency\":\"0x20c0000000000000000000000000000000000000\",\"methodDetails\":{\"chainId\":42431,\"escrowContract\":\"0x9d136eEa063eDE5418A6BC7bEafF009bBb6CFa70\",\"sessionProtocol\":\"v1\"},\"recipient\":\"0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00\"}"
+  "requestV1": "{\"amount\":\"100\",\"currency\":\"0x20c0000000000000000000000000000000000000\",\"methodDetails\":{\"chainId\":42431,\"escrowContract\":\"0xe1c4d3dce17BC111181DdF716F75Bae49e61a336\",\"sessionProtocol\":\"v1\"},\"recipient\":\"0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00\"}"
  },
  "constants": {
   "OPEN_V2": "open(address,address,address,uint96,bytes32,address)",
@@ -79,27 +79,33 @@
   "case": "the v2 vouchers and the channel id with salt fixed.H2. expectVoucher250.whole is the EIP-712 signing hash of draft-tempo-session-00's voucher (tempoxyz/mpp-specs 08e7dd87, specs/methods/tempo/draft-tempo-session-00.md L1111-1157: the domain {name \"TIP20 Channel Reserve\", version \"1\", chainId 42431, verifyingContract fixed.escrowV2}, Voucher(bytes32 channelId,uint96 cumulativeAmount)) for TS3.expectChannelId and cumulativeAmount 250; expectChannelIdH2.whole is the v2 channel id (L341-353) of the descriptor with salt fixed.H2 and TS2.expectNonceHash, the zero operator and authorizedSigner, on fixed.escrowV2 and chain 42431. Both are computed in Python 3.12.3 with eth-abi 6.0.0's abi.encode and eth-utils 6.0.0's keccak256 (the same arithmetic gives TS4.expectVoucher0 and TS3.expectChannelId); prefix and suffix are each value's first ten and last six characters."
  },
  "TS5": {
-  "case": "The v1 opening, on the TempoStreamChannel escrow fixed.escrowV1, and its channel id, voucher and close reference. expectOpenCalldata is the opening's call to the escrow: open(address,address,uint128,bytes32,address), constants.OPEN_V1 (draft-tempo-session-00, tempoxyz/mpp-specs 08e7dd87, specs/methods/tempo/draft-tempo-session-00.md L429-435, open(payee, token, deposit, salt, authorizedSigner)), of fixed.recipient, fixed.pathUSD, fixed.deposit, fixed.H and the zero address, computed with eth-abi 6.0.0 as eth-utils 6.0.0's function_signature_to_4byte_selector of OPEN_V1 followed by encode of its argument types. expectVoucher.whole is the EIP-712 signing hash of the v1 voucher (L1111-1157: the domain {name \"Tempo Stream Channel\", version \"1\", chainId 42431, verifyingContract fixed.escrowV1}, Voucher(bytes32 channelId,uint128 cumulativeAmount)) for expectChannelId and cumulativeAmount 0, computed in Python 3.12.3 with eth-abi 6.0.0's abi.encode and eth-utils 6.0.0's keccak256; its prefix and suffix are its first ten and last six characters",
-  "expectChannelId": "0xce87ce37fccde20b64ea602db440ec3b1eccf0815261a9b2c06d3896c0069d84",
+  "case": "The v1 opening, on the TempoStreamChannel escrow fixed.escrowV1, and its channel id, voucher and close reference. expectOpenCalldata is the opening's call to the escrow: open(address,address,uint128,bytes32,address), constants.OPEN_V1 (draft-tempo-session-00, tempoxyz/mpp-specs 08e7dd87, specs/methods/tempo/draft-tempo-session-00.md L429-435, open(payee, token, deposit, salt, authorizedSigner)), of fixed.recipient, fixed.pathUSD, fixed.deposit, fixed.H and the zero address, computed with eth-abi 6.0.0 as eth-utils 6.0.0's function_signature_to_4byte_selector of OPEN_V1 followed by encode of its argument types. expectVoucher.whole is the EIP-712 signing hash of the v1 voucher (L1111-1157: the domain {name \"Tempo Stream Channel\", version \"1\", chainId 42431, verifyingContract fixed.escrowV1}, Voucher(bytes32 channelId,uint128 cumulativeAmount)) for expectChannelId and cumulativeAmount 0, computed in Python 3.12.3 with eth-abi 6.0.0's abi.encode and eth-utils 6.0.0's keccak256; its prefix and suffix are its first ten and last six characters fixed.escrowV1 is the v1 escrow deployed on Tempo Moderato, the escrowContract mppx 0.17.6 names for chain 42431 (dist/tempo/internal/defaults.js:50-53), whose bytecode logs CHANNEL_OPENED_V1; expectChannelId is its computeChannelId(fixed.payer, fixed.recipient, fixed.pathUSD, fixed.H, the zero address) and expectVoucher.whole its getVoucherDigest(expectChannelId, 0), each read with eth_call from https://rpc.moderato.tempo.xyz on 2026-11-20 at 07:40Z. expectApproveCalldata is the opening's first call, to fixed.pathUSD: approve(address,uint256) of fixed.escrowV1 and fixed.deposit, computed with viem 2.57.4's encodeFunctionData over its erc20Abi. The escrow's open takes the deposit with the token's transferFrom, so chain holds eth_call answers on Moderato at block chain.block, from fixed.payer, for the opening's calls in one Tempo call list: open alone, expectOpenCalldata to fixed.escrowV1, reverts with chain.openAlone, TIP-20's InsufficientAllowance() (0x13be252b); expectApproveCalldata to fixed.pathUSD followed by that open returns chain.approveThenOpen, expectChannelId.",
+  "expectChannelId": "0xd899ab4f2d89838752657ff5ffad68341e490cf87eb99a46ed4636f65d9bc5ce",
   "expectOpenCalldata": "0xc79ea485000000000000000000000000742d35cc6634c0532925a3b844bc9e7595f8fe0000000000000000000000000020c00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000989680ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad0000000000000000000000000000000000000000000000000000000000000000",
+  "expectApproveCalldata": "0x095ea7b3000000000000000000000000e1c4d3dce17bc111181ddf716f75bae49e61a3360000000000000000000000000000000000000000000000000000000000989680",
+  "chain": {
+   "block": 45069073,
+   "openAlone": "0x13be252b",
+   "approveThenOpen": "0xd899ab4f2d89838752657ff5ffad68341e490cf87eb99a46ed4636f65d9bc5ce"
+  },
   "expectVoucher": {
-   "prefix": "0x6032c3bd",
-   "suffix": "8fafde",
-   "whole": "0x6032c3bd0175dc0f86f8e31b5e94e2bd486171929d0f10e46c75564dfb8fafde"
+   "prefix": "0x90cb3be6",
+   "suffix": "087164",
+   "whole": "0x90cb3be65b317a249d436646dea53771a36bd87ae8f6387ac0ce8073bf087164"
   },
   "expectCloseRef": {
    "network": "eip155:42431",
    "bindingLog": {
-    "address": "0x9d136eEa063eDE5418A6BC7bEafF009bBb6CFa70",
+    "address": "0xe1c4d3dce17BC111181DdF716F75Bae49e61a336",
     "topic0": "0x92ed5fe0fe56b3f4185e688efb342e92a4492b9df29ad5de596c44e64d097b51",
     "index": 1,
-    "value": "0xce87ce37fccde20b64ea602db440ec3b1eccf0815261a9b2c06d3896c0069d84"
+    "value": "0xd899ab4f2d89838752657ff5ffad68341e490cf87eb99a46ed4636f65d9bc5ce"
    },
    "search": {
-    "address": "0x9d136eEa063eDE5418A6BC7bEafF009bBb6CFa70",
+    "address": "0xe1c4d3dce17BC111181DdF716F75Bae49e61a336",
     "topics": [
      "0x92ed5fe0fe56b3f4185e688efb342e92a4492b9df29ad5de596c44e64d097b51",
-     "0xce87ce37fccde20b64ea602db440ec3b1eccf0815261a9b2c06d3896c0069d84"
+     "0xd899ab4f2d89838752657ff5ffad68341e490cf87eb99a46ed4636f65d9bc5ce"
     ]
    },
    "payee": "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00"
@@ -174,6 +180,55 @@
    "prefix": "0x19be1e25",
    "suffix": "c4e3a44a"
   }
+ },
+ "L2": {
+  "case": "A live v1 open on fixed.escrowV1, Tempo Moderato (eip155:42431) transaction 0xca96844ad2b38f42aefe774d8262a3f7ffca3c2a9a3d22a2bf8a102ec8675cf0, read with eth_getRawTransactionByHash and eth_getTransactionReceipt from https://rpc.moderato.tempo.xyz on 2026-11-20 at 07:44Z; the receipt keeps status, block and logs. Its sender, sender, signed two calls: approve(address,uint256) to the token, of fixed.escrowV1 and the deposit, then the escrow's open(address,address,uint128,bytes32,address); a fee payer signed it too. The receipt's ChannelOpened under CHANNEL_OPENED_V1 names expectChannelId, the channel id of the sender and the open call's payee, token, salt and authorizedSigner on fixed.escrowV1 and chain 42431",
+  "raw": "0x76f901f982a5bf018455d4a801831868d3f9011cf85c9420c000000000000000000000000000000000000080b844095ea7b3000000000000000000000000e1c4d3dce17bc111181ddf716f75bae49e61a33600000000000000000000000000000000000000000000000000000000000f4240f8bc94e1c4d3dce17bc111181ddf716f75bae49e61a33680b8a4c79ea485000000000000000000000000fd24114c3981aba78ae2441991b1bdb89329c55600000000000000000000000020c000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000f42405f5cef1d0f7daeae81ffc15e8e0711741e5cbb9d25424200333688d4964e678b0000000000000000000000003ab6b1ce2663a95a38cdd7a2cc8b5c40d12acab5c0a0ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff863bc7be4633e0846aff5674809420c0000000000000000000000000000000000000f84301a09ca036f66a4896db91a613b8461703f3d545ee5527ab081cf19d2764a5d6e347a0600c62892ff0bdb87d1de4a39e0de73cf3cc40bdf7a89d7ffce65c8634b821c0c0b8419ef27ddb9140ef7b55197a6c0e3a4c8acc426fea830a78d719f0e7ca80adf9e042d2aee22f76e49ff5000f78630b7b6e499138238afafad3f9d617577385d6ce1c",
+  "sender": "0x3ab6b1ce2663a95a38cdd7a2cc8b5c40d12acab5",
+  "receipt": {
+   "status": 1,
+   "blockNumber": "44991980",
+   "logs": [
+    {
+     "address": "0x20c0000000000000000000000000000000000000",
+     "topics": [
+      "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925",
+      "0x0000000000000000000000003ab6b1ce2663a95a38cdd7a2cc8b5c40d12acab5",
+      "0x000000000000000000000000e1c4d3dce17bc111181ddf716f75bae49e61a336"
+     ],
+     "data": "0x00000000000000000000000000000000000000000000000000000000000f4240"
+    },
+    {
+     "address": "0x20c0000000000000000000000000000000000000",
+     "topics": [
+      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "0x0000000000000000000000003ab6b1ce2663a95a38cdd7a2cc8b5c40d12acab5",
+      "0x000000000000000000000000e1c4d3dce17bc111181ddf716f75bae49e61a336"
+     ],
+     "data": "0x00000000000000000000000000000000000000000000000000000000000f4240"
+    },
+    {
+     "address": "0xe1c4d3dce17bc111181ddf716f75bae49e61a336",
+     "topics": [
+      "0xcd6e60364f8ee4c2b0d62afc07a1fb04fd267ce94693f93f8f85daaa099b5c94",
+      "0xa28578fbb5a96ff498f3e3e011e1f4331cda35b5c399a449c044808d26fb01f1",
+      "0x0000000000000000000000003ab6b1ce2663a95a38cdd7a2cc8b5c40d12acab5",
+      "0x000000000000000000000000fd24114c3981aba78ae2441991b1bdb89329c556"
+     ],
+     "data": "0x00000000000000000000000020c00000000000000000000000000000000000000000000000000000000000003ab6b1ce2663a95a38cdd7a2cc8b5c40d12acab55f5cef1d0f7daeae81ffc15e8e0711741e5cbb9d25424200333688d4964e678b00000000000000000000000000000000000000000000000000000000000f4240"
+    },
+    {
+     "address": "0x20c0000000000000000000000000000000000000",
+     "topics": [
+      "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+      "0x000000000000000000000000a12274e77300943258a0320f83ef9d65890d6ee9",
+      "0x000000000000000000000000feec000000000000000000000000000000000000"
+     ],
+     "data": "0x0000000000000000000000000000000000000000000000000000000000000320"
+    }
+   ]
+  },
+  "expectChannelId": "0xa28578fbb5a96ff498f3e3e011e1f4331cda35b5c399a449c044808d26fb01f1"
  },
  "plant1": {
   "case": "T with its salt word replaced by H′ and re-signed, against the challenge whose id carries H",
@@ -333,7 +388,7 @@
     "case": "a v1 opening whose channelId is the channel id for another payer, the row's: the escrow's computeChannelId (lines 299-312) over the row's payer, fixed.recipient, fixed.pathUSD, fixed.H, the zero address as authorizedSigner, fixed.escrowV1 and chain 42431, encoded with viem, where its open transaction's sender is fixed.payer",
     "sessionProtocol": "v1",
     "payer": "0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC",
-    "channelId": "0x4b88415b8332a06291e3e8698f8b42d9a02ef4474206a0b2625256d9f7460cef",
+    "channelId": "0x550611bcea7091f178428f8c6e93175f4cc87c7d88e46053d4e41c39465fff3c",
     "expect": "mpp/channel-not-bound"
    },
    {
@@ -595,7 +650,7 @@
     "sessionProtocol": "v1",
     "senderSignature": "keychain-v1",
     "accessKey": "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
-    "expectSha256": "0xbdf300eac78da28db8a5195f66c4dae48ef3a84fc5a5c87b529c6d8302d9ea85",
+    "expectSha256": "0x3021a6cfa18e0d86eca12d2ae7d9b16b0d2f39ef84aa821fdae0c79699975e92",
     "expect": "tempo/tx-malformed"
    },
    {
@@ -626,7 +681,7 @@
      }
     ],
     "accessKey": "0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d",
-    "expectSha256": "0x8b2c16749cef92540324ef649e6a88f07a2d63a651c039200652dfb9b4d97196",
+    "expectSha256": "0xbd8f760bd798d3d08bb720954e6ba95e138e18a5f7060edf0f527a3d5cee43e6",
     "expect": "tempo/tx-malformed"
    },
    {

@@ -6,6 +6,7 @@ import {
   concat,
   encodeAbiParameters,
   encodeFunctionData,
+  erc20Abi,
   fromRlp,
   hashTypedData,
   isAddress,
@@ -16,6 +17,7 @@ import {
   serializeCompactSignature,
   signatureToCompactSignature,
   toBytes,
+  toFunctionSelector,
   toHex,
   toRlp,
   type Hex as ViemHex,
@@ -577,9 +579,14 @@ describe("mpp-session-tempo.json", () => {
       .toBe(T.TS5.expectChannelId);
     const ch = placed(V1);
     const u = unsignedOf(await sessionTempo.build({ challenge: ch, from: f.payer, now: f.now, deposit }, H));
+    expect(encodeFunctionData({ abi: erc20Abi, functionName: "approve", args: [f.escrowV1, deposit] })).toBe(T.TS5.expectApproveCalldata);
+    // The deployed escrow's answers: open alone reverts InsufficientAllowance; after the approve it opens TS5's channel.
+    expect(T.TS5.chain.openAlone).toBe(toFunctionSelector("InsufficientAllowance()"));
+    expect(T.TS5.chain.approveThenOpen).toBe(T.TS5.expectChannelId);
     expect(u.funding).toEqual({
       kind: "tempo-call",
       chainId: 42431,
+      approve: { to: f.pathUSD, data: T.TS5.expectApproveCalldata },
       call: { to: f.escrowV1, data: T.TS5.expectOpenCalldata },
       validBefore: 1790000060,
       broadcast: false,
@@ -629,6 +636,40 @@ describe("mpp-session-tempo.json", () => {
     expect(await run(ref, [opened(f.escrowV2, H)], { ...FINAL, after: 100n })).toEqual(before);
     const own = await sessionTempo.status(ref, readerFor("eip155:42431", { status: 1, blockNumber: "100", logs: [opened(f.escrowV2, H)] }), { ...FINAL, after: 100n });
     expect(withBigints(own)).toEqual(before);
+  });
+
+  it("L2: a live v1 open on fixed.escrowV1, its calls as build writes them and its read", async () => {
+    const tx = decodeTempoTx(toBytes(T.L2.raw));
+    if ("refused" in tx) throw new Error(tx.code);
+    expect(tx.calls.length).toBe(2);
+    const [approve, open] = tx.calls as [(typeof tx.calls)[number], (typeof tx.calls)[number]];
+    expect(open.to).toBe(f.escrowV1.toLowerCase());
+    expect(toHex(open.input.subarray(0, 4))).toBe(OPEN_V1_SELECTOR);
+    const word = (i: number) => toHex(open.input.subarray(4 + 32 * i, 4 + 32 * (i + 1)));
+    const addressAt = (i: number) => `0x${word(i).slice(26)}` as `0x${string}`;
+    const [payee, token, deposit, salt, signer] = [addressAt(0), addressAt(1), BigInt(word(2)), word(3), addressAt(4)];
+    const event = T.L2.receipt.logs.find((l: EvmLog) => l.address === f.escrowV1.toLowerCase() && l.topics[0] === CHANNEL_OPENED_V1_TOPIC) as EvmLog;
+    const id = evmChannelId({ payer: T.L2.sender, payee, token, salt, authorizedSigner: signer, escrow: f.escrowV1, chainId: 42431 });
+    expect(id).toBe(event.topics[1]);
+    expect(id).toBe(T.L2.expectChannelId);
+    const request = JSON.stringify({ amount: "100", currency: token, methodDetails: { chainId: 42431, escrowContract: open.to, sessionProtocol: "v1" }, recipient: payee });
+    const ch = placed(challenge("tempo", "session", request), salt);
+    const u = unsignedOf(await sessionTempo.build({ challenge: ch, from: T.L2.sender, now: f.now, deposit, authorizedSigner: signer }, salt));
+    if (u.funding.kind !== "tempo-call") throw new Error("not a tempo call");
+    expect(u.funding.approve).toEqual({ to: approve.to, data: toHex(approve.input) });
+    expect(u.funding.call).toEqual({ to: open.to, data: toHex(open.input) });
+    const block = BigInt(T.L2.receipt.blockNumber);
+    const status = await sessionStatus(
+      {
+        network: "eip155:42431",
+        transaction: "0xca96844ad2b38f42aefe774d8262a3f7ffca3c2a9a3d22a2bf8a102ec8675cf0",
+        opened: { address: f.escrowV1, version: "v1", channel: id as `0x${string}`, h: salt, chainId: 42431 },
+        payee,
+      },
+      readerFor("eip155:42431", T.L2.receipt, block, block),
+      FINAL,
+    );
+    expect(status.state).toBe("settled");
   });
 
   it("L1: a live v2 open on Moderato", async () => {

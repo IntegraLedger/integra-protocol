@@ -99,6 +99,11 @@ The LCP profiles [`x402/batch-settlement/eip155`](../../lcp/profiles/x402-batch-
 
 ### Checks on the Tempo opening
 
+On the v1 escrow, `build`'s `tempo-call` funding carries two calls for the opening's transaction: `approve`, the
+currency's `approve(escrow, deposit)`, first, then `call`, the escrow's `open`, which takes the deposit with the
+currency's `transferFrom` and reverts without that allowance. On the v2 escrow, the TIP-20 channel reserve, the `open`
+takes the deposit without an allowance, and the funding carries `call` alone.
+
 On `mpp/session/tempo`, the opening transaction is signed for the challenge's chain, `methodDetails.chainId` (4217
 where a v1 challenge names none), else `tempo/tx-malformed`. On the v2 escrow, the payload's descriptor carries the
 `open` call's salt and, as draft-tempo-session-00 requires, its payee, operator, token and authorizedSigner, the open

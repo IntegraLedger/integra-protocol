@@ -134,7 +134,7 @@
     "case": "a Tempo v1 session without chainId: v1's default",
     "method": "tempo",
     "intent": "session",
-    "request": "{\"amount\":\"100\",\"currency\":\"0x20c0000000000000000000000000000000000000\",\"methodDetails\":{\"escrowContract\":\"0x9d136eEa063eDE5418A6BC7bEafF009bBb6CFa70\",\"sessionProtocol\":\"v1\"},\"recipient\":\"0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00\"}",
+    "request": "{\"amount\":\"100\",\"currency\":\"0x20c0000000000000000000000000000000000000\",\"methodDetails\":{\"escrowContract\":\"0x33b901018174DDabE4841042ab76ba85D4e24f25\",\"sessionProtocol\":\"v1\"},\"recipient\":\"0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00\"}",
     "expect": "eip155:4217",
     "source": "MPP's Tempo session draft: v1's chainId defaults to 4217"
    },
@@ -264,7 +264,7 @@
    { "case": "Tempo session: a v1 within challenge over a v2 opening", "pairing": "mpp/session/tempo", "within": "v1", "expect": "mpp/not-bound-within" },
    { "case": "Tempo session: a v2 within challenge over a v1 opening", "pairing": "mpp/session/tempo", "opening": "v1", "within": "v2", "expect": "tempo/descriptor-mismatch" },
    { "case": "Tempo session v2: another operator, 0x11 repeated", "pairing": "mpp/session/tempo", "methodDetails": { "operator": "0x1111111111111111111111111111111111111111" }, "expect": "tempo/descriptor-mismatch" },
-   { "case": "Tempo session v2: another escrow, fixed.escrowV1", "pairing": "mpp/session/tempo", "methodDetails": { "escrowContract": "0x9d136eEa063eDE5418A6BC7bEafF009bBb6CFa70" }, "expect": "tempo/descriptor-mismatch" },
+   { "case": "Tempo session v2: another escrow, fixed.escrowV1", "pairing": "mpp/session/tempo", "methodDetails": { "escrowContract": "0xe1c4d3dce17BC111181DdF716F75Bae49e61a336" }, "expect": "tempo/descriptor-mismatch" },
    { "case": "Tempo session v2: a within challenge without id", "pairing": "mpp/session/tempo", "id": null, "expect": "mpp/credential-malformed" },
    { "case": "XRPL session: a request that does not decode, !!", "pairing": "mpp/session/xrpl", "request": "!!", "expect": "mpp/request-malformed" },
    { "case": "XRPL session: no network", "pairing": "mpp/session/xrpl", "drop": "network", "expect": "xrpl/network-missing" }

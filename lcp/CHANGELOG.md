@@ -58,6 +58,17 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   every one on Westend Asset Hub, whose runtime lists no signature extension, is still an item the search cannot
   decode. The profile's rule 8 states it; `x402-exact-polkadot-lcp-assets-remark.json` gains two status rows on that
   transaction.
+- `mpp/session/tempo`: `build`'s v1 `tempo-call` funding carries `approve`, `{to, data}`, the currency's
+  `approve(escrow, deposit)`, the opening transaction's first call before `call`, the escrow's `open`. The v1 escrow
+  takes the deposit with the currency's `transferFrom`, so an `open` sent alone reverts with TIP-20's
+  `InsufficientAllowance()`. A v2 funding is unchanged: the TIP-20 channel reserve takes the deposit without an
+  allowance (profile `mpp/session/evm-tempo`, rule 2).
+- `mpp-session-tempo.json`: `fixed.escrowV1` is the v1 escrow deployed on Tempo Moderato,
+  `0xe1c4d3dce17BC111181DdF716F75Bae49e61a336`, whose `ChannelOpened` is the event the profile reads and whose
+  `computeChannelId` and `getVoucherDigest` give TS5's channel id and voucher; the earlier address logs another
+  `ChannelOpened` and computes another channel id. The values that depend on it are recomputed, TS5 gains the
+  opening's `approve` call and the escrow's answers to the opening with and without it, and L2 is a live v1 opening on
+  that escrow. `mpp-challenge.json`'s v1 challenge without `chainId` names chain 4217's escrow.
 
 ## [0.6.2] - 2026-11-19
 

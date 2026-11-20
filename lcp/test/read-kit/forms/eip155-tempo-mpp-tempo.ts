@@ -336,7 +336,7 @@ function splitForm(subject: "mpp/charge/tempo/split-memo" | "mpp/charge/tempo/sp
 
 // ── mpp/session/tempo: the opening, by the v1 escrow's ChannelOpened, the value by the opening's nonce.
 
-const ESCROW = "0x9d136eea063ede5418a6bc7beaff009bbb6cfa70" as Hex;
+const ESCROW = "0xe1c4d3dce17bc111181ddf716f75bae49e61a336" as Hex;
 const ZERO = "0x0000000000000000000000000000000000000000" as Hex;
 const CHANNEL = evmChannelId({ payer: ADDRESS.payer, payee: ADDRESS.payee, token: TOKENS.A!, salt: H, authorizedSigner: ZERO, escrow: ESCROW, chainId: CHAIN }) as Hex;
 const openCall = (payee: Hex, token: Hex, deposit: bigint, salt: Hex): Hex =>
