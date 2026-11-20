@@ -4,10 +4,12 @@ Every release of `@integraledger/profile-facilitator`, the settler, with what an
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The package is 0.x: a minor release may change the
 configuration, the answers or the storage.
 
-## [Unreleased]
+## [0.5.1] - 2026-11-20
 
 ### Changed
 
+- The peer dependency is `@integraledger/lcp` `~0.6.3` (0.5.0: `~0.6.0`). Install `@integraledger/lcp@~0.6.3` beside
+  it: the `starknet` kind takes an amount of zero on Starknet Sepolia's STRK and USDC, as lcp does from 0.6.3.
 - The README's module table gives each pairing's `confirmed` as `@integraledger/lcp`'s registry now states it: `yes`
   on `x402/exact/cardano/lock`, `x402/exact/eip155/permit2`, `x402/upto/eip155/permit2`,
   `x402/auth-capture/eip155/eip3009`, `x402/auth-capture/eip155/permit2`, `x402/batch-settlement/eip155`,
@@ -101,4 +103,5 @@ and lcp's read of the chain ([Upgrading from 0.4.0](./README.md#upgrading-from-0
   them with lcp's `status`, and do not run both versions at once for the same payments: each keeps its own record, and
   each can answer one payment success.
 
+[0.5.1]: https://github.com/IntegraLedger/integra-protocol/tree/settler-v0.5.1/settler
 [0.5.0]: https://github.com/IntegraLedger/integra-protocol/tree/settler-v0.5.0/settler

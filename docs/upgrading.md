@@ -24,7 +24,7 @@ npm install @integraledger/lcp@~0.6.0
 | What | Range |
 |---|---|
 | Node.js | `>=24.22.1`, the package's `engines.node`. CI runs the package's tests on Node.js 24.22.1 and on 26. |
-| The settler, `@integraledger/profile-facilitator` 0.5.0 | Its peer dependency on this package is `~0.6.0`, so install the two together with `npm install @integraledger/profile-facilitator @integraledger/lcp@~0.6.0`. Without the range, npm takes the newest lcp, which a later minor puts outside the settler's peer range. |
+| The settler, `@integraledger/profile-facilitator` 0.5.1 | Its peer dependency on this package is `~0.6.3`, so install the two together with `npm install @integraledger/profile-facilitator @integraledger/lcp@~0.6.3`. Without the range, npm takes the newest lcp, which a later minor puts outside the settler's peer range. |
 | The buyer packages, `@integraledger/terms` 0.5.x | The same peer dependency, `~0.6.0`. |
 | The optional rail peers | `@solana/kit` `^8.3.0`, `@stellar/stellar-sdk` `^17.1.0`, `ripple-binary-codec` `~2.11.0`, `@mysten/sui` `^2.31.3`, `borsh` `^2.0.0`, `@ton/core` `^0.63.1` and `algosdk` `^3.8.0`. `~2.11.0` admits 2.11.x only and `^0.63.1` admits 0.63.x only, so install those two with their range ([the package README](../lcp/README.md#install)). |
 

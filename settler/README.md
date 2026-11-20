@@ -60,11 +60,11 @@ or legal logic beyond that.
 ## Install
 
 ```sh
-npm install @integraledger/profile-facilitator @integraledger/lcp@~0.6.0
+npm install @integraledger/profile-facilitator @integraledger/lcp@~0.6.3
 ```
 
 It needs Node.js `>=24.22.1`, Postgres 11 or later ([The database](#the-database)), and, for each network it serves,
-the node its module reads. It is ESM only. `@integraledger/lcp` is its peer dependency, at `~0.6.0`: install it with
+the node its module reads. It is ESM only. `@integraledger/lcp` is its peer dependency, at `~0.6.3`: install it with
 the settler ([Versions](#versions)). A module that holds a key takes it as the signer object of x402's class for that
 chain; make it with that chain's x402 package at 2.31.0, the release the settler's classes are pinned to
 (`@x402/evm`, `@x402/svm`, `@x402/avm`, and so on).
@@ -850,7 +850,7 @@ CREATE TABLE IF NOT EXISTS module_state (
 
 ## Versions
 
-0.5.0 takes `@integraledger/lcp` `~0.6.0` as its peer dependency: install `@integraledger/lcp@~0.6.0` beside it. A
+0.5.1 takes `@integraledger/lcp` `~0.6.3` as its peer dependency: install `@integraledger/lcp@~0.6.3` beside it. A
 later lcp minor release needs a settler release that names it. While both packages are 0.x, a minor release may change
 the configuration, the answers or the storage; [the CHANGELOG](./CHANGELOG.md) lists what each release changes. It
 needs Node.js 24.22.1 or later.

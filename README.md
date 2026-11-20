@@ -49,7 +49,7 @@ of `@integraledger/lcp` they pin.
 | Package | Install | What it is |
 |---|---|---|
 | [`@integraledger/lcp`](./lcp) | `npm install @integraledger/lcp` | Assemble and hash an ATR, and bind H into x402, MPP, agentic checkout and card payments on every supported rail. |
-| [`@integraledger/profile-facilitator`](./settler) | `npm install @integraledger/profile-facilitator @integraledger/lcp@~0.6.0` | The settler: an x402 facilitator (`/supported`, `/verify`, `/settle`) for the x402 pairings `@integraledger/lcp` implements, except the two another party settles (`x402/exact/eip155/gateway-batched` and `x402/batch-settlement/cloudflare`). |
+| [`@integraledger/profile-facilitator`](./settler) | `npm install @integraledger/profile-facilitator @integraledger/lcp@~0.6.3` | The settler: an x402 facilitator (`/supported`, `/verify`, `/settle`) for the x402 pairings `@integraledger/lcp` implements, except the two another party settles (`x402/exact/eip155/gateway-batched` and `x402/batch-settlement/cloudflare`). |
 
 While the version is 0.x, a minor release may remove or rename exports and pairing ids, so pin each package with a
 tilde range. [Upgrading](./docs/upgrading.md) gives the ranges and each change from 0.5.x to 0.6.0, and the

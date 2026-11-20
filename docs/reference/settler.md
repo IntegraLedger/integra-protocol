@@ -8,8 +8,8 @@ description: The settler's exports, HTTP API, declarations, order of checks, rec
 The settler is the package `@integraledger/profile-facilitator`, in this repository's
 [`settler/`](https://github.com/IntegraLedger/integra-protocol/tree/main/settler) folder. This page is for the operator
 and the resource server's developer: every answer, reason, check, table, bound and log entry the settler gives.
-[Run the settler](../guides/settler.md) starts it and configures each module. Version 0.5.0 takes
-`@integraledger/lcp` `~0.6.0` as its peer ([Versions](../guides/settler.md#versions)).
+[Run the settler](../guides/settler.md) starts it and configures each module. Version 0.5.1 takes
+`@integraledger/lcp` `~0.6.3` as its peer ([Versions](../guides/settler.md#versions)).
 
 ## Exports
 

@@ -1,6 +1,6 @@
 {
   "name": "@integraledger/profile-facilitator",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "An x402 facilitator for the pairings @integraledger/lcp ships: it checks, submits what the payer signed, records each payment once in Postgres, and answers what the chain shows, with one module per chain form on x402's published facilitator classes where x402 publishes them.",
   "license": "Apache-2.0",
   "engines": {
