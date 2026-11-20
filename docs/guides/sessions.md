@@ -157,7 +157,9 @@ On top of the members every pairing has, a channel pairing has:
 `buildWithin` exists on the two x402 channels and the MPP sessions on EVM, Tempo and the XRP Ledger. On MPP it builds a
 voucher or the close. It does not build a top-up, which is a further deposit (`mpp/within-action-not-built`). An action
 the pairing's draft does not define, such as a `topUp` on the XRP Ledger, is `mpp/session-action`, as `channel.kind`
-answers it.
+answers it. On the XRP Ledger session the voucher and the close name the channel's payer, the opening's `Account`, by
+`source`, `did:pkh:xrpl:{network}:{address}`, as the opening's credential does: the stock server refuses a credential
+without it.
 
 On MPP, `buildWithin` reads the within challenge, the challenge of the seller's 402 within the channel, as the
 pairing's `channel.kind`, `channel.ref` and `channel.boundWithin` read the payment that carries it, with their code for

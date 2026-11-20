@@ -264,8 +264,12 @@ describe("mpp/session/xrpl: buildWithin", () => {
     expect(Buffer.from(r.bytes).toString("hex").toUpperCase()).toBe(R.XS3.expect);
     expect(Buffer.from(r.bytes).toString("hex").toUpperCase()).toBe(encodeForSigningClaim({ channel: R.XS2.expectChannel, amount: "100" }));
     const signature = "C0".repeat(64);
+    // The credential names the channel's payer, XS2's account, by source, as the opening's credential does.
+    const source = `did:pkh:xrpl:1:${R.XS2.account}`;
+    expect(u.complete([signature])).toEqual({ challenge: within, source, payload: { action: "voucher", channelId: R.XS2.expectChannel, amount: "100", signature } });
     expect(unsigned(await sessionXrpl.buildWithin(w(200n, "close"), H)).complete([signature])).toEqual({
       challenge: within,
+      source,
       payload: { action: "close", channelId: R.XS2.expectChannel, amount: "200", signature },
     });
     expect(u.complete(["zz"])).toEqual(refused("mpp/credential-malformed"));

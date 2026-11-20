@@ -446,8 +446,10 @@ async function xrplBuild(choice: RailSessionChoice, h: AtrHash): Promise<XrplSes
 /**
  * A claim, or a close's final claim, on the channel the held opening created: one `xrpl-claim` request over
  * `xrplClaim(channelId, drops)`, for the channel's key, with the channel id derived from the opening's signed blob
- * (`xrplOpeningChannel`). draft-xrpl-session-00 defines no other action within a channel: any other, such as `topUp`,
- * is `mpp/session-action`.
+ * (`xrplOpeningChannel`). The credential names the channel's payer, the opening's `Account`, by `source`,
+ * `did:pkh:xrpl:{network}:{address}`, on the network the within challenge names, in the form `build` writes the
+ * opening's. draft-xrpl-session-00 defines no other action within a channel: any other, such as `topUp`, is
+ * `mpp/session-action`.
  */
 async function xrplBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWithinUnsigned | Refusal> {
   const held = await withinChecks(w, h, "session/xrpl", (c) => withinDetails(c, "xrpl"), (p) => xrplOpening(p), U64, []);
@@ -459,13 +461,14 @@ async function xrplBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWit
   const bytes = xrplClaim(channelId, drops);
   if (isRefusal(bytes)) return bytes;
   const challenge = held.challenge;
+  const source = `did:pkh:xrpl:${held.within.network.slice("xrpl:".length)}:${o.tx.Account}`;
   const { action } = w;
   return {
     requests: [{ kind: "xrpl-claim", channelId, drops, bytes }],
     complete(signatures: readonly string[]): MppCredential | Refusal {
       const signature = Array.isArray(signatures) && signatures.length === 1 ? signatures[0] : undefined;
       if (typeof signature !== "string" || !HEX.test(signature)) return refusal("mpp/credential-malformed");
-      return measured({ challenge, payload: { action, channelId, amount: drops.toString(), signature } });
+      return measured({ challenge, source, payload: { action, channelId, amount: drops.toString(), signature } });
     },
   };
 }

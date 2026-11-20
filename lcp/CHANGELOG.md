@@ -63,6 +63,10 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   takes the deposit with the currency's `transferFrom`, so an `open` sent alone reverts with TIP-20's
   `InsufficientAllowance()`. A v2 funding is unchanged: the TIP-20 channel reserve takes the deposit without an
   allowance (profile `mpp/session/evm-tempo`, rule 2).
+- `mpp/session/xrpl`: `buildWithin`'s voucher and close carry `source`, `did:pkh:xrpl:{network}:{address}`, naming the
+  channel's payer, the opening's `Account`, as `build`'s opening credential does. The stock `xrpl-mpp-sdk`
+  0.1.0-beta.4 channel server refuses a voucher or a close without it ("credential source is required") and holds its
+  address to the channel's `Account` (profile `mpp/session/hedera-solana-xrpl`, clause 3).
 - `mpp-session-tempo.json`: `fixed.escrowV1` is the v1 escrow deployed on Tempo Moderato,
   `0xe1c4d3dce17BC111181DdF716F75Bae49e61a336`, whose `ChannelOpened` is the event the profile reads and whose
   `computeChannelId` and `getVoucherDigest` give TS5's channel id and voucher; the earlier address logs another
