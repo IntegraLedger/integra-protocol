@@ -6,7 +6,7 @@
 import { readFileSync } from "node:fs";
 import { exactStarknet, EVENT_TRANSFER, SELECTOR_EXECUTE_FROM_OUTSIDE_V2, SELECTOR_TRANSFER } from "@integraledger/lcp/starknet";
 import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
-import { ec, hash, Signer } from "starknet";
+import { ec, hash, Signer, typedData } from "starknet";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { OperatorEntry } from "../src/answers.js";
 import type { Module } from "../src/module.js";
@@ -29,14 +29,19 @@ const NOW_MS = V.fixed.now * 1000;
 const CONSUMED = V.S5.rows.find((r: { case: string }) => r.case.startsWith("the nonce consumed at 900"));
 const LANDED = CONSUMED.node.transactions["0x4c2f9a1b"];
 const OUTSIDE_CALLDATA: string[] = LANDED.trace.calls[0].calldata;
+/**
+ * lcp's fixture of Starknet Sepolia's `starknet_simulateTransactions` answers (block 18422698): an account's
+ * `transfer(payee, 0)` on STRK and on USDC, each token's call emitting one `Transfer` of 0.
+ */
+const ZERO = JSON.parse(readFileSync(new URL("../../lcp/test/fixtures/starknet-zero-transfer-sepolia.json", import.meta.url), "utf8"));
 
 const plain = (v: unknown) => JSON.parse(JSON.stringify(v, (_, x) => (typeof x === "bigint" ? x.toString() : x)));
 const big = (v: string) => BigInt(v);
 
-async function payment(act: "payment" | "agreement" = "payment", option: PaymentRequirements = O): Promise<PaymentPayload> {
+async function payment(act: "payment" | "agreement" = "payment", option: PaymentRequirements = O, from: `0x${string}` = V.fixed.from): Promise<PaymentPayload> {
   const required = exactStarknet.advertise({ x402Version: 2, resource: V.fixed.resource, accepts: [option as never] }, H, V.fixed.link, option as never);
   if ("refused" in required) throw new Error(required.code);
-  const u = await exactStarknet.build({ required, accepted: option as never, from: V.fixed.from, now: V.fixed.now }, H, act);
+  const u = await exactStarknet.build({ required, accepted: option as never, from, now: V.fixed.now }, H, act);
   if ("refused" in u) throw new Error(u.code);
   const p = u.complete(V.S3.signature);
   if ("refused" in p) throw new Error(p.code);
@@ -338,7 +343,7 @@ const shortest = (f: string) => `0x${big(f).toString(16)}`;
 const outsideIn = (invoke: Record<string, unknown>) => (invoke["calldata"] as string[]).map(big);
 
 describe("the Starknet module through the settler's HTTP surface", () => {
-  it("/supported states the kind: the pairing, the executor's key purpose, no zero, the executor as feePayer and signer", async () => {
+  it("/supported states the kind: the pairing, the executor's key purpose, the pairing at zero on Sepolia, the executor as feePayer and signer", async () => {
     await serve();
     expect(await call("/supported")).toEqual({
       kinds: [
@@ -346,7 +351,7 @@ describe("the Starknet module through the settler's HTTP surface", () => {
           x402Version: 2,
           scheme: "exact",
           network: NETWORK,
-          extra: { feePayer: shortest(EXECUTOR), key: "relayer", pairings: ["x402/exact/starknet"], acceptsZero: [] },
+          extra: { feePayer: shortest(EXECUTOR), key: "relayer", pairings: ["x402/exact/starknet"], acceptsZero: ["x402/exact/starknet"] },
         },
       ],
       extensions: [],
@@ -368,6 +373,26 @@ describe("the Starknet module through the settler's HTTP surface", () => {
     // One call, execute_from_outside_v2 on the payer, the outside execution as the vectors' landed trace carries it.
     expect(outsideIn(sentTx[0]!.invoke)).toEqual(["0x1", V.fixed.from, SELECTOR_EXECUTE_FROM_OUTSIDE_V2, `0x${OUTSIDE_CALLDATA.length.toString(16)}`, ...OUTSIDE_CALLDATA].map(big));
     expect(big(sentTx[0]!.invoke["sender_address"] as string)).toBe(big(EXECUTOR));
+  });
+
+  it("verifies and settles a payment of 0 of Sepolia STRK, the token's call and its Transfer of 0 as the node simulated them", async () => {
+    const strk: string = ZERO.tokens.STRK;
+    const recorded = ZERO.calls.find((c: { request: { params: { transactions: { calldata: string[] }[] } } }) => big(c.request.params.transactions[0]!.calldata[1]!) === big(strk));
+    const transferCall = recorded.answer.result[0].transaction_trace.execute_invocation.calls[0];
+    const option: PaymentRequirements = { ...O, asset: strk, payTo: ZERO.payee, amount: "0" };
+    const p = await payment("payment", option, ZERO.account);
+    const td = (p.payload as { outsideExecution: { typedData: unknown } }).outsideExecution.typedData;
+    chain.deployed = [ZERO.account];
+    chain.signature = { hashes: [typedData.getMessageHash(td as never, ZERO.account)], felts: V.S3.signature };
+    const sim = simulation() as { transaction_trace: { execute_invocation: { calls: { calls: unknown[] }[] } } }[];
+    sim[0]!.transaction_trace.execute_invocation.calls[0]!.calls = [transferCall];
+    chain.simulation = sim;
+    const events = transferCall.events.map((e: { keys: string[]; data: string[] }) => ({ fromAddress: strk, keys: e.keys, data: e.data }));
+    chain.landing = () => ({ receipt: { finality: "ACCEPTED_ON_L2", execution: "SUCCEEDED", blockNumber: "1005", events, fee: "0x3e8" }, trace: null });
+    await serve();
+    expect(await call("/verify", request(p, option))).toEqual({ isValid: true, payer: shortest(ZERO.account) });
+    expect(await call("/settle", request(p, option))).toEqual({ success: true, transaction: shortest(sentTx[0]!.hash), network: NETWORK, payer: shortest(ZERO.account) });
+    expect(sentTx).toHaveLength(1);
   });
 
   it("settles lcp's agreement vector and the payment under the same H as two instruments, each its own transaction", async () => {

@@ -68,6 +68,12 @@ const ID = exactStarknet.id;
 const U128 = 1n << 128n;
 const POLL_MS = 1_000;
 const NETWORKS: readonly string[] = ["starknet:SN_MAIN", "starknet:SN_SEPOLIA"];
+/**
+ * The networks whose kind names the pairing in `extra.acceptsZero`: each holds a token on which lcp's `starknetFloor`
+ * answers 0 (the profile's rule 24), on Starknet Sepolia STRK and USDC. lcp's check of the option refuses an amount of
+ * "0" on any other token, `starknet/option-malformed`, which the module answers `invalid_payment_requirements`.
+ */
+const ZERO_NETWORKS: readonly string[] = ["starknet:SN_SEPOLIA"];
 /** The `l2_gas` a simulation may spend, which charges no fee: Starknet's per-transaction execution bound. */
 const SIMULATION_L2_GAS = 1_000_000_000n;
 
@@ -523,8 +529,9 @@ export function starknetModule(c: StarknetNetworkConfig, core: Core): Module {
       name: "starknet",
       key: "relayer",
       pairings: [ID],
-      // lcp's option filter refuses an amount of "0" on every token (the profile's rule 24).
-      acceptsZero: [],
+      // A `transfer` of 0 of STRK and of USDC on Starknet Sepolia emits a `Transfer` of 0 (`starknet_simulateTransactions`
+      // at block 18422698, lcp's test/fixtures/starknet-zero-transfer-sepolia.json).
+      acceptsZero: ZERO_NETWORKS.includes(network) ? [ID] : [],
     },
     network: network as Network,
     facilitator,

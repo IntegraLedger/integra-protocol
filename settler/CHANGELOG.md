@@ -18,8 +18,9 @@ configuration, the answers or the storage.
   `invalid_payment_requirements` where its pairing is not in the list. `exact` on an `eip155` network names
   `x402/exact/eip155/eip3009`, whose transfer of zero Base Sepolia's USDC takes, and not `x402/exact/eip155/permit2`,
   whose proxy reverts at zero; `sui` names `x402/exact/sui`, a transfer of zero having executed on Sui testnet where the
-  buyer pays gas. `starknet` and `polkadot` state `[]`. Each module's list and its evidence are in
-  [The modules](./README.md#the-modules).
+  buyer pays gas; `starknet` names `x402/exact/starknet` on `starknet:SN_SEPOLIA`, where lcp takes an amount of zero on
+  STRK and USDC, each of whose `transfer` of 0 emits a `Transfer` of 0, and states `[]` on `starknet:SN_MAIN`.
+  `polkadot` states `[]`. Each module's list and its evidence are in [The modules](./README.md#the-modules).
 
 ### Fixed
 

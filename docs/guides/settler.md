@@ -266,7 +266,7 @@ names, and the table gives the ones each module takes.
 | `near` | NEAR | `near:mainnet`, `near:testnet` | `exact`: `x402/exact/near` (yes) | `relayer` | `[]` | `@x402/near`'s class |
 | `polkadot` | Polkadot Asset Hub | `polkadot:68d56f15f85d3136970ec16946040bc1`, `polkadot:67f9723393ef76214df0118c34bbbd3d` | `exact`: `x402/exact/polkadot/lcp-assets-remark` (yes) | `none` | `[]` | the settler's own |
 | `solana` | Solana | `solana:<genesis hash prefix>`; `upto` and `batch-settlement` not on `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` | `exact`: `x402/exact/solana` (yes); `upto`: `x402/upto/solana` (no); `batch-settlement`: `x402/batch-settlement/solana` (no) | `fee-payer` | `x402/exact/solana` on `exact`; `[]` on the others | `@x402/svm`'s classes |
-| `starknet` | Starknet | `starknet:SN_MAIN`, `starknet:SN_SEPOLIA` | `exact`: `x402/exact/starknet` (yes) | `relayer` | `[]` | the settler's own |
+| `starknet` | Starknet | `starknet:SN_MAIN`, `starknet:SN_SEPOLIA` | `exact`: `x402/exact/starknet` (yes) | `relayer` | `x402/exact/starknet` on `starknet:SN_SEPOLIA`; `[]` on `starknet:SN_MAIN` | the settler's own |
 | `stellar` | Stellar | `stellar:pubnet`, `stellar:testnet` | `exact` with `lcp-precondition`: `x402/exact/stellar/precondition` (yes) | `relayer` | `x402/exact/stellar/precondition` | the settler's own |
 | `sui` | Sui | `sui:mainnet`, `sui:testnet`, `sui:devnet` | `exact`: `x402/exact/sui` (yes) | `none` | `x402/exact/sui` | the settler's own |
 | `ton` | TON | `tvm:-239`, `tvm:-3` | `exact`: `x402/exact/tvm` (yes) | `relayer` | `x402/exact/tvm` | `@x402/tvm`'s class |
@@ -390,9 +390,12 @@ Each member, one entry per network unless it says otherwise:
   sends and pays for the transaction that executes it; `maxFee`, optional, the most one settlement's resource bounds
   may pay, in fri; `skewMarginSeconds` (default 60) and `minSettleMarginSeconds` (default 30), optional, the scheme's
   margins. x402 specifies Starknet and publishes no code for it, so the module is written to x402's scheme text and
-  lcp's profile. The kind's `extra.acceptsZero` is `[]`: lcp's option filter refuses an amount of `"0"` on every token
-  (its profile's rule 24). A `transfer` of 0 of STRK and of USDC, simulated on Starknet Sepolia at block 18422300,
-  emits a `Transfer` of 0.
+  lcp's profile. On `starknet:SN_SEPOLIA` the kind's `extra.acceptsZero` names `x402/exact/starknet`, and an option of
+  amount `"0"` is taken on STRK (`0x4718f5a0fc34cc1af16a1cdee98ffb20c31f5cd61d6ab07201858f4287c938d`) and USDC
+  (`0x53b40a647cedfca6ca84f542a0fe36736031905a9639a7f19a3c1e66bfd5080`), the tokens on which lcp's `starknetFloor`
+  answers 0 (its profile's rule 24): a `transfer` of 0 of each, simulated on Starknet Sepolia at block 18422698, emits a
+  `Transfer` of 0. lcp refuses `"0"` on any other token, `starknet/option-malformed`, which the module answers
+  `invalid_payment_requirements`. On `starknet:SN_MAIN` the list is `[]`.
 - **`stellar`**: an object `{ networks }`: `network`; `rpc`, a Stellar RPC endpoint that holds the history the read
   searches; `source`, the seller's funded account as a signer (`address` and `signTransaction`, such as x402's
   `createEd25519Signer` of `@x402/stellar` or a SEP-43 wallet), the transaction's source, which pays its fee;
