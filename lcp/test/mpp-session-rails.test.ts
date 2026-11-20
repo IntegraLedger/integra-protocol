@@ -480,8 +480,8 @@ describe("mpp/session/xrpl", () => {
     }
   });
 
-  // XS7: the in-band opening's read, held by the search's gate. The reader answers the payer's account alone.
-  it("XS7: the in-band opening that lapsed is pending, search-incomplete, while the search proves no absence", async () => {
+  // XS7: the in-band opening's read of a lapse, the search read whole. The reader answers the payer's account alone.
+  it("XS7: the in-band opening that lapsed is failed, instrument-unused", async () => {
     const ref = await sessionXrpl.reference(open(V.XS2.blob), C_X);
     if ("refused" in ref) throw new Error(ref.code);
     const payer = V.XS2.account as string;

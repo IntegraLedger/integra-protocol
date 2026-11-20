@@ -29,9 +29,8 @@ const LAPSE =
   "(`instrument-unused`), the sequence or ticket taken by another transaction, a Payment to another account among them " +
   "(`instrument-consumed`), or a validated `tec` result (`transaction-failed`); each only once the search for H, read " +
   "whole, holds no act of the payer that is the act asked about. A transaction that signs no `LastLedgerSequence` has " +
-  "no lapse. That `account_tx` lists every transaction of the payer's account, a delegated payment and an inner " +
-  "`Batch` payment among them, is not yet shown by a run: until it is, a search read whole proves no absence, and the " +
-  "read answers `pending`, `search-incomplete` where it would answer any of these three";
+  "no lapse. `account_tx` lists every transaction of the payer's account, a delegated payment and an inner `Batch` " +
+  "payment among them, so a search read whole proves absence";
 
 export const XRPL = /* @__PURE__ */ freeze({
   "x402/exact/xrpl": {
@@ -128,9 +127,8 @@ export const XRPL = /* @__PURE__ */ freeze({
         "none: a create the read finds has landed and succeeded. A channel another account opened, or one to another " +
         "account, is `failed`, `instrument-consumed`; one whose create is found at or before the position, `failed`, " +
         "`before-position`. One the validated ledger shows whose create the search, read whole, does not hold was created " +
-        "at or before the position only if `account_tx` lists every transaction of the account, which no run has yet " +
-        "shown: until one does, `pending`, `search-incomplete`, the search's position held where it began; on a server " +
-        "that does not hold the range, `unreadable`, `history-gap`. One the validated ledger does not show whose create " +
+        "at or before the position, since `account_tx` lists every transaction of the account: `failed`, " +
+        "`before-position`; on a server that does not hold the range, `unreadable`, `history-gap`. One the validated ledger does not show whose create " +
         "the search, read whole, does not hold, `pending`, `not-found`",
     },
     destination: "the PayChannel's `Destination`, compared with the option's payee",
@@ -168,9 +166,9 @@ export const XRPL = /* @__PURE__ */ freeze({
         "none: a create the read finds has landed and succeeded, its `Sequence` or ticket the single-use value. A channel " +
         "another account opened, or one to another account, is `failed`, `instrument-consumed`; one whose create is found " +
         "at or before the position, `failed`, `before-position`. One the validated ledger shows whose create the search, " +
-        "read whole, does not hold was created at or before the position only if `account_tx` lists every transaction of " +
-        "the account, which no run has yet shown: until one does, `pending`, `search-incomplete`, the search's position " +
-        "held where it began; on a server that does not hold the range, `unreadable`, `history-gap`. One the validated " +
+        "read whole, does not hold was created at or before the position, since `account_tx` lists every transaction of " +
+        "the account: `failed`, `before-position`; on a server that does not hold the range, `unreadable`, " +
+        "`history-gap`. One the validated " +
         "ledger does not show whose create the search, read whole, does not hold, `pending`, `not-found`",
     },
     destination: "the PayChannel's `Destination`, compared with the option's payee",

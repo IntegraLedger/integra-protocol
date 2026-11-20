@@ -285,23 +285,12 @@ const ZERO_CASES = ["a payment act carrying H that transferred zero", "an act ca
 const ZERO =
   `*${ZERO_CASES[0]}* and *${ZERO_CASES[1]}*, since a \`Payment\` of zero is malformed, a partial payment that delivers ` +
   "nothing does not succeed, and a `PaymentChannelCreate` of zero is malformed too";
-/** The `failed` reasons whose answer rests on the search for H read whole, which the search's gate holds. */
-const GATED: readonly string[] = ["instrument-unused", "instrument-consumed", "transaction-failed"];
-const GATE =
-  "while the search proves no absence, each case at coverage `full` whose answer on an act is `instrument-unused`, " +
-  "`instrument-consumed` or `transaction-failed`, which the search's gate holds";
 
 /** Every case whose name opens with `words`, on both acts, stated by `stated`; words that open no case throw. */
 const byWords = (words: string, stated: string): Inapplicable[] => {
   const found = READ_STATUS.cases.filter((c) => c.case.startsWith(words));
   if (found.length === 0) throw new Error(`no case of read-status.json opens with "${words}"`);
   return found.map((c) => ({ case: c.case, stated }));
-};
-
-/** Each case at coverage `full` whose answer on an act carries one of the gated reasons, on those acts. */
-const gated = (stated: string): Inapplicable[] => {
-  const full = new Set(READ_STATUS.cases.filter((c) => c.coverage === "full").map((c) => c.case));
-  return GATED.flatMap((r) => answering(r, stated)).filter((d) => full.has(d.case));
 };
 
 /** One statement for each case and act, the first that names it. */
@@ -326,7 +315,6 @@ function declared(form: Form, where: string = STATED[form], channels: string = C
     ...byWords(BELOW_CASE, at(BELOW)),
     ...byWords(EACH_CASE, at(EACH)),
     ...(coverageFull ? ZERO_CASES.flatMap((w) => byWords(w, at(ZERO))) : []),
-    ...(coverageFull ? gated(at(GATE)) : []),
   ]);
 }
 
@@ -344,9 +332,6 @@ function cannot(form: Form, c: ReadCase, act: Act): string | undefined {
   }
   if (form === "channel") return undefined;
   if (ZERO_CASES.some((w) => c.case.startsWith(w))) return "no act of these pairings transfers zero and succeeds";
-  if (c.coverage === "full" && reason !== undefined && GATED.includes(reason)) {
-    return "the search's gate holds the case: a search read whole proves no absence until a run shows it";
-  }
   return undefined;
 }
 

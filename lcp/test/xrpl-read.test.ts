@@ -1,7 +1,7 @@
 // Runs x402-exact-xrpl.json's read rows through x402/exact/xrpl's status: the read by the payer's instrument of a
 // ticket, used and not yet used, a validated tec result, a re-signed copy, a delegated payment, an inner Batch payment, a payment the payee
-// signed as the payer's Delegate, one that signs no LastLedgerSequence, and a partial payment; and the search's gate, which holds a lapse
-// and a sequence number another payment took. Every expected answer is the file's; the last block replays a server's
+// signed as the payer's Delegate, one that signs no LastLedgerSequence, and a partial payment; a lapse, and a sequence number another payment took, each read
+// with the search read whole. Every expected answer is the file's; the last block replays a server's
 // recorded answers, its expected answer the profile's.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";

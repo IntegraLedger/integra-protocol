@@ -1133,7 +1133,7 @@
   ]
  },
  "read": {
-  "about": "The read of x402/exact/xrpl by the payer's instrument, its signer and its authority (the profile x402-exact-xrpl.md, rules 10 and 11), and the search's gate (rule 15), each row on a constructed server holding ledgers 1 to ledger + 1, ledger validated, ledger 1000 where the row names none (test/fixtures/xrpl-reader.ts): reference of the presented blob under V2's accepted, read from ledger 900 at the mark validated; account_tx answers the landed blob, or nothing where the row names none, for the payer's account alone (any other account's account_tx is empty, its account_info finds no account and its tickets are absent), validated at ledger 990 with meta.delivered_amount 1000000 drops where it succeeded, or the row's delivered, and the result given otherwise; account_info answers accountSequence, and a ticket's ledger_entry ticketPresent, at both ledgers; tx answers the landed blob only where it is the presented one. Blobs are made with ripple-binary-codec 2.11.0 and @noble/curves' Ed25519 from the keys of Ed25519 entropy 01x16 (the payer) and 02x16, by xrpl.org's Ed25519 key derivation. Each expect is the answer the profile read-status (read-status.md) and the profile x402-exact-xrpl.md (rules 9 to 15) give that ledger, read at the mark validated for the act payment.",
+  "about": "The read of x402/exact/xrpl by the payer's instrument, its signer and its authority (the profile x402-exact-xrpl.md, rules 10 and 11), and the search read whole (rule 15), each row on a constructed server holding ledgers 1 to ledger + 1, ledger validated, ledger 1000 where the row names none (test/fixtures/xrpl-reader.ts): reference of the presented blob under V2's accepted, read from ledger 900 at the mark validated; account_tx answers the landed blob, or nothing where the row names none, for the payer's account alone (any other account's account_tx is empty, its account_info finds no account and its tickets are absent), validated at ledger 990 with meta.delivered_amount 1000000 drops where it succeeded, or the row's delivered, and the result given otherwise; account_info answers accountSequence, and a ticket's ledger_entry ticketPresent, at both ledgers; tx answers the landed blob only where it is the presented one. Blobs are made with ripple-binary-codec 2.11.0 and @noble/curves' Ed25519 from the keys of Ed25519 entropy 01x16 (the payer) and 02x16, by xrpl.org's Ed25519 key derivation. Each expect is the answer the profile read-status (read-status.md) and the profile x402-exact-xrpl.md (rules 9 to 15) give that ledger, read at the mark validated for the act payment.",
   "rows": [
    {
     "case": "a ticket: V2's fields with Sequence 0 and TicketSequence 9 (TicketSequence, ripple-binary-codec 2.11.0 dist/enums/definitions.json L572), signed again by its payer; the presented blob lands, the ticket absent at both ledgers: settled on it, presented yes",
@@ -1160,16 +1160,20 @@
     }
    },
    {
-    "case": "a validated tec result: V2's blob lands with tecPATH_DRY, which destroys the fee, delivers nothing and consumes the sequence number (xrpl.org, Transaction Results, tec codes): the act asked about failing, transaction-failed were the search shown; until a run shows that account_tx lists every transaction of the payer's account, the search read whole proves no absence: pending, search-incomplete, the search's position the ledger after the last it read",
+    "case": "a validated tec result: V2's blob lands with tecPATH_DRY, which destroys the fee, delivers nothing and consumes the sequence number (xrpl.org, Transaction Results, tec codes): the act asked about failing, transaction-failed, naming it with nothing moved",
     "presented": "12000022000000002400000007201B000003E85011FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB736140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F974402C8828F1E9C2AE56FB34403A0267ABF675503EBAA71D96E0E7F0F8A67CAF46CC780D870F1BF1E4C3FD3EB39F723AAF9DC9F9F0A4EA7104359377C9ED04F4250381144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65A",
     "landed": "12000022000000002400000007201B000003E85011FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB736140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F974402C8828F1E9C2AE56FB34403A0267ABF675503EBAA71D96E0E7F0F8A67CAF46CC780D870F1BF1E4C3FD3EB39F723AAF9DC9F9F0A4EA7104359377C9ED04F4250381144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65A",
     "result": "tecPATH_DRY",
     "accountSequence": 8,
     "ticketPresent": true,
     "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "search": 1002,
+     "state": "failed",
+     "reason": "transaction-failed",
+     "transaction": "03EA72FAE414FF229A6F54C19C81D0A203BE8D2B4313CAC8BA00EC867917B863",
+     "position": 990,
+     "finality": "validated",
+     "moved": [],
+     "signer": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
      "foreign": []
     }
    },
@@ -1249,73 +1253,67 @@
     }
    },
    {
-    "case": "a lapse: V2 presented and never landed, the validated ledger 1010 past its LastLedgerSequence 1000, the payer's Sequence not past 7, and account_tx from the issue ledger to the latest ledger read whole holding nothing: instrument-unused were the search shown; the gate holds it: pending, search-incomplete at 1012",
+    "case": "a lapse: V2 presented and never landed, the validated ledger 1010 past its LastLedgerSequence 1000, the payer's Sequence not past 7, and account_tx from the issue ledger to the latest ledger read whole holding nothing: instrument-unused",
     "presented": "12000022000000002400000007201B000003E85011FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB736140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F974402C8828F1E9C2AE56FB34403A0267ABF675503EBAA71D96E0E7F0F8A67CAF46CC780D870F1BF1E4C3FD3EB39F723AAF9DC9F9F0A4EA7104359377C9ED04F4250381144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65A",
     "ledger": 1010,
     "accountSequence": 7,
     "ticketPresent": true,
     "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "search": 1012,
+     "state": "failed",
+     "reason": "instrument-unused",
+     "finality": "validated",
      "foreign": []
     }
    },
    {
-    "case": "another payment took the sequence number: V2's fields paying rPPdduC9MRTrXZP1J7MQyEKKEYiFigWZ6Q, not the option's payee, signed by the payer (Ed25519 entropy 01x16), landed at ledger 990; V2 presented: a charge that paid another account, instrument-consumed were the search shown; the gate holds it: pending, search-incomplete at 1002, the payment named a foreign item, other-account, since no answer names it as the transaction that took the value",
+    "case": "another payment took the sequence number: V2's fields paying rPPdduC9MRTrXZP1J7MQyEKKEYiFigWZ6Q, not the option's payee, signed by the payer (Ed25519 entropy 01x16), landed at ledger 990; V2 presented: a charge that paid another account took the sequence number: instrument-consumed, naming it, carries other-account",
     "presented": "12000022000000002400000007201B000003E85011FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB736140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F974402C8828F1E9C2AE56FB34403A0267ABF675503EBAA71D96E0E7F0F8A67CAF46CC780D870F1BF1E4C3FD3EB39F723AAF9DC9F9F0A4EA7104359377C9ED04F4250381144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65A",
     "landed": "12000022000000002400000007201B000003E85011FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB736140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F974401F1702BC8205DF3137BF5AA18DF21D07B7E995B7BFECE11E5BDC850C90700F568E1828E20732543563E56D6BC8844353AB4442835B91448F4A56BEEB803DBB0481144D34F18EEBFD64C25996D2C5BD8C699DDEB946268314F59A8039C40BF1A6ADF7CEC4374C6449CBD0F114",
     "accountSequence": 8,
     "ticketPresent": true,
     "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "search": 1002,
-     "foreign": [
+     "state": "failed",
+     "reason": "instrument-consumed",
+     "transaction": "A7C8A83C8F27BFCC88DE658D61100215FBB6B0B2A366709697A9089E3B8A6402",
+     "position": 990,
+     "finality": "validated",
+     "moved": [
       {
-       "transaction": "A7C8A83C8F27BFCC88DE658D61100215FBB6B0B2A366709697A9089E3B8A6402",
-       "position": 990,
-       "moved": [
-        {
-         "asset": "XRP",
-         "amount": "1000000",
-         "to": "rPPdduC9MRTrXZP1J7MQyEKKEYiFigWZ6Q",
-         "transaction": "A7C8A83C8F27BFCC88DE658D61100215FBB6B0B2A366709697A9089E3B8A6402"
-        }
-       ],
-       "signer": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
-       "reason": "other-account"
+       "asset": "XRP",
+       "amount": "1000000",
+       "to": "rPPdduC9MRTrXZP1J7MQyEKKEYiFigWZ6Q",
+       "transaction": "A7C8A83C8F27BFCC88DE658D61100215FBB6B0B2A366709697A9089E3B8A6402"
       }
-     ]
+     ],
+     "signer": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "carries": "other-account",
+     "foreign": []
     }
    },
    {
-    "case": "the payee signed as the payer's Delegate: V2's fields with Delegate rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN, the option's payee (Delegate, ripple-binary-codec 2.11.0 dist/enums/definitions.json L2402), signed with the payee's key (Ed25519 entropy 02x16), lands at ledger 990 and takes the payer's Sequence 7; V2 presented, the account's Sequence 8 at both ledgers: no agreement, the payee's own signature (read-status rules 13 and 14), and the sequence number taken by a transaction that is not the act, instrument-consumed were the search shown; until a run shows that account_tx lists every transaction of the payer's account, pending, search-incomplete, the search's position the ledger after the last it read, the payee's payment named as a foreign item, payee-signed",
+    "case": "the payee signed as the payer's Delegate: V2's fields with Delegate rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN, the option's payee (Delegate, ripple-binary-codec 2.11.0 dist/enums/definitions.json L2402), signed with the payee's key (Ed25519 entropy 02x16), lands at ledger 990 and takes the payer's Sequence 7; V2 presented, the account's Sequence 8 at both ledgers: no agreement, the payee's own signature (read-status rules 13 and 14), and the sequence number taken by a transaction that is not the act: instrument-consumed, naming the payee's payment, carries payee-signed",
     "presented": "12000022000000002400000007201B000003E85011FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB736140000000000F424068400000000000000C7321ED06895BEC3FDE4090F06D840770D888D49E3089B3757C4285E3851BC33964E0F974402C8828F1E9C2AE56FB34403A0267ABF675503EBAA71D96E0E7F0F8A67CAF46CC780D870F1BF1E4C3FD3EB39F723AAF9DC9F9F0A4EA7104359377C9ED04F4250381144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65A",
     "landed": "12000022000000002400000007201B000003E85011FD9AF578DE2AF5DFC44BE5821EEF4EFE048BB2268AC8F59D58162E8310A3AB736140000000000F424068400000000000000C7321ED26D54D80051A116166CF76FEA87330D546680B875827B87AF1B1D58B9EB464E17440A4E4701C173458542C85ED4AAA221C91382F31B75BF41D902FC7C0EBF2728D0CCB96A42A6D6BA93096E37088320FDEAE638B0B44234585682D87B55C1F10C60581144D34F18EEBFD64C25996D2C5BD8C699DDEB94626831412EF6422DC22833EF13442F83E89FB113C01A65A8C1412EF6422DC22833EF13442F83E89FB113C01A65A",
     "accountSequence": 8,
     "ticketPresent": false,
     "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "search": 1002,
-     "foreign": [
+     "state": "failed",
+     "reason": "instrument-consumed",
+     "transaction": "11843CB3FEF4CC1E6BC9B7DB27ABC4FA048D001070281D6D4BCCF8318014D813",
+     "position": 990,
+     "finality": "validated",
+     "moved": [
       {
-       "transaction": "11843CB3FEF4CC1E6BC9B7DB27ABC4FA048D001070281D6D4BCCF8318014D813",
-       "position": 990,
-       "signer": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
-       "authority": "Delegate for r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
-       "moved": [
-        {
-         "asset": "XRP",
-         "amount": "1000000",
-         "to": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
-         "transaction": "11843CB3FEF4CC1E6BC9B7DB27ABC4FA048D001070281D6D4BCCF8318014D813"
-        }
-       ],
-       "reason": "payee-signed"
+       "asset": "XRP",
+       "amount": "1000000",
+       "to": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+       "transaction": "11843CB3FEF4CC1E6BC9B7DB27ABC4FA048D001070281D6D4BCCF8318014D813"
       }
-     ]
+     ],
+     "signer": "rpjfAeE3DeeHPFnN2PgGFW5YxnZFAjrEyN",
+     "authority": "Delegate for r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
+     "carries": "payee-signed",
+     "foreign": []
     }
    },
    {

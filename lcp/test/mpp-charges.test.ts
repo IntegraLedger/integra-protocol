@@ -387,7 +387,7 @@ describe("mpp-charge-xrpl.json", () => {
 
   // read: the charge's read through its status, from the reference of each row's credential under the placed challenge.
   // The reader answers the payer's account alone; tx answers V3's blob only where the row's lookup finds it.
-  it("read: a hash credential found by its lookup, and the search's gate", async () => {
+  it("read: a hash credential found by its lookup, and a lapse with the search read whole", async () => {
     type Row = { case: string; payload: MppCredential["payload"]; lookup: boolean; landed: string[]; ledger?: number; accountSequence: number; expect: unknown };
     const payer = V.V3.expectReference.signed.account as string;
     for (const row of rowsOf<Row>(V.read.rows, "mpp-charge-xrpl.json read.rows", { exact: 2 })) {

@@ -20,6 +20,17 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   keep 0.6.2's values, and on an `open` with no distribution are its payee, where they were absent and the channel's
   account. The read kit's case of an act of the pairing's kind that names no account is declared inapplicable to the
   four pairings, in their profiles.
+- Every XRP Ledger read whose search runs through the payer's `account_tx` (the `status` of `x402/exact/xrpl`,
+  `x402/upto/xrpl`, `mpp/charge/xrpl`, `mpp/session/xrpl` and `mpp/session/xrpl/stock`, and `xrplStatus`,
+  `xrplChargeStatus` and `xrplChannelStatus` of `@integraledger/lcp/xrpl`) answers `failed` where a search read whole
+  proves absence. `account_tx` lists every transaction of the payer's account, a delegated payment (`Delegate`) and an
+  inner `Batch` payment among them, as rippled 3.4.1 lists them on the XRPL Testnet
+  (`test/fixtures/xrpl-delegated-batch-testnet.json`). A payment that lapsed is `instrument-unused`, one whose
+  sequence number or ticket another transaction took `instrument-consumed`, and a validated `tec` result
+  `transaction-failed`, where each answered `pending`, `search-incomplete`; a stock session's channel the validated
+  ledger shows whose create the search, read whole from the position, does not hold is `failed`, `before-position`.
+  The profiles `x402-exact-xrpl` (rule 15), `x402-upto-xrpl`, `mpp-charge-xrpl` and `mpp-session-hedera-solana-xrpl`
+  state it, and the read kit runs the cases they declared inapplicable while the search proved no absence.
 
 ## [0.6.2] - 2026-11-19
 

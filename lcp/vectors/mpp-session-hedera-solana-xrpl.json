@@ -322,7 +322,7 @@
   "expectProofSignatureSuffix": "b0490e"
  },
  "SV4": {
-  "case": "a landed success with a top-level CHNL instruction, data 04, accounts [payee, channel, sysvar] \u2192 settled; data 02 \u2192 failed not-a-close",
+  "case": "a landed success with a top-level CHNL instruction, data 04, accounts [payee, channel, sysvar] → settled; data 02 → failed not-a-close",
   "tableClose": {
    "case": "A settleAndSeal close (data 04, accounts [payee, channel, sysvar]) as @solana/kit 8.4.0 writes it with the channel from an address lookup table (fixtures/svm-lookup-table.ts tableClose: compressTransactionMessageUsingAddressLookupTables with table 4QwSwNriKPrz8DLW4ju5uxC2TN5cksJx6tPUPj7DGLAW holding [channel], whose address is the one kit's documentation of that function uses), behind one zero signature slot. draft-solana-session-00 L2082-2097 at tempoxyz/mpp-specs 08e7dd87: a close bundled with a distribute of many recipients may be a version-0 transaction with an address lookup table. Each row is the landed transaction's loadedAddresses, as getTransaction lists the addresses its lookup tables loaded (writable, then read-only), and status's answer at finalized",
    "wireBase64": "AQAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAACAAQACAxzGbtQ3URFaQrWQUTLE9mgyhhHl6N632GJYXSo1UdABp6H7pOsrCQmT99Lf1iuJ4rhyB3pjn9fXR6jpn2PUFa4Gp9UXGSxcUSGMyUw9SvF/WNruCJuh/UTj29mKAAAAAMldvbubObW/csV2sS8SIzwf73L/gYSI9zg00vGC2JbrAQEDAAMCAQQBMrT7p/g2fICURynDZTjaqXSPN7hONppH7ZxdJJOr6ysBAAA=",
@@ -1842,13 +1842,13 @@
   ]
  },
  "XS7": {
-  "case": "the search's gate on the in-band opening: XS2's opening presented and never landed, the validated ledger 1010 past its LastLedgerSequence 1000, the payer's Sequence 7 at both ledgers, the opening read from ledger 900 on a constructed server holding ledgers 1 to 1011 (test/fixtures/xrpl-reader.ts), account_tx and account_info answering for the payer's account alone: instrument-unused were the search shown; until a run shows that account_tx lists every transaction of the payer's account, pending, search-incomplete, the search's position the ledger after the last it read",
+  "case": "a lapse of the in-band opening: XS2's opening presented and never landed, the validated ledger 1010 past its LastLedgerSequence 1000, the payer's Sequence 7 at both ledgers, the opening read from ledger 900 on a constructed server holding ledgers 1 to 1011 (test/fixtures/xrpl-reader.ts), account_tx and account_info answering for the payer's account alone: instrument-unused, the search read whole proving no transaction of the payer's took the sequence number",
   "ledger": 1010,
   "accountSequence": 7,
   "expect": {
-   "state": "pending",
-   "reason": "search-incomplete",
-   "search": 1012,
+   "state": "failed",
+   "reason": "instrument-unused",
+   "finality": "validated",
    "foreign": []
   }
  },
@@ -1996,7 +1996,7 @@
     }
    },
    {
-    "case": "a channel the ledger shows whose create the payer's account_tx, read whole from the position, does not hold: created at or before the position, failed, before-position, once a run shows that account_tx lists every transaction of the account; until then pending, search-incomplete, the search's position held where it began",
+    "case": "a channel the ledger shows whose create the payer's account_tx, read whole from the position, does not hold: created at or before the position, since account_tx lists every transaction of the account: failed, before-position",
     "channel": "7FEED84DE7A40383F2CE4FCFC272CDB1816F255374F9110A75C6133CF776F167",
     "entry": {
      "account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
@@ -2006,9 +2006,9 @@
     "opener": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
     "creates": [],
     "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "search": 950,
+     "state": "failed",
+     "reason": "before-position",
+     "finality": "validated",
      "foreign": []
     }
    },

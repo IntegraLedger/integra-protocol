@@ -187,7 +187,7 @@ reason is answered. The profile's rules choose the answer from what the rail's r
 below describe rail by rail. Three of them shape every rail's answers. `failed`, for any reason but `before-position`,
 comes only from a read at the rail's final mark; below it, the same facts answer `pending`, `below-mark`. Where the
 payer's own signed act carries H, `failed` also needs the search for H read whole. At this release a read on Solana,
-Sui, the XRP Ledger, Stellar, Algorand, Cardano, Casper, Concordium, Tron, TON or `x402/exact/hedera` answers no
+Sui, Stellar, Algorand, Cardano, Casper, Concordium, Tron, TON or `x402/exact/hedera` answers no
 `failed` but `before-position`, since its search rests on a fact a run has not yet shown: where the paragraphs below say
 a read finds the single-use value lapsed (`instrument-unused`), consumed by another act (`instrument-consumed`) or
 consumed by a failed transaction (`transaction-failed`), `status` answers `pending`, `search-incomplete`, and the search

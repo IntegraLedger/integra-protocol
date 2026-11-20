@@ -52,22 +52,6 @@ import { xrplChannelId } from "./xrpl-session.js";
  */
 export const XRPL_MAX_PAGES = 16;
 
-/**
- * Whether a run has shown the fact the search for H, and a channel's search for its create, rest on: that `account_tx`
- * lists, for every ledger it answers for, each transaction of the account, a delegated payment and an inner `Batch`
- * transaction among them. Not at this release, as each XRPL pairing's profile states: a search read whole proves no
- * absence, so where the read would answer `failed`, `instrument-unused`, `instrument-consumed` or `transaction-failed`,
- * it answers `pending`, `search-incomplete`, the search's position the ledger after the last it read; and where the
- * stock session's channel read would answer `failed`, `before-position` because the search holds no create of a
- * channel the ledger shows, it answers `pending`, `search-incomplete`, its position held where that search began. A
- * payment on these pairings that lapsed, or whose sequence number or ticket another transaction took, and a channel
- * created before the position, stay pending until that run.
- */
-const SEARCH_SHOWN = false;
-
-/** The `failed` reasons whose answer rests on the search for H read whole, which its gate holds. */
-const GATED: ReadonlySet<string> = new Set(["instrument-unused", "instrument-consumed", "transaction-failed"]);
-
 /** The form in which a pairing carries H: x402's `InvoiceID` digest, MPP's `InvoiceID`, or an opening's one LCP memo. */
 export type XrplForm = "x402" | "mpp" | "memo";
 
@@ -296,8 +280,6 @@ async function classify(
 interface Searched {
   readonly whole: boolean;
   readonly at?: number;
-  /** The ledger a next read resumes from: `at` where the search is not whole, else the one after the last it covered. */
-  readonly end: number;
   readonly covered: boolean;
   readonly undecoded: Undecoded<number>[];
 }
@@ -317,7 +299,7 @@ async function searchAccount(
   take: (landed: XrplLanded) => Promise<boolean>,
 ): Promise<Searched> {
   const undecoded: Undecoded<number>[] = [];
-  if (to < from) return { whole: true, end: from, covered: true, undecoded };
+  if (to < from) return { whole: true, covered: true, undecoded };
   let marker: unknown;
   let last = from;
   let covered = true;
@@ -335,10 +317,10 @@ async function searchAccount(
     marker = page.marker;
     if (marker === undefined) {
       return page.max >= to
-        ? { whole: true, end: page.max + 1, covered, undecoded }
-        : { whole: false, at: page.max + 1, end: page.max + 1, covered, undecoded };
+        ? { whole: true, covered, undecoded }
+        : { whole: false, at: page.max + 1, covered, undecoded };
     }
-    if (pages >= XRPL_MAX_PAGES) return { whole: false, at: last, end: last, covered, undecoded };
+    if (pages >= XRPL_MAX_PAGES) return { whole: false, at: last, covered, undecoded };
   }
 }
 
@@ -448,10 +430,10 @@ const NONE = xrplLedger("none");
  * presented blob's, or, for a payment presented by its hash, whether the act is that transaction. An account the
  * validated ledger does not show, deleted or never funded, gives no read of the value: the search decides, and with no
  * act found the answer is `pending`, `search-incomplete`, never `not-found`. A transaction found in a ledger not yet
- * validated was read at `current`, no mark: an act there is `pending`, `below-mark`. Until a run shows that
- * `account_tx` lists every transaction of the payer's account (`SEARCH_SHOWN`), a search read whole proves no absence:
- * where the read would answer `failed`, `instrument-unused`, `instrument-consumed` or `transaction-failed`, it answers
- * `pending`, `search-incomplete`, the search's position the ledger after the last it read.
+ * validated was read at `current`, no mark: an act there is `pending`, `below-mark`. A search read whole proves
+ * absence: `account_tx` lists every transaction of the payer's account, a delegated payment (`Delegate`) and an inner
+ * `Batch` transaction among them, each taking the account's sequence number or ticket, as rippled 3.4.1 lists them on
+ * the XRPL Testnet (`test/fixtures/xrpl-delegated-batch-testnet.json`).
  */
 export function xrplPaymentStatus(form: XrplForm) {
   return async (ref: XrplRef, reader: XrplReader, query: XrplQuery<XrplRef>): Promise<XrplStatus> => {
@@ -479,7 +461,6 @@ export function xrplPaymentStatus(form: XrplForm) {
       let search: Facts<number, XrplReached>["search"];
       let accountShown = true;
       let undecoded: Undecoded<number>[] = [];
-      let end: number | undefined;
       if (signed === undefined) {
         const l = lookup as { notFound: true; searchedAll: unknown };
         if (typeof l.searchedAll !== "boolean") unparseable();
@@ -509,7 +490,6 @@ export function xrplPaymentStatus(form: XrplForm) {
         if (!s.covered) history = false;
         search = s.at === undefined ? { whole: s.whole } : { whole: s.whole, at: s.at };
         undecoded = s.undecoded;
-        end = s.end;
       }
       if (!history && value !== undefined && (value.consumed || value.lapsed)) value = undefined;
       const facts: Facts<number, XrplReached> = {
@@ -519,12 +499,7 @@ export function xrplPaymentStatus(form: XrplForm) {
         ...(undecoded.length === 0 ? {} : { undecoded }),
         history,
       };
-      let answer = decide(facts, normalised(query), FULL);
-      // The search's gate: until a run shows that `account_tx` lists every transaction of the payer's account, a search
-      // read whole proves no absence, and the failed answers that rest on it are search-incomplete at the search's end.
-      if (!SEARCH_SHOWN && end !== undefined && answer.state === "failed" && GATED.has(answer.reason)) {
-        answer = decide({ ...facts, search: { whole: false, at: end } }, normalised(query), FULL);
-      }
+      const answer = decide(facts, normalised(query), FULL);
       // An account the validated ledger does not show gives no read of the value: the search decides, and with no act
       // found the answer is search-incomplete, never not-found, since a deleted account may have taken the value.
       if (!accountShown && answer.state === "pending" && answer.reason === "not-found") {
@@ -583,10 +558,9 @@ function isChannelRef(ref: unknown): ref is XrplChannelRef {
  * `instrument-consumed`; one at or before the query's `after`, `failed`, `before-position`. A channel the validated
  * ledger shows whose create the search, read whole, does not hold is `unreadable`, `history-gap` where the server does
  * not hold the range; where it holds it, the create was made at or before the search's start, so at or before the
- * query's `after` where the search began no later than the ledger after it, `failed`, `before-position`, once a run
- * shows that `account_tx` lists every transaction of the opener's account (`SEARCH_SHOWN`); until then that absence
- * proves nothing and the answer is `pending`, `search-incomplete`, its search position held where this search began,
- * so that the next read reads the range again. A channel it does not show whose create the search does not hold is
+ * query's `after` where the search began no later than the ledger after it, `failed`, `before-position`, since
+ * `account_tx` lists every transaction of the opener's account, a delegated create and an inner `Batch` create among
+ * them. A channel it does not show whose create the search does not hold is
  * `pending`, `not-found`, where the history holds, and `unreadable`, `history-gap` where it does not. `presented` is
  * `yes` where the create's `Account` is the payer the payment names, the create being the one whose metadata made the
  * channel's entry, so on every `settled` answer.
@@ -657,12 +631,10 @@ export async function xrplChannelStatus(
     const after = query.after;
     // A channel the validated ledger shows whose create the search, read whole, does not hold: on a server that does not
     // hold the range, the read proves nothing and goes to an endpoint that does; on one that holds it, the channel was
-    // created at or before the search's start, which only a search that lists every transaction of the opener's account
-    // proves. Until a run shows that, the absence releases nothing, and the position stays where this search began.
+    // created at or before the search's start, since the search lists every transaction of the opener's account.
     const absent = shown && met.length === 0 && s.whole && s.undecoded.length === 0;
     if (absent && !history) return unreadableAnswer("history-gap");
-    const beforeByAbsence = absent && after !== undefined && from <= after + 1;
-    if (beforeByAbsence && SEARCH_SHOWN) {
+    if (absent && after !== undefined && from <= after + 1) {
       return { state: "failed", reason: "before-position", finality: "validated", foreign: [] };
     }
     const value: Facts<number, XrplReached>["value"] = shown
@@ -677,7 +649,7 @@ export async function xrplChannelStatus(
       ...(s.undecoded.length === 0 ? {} : { undecoded: s.undecoded }),
       history,
     };
-    return decide(beforeByAbsence ? { ...facts, search: { whole: false, at: from } } : facts, normalised(query), NONE);
+    return decide(facts, normalised(query), NONE);
   } catch (e) {
     if (e instanceof Unreadable) return unreadableAnswer(e.reason);
     throw e;

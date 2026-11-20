@@ -1037,7 +1037,7 @@
     }
    },
    {
-    "case": "a channel the ledger shows whose create the payer's account_tx, read whole from the position, does not hold: created at or before the position only if account_tx lists every transaction of the account, which no run has shown: pending, search-incomplete, the search's position held where it began",
+    "case": "a channel the ledger shows whose create the payer's account_tx, read whole from the position, does not hold: created at or before the position, since account_tx lists every transaction of the account: failed, before-position",
     "channel": "0FE0AB883C082F7EA0C77869222A68E1590B5FFC495FD935FD3B2391CD09BA69",
     "entry": {
      "account": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
@@ -1047,9 +1047,9 @@
     "opener": "r3sNTMefq5gsRumMYsNznnX6yzzxVH6dTC",
     "creates": [],
     "expect": {
-     "state": "pending",
-     "reason": "search-incomplete",
-     "search": 950,
+     "state": "failed",
+     "reason": "before-position",
+     "finality": "validated",
      "foreign": []
     }
    },
