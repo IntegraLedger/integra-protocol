@@ -140,7 +140,7 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
     asset: "that transfer's token, compared with nothing",
     payer: "the named transaction's signer, read for the test that the payee did not sign",
     agreementOn: "any",
-    confirmed: "no",
+    confirmed: "yes",
     proves:
       "Before this payment, an account signed an agreement carrying this ATR's hash on <network>, recorded in " +
       "<transaction>; that shows neither that the account is the payer nor when this charge was taken. The payment " +
@@ -169,7 +169,7 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
     asset: "that transfer's token, compared with nothing",
     payer: "the named transaction's signer, read for the test that the payee did not sign",
     agreementOn: "any",
-    confirmed: "no",
+    confirmed: "yes",
     proves:
       "Before this payment, an account signed an agreement carrying this ATR's hash on <network>, recorded in " +
       "<transaction>; that shows neither that the account is the payer nor when this charge was taken. The payment " +
@@ -289,7 +289,7 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
       "of them goes to the challenge's `recipient`",
     asset: "each of those transfers' token, compared with nothing",
     payer: "the landed transaction's sender, recovered from its signed bytes",
-    confirmed: "no",
+    confirmed: "yes",
     proves: TEMPO_SPLIT_PROVES,
   },
   "mpp/session/tempo": {
@@ -318,7 +318,7 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
     payer:
       "the sender of the Tempo transaction the payer signed, recovered from its `0x76` form, whether a `0x76` envelope or the " +
       "`0x78` envelope a stock signer sends when the seller pays the fee carried it, the `0x78` envelope's item 11 naming that sender",
-    confirmed: "no",
+    confirmed: "yes",
     proves:
       "The ATR's hash is in the MPP session challenge this channel opened under: its id is the hash in " +
       "base64url with the challenge's position. The payer signed a Tempo transaction whose one call to the " +
@@ -365,7 +365,7 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
     payer:
       "the account whose root key signed the key authorization, recovered from its signature, compared with the " +
       "witness log's account topic",
-    confirmed: "no",
+    confirmed: "yes",
     proves:
       "The ATR's hash is the MPP subscription challenge's id, in base64url. The payer's root key signed a " +
       "Tempo key authorization whose witness is this ATR's hash, granting the seller's access key a per-period " +
@@ -396,7 +396,7 @@ export const EIP155_TEMPO_MPP = /* @__PURE__ */ freeze({
       "its `to` compared on a charge with the challenge's `recipient`",
     asset: "that `Transfer`'s token, compared with nothing",
     payer: "the authorization's `from` (the authorizer)",
-    confirmed: "no",
+    confirmed: "yes",
     agreement: {
       floor: "1",
       fee: "the settler",

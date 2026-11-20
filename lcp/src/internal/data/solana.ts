@@ -153,7 +153,7 @@ export const SOLANA = /* @__PURE__ */ freeze({
       "account",
     asset: "the transfer's mint, or lamports for `sol`; compared with nothing",
     payer: "the buyer's account",
-    confirmed: "no",
+    confirmed: "yes",
     agreement: {
       floor: "1",
       fee: "the seller's settler, under `feePayer: true`, named in every challenge of this id",
@@ -183,7 +183,7 @@ export const SOLANA = /* @__PURE__ */ freeze({
       "account",
     asset: "the transfer's mint, or lamports for `sol`; compared with nothing",
     payer: "the buyer's account",
-    confirmed: "no",
+    confirmed: "yes",
     proves: PAID,
   },
   "mpp/session/solana/memo": {
@@ -234,7 +234,7 @@ export const SOLANA = /* @__PURE__ */ freeze({
     destination: "the channel's token account, counting where the open's payee is the option's payee or its distribution holds that payee",
     asset: "the deposit's mint, recorded and compared with nothing",
     payer: "the open's payer (account 0), whose token account funds the deposit, never its authorizedSigner",
-    confirmed: "no",
+    confirmed: "yes",
     proves:
       "Before this opening was taken, an account signed an agreement transaction carrying this ATR's hash on " +
       "<network>, recorded in <transaction>. The opening, a stock MPP session's payment-channel open that its payer " +
@@ -290,7 +290,7 @@ export const SOLANA = /* @__PURE__ */ freeze({
       "`meta.postTokenBalances` is the option's payee",
     asset: "the transfer's mint, recorded and compared with nothing",
     payer: "the buyer's account",
-    confirmed: "no",
+    confirmed: "yes",
     agreement: {
       floor: "1",
       fee: "the settler where the challenge names it fee payer, else the buyer",

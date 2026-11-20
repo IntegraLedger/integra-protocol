@@ -256,11 +256,11 @@ names, and the table gives the ones each module takes.
 |---|---|---|---|---|---|---|
 | `algorand` | Algorand | `algorand:<genesis hash prefix>` | `exact`: `x402/exact/algorand` (yes) | `fee-payer` | `true` | `@x402/avm`'s class; the settler's own path for a rekeyed payer signing with one key and a Falcon-key payer |
 | `aptos` | Aptos | `aptos:<chain id>` | `exact`: `x402/exact/aptos` (yes) | `fee-payer`, or `none` with `sponsor: false` | `false` | `@x402/aptos`'s class |
-| `cardano` | Cardano | `cardano:mainnet`, `cardano:preprod`, `cardano:preview` | `exact`: `x402/exact/cardano` (yes), `x402/exact/cardano/lock` (no) | `none` | `false` | `@x402/cardano`'s class |
+| `cardano` | Cardano | `cardano:mainnet`, `cardano:preprod`, `cardano:preview` | `exact`: `x402/exact/cardano` (yes), `x402/exact/cardano/lock` (yes) | `none` | `false` | `@x402/cardano`'s class |
 | `casper` | Casper | `casper:casper-test` | `exact`: `x402/exact/casper` (no) | `relayer` | `false` | `@x402/casper`'s class |
 | `concordium` | Concordium | `ccd:<genesis hash prefix>` | `exact`: `x402/exact/ccd` (no) | `fee-payer` | `true` | `@x402/concordium`'s class |
-| `evm` | EVM | `eip155:<chain id>` | `exact`: `x402/exact/eip155/eip3009` (yes), `x402/exact/eip155/permit2` (no); `upto`: `x402/upto/eip155/permit2` (no); `auth-capture`: `x402/auth-capture/eip155/eip3009` (no), `x402/auth-capture/eip155/permit2` (no); `batch-settlement`: `x402/batch-settlement/eip155` (no) | `relayer` | `false` | `@x402/evm`'s classes |
-| `erc7710` | EVM | `eip155:<chain id>`, where `evm` registers `exact` | `exact` with `erc7710`: `x402/exact/eip155/erc7710` (no), `x402/exact/eip155/erc7710-salt` (no) | `relayer` | `false` | the settler's own, behind the `evm` module's `exact` |
+| `evm` | EVM | `eip155:<chain id>` | `exact`: `x402/exact/eip155/eip3009` (yes), `x402/exact/eip155/permit2` (yes); `upto`: `x402/upto/eip155/permit2` (yes); `auth-capture`: `x402/auth-capture/eip155/eip3009` (yes), `x402/auth-capture/eip155/permit2` (yes); `batch-settlement`: `x402/batch-settlement/eip155` (yes) | `relayer` | `false` | `@x402/evm`'s classes |
+| `erc7710` | EVM | `eip155:<chain id>`, where `evm` registers `exact` | `exact` with `erc7710`: `x402/exact/eip155/erc7710` (yes), `x402/exact/eip155/erc7710-salt` (yes) | `relayer` | `false` | the settler's own, behind the `evm` module's `exact` |
 | `hedera` | Hedera | `hedera:mainnet`, `hedera:testnet`, `hedera:previewnet`, `hedera:devnet` | `exact`: `x402/exact/hedera` (yes) | `fee-payer` | `false` | `@x402/hedera`'s class |
 | `lnbtc` | Lightning | `lnbtc:000000000019d6689c085ae165831e93`, `lnbtc:000000000933ea01ad0ee984209779ba` | `exact`: `x402/exact/lnbtc/payment-hash` (yes) | `none` | `false` | the settler's own |
 | `near` | NEAR | `near:mainnet`, `near:testnet` | `exact`: `x402/exact/near` (yes) | `relayer` | `false` | `@x402/near`'s class |
@@ -271,7 +271,7 @@ names, and the table gives the ones each module takes.
 | `sui` | Sui | `sui:mainnet`, `sui:testnet`, `sui:devnet` | `exact`: `x402/exact/sui` (yes) | `none` | `false` | the settler's own |
 | `ton` | TON | `tvm:-239`, `tvm:-3` | `exact`: `x402/exact/tvm` (yes) | `relayer` | `true` | `@x402/tvm`'s class |
 | `tron` | Tron | `tron:<chain id in decimal>` | `exact`: `x402/exact/tron/lcp-trc20-memo` (yes) | `none` | `false` | the settler's own |
-| `xrpl` | XRP Ledger | `xrpl:<NetworkID>` | `exact`: `x402/exact/xrpl` (yes); `upto`: `x402/upto/xrpl` (no) | `none` | `false` | `@x402/xrpl`'s class for a payer signing with one key; the settler's own for a multisigned payer and for `upto` |
+| `xrpl` | XRP Ledger | `xrpl:<NetworkID>` | `exact`: `x402/exact/xrpl` (yes); `upto`: `x402/upto/xrpl` (yes) | `none` | `false` | `@x402/xrpl`'s class for a payer signing with one key; the settler's own for a multisigned payer and for `upto` |
 
 `confirmed` is lcp's registry's: whether something outside lcp has shown the form as its profile defines it
 ([the pairing registry](../reference/pairings.md)). The

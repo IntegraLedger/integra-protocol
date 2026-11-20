@@ -76,7 +76,7 @@ export const XRPL = /* @__PURE__ */ freeze({
     destination: "the Payment's `Destination`, compared on a charge with the option's payee",
     asset: ASSET,
     payer: PAYER,
-    confirmed: "no",
+    confirmed: "yes",
     proves:
       "The payer signed an XRPL Payment whose InvoiceID is this ATR's hash, and it is in a validated ledger with " +
       "tesSUCCESS: it paid the amount meta.delivered_amount states to the account its Destination names. This does " +
@@ -178,7 +178,7 @@ export const XRPL = /* @__PURE__ */ freeze({
     payer: PAYER,
     agreementOn: "same-network",
     payeePreconditions: ["an account at `payTo`, funded for the settlement's fee, whose key signs the settlement"],
-    confirmed: "no",
+    confirmed: "yes",
     proves:
       "Before this payment, an account signed an agreement transaction carrying this ATR's hash on the payment's " +
       "XRPL network. The channel's create is in a validated ledger with tesSUCCESS: the account the payment's payer " +

@@ -69,7 +69,7 @@ export const CARDANO = /* @__PURE__ */ freeze({
       "where its address has the payment credential of the option's `payTo`",
     asset: "what the outputs carry, recorded as observed and compared with nothing",
     payer: "the payment credential that holds the input `payload.nonce` names",
-    confirmed: "no",
+    confirmed: "yes",
     proves:
       "The payer, the payment credential that holds the input the payment names, signed a Cardano transaction whose body " +
       "commits through its auxiliary_data_hash to a CIP-20 message (label 674) carrying this ATR's hash, and the ledger " +

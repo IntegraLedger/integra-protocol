@@ -39,6 +39,19 @@ rename exports and pairing ids and change a function's arguments or answers; a p
 - `LCP_PRECONDITION` (`@integraledger/lcp/x402-exact-stellar`): `x402/exact/stellar/precondition`'s
   `assetTransferMethod`, `"lcp-precondition"`, beside Polkadot's `LCP_ASSETS_REMARK` and Tron's `LCP_TRC20_MEMO`.
 
+### Changed
+
+- `data.confirmed` is `yes` on 21 more pairings, each shown end to end by a recorded run on a test network, whose
+  payment the pairing's `status` read as settled and as the payment presented, in a transaction that succeeded on its
+  chain: `mpp/charge/evm/transaction`, `mpp/charge/evm/hash`, `mpp/charge/usdc/evm`, `x402/exact/eip155/permit2`,
+  `x402/exact/eip155/erc7710`, `x402/exact/eip155/erc7710-salt`, `x402/upto/eip155/permit2`,
+  `x402/auth-capture/eip155/eip3009`, `x402/auth-capture/eip155/permit2` and `x402/batch-settlement/eip155` (Base
+  Sepolia); `mpp/charge/tempo/split-memo/push`, `mpp/session/tempo` and `mpp/subscription/tempo` (Tempo Moderato);
+  `mpp/charge/solana`, `mpp/charge/solana/unsponsored`, `mpp/charge/usdc/solana` and `mpp/session/solana/stock`
+  (Solana devnet); `mpp/charge/xrpl` and `x402/upto/xrpl` (XRP Ledger testnet); `mpp/charge/lcp/hedera` (Hedera
+  testnet); `x402/exact/cardano/lock` (Cardano preprod). Profile `mpp/method/lcp`'s rule 33 records its run. No other
+  member changes.
+
 ### Fixed
 
 - The Solana channel openings' read (`svmChannelStatus` and `svmOpeningStatus` of `@integraledger/lcp/svm`, the

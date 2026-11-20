@@ -62,7 +62,7 @@
 30. What the Mirror Node does not show of a body is not compared, so a landed body that differs from the presented one only there reads `presented` `yes`.
 31. Until a run shows the three facts the search for H rests on, the read answers `pending`, `search-incomplete`, where it would answer `failed`, but for `before-position`.
 32. A `hash` credential's `transactionId` is read only in the spelling with nine digits of nanoseconds; another spelling is refused `hedera/tx-malformed`.
-33. The pairing's `confirmed` is `no`: nothing outside lcp has yet shown a body of this form landing with H in its memo. A recorded run through a submitter, or a sample the method's own publication shows, would show it.
+33. The pairing's `confirmed` is `yes`: a recorded run on Hedera testnet showed a body of this form landing with H's LCP string as its memo, `SUCCESS`, in `hedera:testnet` transaction `0.0.11505931-1795155780-000000000`.
 
 **Every refusal of the method and of its Hedera rail,** each with the MPP problem type `problem` gives it (rule 8). A refusal of a `transaction` credential is given before anything moves; for a `hash` credential the payment has moved, and the same codes say which check its landed transaction failed.
 

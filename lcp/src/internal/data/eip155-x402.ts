@@ -110,7 +110,7 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     destination: "the `Transfer` from the payer (the Permit2 owner) in the hit's transaction; its `to` compared on a charge with the option's `payTo`",
     asset: "that `Transfer`'s token, recorded as observed and compared with nothing",
     payer: "the Permit2 owner, the signer of H",
-    confirmed: "no",
+    confirmed: "yes",
     agreement: {
       floor: "1",
       fee: "the party that submits; the buyer's one-time approval of Permit2 is the buyer's unless x402's gas-sponsoring extension covers it",
@@ -148,7 +148,7 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     destination: "the `Transfer` from the payer (the Permit2 owner) in the hit's transaction; its `to` compared on a charge with the option's `payTo`",
     asset: "that `Transfer`'s token, recorded as observed and compared with nothing",
     payer: "the Permit2 owner, the signer of H",
-    confirmed: "no",
+    confirmed: "yes",
     proves:
       "The payer signed a Permit2 witness transfer whose nonce is this ATR's hash, with the scheme's x402 " +
       "proxy as spender and the payee in the witness. Permit2 verified the signature when the proxy executed " +
@@ -181,7 +181,7 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     destination: "the escrow's `PaymentInfo.receiver`, compared with the option's `payTo`; the deployment's collector is the transfer's recipient",
     asset: "the token the authorization moves, recorded as observed and compared with nothing",
     payer: "the escrow's `PaymentInfo.payer`, the token authorization's signer",
-    confirmed: "no",
+    confirmed: "yes",
     proves:
       "The payer signed a token authorization whose nonce commits, through the escrow's PaymentInfo, to a salt " +
       "that is this ATR's hash when unbound, or a commitment over it with the receiver authorizer and policy " +
@@ -216,7 +216,7 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     destination: "the escrow's `PaymentInfo.receiver`, compared with the option's `payTo`; the deployment's collector is the transfer's recipient",
     asset: "the token the permit moves, recorded as observed and compared with nothing",
     payer: "the escrow's `PaymentInfo.payer`, the token authorization's signer",
-    confirmed: "no",
+    confirmed: "yes",
     proves:
       "The payment presented a Permit2 authorization whose nonce commits, through the escrow's PaymentInfo, to " +
       "a salt that is this ATR's hash when unbound, or a commitment over it with the receiver authorizer and " +
@@ -257,7 +257,7 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     destination: "the channel's `receiver`, compared with the option's `payTo`",
     asset: "the payer's transfer into the channel, its token recorded as observed and compared with nothing",
     payer: "the channel's `payer`",
-    confirmed: "no",
+    confirmed: "yes",
     proves:
       "The payer signed a token authorization for a deposit into an x402 batch-settlement channel whose " +
       "identifier, the EIP-712 hash of the channel's configuration, commits to this ATR's hash as the " +
@@ -301,7 +301,7 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     destination: "the token's `Transfer` from the payment's `delegator`, its `to` compared on a charge with the option's `payTo`",
     asset: "that `Transfer`'s token, compared with nothing",
     payer: "the root delegator; every delegator from the root through the leaf is tested as signer of H",
-    confirmed: "no",
+    confirmed: "yes",
     proves:
       "The leaf delegation of the permission context redeemed for this payment, made through MetaMask's " +
       "DelegationManager, carries this ATR's hash as its signed salt. The manager verified every delegation's " +
@@ -331,7 +331,7 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     asset: "that `Transfer`'s token, compared with nothing",
     payer: "the payment's `delegator`, who signed nothing holding H",
     agreementOn: "any",
-    confirmed: "no",
+    confirmed: "yes",
     proves:
       "Before this payment was taken, an account signed an agreement transaction carrying this ATR's hash on " +
       "<network>, recorded in <transaction>; this shows neither that the account is the payer nor what the agreement " +

@@ -116,7 +116,7 @@ describe("x402/upto/xrpl: bound, reference and broadcaster", () => {
 });
 
 describe("x402/upto/xrpl: the registry entry", () => {
-  it("is at coverage none with no link, after an agreement on the same network, single-use, confirmed no", () => {
+  it("is at coverage none with no link, after an agreement on the same network, single-use, confirmed yes", () => {
     expect(uptoXrpl.data).toMatchObject({
       coverage: "none",
       link: "none",
@@ -124,7 +124,7 @@ describe("x402/upto/xrpl: the registry entry", () => {
       nonce: "single-use",
       broadcasts: "payer",
       agreementOn: "same-network",
-      confirmed: "no",
+      confirmed: "yes",
     });
     expect(uptoXrpl.data.agreement).toBeUndefined();
     expect(uptoXrpl.claims).toBe(false);

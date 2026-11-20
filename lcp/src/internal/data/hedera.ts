@@ -99,7 +99,7 @@ export const HEDERA = /* @__PURE__ */ freeze({
       "the one account the signed body debits (`is_approval` false): never the account the transaction id names where " +
       "`feePayer` is true, and that account where it is not",
     payeePreconditions: HEDERA_PAYEE,
-    confirmed: "no",
+    confirmed: "yes",
     agreement: {
       floor: "1",
       fee: "the account the transaction id names: the submitter's `feePayerAccountId` where `feePayer` is true, else the buyer",
