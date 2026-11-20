@@ -20,13 +20,14 @@ import { BatchSvmScheme, type BatchPendingSettlementStore, type PaymentChannelSt
 import { ExactSvmScheme } from "@x402/svm/exact/facilitator";
 import { UptoSvmScheme } from "@x402/svm/upto/facilitator";
 import type { PendingSettlementStore } from "@x402/core/facilitator";
-import type { Network, PaymentPayload, PaymentRequirements, SchemeNetworkFacilitator } from "@x402/core/types";
+import type { FacilitatorContext, Network, PaymentPayload, PaymentRequirements, SchemeNetworkFacilitator, VerifyResponse } from "@x402/core/types";
 import { getBase58Decoder, getTransactionDecoder } from "@solana/kit";
 import { createHash } from "node:crypto";
 import { isObject } from "../../answers.js";
 import { NODE_TIMEOUT_MS } from "../../http.js";
 import {
   outcomeOf,
+  phaseOf,
   type ChainRead,
   type FeeMeter,
   type Instrumented,
@@ -81,11 +82,20 @@ function presented(payload: PaymentPayload): unknown {
 /** A refusal before the class: the module's network, then lcp's checks of the pairing. */
 type Check = (payload: PaymentPayload, requirements: PaymentRequirements) => Promise<{ reason: string; code?: string } | null>;
 
+/** The class's check at `/settle`, the one the core makes before it claims and submits, where it is not its `verify`. */
+type SettleCheck = (
+  cls: SchemeNetworkFacilitator,
+  payload: PaymentPayload,
+  requirements: PaymentRequirements,
+  context?: FacilitatorContext,
+) => Promise<VerifyResponse>;
+
 /**
  * The published class, unchanged, with the module's checks before it on both calls: a payment they refuse is answered
- * by x402's failure shape with lcp's code as its message, and the class never sees it.
+ * by x402's failure shape with lcp's code as its message, and the class never sees it. At `/settle`, the class's check
+ * is `atSettle` where given, else its `verify`.
  */
-function behind(cls: SchemeNetworkFacilitator, check: Check): SchemeNetworkFacilitator {
+function behind(cls: SchemeNetworkFacilitator, check: Check, atSettle?: SettleCheck): SchemeNetworkFacilitator {
   return {
     scheme: cls.scheme,
     caipFamily: cls.caipFamily,
@@ -96,6 +106,7 @@ function behind(cls: SchemeNetworkFacilitator, check: Check): SchemeNetworkFacil
       if (refused !== null) {
         return { isValid: false, invalidReason: refused.reason, ...(refused.code ? { invalidMessage: refused.code } : {}) };
       }
+      if (atSettle !== undefined && phaseOf(context) === "settle") return atSettle(cls, payload, requirements, context);
       return cls.verify(payload, requirements, context);
     },
     async settle(payload, requirements, context) {
@@ -267,6 +278,7 @@ function moduleOf(
   cls: SchemeNetworkFacilitator,
   acceptsZero: boolean,
   isOpening: (p: X402Payment) => boolean,
+  atSettle?: SettleCheck,
 ): Module {
   const network = c.network as Network;
   const check: Check = async (payload, requirements) => {
@@ -279,7 +291,7 @@ function moduleOf(
   return {
     descriptor: { name: "solana", key: "fee-payer", pairings: [pairing.id], acceptsZero },
     network,
-    facilitator: behind(cls, check),
+    facilitator: behind(cls, check, atSettle),
     record: {
       async instrument(p): Promise<Instrumented | Refused> {
         if (!isOpening(p)) {
@@ -330,6 +342,25 @@ function uptoOpening(p: X402Payment): boolean {
 }
 
 /**
+ * The `upto` class's check at `/settle`. The resource server stamps `type` on each settle it sends (x402's `upto`
+ * server: `deposit` before its handler runs, `claim` after it), and the class's `verify`, the check of the buyer's
+ * opening, refuses a payload that carries one. A deposit is checked by that `verify` as the buyer sent it, without
+ * the stamp. A claim, which that `verify` never takes, is checked by the class's `settle` before it sends anything (the
+ * channel it opened, the receiver authorizer, the validity window, the voucher): here it is valid, naming the
+ * payload's payer.
+ */
+const uptoAtSettle: SettleCheck = async (cls, payload, requirements, context) => {
+  const body = payload.payload;
+  if (!uptoOpening({ payload, requirements })) {
+    const from = body["from"];
+    return { isValid: true, ...(typeof from === "string" ? { payer: from } : {}) };
+  }
+  if (body["type"] !== "deposit") return cls.verify(payload, requirements, context);
+  const { type: _stamp, ...signed } = body;
+  return cls.verify({ ...payload, payload: signed }, requirements, context);
+};
+
+/**
  * Whether a batch-settlement payload goes through lcp's checks as an opening: a deposit that lcp's channel read does not
  * place within an open channel (a top-up), that is its `open`, and a deposit lcp cannot read, which its checks refuse.
  * Every other type is a voucher or a call on the channel the resource server makes, which lcp does not read.
@@ -358,7 +389,7 @@ export function solanaModules(config: SolanaConfig, state?: SolanaChannelState, 
     pendingSettlementStore: state.batchPending,
   });
   // upto: lcp's filter admits a positive amount only. Batch settlement: zero through it has not been read.
-  modules.push(moduleOf(c, uptoSvm, upto, false, uptoOpening));
+  modules.push(moduleOf(c, uptoSvm, upto, false, uptoOpening, uptoAtSettle));
   modules.push(moduleOf(c, batchSvm, batch, false, batchOpening));
   return modules;
 }

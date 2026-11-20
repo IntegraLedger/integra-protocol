@@ -7,6 +7,7 @@ import { createKeyPairSignerFromPrivateKeyBytes, getBase58Decoder, getTransactio
 import { InMemoryPendingSettlementStore } from "@x402/core/facilitator";
 import type { Network, PaymentPayload, PaymentRequirements } from "@x402/core/types";
 import { toFacilitatorSvmSigner } from "@x402/svm";
+import { UptoSvmScheme as UptoSvmServer } from "@x402/svm/upto/server";
 import { InMemoryBatchPendingSettlementStore, InMemoryPaymentChannelStorage } from "@x402/svm/batch-settlement/facilitator";
 import { exactSvm } from "@integraledger/lcp/x402-exact-solana";
 import { uptoSvm } from "@integraledger/lcp/x402-upto-solana";
@@ -259,6 +260,33 @@ describe("x402/exact/solana through the module", () => {
     const read = await m.record.read(payment(EXACT.V2.wireBase64, EXACT.V2.accepted), { deadline: performance.now() + 5_000 });
     expect(read.outcome).toBe("live");
     expect(read.answer.state).toBe("unreadable");
+  });
+});
+
+describe("x402/upto/solana in the stock resource server's order, through the settler's HTTP surface", () => {
+  it("verifies the opening as the buyer sent it, then settles the deposit and the claim x402's upto server stamps with their type", async () => {
+    vi.useFakeTimers({ toFake: ["Date"], now: UPTO.fixed.now * 1000 });
+    // The node's slot is the one the opening was signed at.
+    const s = await serve(DEVNET, undefined, (method, params) => (method === "getSlot" ? Number(UPTO.fixed.openSlot) : rpcAnswer(method, params)));
+    const row = UPTO.buyer.rows.find((x: { input?: { presented?: unknown } }) => x.input?.presented !== undefined);
+    const opening: PaymentPayload = row.input.presented;
+    expect(await s.verify(body(opening))).toEqual({ isValid: true, payer: UPTO.fixed.payer });
+    // @x402/svm 2.31.0's upto server, holding no receiver authorizer key: what it adds to each settle it sends.
+    const server = new UptoSvmServer();
+    const before = await server.enrichSettlementPayload({ phase: "before-handler", paymentPayload: opening, requirements: opening.accepted } as never);
+    expect(before).toEqual({ type: "deposit" });
+    const deposit = await s.settle(body({ ...opening, payload: { ...opening.payload, ...before } }));
+    // The class co-signed and sent the opening; the node never shows the channel account, so it answers pending.
+    expect(deposit).toMatchObject({ success: false, errorReason: "settlement_pending", network: DEVNET });
+    expect(sentWires()).toHaveLength(1);
+    expect((deposit as { transaction: string }).transaction).toBe(txidOf(sentWires()[0]!));
+    const charge = { ...opening.accepted, amount: "4000" };
+    const after = await server.enrichSettlementPayload({ phase: "after-handler", paymentPayload: opening, requirements: charge } as never);
+    expect(after).toEqual({ type: "claim" });
+    const claim = await s.settle({ x402Version: 2, paymentPayload: { ...opening, payload: { ...opening.payload, ...after } }, paymentRequirements: charge });
+    // The class's settle takes the claim, and refuses it for want of the voucher no configured key signs.
+    expect(claim).toMatchObject({ success: false, errorReason: "invalid_upto_svm_authorizer_not_configured", transaction: "" });
+    expect(sentWires()).toHaveLength(1);
   });
 });
 

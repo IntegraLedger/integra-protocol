@@ -265,10 +265,10 @@ async function call(path: string, body?: unknown): Promise<unknown> {
 const request = (p: PaymentPayload, r: PaymentRequirements = O) => ({ x402Version: 2, paymentPayload: p, paymentRequirements: r });
 
 describe("the Sui module through the settler's HTTP surface", () => {
-  it("/supported states the kind: the pairing, no key and no zero where the buyer pays gas", async () => {
+  it("/supported states the kind: the pairing, no key, and zero", async () => {
     await serve();
     expect(await call("/supported")).toEqual({
-      kinds: [{ x402Version: 2, scheme: "exact", network: NETWORK, extra: { key: "none", pairings: ["x402/exact/sui"], acceptsZero: false } }],
+      kinds: [{ x402Version: 2, scheme: "exact", network: NETWORK, extra: { key: "none", pairings: ["x402/exact/sui"], acceptsZero: true } }],
       extensions: [],
       // x402's class keys signers by CAIP family, an empty list where the module holds no key.
       signers: { "sui:*": [] },
@@ -303,6 +303,31 @@ describe("the Sui module through the settler's HTTP surface", () => {
     expect(kinds()).not.toContain("simulateTransaction");
     expect(await call("/settle", request(p))).toMatchObject({ success: false, errorReason: "invalid_transaction_state", transaction: digestOf(bytes), network: NETWORK });
     expect(executions).toEqual([]);
+  });
+});
+
+describe("a zero transfer on Sui testnet", () => {
+  // The transaction, its signature and its effects as Sui testnet's GraphQL endpoint gave them (the fixture names it).
+  const Z = JSON.parse(readFileSync(new URL("./fixtures/sui-testnet-zero-transfer.json", import.meta.url), "utf8"));
+  const SENDER = Z.effects.balanceChangesJson[0].address as string;
+  const option: PaymentRequirements = {
+    scheme: "exact",
+    network: NETWORK,
+    amount: "0",
+    asset: SUI,
+    payTo: "0x383ccd22e2e9effdecc30de0b6169f7ff8445e46d1fa163d6cbb3dbf4b00a140",
+    maxTimeoutSeconds: 60,
+    extra: {},
+  };
+
+  it("verifies, where the buyer pays gas, the transfer of 0 to the payee it executed, whose only balance change is its own gas", async () => {
+    await serve();
+    const bytes = fromBase64(Z.transactionBcs);
+    expect(digestOf(bytes)).toBe(Z.digest);
+    const changes = Z.effects.balanceChangesJson.map((c: { address: string; coinType: string; amount: string }) => ({ owner: c.address, coinType: c.coinType, amount: c.amount }));
+    chain.executed.set(Z.digest, { bytes, status: Z.effects.status, checkpoint: Z.effects.checkpoint.sequenceNumber, changes });
+    const p: PaymentPayload = { x402Version: 2, accepted: option, payload: { signature: Z.signatures[0], transaction: Z.transactionBcs } };
+    expect(await call("/verify", request(p, option))).toEqual({ isValid: true, payer: SENDER });
   });
 });
 

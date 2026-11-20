@@ -103,15 +103,20 @@ The answer is `{isValid: true, payer}` or `{isValid: false, invalidReason, inval
 
 ### `/settle`
 
-1. Steps 1 to 3 of `/verify`, with `errorMessage` for `invalidMessage`; `lnbtc` is served here.
+1. Steps 1 to 3 of `/verify`, with `errorMessage` for `invalidMessage`; `lnbtc` is served here. On `upto`, whose
+   requirements carry the charge, the `evm` module holds requirements that are the option the payment accepted in
+   every member but an `amount` at or below the accepted one as that option.
 2. The record: a final row is answered `invalid_transaction_state` naming the transaction it holds, never a second
    success.
 3. What the kind declares, as `/verify` checks it.
 4. A claim the record holds that is not final, which another settle holds or whose hold has ended: it is answered as
    [the record](#the-record-and-what-a-repeat-answers) says, and no step below is made.
-5. The class's verify. Where it refuses, lcp's read of the chain: a payment the chain shows landed, or whose value
-   another act consumed, is stored final and answered `invalid_transaction_state` naming its transaction; otherwise the
-   class's refusal is the answer, nothing is stored, and a repeat is checked again.
+5. The class's verify; on `upto`, the check the class's own settle makes before it submits. On `evm`, the permit
+   against the maximum the payment accepted. On `solana`, a deposit's opening as the buyer sent it, without the `type`
+   the resource server adds to each settle; a claim against an open channel, which the class's verify never takes, is
+   checked by its settle, before it sends anything. Where it refuses, lcp's read of the chain: a payment the chain
+   shows landed, or whose value another act consumed, is stored final and answered `invalid_transaction_state` naming
+   its transaction; otherwise the class's refusal is the answer, nothing is stored, and a repeat is checked again.
 6. Where the module's read searches from a position no x402 call carries (a ledger, a slot, a block), the chain's
    position, read just before the claim, which the row keeps for every later read.
 7. The claim: one conditional insert of the payment's row, held by this settle for `settleWaitMs`, so that of two

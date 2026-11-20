@@ -310,7 +310,7 @@ names, and the table gives the ones each module takes.
 | `solana` | Solana | `solana:<genesis hash prefix>`; `upto` and `batch-settlement` not on `solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp` | `exact`: `x402/exact/solana` (yes); `upto`: `x402/upto/solana` (no); `batch-settlement`: `x402/batch-settlement/solana` (no) | `fee-payer` | `true` on `exact`, `false` on the others | `@x402/svm`'s classes |
 | `starknet` | Starknet | `starknet:SN_MAIN`, `starknet:SN_SEPOLIA` | `exact`: `x402/exact/starknet` (yes) | `relayer` | `false` | the settler's own |
 | `stellar` | Stellar | `stellar:pubnet`, `stellar:testnet` | `exact` with `lcp-precondition`: `x402/exact/stellar/precondition` (yes) | `relayer` | `true` | the settler's own |
-| `sui` | Sui | `sui:mainnet`, `sui:testnet`, `sui:devnet` | `exact`: `x402/exact/sui` (yes) | `none` | `false` | the settler's own |
+| `sui` | Sui | `sui:mainnet`, `sui:testnet`, `sui:devnet` | `exact`: `x402/exact/sui` (yes) | `none` | `true` | the settler's own |
 | `ton` | TON | `tvm:-239`, `tvm:-3` | `exact`: `x402/exact/tvm` (yes) | `relayer` | `true` | `@x402/tvm`'s class |
 | `tron` | Tron | `tron:<chain id in decimal>` | `exact`: `x402/exact/tron/lcp-trc20-memo` (yes) | `none` | `false` | the settler's own |
 | `xrpl` | XRP Ledger | `xrpl:<NetworkID>` | `exact`: `x402/exact/xrpl` (yes); `upto`: `x402/upto/xrpl` (yes) | `none` | `false` | `@x402/xrpl`'s class for a payer signing with one key; the settler's own for a multisigned payer and for `upto` |
@@ -376,7 +376,15 @@ Each member, one entry per network unless it says otherwise:
   wallet (none where absent); `authCapture`, optional, `auth-capture`'s own configuration, passed to its class
   unchanged. Before the class is asked, `exact` refuses an option that pays several payees (a non-empty
   `extra.splits`) and Circle's batched option (`extra.name` `GatewayWalletBatched`, or an `extra.verifyingContract`
-  other than the asset), which no published EVM class settles.
+  other than the asset), which no published EVM class settles. At `/settle`, `upto` settles the amount its requirements
+  state, the charge: requirements that are the option the payment accepted in every member but an `amount` at or below
+  the accepted one are held as that option, and the class checks the permit against the accepted maximum, as its own
+  settle does; any other requirements are refused `invalid_payload`. Every kind states `acceptsZero` false. At zero, on
+  Base Sepolia at block 61194449 (an `eth_call`, and `eth_simulateV1` for the logs): USDC's EIP-3009
+  `transferWithAuthorization` of 0 succeeds, emitting `AuthorizationUsed` and a `Transfer` of 0; x402's `exact` and
+  `upto` Permit2 proxies revert `InvalidAmount`; the commerce-payments escrow's `authorize` reverts `ZeroAmount`; and
+  batch settlement's facilitator requires a deposit above 0. `exact` serves the Permit2 form beside EIP-3009's, so it
+  states false.
 - **`erc7710`**: `network`; `rpc`; `signer`, the seller's gas key, whose node must answer `eth_simulateV1`. The key
   sends from its first address, so that address is the delegate the leaf delegation must name (or the reference
   implementation's wildcard delegate), and the account the simulation runs from. It registers nothing of its own: on
@@ -405,21 +413,28 @@ Each member, one entry per network unless it says otherwise:
   pruning node discards the state of older blocks, and a block that holds the extrinsic and whose state is discarded
   keeps the answer `settlement_pending`. The runtime metadata is loaded on the first payment for the network, and again
   whenever the node's runtime version changes. A success names `<block hash>-<extrinsic index>`; a pending answer
-  names the extrinsic's hash.
+  names the extrinsic's hash. The kind states `acceptsZero` false: lcp's option filter takes a positive amount only
+  (its profile's rule 1), and a `transfer_keep_alive` of 0, dry-run on Westend Asset Hub at block 19635446, dispatches
+  and emits no event.
 - **`solana`**: `network`; `node`, the seller's JSON-RPC endpoint, one whose `getFirstAvailableBlock` is at or below the
   slot at which each payment was issued; `signer`, the seller's fee payer (`FacilitatorSvmSigner`), which co-signs every
   transaction the payer signed and, on the channel forms, pays the channel's rent; `transactionVersions`, optional, the
   message versions the classes accept (their default `[0, 1]`). `upto` and `batch-settlement` need the payment-channels
   program, which is deployed on devnet and testnet and not on mainnet: on Solana mainnet
   (`solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp`) only `exact` is registered. Their channels are kept in the settler's
-  database.
+  database. `upto` is settled in the order x402's `upto` resource server sends it: `/verify` of the opening as the buyer
+  sent it, then `/settle` of its deposit before the resource server's handler runs and of its claim after, each
+  carrying the `type` (`deposit`, `claim`) that server adds. A claim needs the voucher of the option's
+  `extra.receiverAuthorizer`, which the module does not sign: the resource server signs it with its own key.
 - **`starknet`**: an object `{ networks }`, one entry per network: `network`; `rpc`, a JSON-RPC node (specification 0.9
   or later) that serves `starknet_traceTransaction` and `starknet_simulateTransactions`; `executor`, an `address` and
   its `signer`, the account the payer's outside execution names as its caller, stated as `extra.feePayer`, which
   sends and pays for the transaction that executes it; `maxFee`, optional, the most one settlement's resource bounds
   may pay, in fri; `skewMarginSeconds` (default 60) and `minSettleMarginSeconds` (default 30), optional, the scheme's
   margins. x402 specifies Starknet and publishes no code for it, so the module is written to x402's scheme text and
-  lcp's profile.
+  lcp's profile. The kind states `acceptsZero` false: lcp's option filter refuses an amount of `"0"` on every token (its
+  profile's rule 24). A `transfer` of 0 of STRK and of USDC, simulated on Starknet Sepolia at block 18422300, emits a
+  `Transfer` of 0.
 - **`stellar`**: an object `{ networks }`: `network`; `rpc`, a Stellar RPC endpoint that holds the history the read
   searches; `source`, the seller's funded account as a signer (`address` and `signTransaction`, such as x402's
   `createEd25519Signer` of `@x402/stellar` or a SEP-43 wallet), the transaction's source, which pays its fee;
@@ -430,7 +445,10 @@ Each member, one entry per network unless it says otherwise:
 - **`sui`**: an object `{ networks }`: `network` (`sui:mainnet`, `sui:testnet` or `sui:devnet`); `graphql`, the seller's
   GraphQL endpoint. It serves the path where the buyer pays gas and the gasless path (`extra.gasless`), and holds no
   key. A transaction the buyer already executed is judged at `/verify` by its effects, and not refused for having
-  executed; its `/settle` answers a failure naming it.
+  executed; its `/settle` answers a failure naming it. The kind states `acceptsZero` true: a transfer of 0 executes
+  where the buyer pays gas (Sui testnet transaction `7EjfN1kqGng3phZjqgCzy8RRRXCP2Ybt7mikGgjBUwKA`, status `SUCCESS`,
+  its only balance change the sender's gas), and at 0 the signed transfer must name the option's payee. lcp's option
+  filter refuses 0 on the gasless path.
 - **`ton`**: `network`; `signer`, the seller's highload-v3 wallet and its node (`FacilitatorTvmSigner`), which relays
   the payer's W5 request in a message of its own and pays its gas; `reader`, lcp's `TvmReader` over the seller's TON
   Center v3 index.

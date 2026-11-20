@@ -18,7 +18,7 @@ import { ExactEvmScheme } from "@x402/evm/exact/facilitator";
 import { UptoEvmScheme } from "@x402/evm/upto/facilitator";
 import type { FacilitatorEvmSigner } from "@x402/evm";
 import { NODE_TIMEOUT_MS } from "../../http.js";
-import type { FeeMeter, FeeNeeds, Module, ModuleStarter, RecordNeeds, Registration } from "../../module.js";
+import { phaseOf, type FeeMeter, type FeeNeeds, type Module, type ModuleStarter, type RecordNeeds, type Registration } from "../../module.js";
 import { admit, instrumentOf, PAIRINGS, readOf, type EvmScheme } from "./forms.js";
 import { chargedFrom, evmReader, feeShown } from "./node.js";
 
@@ -110,7 +110,9 @@ function payerOf(payload: PaymentPayload): string | undefined {
 
 /**
  * The class behind the profile's pure checks: a payment they refuse is answered with their reason and never reaches
- * the class; every other call is the class's own, its `getExtra` and `getSigners` included.
+ * the class; every other call is the class's own, its `getExtra` and `getSigners` included. At `/settle` of `upto`,
+ * whose requirements carry the charge, the class's `verify` is given them at the maximum the payment accepted, as its
+ * own `settle` verifies the permit before it submits.
  */
 function checked(scheme: EvmScheme, inner: SchemeNetworkFacilitator, pairings: readonly string[]): SchemeNetworkFacilitator {
   return {
@@ -124,7 +126,8 @@ function checked(scheme: EvmScheme, inner: SchemeNetworkFacilitator, pairings: r
         const payer = payerOf(payload);
         return payer === undefined ? { isValid: false, invalidReason: a.refused } : { isValid: false, invalidReason: a.refused, payer };
       }
-      return inner.verify(payload, requirements, context);
+      const held = scheme === "upto" && phaseOf(context) === "settle" ? { ...requirements, amount: payload.accepted.amount } : requirements;
+      return inner.verify(payload, held, context);
     },
     async settle(payload: PaymentPayload, requirements: PaymentRequirements, context) {
       const a = await admit(scheme, { payload, requirements }, pairings as never);
@@ -161,8 +164,9 @@ export function evmModules(c: EvmConfig, meter: FeeMeter, pending?: PendingSettl
         name: "evm",
         key: "relayer",
         pairings,
-        // Permit2 takes no zero (its proxies refuse an amount of 0), and every other EVM class form but EIP-3009's
-        // `exact` is unestablished at zero; a kind takes zero only where each of its pairings does.
+        // A kind takes zero only where each of its pairings does. At 0 on Base Sepolia: EIP-3009's transfer lands, x402's
+        // Permit2 proxies revert `InvalidAmount`, the escrow's `authorize` reverts `ZeroAmount`; batch settlement's
+        // facilitator requires a deposit above 0. `exact` holds the Permit2 form beside EIP-3009's.
         acceptsZero: false,
       },
       network,

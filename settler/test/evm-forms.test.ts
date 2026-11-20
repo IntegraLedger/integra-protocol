@@ -12,7 +12,7 @@ import { x402UptoPermit2ProxyAddress, AUTH_CAPTURE_ESCROW_ADDRESS, EIP3009_TOKEN
 import { encodeAbiParameters, toFunctionSelector, type Hex } from "viem";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { EvmScheme } from "../src/modules/evm/forms.js";
-import { chainOf, evmNode, type EvmChain, type EvmLog } from "./evm-node.js";
+import { chainOf, evmNode, profileLogs, transferLog, type EvmChain, type EvmLog } from "./evm-node.js";
 import { gasKey, lcpVector, pointer, settlerOf, type Settler } from "./evm-support.js";
 import type { Stub } from "./support.js";
 
@@ -95,6 +95,19 @@ describe("x402/upto/eip155/permit2 through the evm module", () => {
         keep_until: String(BigInt(permit.deadline) * 1000n),
       },
     ]);
+  });
+
+  it("settles EV2's permit for a charge below its maximum, the requirements x402's upto resource server sends at /settle", async () => {
+    const settler = await settlerFor("upto", payment.accepted.asset, ANVIL_2);
+    const charge = { ...payment.accepted, amount: "1250000" };
+    expect(await settler.verify(payment)).toMatchObject({ isValid: true, payer: owner });
+    const settled = await settler.settle(payment, charge);
+    expect(settled).toMatchObject({ success: true, network: NETWORK, payer: owner, amount: "1250000" });
+    const tx = chain.sent.at(-1)!;
+    expect(settled.transaction).toBe(tx.hash);
+    expect(profileLogs(tx.to, tx.input)).toEqual([transferLog(payment.accepted.asset, owner, payment.accepted.payTo, 1250000n)]);
+    // Above the maximum, the payment is not the option it accepted.
+    expect(await settler.settle(payment, { ...payment.accepted, amount: "5000001" })).toMatchObject({ success: false, errorReason: "invalid_payload" });
   });
 
   it("refuses the vector's option with no facilitator address, and each option the pairing does not offer", async () => {

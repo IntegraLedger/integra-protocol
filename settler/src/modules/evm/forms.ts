@@ -3,7 +3,7 @@
  * of its profile, the instrument the record keys it by, how long a final row is kept, and lcp's read of it. Nothing here
  * reads the chain or the clock but the read itself.
  */
-import { digestJson, isRefusal, pairingOf, type PairingId, type Refusal } from "@integraledger/lcp";
+import { canonicalJson, digestJson, isRefusal, pairingOf, type PairingId, type Refusal } from "@integraledger/lcp";
 import { PERMIT2, type EvmReader } from "@integraledger/lcp/evm";
 import {
   authCaptureEip3009,
@@ -17,7 +17,7 @@ import {
   type PaymentRequirements as LcpRequirements,
 } from "@integraledger/lcp/x402";
 import { batchEvm } from "@integraledger/lcp/x402-batch-settlement";
-import type { Network } from "@x402/core/types";
+import type { Network, PaymentRequirements } from "@x402/core/types";
 import { outcomeOf, type ChainRead, type Instrument, type Instrumented, type Keep, type ReadAnswer, type Refused, type X402Payment } from "../../module.js";
 
 /** The forms of one scheme on EVM, by the lcp pairing ids the scheme's class submits. */
@@ -86,13 +86,33 @@ export function exactOptionRefused(requirements: { readonly asset: string; reado
   );
 }
 
+const DECIMAL = /^[0-9]+$/;
+
+/**
+ * The option an `upto` payment is held to. x402's `upto` settles the amount its requirements state, at most the maximum
+ * the payment accepted: requirements that are the option the payment accepted in every member but an `amount` at or
+ * below the accepted one, as RFC 8785 forms compare them, are held as that option. Any other requirements are the
+ * option as given.
+ */
+function uptoOption(p: X402Payment): PaymentRequirements {
+  const { requirements } = p;
+  const accepted = p.payload.accepted as PaymentRequirements | undefined;
+  if (!isObject(accepted)) return requirements;
+  const charge: unknown = requirements.amount;
+  const max: unknown = accepted.amount;
+  if (typeof charge !== "string" || typeof max !== "string" || !DECIMAL.test(charge) || !DECIMAL.test(max)) return requirements;
+  if (BigInt(charge) > BigInt(max)) return requirements;
+  const asAccepted = canonicalJson({ ...requirements, amount: max });
+  return typeof asAccepted === "string" && asAccepted === canonicalJson(accepted) ? accepted : requirements;
+}
+
 /**
  * The profile's pure checks of a payment answering an option of `scheme`: the option is one of the pairings `pairings`
  * names, as lcp's option filter reads it alone (`invalid_payment_requirements` otherwise), and the payment is that
- * pairing's as lcp's `reference` reads it against the option (`invalid_payload` otherwise). A batch settlement's
- * payment that is no opening has no reference: lcp's channel read holds its configuration to its voucher's channel,
- * and the claim, settle and refund calls a resource server makes of the channel, which lcp does not decode, are x402's
- * class's to check.
+ * pairing's as lcp's `reference` reads it against the option (`invalid_payload` otherwise), an `upto` option being
+ * the one `uptoOption` holds it to. A batch settlement's payment that is no opening has no reference: lcp's channel
+ * read holds its configuration to its voucher's channel, and the claim, settle and refund calls a resource server
+ * makes of the channel, which lcp does not decode, are x402's class's to check.
  */
 export async function admit(scheme: EvmScheme | "erc7710", p: X402Payment, pairings: readonly PairingId[]): Promise<Admitted | Refused> {
   const { payload, requirements } = p;
@@ -115,7 +135,8 @@ export async function admit(scheme: EvmScheme | "erc7710", p: X402Payment, pairi
       return isRefusal(channel) ? { refused: "invalid_payload" } : { pairing };
     }
   }
-  const ref = await CODEC[pairing].reference(payload, requirements as LcpRequirements);
+  const held = requirements.scheme === "upto" ? uptoOption(p) : requirements;
+  const ref = await CODEC[pairing].reference(payload, held as LcpRequirements);
   if (isRefusal(ref)) return { refused: "invalid_payload" };
   return { pairing, ref: ref as Ref };
 }

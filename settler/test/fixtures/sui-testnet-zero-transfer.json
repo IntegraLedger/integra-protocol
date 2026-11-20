@@ -1,0 +1,24 @@
+{
+  "source": "Sui testnet, its GraphQL endpoint https://graphql.testnet.sui.io/graphql, transaction(digest), read 2026-11-20T07:47:55Z: a transfer of 0 SUI to the payee the buyer signed and executed, paying its own gas",
+  "digest": "7EjfN1kqGng3phZjqgCzy8RRRXCP2Ybt7mikGgjBUwKA",
+  "transactionBcs": "AAADACAx+pFFZjWWSEo2Ht2QbBp8YtaStOUk+rCdJQimITyrNwAIAAAAAAAAAAAAIDg8zSLi6e/97MMN4LYWn3/4RF5G0foWPWy7Pb9LAKFAAgIAAQEBAAEBAwAAAAABAgDjbqEgCU1qi17viOyA/N3UCWgv9rZMbx4A1FUY5eV9WwGZo7WNdMTnl8Up7IkL5n9sRoId3OL8lRP39PhaaxMldQAAAAAAAAAAINfk+HYAAAAACQUAAKysrKysrKysrKysrKysrKysrKys426hIAlNaote74jsgPzd1AloL/a2TG8eANRVGOXlfVvoAwAAAAAAAOCXLQAAAAAAAQkFAAAAAAAA",
+  "signatures": [
+    "AMN/NYTB/tPm9PEqd54/c6EP9S+ltIyl8nNEIr/9/qjhXw2M3yuVrG4EWjprg3xc83+VahLLyIwccC+SUD2PDQ8y1FtkUjm05jIpyj+JLfztbVE10Iaaim462RtlBRzpBA=="
+  ],
+  "effects": {
+    "status": "SUCCESS",
+    "checkpoint": {
+      "sequenceNumber": 408584775
+    },
+    "epoch": {
+      "epochId": 1289
+    },
+    "balanceChangesJson": [
+      {
+        "address": "0xe36ea120094d6a8b5eef88ec80fcddd409682ff6b64c6f1e00d45518e5e57d5b",
+        "coinType": "0x0000000000000000000000000000000000000000000000000000000000000002::sui::SUI",
+        "amount": "-1988000"
+      }
+    ]
+  }
+}

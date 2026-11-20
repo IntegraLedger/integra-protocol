@@ -523,7 +523,7 @@ export function starknetModule(c: StarknetNetworkConfig, core: Core): Module {
       name: "starknet",
       key: "relayer",
       pairings: [ID],
-      // The profile's floor is one base unit on every token until a run shows a token's `Transfer` for zero (rule 24).
+      // lcp's option filter refuses an amount of "0" on every token (the profile's rule 24).
       acceptsZero: false,
     },
     network: network as Network,
