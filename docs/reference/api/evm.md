@@ -170,7 +170,7 @@ The reference the `auth-capture` reads take.
 | <a id="property-payer"></a> `payer` | `readonly` | `` `0x${string}` `` | The escrow's `PaymentInfo.payer`, the token authorization's signer. | - |
 | <a id="property-paymentid"></a> `paymentId` | `readonly` | `` `0x${string}` `` | The escrow's payment hash of the presented `PaymentInfo`, and that hash with payer zero, the signed nonce. | - |
 | <a id="property-salt"></a> `salt` | `readonly` | `` `0x${string}` `` | `PaymentInfo.salt`: H, or the commitment to the receiver authorizer, the policy and H. | - |
-| <a id="property-scheme"></a> `scheme` | `readonly` | `"eip3009"` \| `"permit2"` | - | - |
+| <a id="property-scheme"></a> `scheme` | `readonly` | `"permit2"` \| `"eip3009"` | - | - |
 | <a id="property-signaturenonce"></a> `signatureNonce` | `readonly` | `` `0x${string}` `` | - | - |
 | <a id="property-transaction"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search; never needed. | [`X402EvmRefBase`](#x402evmrefbase).[`transaction`](#property-transaction-7) |
 
@@ -204,7 +204,7 @@ nonce, its bound and the amount it moves.
 | <a id="property-receiverauthorizer"></a> `receiverAuthorizer` | `readonly` | `` `0x${string}` `` | - | - |
 | <a id="property-refundauthorizer"></a> `refundAuthorizer?` | `readonly` | `` `0x${string}` `` | In the scheme's refund-authorizer mode, the option's refund authorizer, whose 20 bytes end the channel salt: H is then the deposit authorization's salt, or the permit's nonce, and not the channel salt. | - |
 | <a id="property-salt-1"></a> `salt` | `readonly` | `` `0x${string}` `` | - | - |
-| <a id="property-scheme-1"></a> `scheme` | `readonly` | `"eip3009"` \| `"permit2"` | - | - |
+| <a id="property-scheme-1"></a> `scheme` | `readonly` | `"permit2"` \| `"eip3009"` | - | - |
 | <a id="property-settleby"></a> `settleBy` | `readonly` | `string` | The deposit authorization's `validBefore` or `deadline`, and the deposit's amount, in decimal. | - |
 | <a id="property-transaction-1"></a> `transaction?` | `readonly` | `` `0x${string}` `` | A transaction a settler or the caller named, read beside the search; never needed. | [`X402EvmRefBase`](#x402evmrefbase).[`transaction`](#property-transaction-7) |
 | <a id="property-withdrawdelay"></a> `withdrawDelay` | `readonly` | `number` | - | - |
@@ -624,7 +624,7 @@ execute.
 | <a id="property-at"></a> `at` | `` `0x${string}` `` | The contract that records the nonce's use: the token for `eip3009`, the Permit2 deployment for `permit2`. |
 | <a id="property-deadline-1"></a> `deadline` | `string` | The signed time bound, in decimal Unix seconds. |
 | <a id="property-nonce-1"></a> `nonce` | `` `0x${string}` `` | The nonce the payer signed, as that contract records it: `0x` and 64 lowercase hex digits. |
-| <a id="property-scheme-2"></a> `scheme` | `"eip3009"` \| `"permit2"` | - |
+| <a id="property-scheme-2"></a> `scheme` | `"permit2"` \| `"eip3009"` | - |
 
 ***
 

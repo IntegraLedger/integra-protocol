@@ -224,6 +224,7 @@ The members of a pairing's data that do not turn on its coverage.
 | <a id="property-confirmed"></a> `confirmed` | `readonly` | `"no"` \| `"yes"` | Whether something outside lcp has shown the form as its profile defines it. |
 | <a id="property-destination"></a> `destination?` | `readonly` | `string` | How the account the act names is identified in the landed transaction. |
 | <a id="property-nonce"></a> `nonce` | `readonly` | `"unshown"` \| `"single-use"` \| `"reusable"` | Whether the identical instrument can land more than once; `unshown` until a vector or a run shows single use. |
+| <a id="property-option"></a> `option?` | `readonly` | [`OptionData`](#optiondata) | Present where the pairing's option filter requires members of the option's `extra` to hold fixed values, which `extra` names, so a resource server writes them into the option from the data. |
 | <a id="property-payeepreconditions"></a> `payeePreconditions?` | `readonly` | readonly `string`[] | What the payee's account must hold or be on chain before a payment through the pairing can reach it, each in the profile's words: an account, a token association, an asset already held, a funded key. Absent where the pairing's profile states none. |
 | <a id="property-payer"></a> `payer?` | `readonly` | `string` | How the payer is identified in the landed transaction. |
 | <a id="property-proves"></a> `proves` | `readonly` | `string` | What the read establishes of a payment through the pairing. |
@@ -249,7 +250,7 @@ the option a payment answers, and what `status` and `recover` take and answer.
 | <a id="property-network"></a> `network` | `readonly` | `unknown` | The network `recover` takes. |
 | <a id="property-offer"></a> `offer` | `readonly` | `unknown` | The offer `advertise` places H on: the x402 option, the MPP challenge, or the protocol's own option. |
 | <a id="property-offered"></a> `offered` | `readonly` | `unknown` | What `read` gives: the hash, the link, the agreement URL where the document carries one, and the offer. |
-| <a id="property-option"></a> `option` | `readonly` | `unknown` | The x402 option or MPP challenge a payment answers, which `reference` and `recover` take. |
+| <a id="property-option-1"></a> `option` | `readonly` | `unknown` | The x402 option or MPP challenge a payment answers, which `reference` and `recover` take. |
 | <a id="property-placedin"></a> `placedIn` | `readonly` | `unknown` | What `advertise` places H in: the document, or nothing where H goes into values the seller places itself. |
 | <a id="property-query"></a> `query` | `readonly` | `unknown` | What `status` takes beside the reference and the reader. |
 | <a id="property-receipt"></a> `receipt?` | `readonly` | `unknown` | The receipt `keySearch` reads; absent where the pairing has no `keySearch`. |
@@ -379,6 +380,18 @@ two answers that name one transfer are told from two transfers.
 
 ***
 
+### OptionData
+
+What an option of the pairing holds, as data.
+
+#### Properties
+
+| Property | Modifier | Type | Description |
+| ------ | ------ | ------ | ------ |
+| <a id="property-extra"></a> `extra` | `readonly` | `object` | The members of the option's `extra` the pairing's option filter requires, each with the one value it takes, as the pairing's profile states them: an option that lacks one, or holds another value, is not served as this pairing. |
+
+***
+
 ### PresentedOn
 
 What the buyer presents as payment, per surface: the union of the payment types of every pairing on it. Every
@@ -458,7 +471,7 @@ What `recover` takes: the network, the transaction id, and the option or challen
 | Property | Modifier | Type |
 | ------ | ------ | ------ |
 | <a id="property-network-1"></a> `network` | `readonly` | `Network` |
-| <a id="property-option-1"></a> `option` | `readonly` | `Option` |
+| <a id="property-option-2"></a> `option` | `readonly` | `Option` |
 | <a id="property-tx"></a> `tx` | `readonly` | `string` |
 
 ***
@@ -888,8 +901,9 @@ lcp has shown the form as its profile defines it (`yes` or `no`); and `proves`, 
 payment through the pairing. Where a public ledger records the payment it has `read` (`ReadData`), what a read of
 the pairing needs; and, where the pairing's entry states them, `destination`, `asset` and `payer`: how the account
 the act names, the asset and the payer are identified in the landed transaction. Where the pairing's profile states
-them it has `payeePreconditions`, what the payee's account must hold before it can be paid; and where the payment is
-card-like, on no network a CAIP-2 id names, `cardLike`.
+them it has `payeePreconditions`, what the payee's account must hold before it can be paid; where the payment is
+card-like, on no network a CAIP-2 id names, `cardLike`; and where the pairing's option filter requires members of the
+option's `extra` to hold fixed values, `option` (`OptionData`), whose `extra` names each with its value.
 
 ***
 

@@ -10,7 +10,8 @@ the buyer signs a Soroban authorization of `transfer(buyer, payTo, amount)` and 
 authorization's nonce.
 
 The transaction carries that payload as a signed-payload precondition. The entry point also exports the pairing's
-choice type `StellarPreconditionChoice`, and the `Broadcaster` type, which every pairing's `broadcaster` answers.
+choice type `StellarPreconditionChoice`, its `assetTransferMethod` `LCP_PRECONDITION`, and the `Broadcaster` type,
+which every pairing's `broadcaster` answers.
 
 ## Interfaces
 
@@ -37,6 +38,14 @@ buyer's account (`G…`), which must be the simulated transfer's `from`.
 
 `x402/exact/stellar/precondition`. The payee broadcasts (`broadcaster` answers `"payee"`): the seller's settler
 submits the transaction as its source; `status` finds it by the buyer's events and holds it to the five checks.
+
+***
+
+### LCP\_PRECONDITION
+
+> `const` **LCP\_PRECONDITION**: `"lcp-precondition"` = `"lcp-precondition"`
+
+The profile's `assetTransferMethod`, which tells this form's option from every other Stellar option.
 
 ## References
 

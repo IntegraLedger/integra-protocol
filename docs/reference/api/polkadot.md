@@ -417,7 +417,8 @@ Answers the read of the act the query asks about as the profile `read-status` gi
 8: the payment is read by the signer's account nonce, never by the extrinsic's hash. The read takes the finalized
 height, the latest head, and the account's nonce at each; then reads the timepoint a settler named, the hint, and the
 search's earlier finds; then searches every block after the position the caller gave up to the latest head, at most
-`POLKADOT_BOUNDS.searchBlocks` blocks a call, decoding each item's preamble: the signer's extrinsic at the signed nonce
+`POLKADOT_BOUNDS.searchBlocks` blocks a call, decoding each item's preamble, a signed v4 extrinsic's or, on Polkadot
+Asset Hub, that of a v5 general transaction `VerifyMultiSignature` signs: the signer's extrinsic at the signed nonce
 is the instrument's, and every extrinsic whose bytes hold the remark of H is read for the search for H. An extrinsic
 meets the profile's success where it dispatched (`success`) with `Remarked` for the remark; on the act `payment` it
 names the payee's account where a transfer it made reaches `payTo`'s 32-byte account. The era's last block is proven

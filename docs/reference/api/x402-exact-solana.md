@@ -14,16 +14,17 @@ payer as the transaction's one Memo instruction, read back from the signed messa
 
 #### Properties
 
-| Property | Type |
-| ------ | ------ |
-| <a id="property-accepted"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) |
-| <a id="property-computeunitlimit"></a> `computeUnitLimit?` | `number` |
-| <a id="property-computeunitprice"></a> `computeUnitPrice?` | `bigint` |
-| <a id="property-decimals"></a> `decimals` | `number` |
-| <a id="property-payer"></a> `payer` | `string` |
-| <a id="property-recentblockhash"></a> `recentBlockhash` | `string` |
-| <a id="property-required"></a> `required` | [`PaymentRequired`](x402.md#paymentrequired) |
-| <a id="property-tokenprogram"></a> `tokenProgram` | `string` |
+| Property | Type | Description |
+| ------ | ------ | ------ |
+| <a id="property-accepted"></a> `accepted` | [`PaymentRequirements`](x402.md#paymentrequirements) | - |
+| <a id="property-computeunitlimit"></a> `computeUnitLimit?` | `number` | - |
+| <a id="property-computeunitprice"></a> `computeUnitPrice?` | `bigint` | - |
+| <a id="property-decimals"></a> `decimals` | `number` | - |
+| <a id="property-payer"></a> `payer` | `string` | - |
+| <a id="property-reader"></a> `reader?` | `Pick`\<[`SvmReader`](svm.md#svmreader), `"network"` \| `"account"`\> | A reader of the option's network, through whose `account` `build` reads a Token-2022 mint at `confirmed` and, where its `TransferHook` extension names a program, the accounts the transfer hook needs (the profile's rule 9). Absent, `build` reads nothing and writes `TransferChecked` with its four accounts, which a mint whose hook names a program does not take. |
+| <a id="property-recentblockhash"></a> `recentBlockhash` | `string` | - |
+| <a id="property-required"></a> `required` | [`PaymentRequired`](x402.md#paymentrequired) | - |
+| <a id="property-tokenprogram"></a> `tokenProgram` | `string` | - |
 
 ***
 

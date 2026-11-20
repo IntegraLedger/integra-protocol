@@ -596,17 +596,19 @@ hash is `x402/payload-malformed`.
 
 > **starknetFloor**(`input`): `bigint` \| [`Refusal`](index.md#refusal)
 
-The agreement's floor on the token `asset`, in its base units (the profile `x402-exact-starknet`, rule 24): 0 only on
-a token a run has shown to emit a `Transfer` for a transfer of zero, since the search finds a payment by its
-`Transfer` alone, and 1 on any other. No run has shown one, so the floor is 1 on every token. An `asset` that is not
-a felt is `starknet/felt-malformed`.
+The agreement's floor on the token `asset` of `network`, in its base units (the profile `x402-exact-starknet`, rule
+24): 0 on a token a run has shown to emit a `Transfer` for a transfer of zero on that network (`ZERO_TRANSFER_SHOWN`),
+since the search finds a payment by its `Transfer` alone, and 1 on any other, and on any token where no network is
+given. An `asset` that is not a felt is `starknet/felt-malformed`; a `network` given that is not a Starknet network,
+`starknet/network-malformed`.
 
 #### Parameters
 
 | Parameter | Type |
 | ------ | ------ |
-| `input` | \{ `asset`: `string`; \} |
+| `input` | \{ `asset`: `string`; `network?`: [`StarknetNetwork`](#starknetnetwork); \} |
 | `input.asset` | `string` |
+| `input.network?` | [`StarknetNetwork`](#starknetnetwork) |
 
 #### Returns
 

@@ -59,7 +59,7 @@ import { agreementValue, assemble, base64Bytes, … } from "@integraledger/lcp";
 
 **Values (52):** `agreementValue`, `assemble`, `base64Bytes`, `base64UrlBytes`, `BINDINGS`, `canonicalJson`, `challengeH`, `challengeHash`, `challengeId`, `checkLegalContextReturn`, `digestJson`, `domainToAscii`, `FETCHED`, `fromBase64`, `fromBase64Url`, `fromLcpString`, `fromLegalContext`, `fromLegalContextHeader`, `fromRawBytes`, `hash`, `hashEquals`, `isHttpsLink`, `isOtherSchemeLink`, `isRefusal`, `LEGAL_CONTEXT_HEADER`, `LEGAL_CONTEXT_META`, `LEGAL_CONTEXT_SERVES`, `MAX_ATR_BYTES`, `MAX_CHALLENGE_DEPTH`, `MAX_CHALLENGES`, `MAX_CREDENTIAL_BYTES`, `MAX_HEADER_BYTES`, `MAX_JSON_DEPTH`, `MAX_LINK_LENGTH`, `MAX_OPTIONS`, `MAX_REQUEST_BYTES`, `MAX_SIGNATURE_BYTES`, `MAX_SLOT_NAME_LENGTH`, `newAtrId`, `pairingOf`, `parseHost`, `parseJson`, `readToRepeat`, `readUrl`, `RETURN_VALUE_BYTES`, `servesOf`, `toBase64`, `toBase64Url`, `toLcpString`, `toLegalContext`, `toLegalContextHeader`, `toRawBytes`.
 
-**Types (73):** `Act`, `AgreementData`, `AptosPaymentPayload`, `AtrHash`, `Authorizer`, `AvmPaymentPayload`, `BatchPaymentPayload`, `Binding`, `Broadcaster`, `CardanoPaymentPayload`, `Carrier`, `CarrierAfterH`, `CasperPaymentPayload`, `CcdPaymentPayload`, `ChannelKind`, `CloudflarePaymentPayload`, `Codec`, `CoreRefusal`, `Coverage`, `DataMembers`, `EndpointKind`, `Entry`, `ExecutorPayload`, `ExecutorPaymentPayload`, `FailedReason`, `Family`, `FeeParty`, `FeePayer`, `ForeignItem`, `ForeignReason`, `HederaPayload`, `HederaPaymentPayload`, `IsNever`, `Json`, `LcpPattern`, `LegalContextRecord`, `LegalContextReturn`, `Life`, `Moved`, `MppBinding`, `Named`, `NearPayment`, `NoneWhereNever`, `NonZeroDigit`, `OtherAct`, `PairingData`, `PairingId`, `PairingOn`, `PendingReason`, `PolkadotPayload`, `PolkadotPaymentPayload`, `Presented`, `PresentedOn`, `PushMode`, `ReadData`, `RecoverInput`, `Refusal`, `StarknetPayment`, `StatusAnswer`, `StatusQuery`, `StellarPaymentPayload`, `SuiPaymentPayload`, `Surface`, `SurfaceOf`, `SvmPaymentPayload`, `TronPayment`, `TvmPayment`, `UnreadableReason`, `UptoSvmPaymentPayload`, `UrlAuthority`, `X402Binding`, `X402Payment`, `XrplPaymentPayload`.
+**Types (74):** `Act`, `AgreementData`, `AptosPaymentPayload`, `AtrHash`, `Authorizer`, `AvmPaymentPayload`, `BatchPaymentPayload`, `Binding`, `Broadcaster`, `CardanoPaymentPayload`, `Carrier`, `CarrierAfterH`, `CasperPaymentPayload`, `CcdPaymentPayload`, `ChannelKind`, `CloudflarePaymentPayload`, `Codec`, `CoreRefusal`, `Coverage`, `DataMembers`, `EndpointKind`, `Entry`, `ExecutorPayload`, `ExecutorPaymentPayload`, `FailedReason`, `Family`, `FeeParty`, `FeePayer`, `ForeignItem`, `ForeignReason`, `HederaPayload`, `HederaPaymentPayload`, `IsNever`, `Json`, `LcpPattern`, `LegalContextRecord`, `LegalContextReturn`, `Life`, `Moved`, `MppBinding`, `Named`, `NearPayment`, `NoneWhereNever`, `NonZeroDigit`, `OptionData`, `OtherAct`, `PairingData`, `PairingId`, `PairingOn`, `PendingReason`, `PolkadotPayload`, `PolkadotPaymentPayload`, `Presented`, `PresentedOn`, `PushMode`, `ReadData`, `RecoverInput`, `Refusal`, `StarknetPayment`, `StatusAnswer`, `StatusQuery`, `StellarPaymentPayload`, `SuiPaymentPayload`, `Surface`, `SurfaceOf`, `SvmPaymentPayload`, `TronPayment`, `TvmPayment`, `UnreadableReason`, `UptoSvmPaymentPayload`, `UrlAuthority`, `X402Binding`, `X402Payment`, `XrplPaymentPayload`.
 
 ## `@integraledger/lcp/a2a`
 
@@ -111,7 +111,7 @@ import { CHECKOUT_VCT, checkoutBinding, checkoutJwtOf, … } from "@integraledge
 
 **Pairings:** `ap2/checkout-mandate`, `ap2/checkout-mandate/x402`.
 
-**Values (9):** `CHECKOUT_VCT`, `checkoutBinding`, `checkoutJwtOf`, `checkoutMandate`, `checkoutMandateX402`, `issuedDigest`, `jwsPayload`, `readMandate`, `tie`.
+**Values (10):** `CHECKOUT_VCT`, `checkoutBinding`, `checkoutJwtOf`, `checkoutMandate`, `checkoutMandateX402`, `issuedDigest`, `jwsPayload`, `readMandate`, `tie`, `x402MethodNetwork`.
 
 **Types (15):** `Ap2Offer`, `Broadcaster`, `CheckoutOption`, `EvmMark`, `EvmQuery`, `Jws`, `MandateContent`, `Payload`, `Presented`, `Unsigned`, `X402Authorization`, `X402Bundle`, `X402Method`, `X402Presented`, `X402Ref`.
 
@@ -259,7 +259,7 @@ import { chargeLightning, checkPreimage, decodeBolt11, … } from "@integraledge
 
 **Pairings:** `mpp/charge/lightning`, `mpp/session/lightning`, `x402/exact/lnbtc/payment-hash`.
 
-**Values (7):** `chargeLightning`, `checkPreimage`, `decodeBolt11`, `exactLnbtcPaymentHash`, `invoiceH`, `sessionLightning`, `validateExactLnbtc`.
+**Values (8):** `chargeLightning`, `checkPreimage`, `decodeBolt11`, `exactLnbtcPaymentHash`, `invoiceH`, `requestHash`, `sessionLightning`, `validateExactLnbtc`.
 
 **Types (15):** `Bolt11`, `Broadcaster`, `ExactLnbtcReason`, `ExactLnbtcValidation`, `LnbtcRequest`, `LnChoice`, `LnHeaderFields`, `LnMppChoice`, `LnMppUnsigned`, `LnNetwork`, `LnPaymentPayload`, `LnRef`, `LnUnsigned`, `X402Advertise`, `X402Read`.
 
@@ -484,12 +484,12 @@ import { exactSvm } from "@integraledger/lcp/x402-exact-solana";
 Stellar on x402: the pairing `x402/exact/stellar/precondition` (`exactStellarPrecondition`), an agreement in which the buyer signs a Soroban authorization of `transfer(buyer, payTo, amount)` and a 40-byte payload of H and that authorization's nonce.
 
 ```ts no-check
-import { exactStellarPrecondition } from "@integraledger/lcp/x402-exact-stellar";
+import { exactStellarPrecondition, LCP_PRECONDITION } from "@integraledger/lcp/x402-exact-stellar";
 ```
 
 **Pairings:** `x402/exact/stellar/precondition`.
 
-**Values (1):** `exactStellarPrecondition`.
+**Values (2):** `exactStellarPrecondition`, `LCP_PRECONDITION`.
 
 **Types (3):** `Broadcaster`, `StellarPreconditionChoice`, `X402Read`.
 

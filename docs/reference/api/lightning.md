@@ -321,6 +321,39 @@ The one 32-byte `h` or `m` field of an invoice, as the hash it carries.
 
 ***
 
+### requestHash()
+
+> **requestHash**(`profile`, `params`, `request`, `resourceUrl`): `string` \| [`Refusal`](index.md#refusal)
+
+The scheme's request hash of `request` under `profile` and `params`, as 64 lowercase hex digits: SHA-256 of the UTF-8
+of RFC 8785's form of the profile's binding object. `ln/request-hash-mismatch` where the request is not of `profile`,
+where on `http:1` `resourceUrl` is not the request's URL, or on `mcp:1` the option's `server` is not the request's;
+`ln/request-binding-malformed` where `params` are not the profile's or the request cannot be bound: a method that is
+not a token, a URL that is not an absolute `http` or `https` URL in ASCII without user information or fragment, a
+body that is not bytes or is over 1 MiB, a header record that is not a record of strings or lists of strings or a
+bound field's value outside the scheme's form, a tool name that is empty, arguments or `_meta` that are not a JSON
+object, or a value RFC 8785 cannot write.
+
+A seller's server computes it from the request that will execute, with the option's `extra.requestBindingProfile`
+and `extra.requestBindingParams` and the document's `resource.url`, and writes it as the option's `extra.requestHash`,
+the invoice's `h` and the requirements it validates a payment against (profile `x402/exact/lnbtc/payment-hash`, rules
+2, 5 and 10); the buyer's `build` computes it from the buyer's intended request and holds it to `extra.requestHash`.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `profile` | `unknown` |
+| `params` | `unknown` |
+| `request` | `unknown` |
+| `resourceUrl` | `unknown` |
+
+#### Returns
+
+`string` \| [`Refusal`](index.md#refusal)
+
+***
+
 ### validateExactLnbtc()
 
 > **validateExactLnbtc**(`payload`, `requirements`, `at`): [`Refusal`](index.md#refusal) \| [`ExactLnbtcValidation`](#exactlnbtcvalidation)

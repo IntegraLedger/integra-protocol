@@ -572,10 +572,9 @@ payee; one another account opened, or one to another account, took the channel a
 `instrument-consumed`; one at or before the query's `after`, `failed`, `before-position`. A channel the validated
 ledger shows whose create the search, read whole, does not hold is `unreadable`, `history-gap` where the server does
 not hold the range; where it holds it, the create was made at or before the search's start, so at or before the
-query's `after` where the search began no later than the ledger after it, `failed`, `before-position`, once a run
-shows that `account_tx` lists every transaction of the opener's account (`SEARCH_SHOWN`); until then that absence
-proves nothing and the answer is `pending`, `search-incomplete`, its search position held where this search began,
-so that the next read reads the range again. A channel it does not show whose create the search does not hold is
+query's `after` where the search began no later than the ledger after it, `failed`, `before-position`, since
+`account_tx` lists every transaction of the opener's account, a delegated create and an inner `Batch` create among
+them. A channel it does not show whose create the search does not hold is
 `pending`, `not-found`, where the history holds, and `unreadable`, `history-gap` where it does not. `presented` is
 `yes` where the create's `Account` is the payer the payment names, the create being the one whose metadata made the
 channel's entry, so on every `settled` answer.

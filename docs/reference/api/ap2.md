@@ -376,6 +376,28 @@ The binding slot: the checkouts this ATR was minted for, each by its own `id`.
 
 \[`"ap2"`, \{ `options`: readonly [`CheckoutOption`](#checkoutoption)[]; \}\]
 
+***
+
+### x402MethodNetwork()
+
+> **x402MethodNetwork**(`network`): `` `eip155:${string}` `` \| `undefined`
+
+The CAIP-2 id of the network an AP2 x402 method names, as AP2's merchant and x402 credential provider write it
+(`base-sepolia`, `merchant_agent_mcp/server.py:763` and `x402_credentials_provider_mcp/server.py:264` at AP2
+`e1ea56d`): an `eip155:<chain id>` id as given, or an x402 v1 EVM network name as `eip155:` and the chain id
+`@x402/evm` 2.31.0's v1 table maps it to; undefined for any other value. `ap2/checkout-mandate/x402`'s `reference`
+names the method's network so.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `network` | `unknown` |
+
+#### Returns
+
+`` `eip155:${string}` `` \| `undefined`
+
 ## References
 
 ### Broadcaster

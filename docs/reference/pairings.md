@@ -46,33 +46,33 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 |---|---|---|---|---|---|---|---|
 | [`mpp/charge/card`](#mppchargecard) | `chargeCard` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
 | [`mpp/charge/evm/authorization`](#mppchargeevmauthorization) | `evmAuthorization` from `@integraledger/lcp/mpp` | `full` | yes | `id-reuse` | yes | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
-| [`mpp/charge/evm/hash`](#mppchargeevmhash) | `evmHash` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
+| [`mpp/charge/evm/hash`](#mppchargeevmhash) | `evmHash` from `@integraledger/lcp/mpp` | `none` | yes | `opaque-challenge` | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
 | [`mpp/charge/evm/permit2`](#mppchargeevmpermit2) | `evmPermit2` from `@integraledger/lcp/mpp` | `full` | no | `id-reuse` | yes | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
-| [`mpp/charge/evm/transaction`](#mppchargeevmtransaction) | `evmTransaction` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
-| [`mpp/charge/lcp/hedera`](#mppchargelcphedera) | `chargeLcpHedera` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/method/lcp`](../../lcp/profiles/mpp-method-lcp.md) |
+| [`mpp/charge/evm/transaction`](#mppchargeevmtransaction) | `evmTransaction` from `@integraledger/lcp/mpp` | `none` | yes | `opaque-challenge` | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
+| [`mpp/charge/lcp/hedera`](#mppchargelcphedera) | `chargeLcpHedera` from `@integraledger/lcp/mpp` | `full` | yes | `native-field` | yes | yes | [`mpp/method/lcp`](../../lcp/profiles/mpp-method-lcp.md) |
 | [`mpp/charge/lightning`](#mppchargelightning) | `chargeLightning` from `@integraledger/lcp/lightning` | `none` | no | `native-field` | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
 | [`mpp/charge/nearintents`](#mppchargenearintents) | `chargeNearIntents` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no | [`mpp/charge/nearintents`](../../lcp/profiles/mpp-charge-nearintents.md) |
-| [`mpp/charge/solana`](#mppchargesolana) | `chargeSolana` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/solana`](../../lcp/profiles/mpp-charge-solana.md) |
-| [`mpp/charge/solana/unsponsored`](#mppchargesolanaunsponsored) | `chargeSolanaUnsponsored` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/solana`](../../lcp/profiles/mpp-charge-solana.md) |
+| [`mpp/charge/solana`](#mppchargesolana) | `chargeSolana` from `@integraledger/lcp/mpp` | `full` | yes | `native-field` | yes | yes | [`mpp/charge/solana`](../../lcp/profiles/mpp-charge-solana.md) |
+| [`mpp/charge/solana/unsponsored`](#mppchargesolanaunsponsored) | `chargeSolanaUnsponsored` from `@integraledger/lcp/mpp` | `full` | yes | `native-field` | yes | yes | [`mpp/charge/solana`](../../lcp/profiles/mpp-charge-solana.md) |
 | [`mpp/charge/stripe`](#mppchargestripe) | `chargeStripe` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
 | [`mpp/charge/tempo/split-memo`](#mppchargetemposplit-memo) | `tempoSplitMemo` from `@integraledger/lcp/mpp` | `full` | yes | `native-field` | yes | no | [`mpp/charge/tempo/split-memo`](../../lcp/profiles/mpp-charge-tempo-split-memo.md) |
-| [`mpp/charge/tempo/split-memo/push`](#mppchargetemposplit-memopush) | `tempoSplitMemoPush` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | no | [`mpp/charge/tempo/split-memo`](../../lcp/profiles/mpp-charge-tempo-split-memo.md) |
-| [`mpp/charge/usdc/evm`](#mppchargeusdcevm) | `chargeUsdcEvm` from `@integraledger/lcp/mpp` | `full` | no | `id-reuse` | yes | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
+| [`mpp/charge/tempo/split-memo/push`](#mppchargetemposplit-memopush) | `tempoSplitMemoPush` from `@integraledger/lcp/mpp` | `full` | yes | `native-field` | yes | no | [`mpp/charge/tempo/split-memo`](../../lcp/profiles/mpp-charge-tempo-split-memo.md) |
+| [`mpp/charge/usdc/evm`](#mppchargeusdcevm) | `chargeUsdcEvm` from `@integraledger/lcp/mpp` | `full` | yes | `id-reuse` | yes | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
 | [`mpp/charge/usdc/gateway`](#mppchargeusdcgateway) | `chargeUsdcGateway` from `@integraledger/lcp/mpp` | `none` | no | `id-reuse` | yes | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
-| [`mpp/charge/usdc/solana`](#mppchargeusdcsolana) | `chargeUsdcSolana` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/usdc/solana`](../../lcp/profiles/mpp-charge-usdc-solana.md) |
+| [`mpp/charge/usdc/solana`](#mppchargeusdcsolana) | `chargeUsdcSolana` from `@integraledger/lcp/mpp` | `full` | yes | `native-field` | yes | yes | [`mpp/charge/usdc/solana`](../../lcp/profiles/mpp-charge-usdc-solana.md) |
 | [`mpp/charge/usdc/stacks`](#mppchargeusdcstacks) | `chargeUsdcStacks` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/usdc/stacks`](../../lcp/profiles/mpp-charge-usdc-stacks.md) |
-| [`mpp/charge/xrpl`](#mppchargexrpl) | `chargeXrpl` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/charge/xrpl`](../../lcp/profiles/mpp-charge-xrpl.md) |
+| [`mpp/charge/xrpl`](#mppchargexrpl) | `chargeXrpl` from `@integraledger/lcp/mpp` | `full` | yes | `native-field` | yes | yes | [`mpp/charge/xrpl`](../../lcp/profiles/mpp-charge-xrpl.md) |
 | [`mpp/session/evm`](#mppsessionevm) | `sessionEvm` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/evm-tempo`](../../lcp/profiles/mpp-session-evm-tempo.md) |
 | [`mpp/session/hedera/stock`](#mppsessionhederastock) | `sessionHederaStock` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
 | [`mpp/session/lightning`](#mppsessionlightning) | `sessionLightning` from `@integraledger/lcp/lightning` | `none` | no | `native-field` | no | no | [`mpp/charge`](../../lcp/profiles/mpp-charge.md) |
 | [`mpp/session/solana/memo`](#mppsessionsolanamemo) | `sessionSolanaMemo` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
-| [`mpp/session/solana/stock`](#mppsessionsolanastock) | `sessionSolanaStock` from `@integraledger/lcp/mpp` | `none` | no | `native-field` | no | no | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
-| [`mpp/session/tempo`](#mppsessiontempo) | `sessionTempo` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/evm-tempo`](../../lcp/profiles/mpp-session-evm-tempo.md) |
+| [`mpp/session/solana/stock`](#mppsessionsolanastock) | `sessionSolanaStock` from `@integraledger/lcp/mpp` | `none` | yes | `native-field` | no | no | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
+| [`mpp/session/tempo`](#mppsessiontempo) | `sessionTempo` from `@integraledger/lcp/mpp` | `full` | yes | `native-field` | yes | yes | [`mpp/session/evm-tempo`](../../lcp/profiles/mpp-session-evm-tempo.md) |
 | [`mpp/session/xrpl`](#mppsessionxrpl) | `sessionXrpl` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
 | [`mpp/session/xrpl/stock`](#mppsessionxrplstock) | `sessionXrplStock` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no | [`mpp/session/hedera-solana-xrpl`](../../lcp/profiles/mpp-session-hedera-solana-xrpl.md) |
 | [`mpp/subscription/solana`](#mppsubscriptionsolana) | `subscriptionSolana` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/subscription/solana`](../../lcp/profiles/mpp-subscription-solana.md) |
 | [`mpp/subscription/stripe`](#mppsubscriptionstripe) | `subscriptionStripe` from `@integraledger/lcp/mpp` | `none` | no | `opaque-challenge` | no | no | [`mpp/subscription/stripe`](../../lcp/profiles/mpp-subscription-stripe.md) |
-| [`mpp/subscription/tempo`](#mppsubscriptiontempo) | `subscriptionTempo` from `@integraledger/lcp/mpp` | `full` | no | `native-field` | yes | yes | [`mpp/session/evm-tempo`](../../lcp/profiles/mpp-session-evm-tempo.md) |
+| [`mpp/subscription/tempo`](#mppsubscriptiontempo) | `subscriptionTempo` from `@integraledger/lcp/mpp` | `full` | yes | `native-field` | yes | yes | [`mpp/session/evm-tempo`](../../lcp/profiles/mpp-session-evm-tempo.md) |
 
 ## `spend-permissions`
 
@@ -94,22 +94,22 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 
 | Pairing | Export | Coverage | Confirmed | Pattern | Binding on chain | Recoverable from chain | Profile |
 |---|---|---|---|---|---|---|---|
-| [`x402/auth-capture/eip155/eip3009`](#x402auth-captureeip155eip3009) | `authCaptureEip3009` from `@integraledger/lcp/x402` | `full` | no | `id-reuse` | yes | no | [`x402/auth-capture/eip155`](../../lcp/profiles/x402-auth-capture-eip155.md) |
-| [`x402/auth-capture/eip155/permit2`](#x402auth-captureeip155permit2) | `authCapturePermit2` from `@integraledger/lcp/x402` | `full` | no | `id-reuse` | yes | no | [`x402/auth-capture/eip155`](../../lcp/profiles/x402-auth-capture-eip155.md) |
+| [`x402/auth-capture/eip155/eip3009`](#x402auth-captureeip155eip3009) | `authCaptureEip3009` from `@integraledger/lcp/x402` | `full` | yes | `id-reuse` | yes | no | [`x402/auth-capture/eip155`](../../lcp/profiles/x402-auth-capture-eip155.md) |
+| [`x402/auth-capture/eip155/permit2`](#x402auth-captureeip155permit2) | `authCapturePermit2` from `@integraledger/lcp/x402` | `full` | yes | `id-reuse` | yes | no | [`x402/auth-capture/eip155`](../../lcp/profiles/x402-auth-capture-eip155.md) |
 | [`x402/batch-settlement/cloudflare`](#x402batch-settlementcloudflare) | `batchCloudflare` from `@integraledger/lcp/x402-batch-settlement` | `none` | no | `protocol-extension` | no | no | [`x402/batch-settlement/cloudflare`](../../lcp/profiles/x402-batch-settlement-cloudflare.md) |
-| [`x402/batch-settlement/eip155`](#x402batch-settlementeip155) | `batchEvm` from `@integraledger/lcp/x402-batch-settlement` | `full` | no | `native-field` | yes | yes | [`x402/batch-settlement/eip155`](../../lcp/profiles/x402-batch-settlement-eip155.md) |
+| [`x402/batch-settlement/eip155`](#x402batch-settlementeip155) | `batchEvm` from `@integraledger/lcp/x402-batch-settlement` | `full` | yes | `native-field` | yes | yes | [`x402/batch-settlement/eip155`](../../lcp/profiles/x402-batch-settlement-eip155.md) |
 | [`x402/batch-settlement/solana`](#x402batch-settlementsolana) | `batchSvm` from `@integraledger/lcp/x402-batch-settlement` | `full` | no | `native-field` | yes | yes | [`x402/batch-settlement/solana`](../../lcp/profiles/x402-batch-settlement-solana.md) |
 | [`x402/exact/algorand`](#x402exactalgorand) | `exactAvm` from `@integraledger/lcp/avm` | `full` | yes | `native-field` | yes | yes | [`x402/exact/algorand/note`](../../lcp/profiles/x402-exact-algorand-note.md) |
 | [`x402/exact/aptos`](#x402exactaptos) | `exactAptos` from `@integraledger/lcp/aptos` | `none` | yes | `http-advisory` | no | no | [`x402/exact/aptos`](../../lcp/profiles/x402-exact-aptos.md) |
 | [`x402/exact/cardano`](#x402exactcardano) | `exactCardano` from `@integraledger/lcp/cardano` | `full` | yes | `native-field` | yes | yes | [`x402/exact/cardano`](../../lcp/profiles/x402-exact-cardano.md) |
-| [`x402/exact/cardano/lock`](#x402exactcardanolock) | `exactCardanoLock` from `@integraledger/lcp/cardano` | `full` | no | `native-field` | yes | yes | [`x402/exact/cardano`](../../lcp/profiles/x402-exact-cardano.md) |
+| [`x402/exact/cardano/lock`](#x402exactcardanolock) | `exactCardanoLock` from `@integraledger/lcp/cardano` | `full` | yes | `native-field` | yes | yes | [`x402/exact/cardano`](../../lcp/profiles/x402-exact-cardano.md) |
 | [`x402/exact/casper`](#x402exactcasper) | `exactCasper` from `@integraledger/lcp/casper` | `full` | no | `native-field` | yes | yes | [`x402/exact/casper`](../../lcp/profiles/x402-exact-casper.md) |
 | [`x402/exact/ccd`](#x402exactccd) | `exactCcd` from `@integraledger/lcp/ccd` | `full` | no | `native-field` | yes | yes | [`x402/exact/ccd`](../../lcp/profiles/x402-exact-ccd.md) |
 | [`x402/exact/eip155/eip3009`](#x402exacteip155eip3009) | `exactEip3009` from `@integraledger/lcp/x402` | `full` | yes | `native-field` | yes | yes | [`x402/exact/eip155/eip3009`](../../lcp/profiles/x402-exact-eip155-eip3009.md) |
-| [`x402/exact/eip155/erc7710`](#x402exacteip155erc7710) | `exactErc7710` from `@integraledger/lcp/x402` | `none` | no | `http-advisory` | no | no | [`x402/exact/eip155/erc7710`](../../lcp/profiles/x402-exact-eip155-erc7710.md) |
-| [`x402/exact/eip155/erc7710-salt`](#x402exacteip155erc7710-salt) | `exactErc7710Salt` from `@integraledger/lcp/x402` | `full` | no | `native-field` | yes | yes | [`x402/exact/eip155/erc7710-salt`](../../lcp/profiles/x402-exact-eip155-erc7710-salt.md) |
+| [`x402/exact/eip155/erc7710`](#x402exacteip155erc7710) | `exactErc7710` from `@integraledger/lcp/x402` | `none` | yes | `http-advisory` | no | no | [`x402/exact/eip155/erc7710`](../../lcp/profiles/x402-exact-eip155-erc7710.md) |
+| [`x402/exact/eip155/erc7710-salt`](#x402exacteip155erc7710-salt) | `exactErc7710Salt` from `@integraledger/lcp/x402` | `full` | yes | `native-field` | yes | yes | [`x402/exact/eip155/erc7710-salt`](../../lcp/profiles/x402-exact-eip155-erc7710-salt.md) |
 | [`x402/exact/eip155/gateway-batched`](#x402exacteip155gateway-batched) | `exactGatewayBatched` from `@integraledger/lcp/x402` | `none` | yes | `native-field` | no | no | [`x402/exact/eip155/gateway-batched`](../../lcp/profiles/x402-exact-eip155-gateway-batched.md) |
-| [`x402/exact/eip155/permit2`](#x402exacteip155permit2) | `exactPermit2` from `@integraledger/lcp/x402` | `full` | no | `native-field` | yes | yes | [`x402/exact/eip155/permit2`](../../lcp/profiles/x402-exact-eip155-permit2.md) |
+| [`x402/exact/eip155/permit2`](#x402exacteip155permit2) | `exactPermit2` from `@integraledger/lcp/x402` | `full` | yes | `native-field` | yes | yes | [`x402/exact/eip155/permit2`](../../lcp/profiles/x402-exact-eip155-permit2.md) |
 | [`x402/exact/hedera`](#x402exacthedera) | `exactHedera` from `@integraledger/lcp/hedera` | `full` | yes | `native-field` | yes | yes | [`x402/exact/hedera`](../../lcp/profiles/x402-exact-hedera.md) |
 | [`x402/exact/hedera/transfer-executor`](#x402exacthederatransfer-executor) | `exactHederaExecutor` from `@integraledger/lcp/hedera` | `none` | no | `http-advisory` | no | no | [`x402/exact/hedera`](../../lcp/profiles/x402-exact-hedera.md) |
 | [`x402/exact/lnbtc/payment-hash`](#x402exactlnbtcpayment-hash) | `exactLnbtcPaymentHash` from `@integraledger/lcp/lightning` | `none` | yes | `native-field` | no | no | [`x402/exact/lnbtc/payment-hash`](../../lcp/profiles/x402-exact-lnbtc-payment-hash.md) |
@@ -122,9 +122,9 @@ This page is generated from the package by `node scripts/docs-reference.mjs`, an
 | [`x402/exact/tron/lcp-trc20-memo`](#x402exacttronlcp-trc20-memo) | `exactTronMemo` from `@integraledger/lcp/tron` | `full` | yes | `native-field` | yes | yes | [`x402/exact/tron/lcp-trc20-memo`](../../lcp/profiles/x402-exact-tron-lcp-trc20-memo.md) |
 | [`x402/exact/tvm`](#x402exacttvm) | `exactTvm` from `@integraledger/lcp/tvm` | `full` | yes | `native-field` | yes | yes | [`x402/exact/tvm`](../../lcp/profiles/x402-exact-tvm.md) |
 | [`x402/exact/xrpl`](#x402exactxrpl) | `exactXrpl` from `@integraledger/lcp/x402-exact-xrpl` | `full` | yes | `id-reuse` | yes | no | [`x402/exact/xrpl`](../../lcp/profiles/x402-exact-xrpl.md) |
-| [`x402/upto/eip155/permit2`](#x402uptoeip155permit2) | `uptoPermit2` from `@integraledger/lcp/x402` | `full` | no | `native-field` | yes | yes | [`x402/upto/eip155/permit2`](../../lcp/profiles/x402-upto-eip155-permit2.md) |
+| [`x402/upto/eip155/permit2`](#x402uptoeip155permit2) | `uptoPermit2` from `@integraledger/lcp/x402` | `full` | yes | `native-field` | yes | yes | [`x402/upto/eip155/permit2`](../../lcp/profiles/x402-upto-eip155-permit2.md) |
 | [`x402/upto/solana`](#x402uptosolana) | `uptoSvm` from `@integraledger/lcp/x402-upto-solana` | `full` | no | `native-field` | yes | yes | [`x402/upto/solana`](../../lcp/profiles/x402-upto-solana.md) |
-| [`x402/upto/xrpl`](#x402uptoxrpl) | `uptoXrpl` from `@integraledger/lcp/x402-upto-xrpl` | `none` | no | `http-advisory` | no | no | [`x402/upto/xrpl`](../../lcp/profiles/x402-upto-xrpl.md) |
+| [`x402/upto/xrpl`](#x402uptoxrpl) | `uptoXrpl` from `@integraledger/lcp/x402-upto-xrpl` | `none` | yes | `http-advisory` | no | no | [`x402/upto/xrpl`](../../lcp/profiles/x402-upto-xrpl.md) |
 
 ## What each binding proves
 
@@ -326,13 +326,13 @@ For each pairing, where H rides, from its data's `carrier`: `signed`, the field 
 
 **Where H rides:** one Memo instruction, H's LCP string, in the open the payer signs.
 
-**What it proves:** The payer's own signed act carries this ATR's hash: a Solana transaction the buyer's account signed, whose one LCP-form Memo instruction in the `open` the seller's operator co-signed and submitted is the hash's LCP string, final at `finalized` with no error, which deposited the amount its `open` names into a payment channel whose distribution names the option's payee, recorded with its mint and amount. The memo is in the transaction's instruction data on chain. Vouchers and the close do not carry the hash. It compares no amount, mint or time with the ATR's terms.
+**What it proves:** The payer's own signed act carries this ATR's hash: a Solana transaction the buyer's account signed, whose one LCP-form Memo instruction in the `open` the seller's operator co-signed and submitted is the hash's LCP string, final at `finalized` with no error, which deposited the amount its `open` names into a payment channel whose payee or distribution names the option's payee, recorded with its mint and amount. The memo is in the transaction's instruction data on chain. Vouchers and the close do not carry the hash. It compares no amount, mint or time with the ATR's terms.
 
 ### `mpp/session/solana/stock`
 
 **Where H rides:** nothing the payer signs carries H.
 
-**What it proves:** Before this opening was taken, an account signed an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The opening, a stock MPP session's payment-channel open that its payer broadcast and that carries no hash, came after it and deposited the amount its `open` names into a channel whose distribution names the option's payee. This does not show that the account that signed the agreement is the opening's payer, nor that amount, recipient, mint or timing match the ATR's content.
+**What it proves:** Before this opening was taken, an account signed an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The opening, a stock MPP session's payment-channel open that its payer broadcast and that carries no hash, came after it and deposited the amount its `open` names into a channel whose payee or distribution names the option's payee. This does not show that the account that signed the agreement is the opening's payer, nor that amount, recipient, mint or timing match the ATR's content.
 
 ### `mpp/session/tempo`
 
@@ -434,7 +434,7 @@ For each pairing, where H rides, from its data's `carrier`: `signed`, the field 
 
 **Where H rides:** the seller's Memo instruction in the channel's opening, H's LCP string, next to the scheme's own receiver-authorizer memo. The seller writes H into the option's `extra.memo`.
 
-**What it proves:** The payer's own signed act carries this ATR's hash: a Solana transaction the buyer's account signed, whose seller Memo instruction (`extra.memo`), beside the scheme's receiver-authorizer memo, is the hash's LCP string, final at `finalized` with no error, which deposited the amount its `open` names into a payment channel whose distribution names the option's payee, recorded with its mint and amount. The memo is in the transaction's instruction data on chain. It compares no amount, mint or time with the ATR's terms.
+**What it proves:** The payer's own signed act carries this ATR's hash: a Solana transaction the buyer's account signed, whose seller Memo instruction (`extra.memo`), beside the scheme's receiver-authorizer memo, is the hash's LCP string, final at `finalized` with no error, which deposited the amount its `open` names into a payment channel whose payee or distribution names the option's payee, recorded with its mint and amount. The memo is in the transaction's instruction data on chain. It compares no amount, mint or time with the ATR's terms.
 
 ### `x402/exact/algorand`
 
@@ -584,7 +584,7 @@ For each pairing, where H rides, from its data's `carrier`: `signed`, the field 
 
 **Where H rides:** the Memo of the open that escrows the signed maximum in a one-request channel; H's LCP string, all of H. The seller writes H into the option's `extra.memo`.
 
-**What it proves:** The payer's own signed act carries this ATR's hash: a Solana transaction the buyer's account signed, whose one Memo instruction is the hash's LCP string, final at `finalized` with no error, which deposited the amount its `open` names into a payment channel whose distribution names the option's payee, recorded with its mint and amount. The memo is in the transaction's instruction data on chain. The deposit is the signed maximum a one-request channel escrows; the amount charged from it, which may be zero, is the seller's metering, settled in a later transaction that does not carry the hash, and the rest returns to the payer. It compares no amount, mint or time with the ATR's terms.
+**What it proves:** The payer's own signed act carries this ATR's hash: a Solana transaction the buyer's account signed, whose one Memo instruction is the hash's LCP string, final at `finalized` with no error, which deposited the amount its `open` names into a payment channel whose payee or distribution names the option's payee, recorded with its mint and amount. The memo is in the transaction's instruction data on chain. The deposit is the signed maximum a one-request channel escrows; the amount charged from it, which may be zero, is the seller's metering, settled in a later transaction that does not carry the hash, and the rest returns to the payer. It compares no amount, mint or time with the ATR's terms.
 
 ### `x402/upto/xrpl`
 
