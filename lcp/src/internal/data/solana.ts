@@ -245,7 +245,7 @@ export const SOLANA = /* @__PURE__ */ freeze({
   "mpp/subscription/solana": {
     coverage: "full",
     carrier: { signed: "the Memo instruction of the activation, H's LCP string", member: ["externalId"] },
-    source: "stock `@solana/mpp` 0.7.0, copying `externalId`",
+    source: "stock `@solana/pay-kit` 0.13.1, copying `externalId`",
     nonce: "reusable",
     broadcasts: "payee",
     read: {

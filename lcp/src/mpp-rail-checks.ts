@@ -7,7 +7,7 @@ import type { Json } from "./core.js";
 import { builtVersion, keyBytes, TOKEN, TOKEN_2022, type SolanaNetwork } from "./internal/svm.js";
 import { accountIdOf } from "./internal/xrpl-session.js";
 import type { XrplNetwork } from "./internal/xrpl.js";
-import { unixOf, type MppPairingId } from "./mpp-challenge.js";
+import { isObject, unixOf, type MppPairingId } from "./mpp-challenge.js";
 import { refusal, type Refusal } from "./refusal.js";
 
 type Obj = { [k: string]: Json };
@@ -236,8 +236,8 @@ export function nearIntentsChargePairings(r: Obj, d: Obj): readonly MppPairingId
 // ── subscription ─────────────────────────────────────────────────────────────────────────────────────────────────
 
 /**
- * The period in hours, as `@solana/mpp` 0.7.0 maps it (`src/shared/subscription.ts:14-31`): `periodCount` a positive
- * integer, at most 365 days or 52 weeks; null otherwise.
+ * The period in hours, as `@solana/pay-kit` 0.13.1 maps it (`dist/chunk-SSATEZ72.js:2166-2184`): `periodCount` a
+ * positive integer, at most 365 days or 52 weeks; null otherwise.
  */
 function periodHours(r: Obj): number | null {
   const count = r["periodCount"];
@@ -249,12 +249,14 @@ function periodHours(r: Obj): number | null {
 }
 
 /**
- * `subscription` on `solana`: `amount` a positive u64; `currency` and `recipient` keys; `periodUnit` `day` or `week`
- * and `periodCount` a decimal integer that maps to 1 to 8,760 hours as the stock client maps it; `externalId` absent
- * or a string of at most 566 bytes; `subscriptionExpires`, when present, an RFC 3339 date-time; and in
- * `methodDetails`: `decimals` an integer from 0 to 255, `mint`, `planId` and `puller` keys, `tokenProgram` Token or
- * Token-2022, `programId` and `recentBlockhash` keys where present, `network` one of MPP Solana's names (absent:
- * mainnet), and `feePayer` a boolean, `true` only with a `feePayerKey` key. Else `mpp/request-malformed`.
+ * `subscription` on `solana`, as `@solana/pay-kit` 0.13.1's request holds it (`dist/chunk-SSATEZ72.js:2017-2063`):
+ * `amount` a positive u64; `currency` and `recipient` keys; `periodUnit` `day` or `week` and `periodCount` a decimal
+ * integer that maps to 1 to 8,760 hours as the stock client maps it; `externalId` absent or a string of at most 566
+ * bytes; `subscriptionExpires`, when present, an RFC 3339 date-time; and in `methodDetails`: `decimals` an integer
+ * from 0 to 255, `mint`, `planAddress`, `puller` and `subscriptionProgram` keys, `tokenProgram` Token or Token-2022,
+ * `recentBlockhash` a key where present, `splits` where present an array of objects each with a number `bps` and a
+ * key `recipient`, `network` one of MPP Solana's names (absent: mainnet), and `feePayer` a boolean, `true` only with
+ * a `feePayerKey` key. Else `mpp/request-malformed`.
  */
 export function solanaSubscriptionPairings(r: Obj, d: Obj): readonly MppPairingId[] | Refusal {
   const network = solanaNetworkOf(d, false);
@@ -276,9 +278,18 @@ export function solanaSubscriptionPairings(r: Obj, d: Obj): readonly MppPairingI
   if (typeof decimals !== "number" || !Number.isInteger(decimals) || decimals < 0 || decimals > 255) {
     return refusal("mpp/request-malformed");
   }
-  if (!isKey(d["mint"]) || !isKey(d["planId"]) || !isKey(d["puller"])) return refusal("mpp/request-malformed");
+  if (!isKey(d["mint"]) || !isKey(d["planAddress"]) || !isKey(d["puller"]) || !isKey(d["subscriptionProgram"])) {
+    return refusal("mpp/request-malformed");
+  }
   if (d["tokenProgram"] !== TOKEN && d["tokenProgram"] !== TOKEN_2022) return refusal("mpp/request-malformed");
-  if (d["programId"] !== undefined && !isKey(d["programId"])) return refusal("mpp/request-malformed");
+  const splits = d["splits"];
+  if (
+    splits !== undefined &&
+    (!Array.isArray(splits) ||
+      !splits.every((x) => isObject(x) && typeof x["bps"] === "number" && Number.isFinite(x["bps"]) && isKey(x["recipient"])))
+  ) {
+    return refusal("mpp/request-malformed");
+  }
   if (d["recentBlockhash"] !== undefined && !isKey(d["recentBlockhash"])) return refusal("mpp/request-malformed");
   if (d["feePayer"] !== undefined && typeof d["feePayer"] !== "boolean") return refusal("mpp/request-malformed");
   if (d["feePayer"] === true && !isKey(d["feePayerKey"])) return refusal("mpp/request-malformed");

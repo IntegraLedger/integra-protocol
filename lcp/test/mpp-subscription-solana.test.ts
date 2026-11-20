@@ -27,7 +27,7 @@ function withoutMemo(b64: string): string {
 
 describe("mpp-subscription-solana.json", () => {
   it("readings: pairingsOf names mpp/subscription/solana for a request the stock client takes", () => {
-    for (const row of rowsOf(V.readings.rows, "mpp-subscription-solana.json readings", { exact: 8 })) {
+    for (const row of rowsOf(V.readings.rows, "mpp-subscription-solana.json readings", { exact: 9 })) {
       expect(pairingsOf(row.challenge), row.case).toEqual(row.expect);
     }
   });
@@ -54,6 +54,23 @@ describe("mpp-subscription-solana.json", () => {
     expect(await subscriptionSolana.channel.ref(presented)).toEqual({ network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", channel: V.activation.expectChannel });
     expect(await subscriptionSolana.channel.boundWithin(presented)).toEqual(refused("mpp/not-bound-within"));
     expect(subscriptionSolana.channel.until(presented)).toBeUndefined();
+  });
+
+  it("live: a devnet activation in the program's layout, under @solana/pay-kit's request, read by bound, reference and the channel", async () => {
+    const L = V.live;
+    const advertised = subscriptionSolana.advertise([L.offer], L.expectBound, LINK, L.offer, 0);
+    expect(pairingsOf(L.offer)).toEqual(["mpp/subscription/solana"]);
+    const [placed] = advertised as MppChallenge[];
+    const credential = { challenge: placed!, payload: { type: "transaction", transaction: L.transaction } } as MppCredential;
+    expect(await subscriptionSolana.bound(credential)).toBe(L.expectBound);
+    const ref = await subscriptionSolana.reference(credential, placed!);
+    if ("refused" in ref) throw new Error(ref.code);
+    expect([ref.payer, ref.feePayer, ref.payee]).toEqual([L.expectReferencePayer, L.expectReferenceFeePayer, L.expectReferencePayee]);
+    expect(await subscriptionSolana.channel.ref(credential)).toEqual({ network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", channel: L.expectChannel });
+    // A proof names the same subscription, within it.
+    const proof = { challenge: placed!, payload: { type: "proof", subscriptionDelegation: L.expectChannel } } as MppCredential;
+    expect(subscriptionSolana.channel.kind(proof)).toBe("within");
+    expect(await subscriptionSolana.channel.ref(proof)).toEqual({ network: "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1", channel: L.expectChannel });
   });
 
   it("refusals", async () => {

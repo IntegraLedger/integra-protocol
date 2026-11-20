@@ -1,9 +1,9 @@
 /**
- * `mpp/subscription/solana`: MPP's `subscription` intent under the stock `solana` method. The sale is the activation,
- * the transaction that subscribes the payer to the plan and collects the first period. The stock client writes the
- * request's `externalId` as the activation's Memo instruction (`@solana/mpp` 0.7.0 `src/client/Subscription.ts:240-242`,
- * `:355-359`), and the pairing places H's LCP string there. The stock server never reads the Memo, so `bound` checks
- * it before the stock verify.
+ * `mpp/subscription/solana`: MPP's `subscription` intent under the stock `solana` method, as `@solana/pay-kit` 0.13.1
+ * defines it. The sale is the activation, the transaction that subscribes the payer to the plan and collects the first
+ * period. The stock client writes the request's `externalId` as the activation's Memo instruction, after
+ * `transfer_subscription` (`dist/chunk-SSATEZ72.js:2444-2447`, `:2534-2544`), and the pairing places H's LCP string
+ * there. The stock server never reads the Memo, so `bound` checks it before the stock verify.
  */
 import { hashEquals, toLcpString, type AtrHash, type Json } from "./core.js";
 import { normalHash } from "./fields.js";
@@ -48,13 +48,16 @@ import type { Entry } from "./internal/registry.js";
 
 const ID = "mpp/subscription/solana" as const;
 
-/** The subscriptions program `@solana/mpp` 0.7.0 names when the request names none (`src/constants.ts:9`). */
+/** The subscriptions program deployed on Solana, the one `@solana/pay-kit` 0.13.1 names (`dist/chunk-SSATEZ72.js:14`). */
 export const SUBSCRIPTIONS_PROGRAM = "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44";
-/** The `subscribe` instruction's discriminator (`@solana/mpp` 0.7.0 `src/constants.ts:14`). */
+/**
+ * The `subscribe` instruction's discriminator, the first byte of its data, which `SubscribeData` follows
+ * (`@solana/subscriptions` 0.5.0, which `@solana/pay-kit` 0.13.1 bundles: `dist/index.js:2254-2265`).
+ */
 const SUBSCRIBE = 11;
 /**
- * The accounts of `subscribe`: the subscriber, a writable signer, first, and the subscription fourth (`@solana/mpp` 0.7.0
- * `src/client/Subscription.ts:313-320`).
+ * The accounts of `subscribe`: the subscriber, a writable signer, first, then the merchant and the plan, and the
+ * subscription fourth (`@solana/subscriptions` 0.5.0 `dist/index.js:2276-2325`).
  */
 const SUBSCRIBE_SUBSCRIBER_ACCOUNT = 0;
 const SUBSCRIBE_SUBSCRIPTION_ACCOUNT = 3;
@@ -98,12 +101,12 @@ function networkOf(checked: Echoed): SolanaNetwork | Refusal {
 }
 
 /**
- * The activation's one `subscribe` instruction of the request's subscriptions program, the account at `at` it names: the
- * subscriber (account 0) or the subscription (account 3). An activation with no such instruction, or more than one, is
- * `svm/open-not-found`.
+ * The activation's one `subscribe` instruction of the request's subscriptions program, `methodDetails.subscriptionProgram`,
+ * the account at `at` it names: the subscriber (account 0) or the subscription (account 3). An activation with no such
+ * instruction, or more than one, is `svm/open-not-found`.
  */
 function subscribeAccount(b: { checked: Echoed; tx: SvmTx }, at: number): string | Refusal {
-  const program = keyBytes(b.checked.details["programId"] ?? SUBSCRIPTIONS_PROGRAM)!;
+  const program = keyBytes(b.checked.details["subscriptionProgram"])!;
   const subscribes = b.tx.instructions.filter((ix) => {
     const p = b.tx.keys[ix.program];
     return p !== undefined && p.every((x, i) => x === program[i]) && ix.data[0] === SUBSCRIBE;
@@ -118,8 +121,9 @@ function subscribeAccount(b: { checked: Echoed; tx: SvmTx }, at: number): string
  * message's life, and the payee of `option`, the challenge it answers; a credential whose echoed challenge is not
  * `option` is `mpp/challenge-not-option`. The buyer is the subscriber `subscribe` names (account 0), whose token account
  * the activation's transfer debits, never a signer taken by its place: the activation is signed by the subscriber and by
- * the challenge's `puller`, the seller's key (`src/client/Subscription.ts:340`), and past the fee payer `@solana/kit`
- * orders the signers by address. An activation with no one `subscribe` is `svm/open-not-found`.
+ * the challenge's `puller`, the seller's key, `transfer_subscription`'s caller (`@solana/pay-kit` 0.13.1
+ * `dist/chunk-SSATEZ72.js:2431-2443`), and past the fee payer `@solana/kit` orders the signers by address. An
+ * activation with no one `subscribe` is `svm/open-not-found`.
  */
 async function reference(input: unknown, option: MppChallenge): Promise<SvmRef | Refusal> {
   const credential = credentialOf(input);
@@ -170,23 +174,34 @@ function unplaced(option: MppChallenge): MppChallenge | Refusal {
 }
 
 /**
- * A `type="transaction"` credential is the activation, which opens the subscription; renewals are the seller's pulls, and
- * no other credential is the pairing's (`mpp/session-action`).
+ * A `type="transaction"` credential is the activation, which opens the subscription; a `type="proof"` credential, the
+ * payer's reusable proof of the subscription (`@solana/pay-kit` 0.13.1 `dist/chunk-SSATEZ72.js:2008-2014`), is within
+ * it. Renewals are the seller's pulls, and no other credential is the pairing's (`mpp/session-action`).
  */
-function kind(presented: MppCredential): "open" | Refusal {
+function kind(presented: MppCredential): "open" | "within" | Refusal {
   const c = credentialOf(presented);
   if (isRefusal(c)) return c;
-  return c.payload["type"] === "transaction" ? "open" : refusal("mpp/session-action");
+  if (c.payload["type"] === "transaction") return "open";
+  return c.payload["type"] === "proof" ? "within" : refusal("mpp/session-action");
 }
 
 /**
  * The subscription the activation opens: the account `subscribe` names as the subscription (account 3) in the
  * activation `bound` reads, on the request's network. An activation with no `subscribe` instruction of the request's
- * subscriptions program, or more than one, is `svm/open-not-found`.
+ * subscriptions program, or more than one, is `svm/open-not-found`. A proof names the same account as its
+ * `subscriptionDelegation`, a key, else `mpp/credential-malformed`.
  */
 async function ref(presented: MppCredential): Promise<{ network: string; channel: string } | Refusal> {
   const credential = credentialOf(presented);
   if (isRefusal(credential)) return credential;
+  if (credential.payload["type"] === "proof") {
+    const e = echoedFor(credential, ID);
+    if (isRefusal(e)) return e;
+    const network = networkOf(e.checked);
+    if (isRefusal(network)) return network;
+    const delegation = credential.payload["subscriptionDelegation"];
+    return typeof delegation === "string" && keyBytes(delegation) !== null ? { network, channel: delegation } : refusal("mpp/credential-malformed");
+  }
   const b = bindingOf(credential);
   if (isRefusal(b)) return b;
   const network = networkOf(b.checked);
@@ -219,8 +234,9 @@ const pattern: LcpPattern = deepFreeze({
 /**
  * `mpp/subscription/solana`. The payee broadcasts (`broadcaster` answers `"payee"` for a `type="transaction"`
  * credential): the activation's `transfer_subscription` needs the signature of the challenge's `puller`, the seller's
- * key, which the payer's client does not hold (`@solana/mpp` 0.7.0 `src/client/Subscription.ts:230`), so the seller's
- * server co-signs and submits it. A credential of any other type is `mpp/credential-type`, as `bound` refuses it.
+ * key, which the payer's client does not hold (`@solana/pay-kit` 0.13.1 `dist/chunk-SSATEZ72.js:2393-2394`,
+ * `:2431-2443`), so the seller's server co-signs and submits it. A credential of any other type is
+ * `mpp/credential-type`, as `bound` refuses it.
  */
 export const subscriptionSolana = Object.freeze({
   id: ID,

@@ -197,7 +197,10 @@ const COMPARES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
   },
   "mpp/charge/solana": { "svm/carrier-mismatch": "the signed memo is the request's externalId" },
   "mpp/charge/solana/unsponsored": { "svm/carrier-mismatch": "the signed memo is the request's externalId" },
-  "mpp/subscription/solana": { "svm/carrier-mismatch": "the signed memo is the request's externalId" },
+  "mpp/subscription/solana": {
+    "svm/carrier-mismatch": "the signed memo is the request's externalId",
+    "svm/open-not-found": "the activation's subscribe is of the request's methodDetails.subscriptionProgram",
+  },
   "mpp/session/solana/memo": { "svm/open-not-operator": "the open's fee payer and rent payer are the request's operator" },
   "mpp/charge/usdc/solana": { "svm/carrier-mismatch": "the signed memo is the request's externalId" },
   "mpp/charge/usdc/evm": { "mpp/nonce-not-usdc-derivation": "the signed nonce derives from the challenge's id, realm and request" },
@@ -265,7 +268,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
 
   it("each credential is bound by one pairing, each pairing that binds binds one, and each change is presented to it", () => {
     expect(PRESENTED.map((p) => p.pairing.id).sort()).toEqual([...BINDING].sort());
-    rowsOf(answers, "each credential's challenge changed, presented to the pairing that binds it", { exact: 4882 });
+    rowsOf(answers, "each credential's challenge changed, presented to the pairing that binds it", { exact: 4995 });
   });
 
   it("pairingsOfPlaced names the pairing exactly where pairingsOf names it, with the Lightning invoice written", () => {
@@ -285,7 +288,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
 
   it("under a challenge pairingsOfPlaced does not name, bound and reference refuse with the code pairingsOf gives", () => {
     const refused = rowsOf(answers, "every answer", {
-      exact: 2115,
+      exact: 2138,
       keep: ["the challenges pairingsOfPlaced does not name for the pairing", (a) => !a.named],
       leave: ["the challenges it names", (a) => a.named],
     });
@@ -301,7 +304,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
 
   it("under a challenge it names, bound gives H again or a refusal naming what it compares, and reference reads", () => {
     const named = rowsOf(answers, "every answer", {
-      exact: 2767,
+      exact: 2857,
       keep: ["the challenges pairingsOfPlaced names for the pairing", (a) => a.named],
       leave: ["the challenges it does not name", (a) => !a.named],
     });
@@ -323,7 +326,7 @@ describe("each MPP pairing's bound and reference hold the echoed challenge to th
         seen.add(`${a.pairing} ${code}`);
       }
     }
-    expect([bindings, named.length - bindings]).toEqual([2461, 306]);
+    expect([bindings, named.length - bindings]).toEqual([2541, 316]);
     const listed = Object.entries(COMPARES).flatMap(([id, codes]) => Object.keys(codes).map((c) => `${id} ${c}`));
     expect([...seen].sort()).toEqual(listed.sort());
   }, 0);

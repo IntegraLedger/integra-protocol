@@ -1,11 +1,11 @@
 {
- "about": "Vectors for mpp/subscription/solana, MPP's subscription intent under the stock solana method (@solana/mpp 0.7.0, src/Methods.ts:129-201). H rides as the activation's Memo instruction, which the stock client writes from the request's externalId (src/client/Subscription.ts:235-237, :344-354); the stock server does not read it, so bound checks it. Fixtures: mpp-charge-solana.json's H, L, realm, expires, link, MV1 and MV3opaque, seed 01 as the subscriber, seed 02 as the challenge's puller, seed 03's address as planId, devnet USDC as currency and mint, x402's payTo as recipient and its blockhash. Requests are base64url without padding of Python 3 json.dumps(sort_keys=True, separators=(',',':')). The activation is the stock client's composition for the placed challenge, computed with @solana/kit 8.4.0 from src/client/Subscription.ts:128-261 with the subscription authority read as absent, not by this package: SetComputeUnitPrice 1 and SetComputeUnitLimit 400000 prepended, init_subscription_authority, subscribe with the subscriber as payer, transfer_subscription with the puller as its signer, then the Memo; fee payer the subscriber; signed by the subscriber alone, the puller's signature slot zero, as the client leaves it (:260-262). Each reference names the payee of the challenge the payment answers, its request's recipient.",
+ "about": "Vectors for mpp/subscription/solana, MPP's subscription intent under the stock solana method, as @solana/pay-kit 0.13.1 defines it (dist/chunk-SSATEZ72.js:1988-2064), on the subscriptions program De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44, whose instructions @solana/subscriptions 0.5.0, which pay-kit bundles, lays out. H rides as the activation's Memo instruction, which the stock client writes from the request's externalId after transfer_subscription (dist/chunk-SSATEZ72.js:2444-2447); the stock server does not read it, so bound checks it. Fixtures: mpp-charge-solana.json's H, L, realm, expires, link, MV1 and MV3opaque, seed 01 as the subscriber, seed 02 as the challenge's puller, seed 03's address as planAddress, devnet USDC as currency and mint, x402's payTo as recipient and its blockhash. Requests are base64url without padding of Python 3 json.dumps(sort_keys=True, separators=(',',':')). activation's transaction is a synthetic activation computed with @solana/kit 8.4.0, not by this package: SetComputeUnitPrice 1 and SetComputeUnitLimit 400000 prepended, init_subscription_authority, subscribe with the subscriber first and the subscription fourth, as the program's subscribe names them, its data the discriminator 11 alone, transfer_subscription with the puller as its signer, then the Memo; fee payer the subscriber; signed by the subscriber alone, the puller's signature slot zero. bound, reference and the channel read only the Memo and subscribe's discriminator and accounts 0 and 3, so it holds the members they read; live is an activation the chain ran, in the program's layout. Each reference names the payee of the challenge the payment answers, its request's recipient.",
  "fixed": {
   "puller": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
   "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
   "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
   "program": "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44",
-  "planId": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+  "planAddress": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
   "recipient": "2wKupLR9q6wXYppw8Gr2NvWxKBUqm4PPJKkQfoxHDBg4",
   "recentBlockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k",
   "L": "lcp:sha256:0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
@@ -23,8 +23,9 @@
     "network": "devnet",
     "decimals": 6,
     "mint": "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
-    "planId": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
+    "planAddress": "GyGKxMyg1p9SsHfm15MkNUu1u9TN2JtTspcdmrtGUdse",
     "puller": "9hSR6S7WPtxmTojgo6GG3k4yDPecgJY292j7xrsUGWBu",
+    "subscriptionProgram": "De1egAFMkMWZSN5rYXRj9CAdheBamobVNubTsi9avR44",
     "tokenProgram": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
     "recentBlockhash": "EZ3rST5dvHmbanh75jc4PuLfV96vp9fEYBVeNk4FfM1k"
    }
@@ -34,7 +35,7 @@
   "realm": "api.seller.example",
   "method": "solana",
   "intent": "subscription",
-  "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuSWQiOiJHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZSIsInB1bGxlciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJ0b2tlblByb2dyYW0iOiJUb2tlbmtlZ1FmZVp5aU53QUpiTmJHS1BGWENXdUJ2ZjlTczYyM1ZRNURBIn0sInBlcmlvZENvdW50IjoiMzAiLCJwZXJpb2RVbml0IjoiZGF5IiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
+  "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuQWRkcmVzcyI6Ikd5R0t4TXlnMXA5U3NIZm0xNU1rTlV1MXU5VE4ySnRUc3BjZG1ydEdVZHNlIiwicHVsbGVyIjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInN1YnNjcmlwdGlvblByb2dyYW0iOiJEZTFlZ0FGTWtNV1pTTjVyWVhSajlDQWRoZUJhbW9iVk51YlRzaTlhdlI0NCIsInRva2VuUHJvZ3JhbSI6IlRva2Vua2VnUWZlWnlpTndBSmJOYkdLUEZYQ1d1QnZmOVNzNjIzVlE1REEifSwicGVyaW9kQ291bnQiOiIzMCIsInBlcmlvZFVuaXQiOiJkYXkiLCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
   "expires": "2026-09-21T14:14:20Z"
  },
  "place": {
@@ -43,7 +44,7 @@
    "realm": "api.seller.example",
    "method": "solana",
    "intent": "subscription",
-   "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsImV4dGVybmFsSWQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuSWQiOiJHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZSIsInB1bGxlciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJ0b2tlblByb2dyYW0iOiJUb2tlbmtlZ1FmZVp5aU53QUpiTmJHS1BGWENXdUJ2ZjlTczYyM1ZRNURBIn0sInBlcmlvZENvdW50IjoiMzAiLCJwZXJpb2RVbml0IjoiZGF5IiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
+   "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsImV4dGVybmFsSWQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuQWRkcmVzcyI6Ikd5R0t4TXlnMXA5U3NIZm0xNU1rTlV1MXU5VE4ySnRUc3BjZG1ydEdVZHNlIiwicHVsbGVyIjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInN1YnNjcmlwdGlvblByb2dyYW0iOiJEZTFlZ0FGTWtNV1pTTjVyWVhSajlDQWRoZUJhbW9iVk51YlRzaTlhdlI0NCIsInRva2VuUHJvZ3JhbSI6IlRva2Vua2VnUWZlWnlpTndBSmJOYkdLUEZYQ1d1QnZmOVNzNjIzVlE1REEifSwicGVyaW9kQ291bnQiOiIzMCIsInBlcmlvZFVuaXQiOiJkYXkiLCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
    "expires": "2026-09-21T14:14:20Z",
    "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
    "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
@@ -58,7 +59,7 @@
      "realm": "api.seller.example",
      "method": "solana",
      "intent": "subscription",
-     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuSWQiOiJHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZSIsInB1bGxlciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJ0b2tlblByb2dyYW0iOiJUb2tlbmtlZ1FmZVp5aU53QUpiTmJHS1BGWENXdUJ2ZjlTczYyM1ZRNURBIn0sInBlcmlvZENvdW50IjoiMzAiLCJwZXJpb2RVbml0IjoiZGF5IiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
+     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuQWRkcmVzcyI6Ikd5R0t4TXlnMXA5U3NIZm0xNU1rTlV1MXU5VE4ySnRUc3BjZG1ydEdVZHNlIiwicHVsbGVyIjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInN1YnNjcmlwdGlvblByb2dyYW0iOiJEZTFlZ0FGTWtNV1pTTjVyWVhSajlDQWRoZUJhbW9iVk51YlRzaTlhdlI0NCIsInRva2VuUHJvZ3JhbSI6IlRva2Vua2VnUWZlWnlpTndBSmJOYkdLUEZYQ1d1QnZmOVNzNjIzVlE1REEifSwicGVyaW9kQ291bnQiOiIzMCIsInBlcmlvZFVuaXQiOiJkYXkiLCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
      "expires": "2026-09-21T14:14:20Z"
     },
     "expect": [
@@ -71,7 +72,7 @@
      "realm": "api.seller.example",
      "method": "solana",
      "intent": "subscription",
-     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuSWQiOiJHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZSIsInB1bGxlciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJ0b2tlblByb2dyYW0iOiJUb2tlbmtlZ1FmZVp5aU53QUpiTmJHS1BGWENXdUJ2ZjlTczYyM1ZRNURBIn0sInBlcmlvZENvdW50IjoiNTIiLCJwZXJpb2RVbml0Ijoid2VlayIsInJlY2lwaWVudCI6IjJ3S3VwTFI5cTZ3WFlwcHc4R3IyTnZXeEtCVXFtNFBQSktrUWZveEhEQmc0In0",
+     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuQWRkcmVzcyI6Ikd5R0t4TXlnMXA5U3NIZm0xNU1rTlV1MXU5VE4ySnRUc3BjZG1ydEdVZHNlIiwicHVsbGVyIjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInN1YnNjcmlwdGlvblByb2dyYW0iOiJEZTFlZ0FGTWtNV1pTTjVyWVhSajlDQWRoZUJhbW9iVk51YlRzaTlhdlI0NCIsInRva2VuUHJvZ3JhbSI6IlRva2Vua2VnUWZlWnlpTndBSmJOYkdLUEZYQ1d1QnZmOVNzNjIzVlE1REEifSwicGVyaW9kQ291bnQiOiI1MiIsInBlcmlvZFVuaXQiOiJ3ZWVrIiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
      "expires": "2026-09-21T14:14:20Z"
     },
     "expect": [
@@ -79,12 +80,12 @@
     ]
    },
    {
-    "case": "periodCount 366 days, past the stock client's 365 (src/shared/subscription.ts:19-22)",
+    "case": "periodCount 366 days, past the stock client's 365 (dist/chunk-SSATEZ72.js:2172-2174)",
     "challenge": {
      "realm": "api.seller.example",
      "method": "solana",
      "intent": "subscription",
-     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuSWQiOiJHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZSIsInB1bGxlciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJ0b2tlblByb2dyYW0iOiJUb2tlbmtlZ1FmZVp5aU53QUpiTmJHS1BGWENXdUJ2ZjlTczYyM1ZRNURBIn0sInBlcmlvZENvdW50IjoiMzY2IiwicGVyaW9kVW5pdCI6ImRheSIsInJlY2lwaWVudCI6IjJ3S3VwTFI5cTZ3WFlwcHc4R3IyTnZXeEtCVXFtNFBQSktrUWZveEhEQmc0In0",
+     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuQWRkcmVzcyI6Ikd5R0t4TXlnMXA5U3NIZm0xNU1rTlV1MXU5VE4ySnRUc3BjZG1ydEdVZHNlIiwicHVsbGVyIjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInN1YnNjcmlwdGlvblByb2dyYW0iOiJEZTFlZ0FGTWtNV1pTTjVyWVhSajlDQWRoZUJhbW9iVk51YlRzaTlhdlI0NCIsInRva2VuUHJvZ3JhbSI6IlRva2Vua2VnUWZlWnlpTndBSmJOYkdLUEZYQ1d1QnZmOVNzNjIzVlE1REEifSwicGVyaW9kQ291bnQiOiIzNjYiLCJwZXJpb2RVbml0IjoiZGF5IiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
      "expires": "2026-09-21T14:14:20Z"
     },
     "expect": {
@@ -93,12 +94,12 @@
     }
    },
    {
-    "case": "periodUnit month, which the Solana profile rejects (src/Methods.ts:121)",
+    "case": "periodUnit month, which the stock schema rejects (dist/chunk-SSATEZ72.js:1987)",
     "challenge": {
      "realm": "api.seller.example",
      "method": "solana",
      "intent": "subscription",
-     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuSWQiOiJHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZSIsInB1bGxlciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJ0b2tlblByb2dyYW0iOiJUb2tlbmtlZ1FmZVp5aU53QUpiTmJHS1BGWENXdUJ2ZjlTczYyM1ZRNURBIn0sInBlcmlvZENvdW50IjoiMzAiLCJwZXJpb2RVbml0IjoibW9udGgiLCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
+     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuQWRkcmVzcyI6Ikd5R0t4TXlnMXA5U3NIZm0xNU1rTlV1MXU5VE4ySnRUc3BjZG1ydEdVZHNlIiwicHVsbGVyIjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInN1YnNjcmlwdGlvblByb2dyYW0iOiJEZTFlZ0FGTWtNV1pTTjVyWVhSajlDQWRoZUJhbW9iVk51YlRzaTlhdlI0NCIsInRva2VuUHJvZ3JhbSI6IlRva2Vua2VnUWZlWnlpTndBSmJOYkdLUEZYQ1d1QnZmOVNzNjIzVlE1REEifSwicGVyaW9kQ291bnQiOiIzMCIsInBlcmlvZFVuaXQiOiJtb250aCIsInJlY2lwaWVudCI6IjJ3S3VwTFI5cTZ3WFlwcHc4R3IyTnZXeEtCVXFtNFBQSktrUWZveEhEQmc0In0",
      "expires": "2026-09-21T14:14:20Z"
     },
     "expect": {
@@ -107,12 +108,12 @@
     }
    },
    {
-    "case": "no puller, which the schema requires (src/Methods.ts:177)",
+    "case": "no puller, which the schema requires (dist/chunk-SSATEZ72.js:2040)",
     "challenge": {
      "realm": "api.seller.example",
      "method": "solana",
      "intent": "subscription",
-     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuSWQiOiJHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZSIsInJlY2VudEJsb2NraGFzaCI6IkVaM3JTVDVkdkhtYmFuaDc1amM0UHVMZlY5NnZwOWZFWUJWZU5rNEZmTTFrIiwidG9rZW5Qcm9ncmFtIjoiVG9rZW5rZWdRZmVaeWlOd0FKYk5iR0tQRlhDV3VCdmY5U3M2MjNWUTVEQSJ9LCJwZXJpb2RDb3VudCI6IjMwIiwicGVyaW9kVW5pdCI6ImRheSIsInJlY2lwaWVudCI6IjJ3S3VwTFI5cTZ3WFlwcHc4R3IyTnZXeEtCVXFtNFBQSktrUWZveEhEQmc0In0",
+     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuQWRkcmVzcyI6Ikd5R0t4TXlnMXA5U3NIZm0xNU1rTlV1MXU5VE4ySnRUc3BjZG1ydEdVZHNlIiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJzdWJzY3JpcHRpb25Qcm9ncmFtIjoiRGUxZWdBRk1rTVdaU041cllYUmo5Q0FkaGVCYW1vYlZOdWJUc2k5YXZSNDQiLCJ0b2tlblByb2dyYW0iOiJUb2tlbmtlZ1FmZVp5aU53QUpiTmJHS1BGWENXdUJ2ZjlTczYyM1ZRNURBIn0sInBlcmlvZENvdW50IjoiMzAiLCJwZXJpb2RVbml0IjoiZGF5IiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
      "expires": "2026-09-21T14:14:20Z"
     },
     "expect": {
@@ -126,7 +127,7 @@
      "realm": "api.seller.example",
      "method": "solana",
      "intent": "subscription",
-     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuSWQiOiJHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZSIsInB1bGxlciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJ0b2tlblByb2dyYW0iOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSJ9LCJwZXJpb2RDb3VudCI6IjMwIiwicGVyaW9kVW5pdCI6ImRheSIsInJlY2lwaWVudCI6IjJ3S3VwTFI5cTZ3WFlwcHc4R3IyTnZXeEtCVXFtNFBQSktrUWZveEhEQmc0In0",
+     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuQWRkcmVzcyI6Ikd5R0t4TXlnMXA5U3NIZm0xNU1rTlV1MXU5VE4ySnRUc3BjZG1ydEdVZHNlIiwicHVsbGVyIjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInN1YnNjcmlwdGlvblByb2dyYW0iOiJEZTFlZ0FGTWtNV1pTTjVyWVhSajlDQWRoZUJhbW9iVk51YlRzaTlhdlI0NCIsInRva2VuUHJvZ3JhbSI6IjR6TU1DOXNydDVSaTVYMTRHQWdYaGFIaWkzR25QQUVFUllQSmdaSkRuY0RVIn0sInBlcmlvZENvdW50IjoiMzAiLCJwZXJpb2RVbml0IjoiZGF5IiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
      "expires": "2026-09-21T14:14:20Z"
     },
     "expect": {
@@ -140,7 +141,7 @@
      "realm": "api.seller.example",
      "method": "solana",
      "intent": "subscription",
-     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsImZlZVBheWVyIjp0cnVlLCJtaW50IjoiNHpNTUM5c3J0NVJpNVgxNEdBZ1hoYUhpaTNHblBBRUVSWVBKZ1pKRG5jRFUiLCJuZXR3b3JrIjoiZGV2bmV0IiwicGxhbklkIjoiR3lHS3hNeWcxcDlTc0hmbTE1TWtOVXUxdTlUTjJKdFRzcGNkbXJ0R1Vkc2UiLCJwdWxsZXIiOiI5aFNSNlM3V1B0eG1Ub2pnbzZHRzNrNHlEUGVjZ0pZMjkyajd4cnNVR1dCdSIsInJlY2VudEJsb2NraGFzaCI6IkVaM3JTVDVkdkhtYmFuaDc1amM0UHVMZlY5NnZwOWZFWUJWZU5rNEZmTTFrIiwidG9rZW5Qcm9ncmFtIjoiVG9rZW5rZWdRZmVaeWlOd0FKYk5iR0tQRlhDV3VCdmY5U3M2MjNWUTVEQSJ9LCJwZXJpb2RDb3VudCI6IjMwIiwicGVyaW9kVW5pdCI6ImRheSIsInJlY2lwaWVudCI6IjJ3S3VwTFI5cTZ3WFlwcHc4R3IyTnZXeEtCVXFtNFBQSktrUWZveEhEQmc0In0",
+     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsImZlZVBheWVyIjp0cnVlLCJtaW50IjoiNHpNTUM5c3J0NVJpNVgxNEdBZ1hoYUhpaTNHblBBRUVSWVBKZ1pKRG5jRFUiLCJuZXR3b3JrIjoiZGV2bmV0IiwicGxhbkFkZHJlc3MiOiJHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZSIsInB1bGxlciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJzdWJzY3JpcHRpb25Qcm9ncmFtIjoiRGUxZWdBRk1rTVdaU041cllYUmo5Q0FkaGVCYW1vYlZOdWJUc2k5YXZSNDQiLCJ0b2tlblByb2dyYW0iOiJUb2tlbmtlZ1FmZVp5aU53QUpiTmJHS1BGWENXdUJ2ZjlTczYyM1ZRNURBIn0sInBlcmlvZENvdW50IjoiMzAiLCJwZXJpb2RVbml0IjoiZGF5IiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
      "expires": "2026-09-21T14:14:20Z"
     },
     "expect": {
@@ -154,17 +155,31 @@
      "realm": "api.seller.example",
      "method": "solana",
      "intent": "subscription",
-     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJsb2NhbG5ldCIsInBsYW5JZCI6Ikd5R0t4TXlnMXA5U3NIZm0xNU1rTlV1MXU5VE4ySnRUc3BjZG1ydEdVZHNlIiwicHVsbGVyIjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInRva2VuUHJvZ3JhbSI6IlRva2Vua2VnUWZlWnlpTndBSmJOYkdLUEZYQ1d1QnZmOVNzNjIzVlE1REEifSwicGVyaW9kQ291bnQiOiIzMCIsInBlcmlvZFVuaXQiOiJkYXkiLCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
+     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJsb2NhbG5ldCIsInBsYW5BZGRyZXNzIjoiR3lHS3hNeWcxcDlTc0hmbTE1TWtOVXUxdTlUTjJKdFRzcGNkbXJ0R1Vkc2UiLCJwdWxsZXIiOiI5aFNSNlM3V1B0eG1Ub2pnbzZHRzNrNHlEUGVjZ0pZMjkyajd4cnNVR1dCdSIsInJlY2VudEJsb2NraGFzaCI6IkVaM3JTVDVkdkhtYmFuaDc1amM0UHVMZlY5NnZwOWZFWUJWZU5rNEZmTTFrIiwic3Vic2NyaXB0aW9uUHJvZ3JhbSI6IkRlMWVnQUZNa01XWlNONXJZWFJqOUNBZGhlQmFtb2JWTnViVHNpOWF2UjQ0IiwidG9rZW5Qcm9ncmFtIjoiVG9rZW5rZWdRZmVaeWlOd0FKYk5iR0tQRlhDV3VCdmY5U3M2MjNWUTVEQSJ9LCJwZXJpb2RDb3VudCI6IjMwIiwicGVyaW9kVW5pdCI6ImRheSIsInJlY2lwaWVudCI6IjJ3S3VwTFI5cTZ3WFlwcHc4R3IyTnZXeEtCVXFtNFBQSktrUWZveEhEQmc0In0",
      "expires": "2026-09-21T14:14:20Z"
     },
     "expect": [
      "mpp/subscription/solana"
     ]
+   },
+   {
+    "case": "no subscriptionProgram, which the schema requires (dist/chunk-SSATEZ72.js:2051)",
+    "challenge": {
+     "realm": "api.seller.example",
+     "method": "solana",
+     "intent": "subscription",
+     "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuQWRkcmVzcyI6Ikd5R0t4TXlnMXA5U3NIZm0xNU1rTlV1MXU5VE4ySnRUc3BjZG1ydEdVZHNlIiwicHVsbGVyIjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInRva2VuUHJvZ3JhbSI6IlRva2Vua2VnUWZlWnlpTndBSmJOYkdLUEZYQ1d1QnZmOVNzNjIzVlE1REEifSwicGVyaW9kQ291bnQiOiIzMCIsInBlcmlvZFVuaXQiOiJkYXkiLCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
+     "expires": "2026-09-21T14:14:20Z"
+    },
+    "expect": {
+     "refused": true,
+     "code": "mpp/request-malformed"
+    }
    }
   ]
  },
  "activation": {
-  "case": "bound and reference of credential, the placed challenge echoed with the activation as a transaction credential; reference names as the buyer the subscriber that instruction names (its account 0, a writable signer, src/client/Subscription.ts:314), never the challenge's puller, which signs transfer_subscription beside it (:340); channel.ref names the subscription the activation's subscribe instruction names (its account 3, :313-320, the subscription at :317), the PDA of [\"subscription\", planId, subscriber] (src/shared/subscription.ts:61-79)",
+  "case": "bound and reference of credential, the placed challenge echoed with the activation as a transaction credential; reference names as the buyer the subscriber that subscribe names (its account 0, a writable signer: @solana/subscriptions 0.5.0 dist/index.js:2276-2325), never the challenge's puller, which signs transfer_subscription beside it (@solana/pay-kit 0.13.1 dist/chunk-SSATEZ72.js:2431-2443); channel.ref names the subscription subscribe names (its account 3), the PDA of [\"subscription\", planAddress, subscriber] (dist/chunk-SSATEZ72.js:2202-2213)",
   "credential": "/buyer/rows/1/input/presented",
   "expectBound": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "expectChannel": "ENiPZfT6FWNdh37GCKmdMugcRfL3jDqDYaBJteRCqzCe",
@@ -174,7 +189,7 @@
  },
  "refusals": [
   {
-   "case": "a signature credential: the activation needs the puller's signature, which the client does not hold (src/client/Subscription.ts:230)",
+   "case": "a signature credential: the activation needs the puller's signature, which the client does not hold (@solana/pay-kit 0.13.1 dist/chunk-SSATEZ72.js:2393-2394, :2431-2443)",
    "payload": {
     "type": "signature",
     "signature": "5555555555555555555555555555555555555555555555555555555555555555555555555555555555555555"
@@ -200,7 +215,7 @@
        "realm": "api.seller.example",
        "method": "solana",
        "intent": "subscription",
-       "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsImV4dGVybmFsSWQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuSWQiOiJHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZSIsInB1bGxlciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJ0b2tlblByb2dyYW0iOiJUb2tlbmtlZ1FmZVp5aU53QUpiTmJHS1BGWENXdUJ2ZjlTczYyM1ZRNURBIn0sInBlcmlvZENvdW50IjoiMzAiLCJwZXJpb2RVbml0IjoiZGF5IiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
+       "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsImV4dGVybmFsSWQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuQWRkcmVzcyI6Ikd5R0t4TXlnMXA5U3NIZm0xNU1rTlV1MXU5VE4ySnRUc3BjZG1ydEdVZHNlIiwicHVsbGVyIjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInN1YnNjcmlwdGlvblByb2dyYW0iOiJEZTFlZ0FGTWtNV1pTTjVyWVhSajlDQWRoZUJhbW9iVk51YlRzaTlhdlI0NCIsInRva2VuUHJvZ3JhbSI6IlRva2Vua2VnUWZlWnlpTndBSmJOYkdLUEZYQ1d1QnZmOVNzNjIzVlE1REEifSwicGVyaW9kQ291bnQiOiIzMCIsInBlcmlvZFVuaXQiOiJkYXkiLCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
        "expires": "2026-09-21T14:14:20Z",
        "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
        "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
@@ -227,7 +242,7 @@
        "realm": "api.seller.example",
        "method": "solana",
        "intent": "subscription",
-       "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsImV4dGVybmFsSWQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuSWQiOiJHeUdLeE15ZzFwOVNzSGZtMTVNa05VdTF1OVROMkp0VHNwY2RtcnRHVWRzZSIsInB1bGxlciI6IjloU1I2UzdXUHR4bVRvamdvNkdHM2s0eURQZWNnSlkyOTJqN3hyc1VHV0J1IiwicmVjZW50QmxvY2toYXNoIjoiRVozclNUNWR2SG1iYW5oNzVqYzRQdUxmVjk2dnA5ZkVZQlZlTms0RmZNMWsiLCJ0b2tlblByb2dyYW0iOiJUb2tlbmtlZ1FmZVp5aU53QUpiTmJHS1BGWENXdUJ2ZjlTczYyM1ZRNURBIn0sInBlcmlvZENvdW50IjoiMzAiLCJwZXJpb2RVbml0IjoiZGF5IiwicmVjaXBpZW50IjoiMndLdXBMUjlxNndYWXBwdzhHcjJOdld4S0JVcW00UFBKS2tRZm94SERCZzQifQ",
+       "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsImV4dGVybmFsSWQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsIm1pbnQiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm5ldHdvcmsiOiJkZXZuZXQiLCJwbGFuQWRkcmVzcyI6Ikd5R0t4TXlnMXA5U3NIZm0xNU1rTlV1MXU5VE4ySnRUc3BjZG1ydEdVZHNlIiwicHVsbGVyIjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInN1YnNjcmlwdGlvblByb2dyYW0iOiJEZTFlZ0FGTWtNV1pTTjVyWVhSajlDQWRoZUJhbW9iVk51YlRzaTlhdlI0NCIsInRva2VuUHJvZ3JhbSI6IlRva2Vua2VnUWZlWnlpTndBSmJOYkdLUEZYQ1d1QnZmOVNzNjIzVlE1REEifSwicGVyaW9kQ291bnQiOiIzMCIsInBlcmlvZFVuaXQiOiJkYXkiLCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
        "expires": "2026-09-21T14:14:20Z",
        "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
        "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
@@ -269,7 +284,7 @@
      "realm": "api.seller.example",
      "method": "solana",
      "intent": "subscription",
-     "request": "eyJjdXJyZW5jeSI6IjR6TU1DOXNydDVSaTVYMTRHQWdYaGFIaWkzR25QQUVFUllQSmdaSkRuY0RVIiwiZXh0ZXJuYWxJZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwibWV0aG9kRGV0YWlscyI6eyJkZWNpbWFscyI6NiwibWludCI6IjR6TU1DOXNydDVSaTVYMTRHQWdYaGFIaWkzR25QQUVFUllQSmdaSkRuY0RVIiwibmV0d29yayI6ImRldm5ldCIsInBsYW5JZCI6Ikd5R0t4TXlnMXA5U3NIZm0xNU1rTlV1MXU5VE4ySnRUc3BjZG1ydEdVZHNlIiwicHVsbGVyIjoiOWhTUjZTN1dQdHhtVG9qZ282R0czazR5RFBlY2dKWTI5Mmo3eHJzVUdXQnUiLCJyZWNlbnRCbG9ja2hhc2giOiJFWjNyU1Q1ZHZIbWJhbmg3NWpjNFB1TGZWOTZ2cDlmRVlCVmVOazRGZk0xayIsInRva2VuUHJvZ3JhbSI6IlRva2Vua2VnUWZlWnlpTndBSmJOYkdLUEZYQ1d1QnZmOVNzNjIzVlE1REEifSwicGVyaW9kQ291bnQiOiIzMCIsInBlcmlvZFVuaXQiOiJkYXkiLCJyZWNpcGllbnQiOiIyd0t1cExSOXE2d1hZcHB3OEdyMk52V3hLQlVxbTRQUEpLa1Fmb3hIREJnNCJ9",
+     "request": "eyJjdXJyZW5jeSI6IjR6TU1DOXNydDVSaTVYMTRHQWdYaGFIaWkzR25QQUVFUllQSmdaSkRuY0RVIiwiZXh0ZXJuYWxJZCI6ImxjcDpzaGEyNTY6MHhiYTc4MTZiZjhmMDFjZmVhNDE0MTQwZGU1ZGFlMjIyM2IwMDM2MWEzOTYxNzdhOWNiNDEwZmY2MWYyMDAxNWFkIiwibWV0aG9kRGV0YWlscyI6eyJkZWNpbWFscyI6NiwibWludCI6IjR6TU1DOXNydDVSaTVYMTRHQWdYaGFIaWkzR25QQUVFUllQSmdaSkRuY0RVIiwibmV0d29yayI6ImRldm5ldCIsInBsYW5BZGRyZXNzIjoiR3lHS3hNeWcxcDlTc0hmbTE1TWtOVXUxdTlUTjJKdFRzcGNkbXJ0R1Vkc2UiLCJwdWxsZXIiOiI5aFNSNlM3V1B0eG1Ub2pnbzZHRzNrNHlEUGVjZ0pZMjkyajd4cnNVR1dCdSIsInJlY2VudEJsb2NraGFzaCI6IkVaM3JTVDVkdkhtYmFuaDc1amM0UHVMZlY5NnZwOWZFWUJWZU5rNEZmTTFrIiwic3Vic2NyaXB0aW9uUHJvZ3JhbSI6IkRlMWVnQUZNa01XWlNONXJZWFJqOUNBZGhlQmFtb2JWTnViVHNpOWF2UjQ0IiwidG9rZW5Qcm9ncmFtIjoiVG9rZW5rZWdRZmVaeWlOd0FKYk5iR0tQRlhDV3VCdmY5U3M2MjNWUTVEQSJ9LCJwZXJpb2RDb3VudCI6IjMwIiwicGVyaW9kVW5pdCI6ImRheSIsInJlY2lwaWVudCI6IjJ3S3VwTFI5cTZ3WFlwcHc4R3IyTnZXeEtCVXFtNFBQSktrUWZveEhEQmc0In0",
      "expires": "2026-09-21T14:14:20Z",
      "id": "ungWv48Bz-pBQUDeXa4iI7ADYaOWF3qctBD_YfIAFa0.0",
      "opaque": "eyJsZWdhbENvbnRleHQiOiJsY3A6c2hhMjU2OjB4YmE3ODE2YmY4ZjAxY2ZlYTQxNDE0MGRlNWRhZTIyMjNiMDAzNjFhMzk2MTc3YTljYjQxMGZmNjFmMjAwMTVhZCIsImxlZ2FsQ29udGV4dFVybCI6Imh0dHBzOi8vYXRyLnNlbGxlci5leGFtcGxlLzdjOGFjZmEyLWY4MDAtNDE5Mi04OWU5LTFjZWY5ODMzMTgwZiJ9"
@@ -277,5 +292,21 @@
     "expect": "mpp/request-malformed"
    }
   ]
+ },
+ "live": {
+  "case": "A live activation on Solana devnet, transaction 5eqpR5KdCNjVkqzg855QgUxzvBYz6FA3sNB9rBVE8oNbv4LBa2heNAgNCSEsSQuQcz2W5TLxYtEGUXoUb8CYEWnk, slot 524274768, read with getTransaction (encoding base64, commitment finalized) from https://api.devnet.solana.com on 2026-11-20 at 07:52Z: the program's subscribe (account 0 the subscriber, 1 the merchant, 2 the plan, 3 the subscription, the PDA of [\"subscription\", plan, subscriber]), its transfer_subscription with the puller as caller, then one Memo instruction carrying an LCP string, as @solana/pay-kit 0.13.1 composes an activation (dist/chunk-SSATEZ72.js:2395-2447), without its compute-budget and token-account instructions; the fee payer and the puller are the seller's server key. offer is the challenge as issued for it in @solana/pay-kit 0.13.1's request (dist/chunk-SSATEZ72.js:2017-2063), with the fixture realm and expires; the placed challenge is advertise over it with expectBound and mpp-charge-solana.json's link, and the credential is that challenge echoed with transaction as a transaction credential. expectBound is the H of the memo the chain logged; expectReferencePayer and expectChannel are subscribe's accounts 0 and 3, expectReferenceFeePayer the transaction's first account, expectReferencePayee offer's recipient.",
+  "offer": {
+   "realm": "api.seller.example",
+   "method": "solana",
+   "intent": "subscription",
+   "request": "eyJhbW91bnQiOiIxMDAwIiwiY3VycmVuY3kiOiI0ek1NQzlzcnQ1Umk1WDE0R0FnWGhhSGlpM0duUEFFRVJZUEpnWkpEbmNEVSIsIm1ldGhvZERldGFpbHMiOnsiZGVjaW1hbHMiOjYsImZlZVBheWVyIjp0cnVlLCJmZWVQYXllcktleSI6IkNpZ2hZZ2JWaE1OWTFVUTkxam9VZzR5TGhvWXhjR2g4aWp4VFc2RkVObmpKIiwibWludCI6IjR6TU1DOXNydDVSaTVYMTRHQWdYaGFIaWkzR25QQUVFUllQSmdaSkRuY0RVIiwibmV0d29yayI6ImRldm5ldCIsInBsYW5BZGRyZXNzIjoiN3JMTnNBckFzZTlBZTlxMXREZnhpOFJLS29McUdORnFZeFNTZ2VIOWVoNlkiLCJwdWxsZXIiOiJDaWdoWWdiVmhNTlkxVVE5MWpvVWc0eUxob1l4Y0doOGlqeFRXNkZFTm5qSiIsInJlY2VudEJsb2NraGFzaCI6IkZRWWVDUzI5Uk41N255YjlHWkhYbXhoeWd0R3F2RGlnaHM4djZVV0w0SGJLIiwic3Vic2NyaXB0aW9uUHJvZ3JhbSI6IkRlMWVnQUZNa01XWlNONXJZWFJqOUNBZGhlQmFtb2JWTnViVHNpOWF2UjQ0IiwidG9rZW5Qcm9ncmFtIjoiVG9rZW5rZWdRZmVaeWlOd0FKYk5iR0tQRlhDV3VCdmY5U3M2MjNWUTVEQSJ9LCJwZXJpb2RDb3VudCI6IjEiLCJwZXJpb2RVbml0IjoiZGF5IiwicmVjaXBpZW50IjoiSEtZRm9QVHhuS3I5SmRGRmpMM0RRcGJiWFUxSzlHVnBudXVzbXVRQUtvbVYifQ",
+   "expires": "2026-09-21T14:14:20Z"
+  },
+  "transaction": "Auizg1c4kAh0Inb6BMlF9Srnf9S62lTqaBVuLAuBPC6mcljbMhnvG1DPcsYUT0jYgNuPOQT8Yger3a1RhZEp1gldTi6zOEf409GmP9Y3gESBQ2D5jjXatn9olaI0Ytn2CN3qy/JiqhEophcR2hDUEly/AZiiGqm00KUZ+DYOoCwBgAIACQ6uHkHa9PeGe/a/28ZglrGd/P/fGNT2+6C4oTew9uI2gUhkQFMCrb8Tp58KO3NT0HdIkdKNMAjgd3PLHntB9807SQCZ6cCmYyKshyXFP3ruwMD4fjKU3edizyHHb7lVGwDG2Fgy2zl5ecqCaCqFt6ozsluxaKJt4uKmVzTCzxTAwgcLvJ+ch+OTSQOdqhsvMmX+4iz7vvsJujucItyCTtX8AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAiBF5J49o2tW3he9FotFqiIbMQ3oW9qKuhXoGwD7qFgjQP3hZdQObBiyxxEuNYxyPc11nkVNi85tCfLh/bXZM4O0Qss5EhV/E6kz0BNCgtAytf/s0Botvxt3kGCN8ALqdlyX2m1iunjljJx7ZSIwPV5X/ZVYGMPy+os9dBDYqw6bvHd6+6aPASPsDE0bfuiW6TAckpxVoGupUYIVgljBWp8nrJJL0zMMrMAjMBgExthh3N37jOjpq8f9TLOb+1uUwFSlNamSkhBk0k6HFg2jh8fDW13bySu4HkH6hAQQVEjQbd9uHXZaGT2cvhRs7reawctIXtX1s3kTqM9YV+/wCpGBylV6DIYggXCgZcDgVMAHiJWT1VOdVZ8fqHPXn333EDCgkBCwkCBwUGCgBKC2v0/2oAAAAA/ztELLORIVfxOpM9ATQoLQMrX/7NAaLb8bd5BgjfAC6n6AMAAAAAAAAYAAAAAAAAAGv0/2oAAAAAc7c/HwAAAAAKCgIJBwMEAAgNBgpJCugDAAAAAAAASGRAUwKtvxOnnwo7c1PQd0iR0o0wCOB3c8see0H3zTs7RCyzkSFX8TqTPQE0KC0DK1/+zQGi2/G3eQYI3wAupwwATWxjcDpzaGEyNTY6MHg5YzllNThhMTBlNzdhM2Q2ZGE4YzYyZjFmMWRmNTQzMDc5OTRiZDE5ODE2Mjg5YjMwNjQ2NTYyZjA4NGRhZmY0AA==",
+  "expectBound": "0x9c9e58a10e77a3d6da8c62f1f1df54307994bd19816289b30646562f084daff4",
+  "expectReferencePayer": "5sb1z5Wg2ugX7zeYecegSMWVNjVUJmWEpiYpqD82os3Y",
+  "expectReferenceFeePayer": "CighYgbVhMNY1UQ91joUg4yLhoYxcGh8ijxTW6FENnjJ",
+  "expectReferencePayee": "HKYFoPTxnKr9JdFFjL3DQpbbXU1K9GVpnuusmuQAKomV",
+  "expectChannel": "5uyJ2sqZHNQDJXhiquhdipmsJ9CzW8dm2qiPK5hRdKdq"
  }
 }

@@ -67,6 +67,15 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   channel's payer, the opening's `Account`, as `build`'s opening credential does. The stock `xrpl-mpp-sdk`
   0.1.0-beta.4 channel server refuses a voucher or a close without it ("credential source is required") and holds its
   address to the channel's `Account` (profile `mpp/session/hedera-solana-xrpl`, clause 3).
+- `mpp/subscription/solana` reads `@solana/pay-kit` 0.13.1's wire, the stock library whose activation the deployed
+  subscriptions program runs (`@solana/mpp` 0.7.0's `subscribe` carries no `SubscribeData` and omits the merchant,
+  which the program refuses). The request's `methodDetails` names the plan as `planAddress` and the program as
+  `subscriptionProgram`, which is required and under which the activation's `subscribe` is read; `splits`, where
+  present, is an array of objects each with a number `bps` and a key `recipient`. A request in the earlier form, with
+  `planId` or without `subscriptionProgram`, is `mpp/request-malformed`. A `type="proof"` credential, the payer's
+  reusable proof of the subscription, is within it: `channel.kind` answers `within` and `channel.ref` names its
+  `subscriptionDelegation`. `mpp-subscription-solana.json`'s requests are in pay-kit's form, and its `live` row is an
+  activation the chain ran on devnet (profile `mpp/subscription/solana`, rules 2 to 6).
 - `mpp-session-tempo.json`: `fixed.escrowV1` is the v1 escrow deployed on Tempo Moderato,
   `0xe1c4d3dce17BC111181DdF716F75Bae49e61a336`, whose `ChannelOpened` is the event the profile reads and whose
   `computeChannelId` and `getVoucherDigest` give TS5's channel id and voucher; the earlier address logs another
