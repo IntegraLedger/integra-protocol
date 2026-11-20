@@ -18,6 +18,11 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   does not resolve, or an account resolved that would sign, is the new code `svm/transfer-hook-unresolved`; a failed
   read is `svm/unreadable`. The profile's rule 9 states it; `test/fixtures/svm-transfer-hook.json` records a devnet
   transfer whose hook accounts the build reproduces.
+- `x402MethodNetwork(network)` (`@integraledger/lcp/ap2`): the CAIP-2 id of the network an AP2 x402 method names. AP2's
+  merchant and x402 credential provider write it as an x402 v1 network name (`base-sepolia`); the function maps such a
+  name to `eip155:` and the chain id of `@x402/evm` 2.31.0's v1 table (`EVM_NETWORK_CHAIN_ID_MAP`, from
+  `@x402/evm/v1`), gives an `eip155` CAIP-2 id as given, and answers undefined for anything else, so every reader of
+  the method names its network as `ap2/checkout-mandate/x402`'s `reference` does. `reference` does not change.
 
 ### Fixed
 

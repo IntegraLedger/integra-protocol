@@ -549,8 +549,7 @@ async function boundX402(presented: unknown): Promise<AtrHash | Refusal> {
 
 /**
  * x402's v1 EVM network names and their chain ids, as `@x402/evm` 2.31.0 maps them (`EVM_NETWORK_CHAIN_ID_MAP`, its
- * `src/constants.ts`, exported from `@x402/evm/v1`). AP2's x402 method names its network so (`base-sepolia`,
- * `merchant_agent_mcp/server.py:763` at AP2 `e1ea56d`).
+ * `src/constants.ts`, exported from `@x402/evm/v1`).
  */
 const X402_V1_NETWORKS: Readonly<Record<string, number>> = Object.freeze({
   ethereum: 1,
@@ -581,8 +580,14 @@ const X402_V1_NETWORKS: Readonly<Record<string, number>> = Object.freeze({
   "hemi-testnet": 743111,
 });
 
-/** The CAIP-2 id of a method's network: an `eip155:<chain id>` id as given, or an x402 v1 EVM name mapped; else none. */
-function caip2Of(network: unknown): Eip155 | undefined {
+/**
+ * The CAIP-2 id of the network an AP2 x402 method names, as AP2's merchant and x402 credential provider write it
+ * (`base-sepolia`, `merchant_agent_mcp/server.py:763` and `x402_credentials_provider_mcp/server.py:264` at AP2
+ * `e1ea56d`): an `eip155:<chain id>` id as given, or an x402 v1 EVM network name as `eip155:` and the chain id
+ * `@x402/evm` 2.31.0's v1 table maps it to; undefined for any other value. `ap2/checkout-mandate/x402`'s `reference`
+ * names the method's network so.
+ */
+export function x402MethodNetwork(network: unknown): `eip155:${string}` | undefined {
   if (typeof network !== "string" || network.length === 0 || network.length > MAX_NETWORK) return undefined;
   if (chainIdOf(network) !== undefined) return network as Eip155;
   return Object.hasOwn(X402_V1_NETWORKS, network) ? `eip155:${X402_V1_NETWORKS[network]!}` : undefined;
@@ -595,7 +600,7 @@ function caip2Of(network: unknown): Eip155 | undefined {
 function isX402Method(o: unknown): o is X402Method {
   if (!isJsonObject(o)) return false;
   const { type, address, network, asset } = o;
-  return type === "x402" && isAddress(address) && caip2Of(network) !== undefined && isAddress(asset);
+  return type === "x402" && isAddress(address) && x402MethodNetwork(network) !== undefined && isAddress(asset);
 }
 
 /**
@@ -619,7 +624,7 @@ async function referenceX402(presented: unknown, option: X402Method): Promise<X4
   if (isRefusal(idDigest)) return refusal("ap2/payment-malformed");
   const asset = option.asset as Hex;
   return {
-    network: caip2Of(option.network)!,
+    network: x402MethodNetwork(option.network)!,
     asset: asset.toLowerCase() as Hex,
     validBefore: a.validBefore,
     // x402/exact/eip155/eip3009's read keys, the authorization's own nonce standing where H stands there.

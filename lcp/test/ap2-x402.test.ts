@@ -5,7 +5,7 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { EVM_NETWORK_CHAIN_ID_MAP } from "@x402/evm/v1";
-import { checkoutMandateX402 } from "../src/ap2.js";
+import { checkoutMandateX402, x402MethodNetwork } from "../src/ap2.js";
 import type { Hex } from "../src/evm-abi.js";
 import type { EvmReader } from "../src/internal/evm.js";
 import { exactEip3009 } from "../src/x402.js";
@@ -36,11 +36,11 @@ describe("ap2/checkout-mandate/x402", () => {
     });
   }
 
-  it("names each x402 v1 EVM network of @x402/evm 2.31.0's map in CAIP-2 by its chain id", async () => {
+  it("names each x402 v1 EVM network of @x402/evm 2.31.0's map in CAIP-2 by its chain id, as x402MethodNetwork does", async () => {
     const names = rowsOf(Object.entries(EVM_NETWORK_CHAIN_ID_MAP), "@x402/evm/v1's EVM_NETWORK_CHAIN_ID_MAP", { min: 20 });
     for (const [network, id] of names) {
       const r = await checkoutMandateX402.reference(presented(V.fixed.bundle), { ...V.fixed.method, network });
-      expect((r as { network: string }).network, network).toBe(`eip155:${id}`);
+      expect([(r as { network: string }).network, x402MethodNetwork(network)], network).toEqual([`eip155:${id}`, `eip155:${id}`]);
     }
   });
 

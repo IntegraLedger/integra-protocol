@@ -333,7 +333,9 @@ authorization's nonce as keccak-256 of the payment mandate chain, so the payment
 `ap2/payment-not-bound` where the authorization's nonce is not keccak-256 of the bundle's `payment_mandate_chain`, or
 where the chain's closed Payment Mandate does not name this checkout. `reference(presented, method)`, against the
 checkout's x402 method `{ type: "x402", address, network, asset }`, and `status` read the carried EIP-3009 payment as
-`x402/exact/eip155/eip3009` does, at coverage `none`, with the authorization's own nonce where that pairing has H. The
+`x402/exact/eip155/eip3009` does, at coverage `none`, with the authorization's own nonce where that pairing has H. AP2
+writes the method's `network` as an x402 v1 network name (`base-sepolia`); `x402MethodNetwork(network)` gives its CAIP-2
+id (`eip155:84532`) by `@x402/evm`'s v1 table, as `reference` reads it, or an `eip155` CAIP-2 id as given. The
 LCP profile [`ap2/checkout-mandate/x402`](../../lcp/profiles/ap2-checkout-mandate-x402.md) states the rules.
 
 ```ts

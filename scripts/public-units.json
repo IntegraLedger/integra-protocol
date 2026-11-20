@@ -161,10 +161,10 @@
     {
       "unit": "AP2 checkouts paid with AP2's x402 credential",
       "exports": {
-        "./ap2": ["X402Authorization", "X402Bundle", "X402Method", "X402Presented", "X402Ref", "checkoutMandateX402", "EvmMark", "EvmQuery"]
+        "./ap2": ["X402Authorization", "X402Bundle", "X402Method", "X402Presented", "X402Ref", "checkoutMandateX402", "x402MethodNetwork", "EvmMark", "EvmQuery"]
       },
-      "use": "Any AP2 merchant paid through AP2's x402 payment credential reads H from the checkout mandate, checks the credential's authorization is bound to its payment mandate chain as AP2's payment processor does, and keys its record of the payment by the authorization's signer and nonce.",
-      "fixedBy": "ap2-checkout-mandate-x402.md; AP2 v0.2 and its reference x402 flow."
+      "use": "Any AP2 merchant paid through AP2's x402 payment credential reads H from the checkout mandate, checks the credential's authorization is bound to its payment mandate chain as AP2's payment processor does, and keys its record of the payment by the authorization's signer and nonce; any reader of AP2's x402 method names its network in CAIP-2 as AP2 writes it, an x402 v1 network name.",
+      "fixedBy": "ap2-checkout-mandate-x402.md; AP2 v0.2 and its reference x402 flow; @x402/evm 2.31.0's v1 network table."
     },
     {
       "unit": "Card checkouts",
