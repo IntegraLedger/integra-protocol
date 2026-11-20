@@ -716,6 +716,48 @@ const PROFILE_ROWS: readonly ProfileRow[] = [
     member: (d) => d.option?.extra,
     states: { areFeesSponsored: false },
   },
+  {
+    id: "x402/exact/eip155/permit2",
+    profile: "x402-exact-eip155-permit2.md",
+    text: "whose `extra.assetTransferMethod` is `permit2`",
+    member: (d) => d.option?.extra,
+    states: { assetTransferMethod: "permit2" },
+  },
+  {
+    id: "x402/exact/eip155/erc7710",
+    profile: "x402-exact-eip155-erc7710.md",
+    text: "This pairing serves x402's `exact` scheme with `assetTransferMethod` `erc7710`",
+    member: (d) => d.option?.extra,
+    states: { assetTransferMethod: "erc7710" },
+  },
+  {
+    id: "x402/exact/eip155/erc7710-salt",
+    profile: "x402-exact-eip155-erc7710-salt.md",
+    text: "This pairing serves x402's `exact` scheme with `assetTransferMethod` `erc7710`",
+    member: (d) => d.option?.extra,
+    states: { assetTransferMethod: "erc7710" },
+  },
+  {
+    id: "x402/exact/eip155/gateway-batched",
+    profile: "x402-exact-eip155-gateway-batched.md",
+    text: "whose `extra.name` is `GatewayWalletBatched`",
+    member: (d) => d.option?.extra,
+    states: { name: "GatewayWalletBatched" },
+  },
+  {
+    id: "x402/auth-capture/eip155/permit2",
+    profile: "x402-auth-capture-eip155.md",
+    text: "and `permit2` on `x402/auth-capture/eip155/permit2`",
+    member: (d) => d.option?.extra,
+    states: { assetTransferMethod: "permit2" },
+  },
+  {
+    id: "x402/exact/lnbtc/payment-hash",
+    profile: "x402-exact-lnbtc-payment-hash.md",
+    text: "`extra.paymentFlow` `upfront`, `extra.assetTransferMethod` absent or `bolt11`, else `x402/option-malformed`",
+    member: (d) => d.option?.extra,
+    states: { paymentFlow: "upfront" },
+  },
 ];
 
 describe("the registry's facts as data", () => {

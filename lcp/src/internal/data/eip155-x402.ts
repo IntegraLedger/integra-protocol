@@ -89,6 +89,7 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     source: "lcp's client; the stock client draws the nonce at random, so it writes no H",
     nonce: "single-use",
     broadcasts: "payee",
+    option: { extra: { assetTransferMethod: "permit2" } },
     read: {
       endpoint: ["json-rpc"],
       fallback: "json-rpc",
@@ -201,6 +202,7 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     source: "lcp's client",
     nonce: "single-use",
     broadcasts: "payee",
+    option: { extra: { assetTransferMethod: "permit2" } },
     read: {
       endpoint: ["json-rpc"],
       note: "receipt, logs, `eth_call`, a block by mark with its timestamp",
@@ -287,6 +289,7 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     source: "lcp's client; x402 ships no ERC-7710 client",
     nonce: "reusable",
     broadcasts: "payee",
+    option: { extra: { assetTransferMethod: "erc7710" } },
     read: {
       endpoint: ["json-rpc"],
       note: "receipt, logs, a block by mark",
@@ -317,6 +320,7 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
     source: "none: nothing the delegator signed holds H, which rides only in the echoed legal-context extension",
     nonce: "reusable",
     broadcasts: "payee",
+    option: { extra: { assetTransferMethod: "erc7710" } },
     read: {
       endpoint: ["json-rpc"],
       note: "receipt, a transaction, a block by mark",
@@ -353,6 +357,7 @@ export const EIP155_X402 = /* @__PURE__ */ freeze({
       "writes no H",
     nonce: "unshown",
     broadcasts: "payee",
+    option: { extra: { name: "GatewayWalletBatched" } },
     agreementOn: "same-network",
     confirmed: "yes",
     proves:

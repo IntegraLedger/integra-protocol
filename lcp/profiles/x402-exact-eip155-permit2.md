@@ -1,6 +1,6 @@
 **LCP profile `x402/exact/eip155/permit2`: the ATR hash as the Permit2 nonce.**
 
-This pairing serves x402's `exact` scheme on an EVM chain through Permit2 and x402's exact Permit2 proxy, as lcp's client writes it. H is the Permit2 nonce the payer signs, all of H, so the pairing is at coverage `full`. The stock client draws the nonce at random and writes no H.
+This pairing serves x402's `exact` scheme on an EVM chain through Permit2 and x402's exact Permit2 proxy, as lcp's client writes it. H is the Permit2 nonce the payer signs, all of H, so the pairing is at coverage `full`. The stock client draws the nonce at random and writes no H. Its option is an `exact` option on an `eip155` network whose `extra.assetTransferMethod` is `permit2`, as x402's exact scheme names the Permit2 method.
 
 **The payment**
 

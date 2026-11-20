@@ -28,6 +28,7 @@ export const LIGHTNING = /* @__PURE__ */ freeze({
     source: "none: no client writes H; the ATR commits the option's extra.paymentHash, the invoice's payment hash",
     nonce: "single-use",
     broadcasts: "payer",
+    option: { extra: { paymentFlow: "upfront" } },
     destination: "the invoice's signer, held to the option's payTo by the scheme's validation before the payment is taken",
     asset: "BTC",
     payer: "none named",

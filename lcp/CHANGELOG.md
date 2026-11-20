@@ -34,8 +34,12 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   server writes them into its option from the data: `x402/exact/polkadot/lcp-assets-remark`, `assetTransferMethod`
   `lcp-assets-remark`; `x402/exact/tron/lcp-trc20-memo`, `assetTransferMethod` `lcp-trc20-memo`;
   `x402/exact/stellar/precondition`, `assetTransferMethod` `lcp-precondition` and `areFeesSponsored` `true`;
-  `x402/exact/tvm`, `areFeesSponsored` `true`; `x402/exact/xrpl` and `x402/upto/xrpl`, `areFeesSponsored` `false`. No
-  filter changes.
+  `x402/exact/tvm`, `areFeesSponsored` `true`; `x402/exact/xrpl` and `x402/upto/xrpl`, `areFeesSponsored` `false`;
+  `x402/exact/eip155/permit2` and `x402/auth-capture/eip155/permit2`, `assetTransferMethod` `permit2`;
+  `x402/exact/eip155/erc7710` and `x402/exact/eip155/erc7710-salt`, `assetTransferMethod` `erc7710`;
+  `x402/exact/eip155/gateway-batched`, `name` `GatewayWalletBatched`; `x402/exact/lnbtc/payment-hash`, `paymentFlow`
+  `upfront`. The profiles `x402/exact/eip155/permit2` and `x402/auth-capture/eip155` now state the `permit2` value their
+  filters already required. No filter changes.
 - `LCP_PRECONDITION` (`@integraledger/lcp/x402-exact-stellar`): `x402/exact/stellar/precondition`'s
   `assetTransferMethod`, `"lcp-precondition"`, beside Polkadot's `LCP_ASSETS_REMARK` and Tron's `LCP_TRC20_MEMO`.
 
