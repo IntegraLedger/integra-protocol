@@ -6,6 +6,21 @@ rename exports and pairing ids and change a function's arguments or answers; a p
 [Upgrading](../docs/upgrading.md) states what 0.6's patch releases add, and each change a caller of 0.5.x makes for
 0.6.0.
 
+## [Unreleased]
+
+### Fixed
+
+- The Solana channel openings' read (`svmChannelStatus` and `svmOpeningStatus` of `@integraledger/lcp/svm`, the
+  `status` of `x402/upto/solana`, `x402/batch-settlement/solana`, `mpp/session/solana/memo` and
+  `mpp/session/solana/stock`) reads the payee an `open` names, its third account, a seed of the channel's address: the
+  deposit counts where that payee is the option's payee or the `open`'s distribution holds it. It read the distribution
+  alone, so an `open` with no distribution, which `@solana/mpp` 0.7.0 composes for a session challenge with no
+  `splits`, named no account and was never the sale. Every `open` names an account now: one whose payee is another
+  account and whose distribution does not hold the option's payee names `other`. `Moved.beneficiary` and `Moved.to`
+  keep 0.6.2's values, and on an `open` with no distribution are its payee, where they were absent and the channel's
+  account. The read kit's case of an act of the pairing's kind that names no account is declared inapplicable to the
+  four pairings, in their profiles.
+
 ## [0.6.2] - 2026-11-19
 
 ### Added

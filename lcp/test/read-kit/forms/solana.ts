@@ -11,8 +11,8 @@
 // - the act's signer is the buyer, `payee` the option's payee, `other` a third account; a transfer pairing's act of
 //   another kind holds a payment-channels instruction, and a channel pairing's is a plain transfer;
 // - the account an act names: a `TransferChecked` from the buyer's token account to one the payee owns (`payee`) or a
-//   third account owns (`other`), or no transfer (`none`); for a channel, an `open` whose distribution holds the payee,
-//   a third account, or no one;
+//   third account owns (`other`), or no transfer (`none`); for a channel, an `open` whose payee and distribution are the
+//   payee or a third account, an `open` always naming its payee;
 // - a single-use value read (the case's `value`) is a reference that holds the presented message: the transaction that
 //   consumed it carries that message, and an unconsumed one is a presented transaction no lookup finds; a value the read
 //   cannot read (no `value`) is a reference to a transaction alone, the transaction that consumed it (else one no lookup
@@ -158,9 +158,9 @@ function actOf(
     ixs.push(memo);
     return wire([FEE_PAYER, signer], [BUYER_TOKEN, PAYEE_TOKEN, OTHER_TOKEN], ixs, opts.blockhash ?? BLOCKHASH, signature(n));
   }
-  const open = (recipients: string[]): Ix => ({
+  const open = (payee: string, recipients: string[]): Ix => ({
     program: CHANNELS,
-    accounts: [signer, FEE_PAYER, PAYEE, mint, signer, CHANNEL],
+    accounts: [signer, FEE_PAYER, payee, mint, signer, CHANNEL],
     data: [
       1,
       ...u64(BigInt(n)),
@@ -174,9 +174,9 @@ function actOf(
   const sameKind = s.kind === "same";
   if (kind === "transfer") {
     if (s.account !== "none") ixs.push(transfer);
-    if (!sameKind) ixs.push(open([PAYEE]));
+    if (!sameKind) ixs.push(open(PAYEE, [PAYEE]));
   } else if (sameKind) {
-    ixs.push(open(s.account === "none" ? [] : [to]));
+    ixs.push(open(to, [to]));
   } else if (s.account !== "none") {
     ixs.push(transfer);
   }
@@ -300,12 +300,23 @@ const ONE_TRANSFER: Inapplicable = {
     "whose one deposit into the channel's token account is what moved, a transaction holding more being no act of these pairings",
 };
 
+/**
+ * On the channel openings: an act of the pairing's kind that names no account, since every `open` names its payee, its
+ * third account.
+ */
+const NAMES_PAYEE: readonly Inapplicable[] = READ_STATUS.cases
+  .filter((c) => c.facts.seen.some((s) => s.kind === "same" && s.account === "none"))
+  .map((c) => ({
+    case: c.case,
+    stated: `${ENTRY}, on the channel openings: an act of the pairing's kind that names no account, since every open names its payee, its third account`,
+  }));
+
 /** The declared cases of a pairing at coverage `full`, every Solana read holding the signed message it was presented. */
 const FULL: readonly Inapplicable[] = [BELOW, ...GATE, ...HELD_MESSAGE];
 /** The same, on the channel openings that carry H. */
-const OPENING: readonly Inapplicable[] = [...FULL, ONE_TRANSFER];
-/** At coverage `none` the read makes no search, so no case is held by the search's gate. */
-const NONE: readonly Inapplicable[] = [BELOW, ...HELD_MESSAGE];
+const OPENING: readonly Inapplicable[] = [...FULL, ONE_TRANSFER, ...NAMES_PAYEE];
+/** At coverage `none` the read makes no search, so no case is held by the search's gate; its act is an opening. */
+const NONE: readonly Inapplicable[] = [BELOW, ...HELD_MESSAGE, ...NAMES_PAYEE];
 
 function declared(list: readonly Inapplicable[], c: ReadCase, act: Act): Inapplicable | undefined {
   return list.find((d) => d.case === c.case && (d.acts === undefined || d.acts.includes(act)));

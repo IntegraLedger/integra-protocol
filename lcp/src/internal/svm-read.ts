@@ -410,9 +410,12 @@ function channelIxs(o: Opened) {
 }
 
 /**
- * A channel `open`'s deposit and distribution: `01` ‖ salt u64 ‖ deposit u64 ‖ gracePeriod u32 ‖ openSlot u64 ‖ count
- * u32 ‖ (recipient 32 ‖ bps u16) per recipient; its accounts name the payer first, the mint fourth and the channel
- * sixth (`openInstructionData`, `buildChannelMessage`). Null where the instruction is no `open` of that form.
+ * A channel `open`'s payee, deposit and distribution: `01` ‖ salt u64 ‖ deposit u64 ‖ gracePeriod u32 ‖ openSlot u64 ‖
+ * count u32 ‖ (recipient 32 ‖ bps u16) per recipient; its accounts name the payer first, the payee third, the mint fourth
+ * and the channel sixth (`openInstructionData`, `buildChannelMessage`; `@solana/mpp` 0.7.0
+ * `src/generated/payment-channels/instructions/open.ts`). The payee is a seed of the channel's address, and the
+ * program's `distribute` pays the payee's token account (`instructions/distribute.ts`). Null where the instruction is no
+ * `open` of that form.
  */
 function openOf(o: Opened, ix: { program: number; accounts: readonly number[]; data: Uint8Array }) {
   const d = ix.data;
@@ -424,6 +427,7 @@ function openOf(o: Opened, ix: { program: number; accounts: readonly number[]; d
   for (let r = 0; r < count; r++) recipients.push(keyString(d.subarray(33 + 34 * r, 65 + 34 * r)));
   return {
     payer: o.keys[ix.accounts[0]!] ?? "",
+    payee: o.keys[ix.accounts[2]!] ?? "",
     mint: o.keys[ix.accounts[3]!] ?? "",
     channel: o.keys[ix.accounts[5]!] ?? "",
     deposit,
@@ -468,8 +472,9 @@ type Classified = Seen<bigint, Reached>;
  * (exactly one top-level Memo holds an LCP string, and it is H's); its signer against the reference's payer and the
  * option's payee (`payer` where the buyer signed it and is not the payee, `payee` where the payee signed it, else
  * `other`); its kind (a transfer pairing's act holds no payment-channels instruction, a channel pairing's exactly one
- * `open`); the account it names (`payee` where a transfer of the buyer's reaches the payee or an `open`'s distribution
- * holds the payee, `other` where it moves value elsewhere, `none` where it moves nothing), for a failed result the
+ * `open`); the account it names (`payee` where a transfer of the buyer's reaches the payee or an `open` names the payee as
+ * its payee account or in its distribution, `other` where it moves value elsewhere or the `open` names another payee,
+ * `none` where it moves nothing), for a failed result the
  * destination of what the payer signed, its top-level instructions, since that result moved nothing; whether it consumed the
  * act's single-use value (the same signed message, or the reference's durable nonce advanced); whether it is an act the
  * caller gave by its reference; whether its message is the one presented (by its digest, or, for a payment presented
@@ -493,6 +498,11 @@ async function classify(
   let moved: Moved[];
   let account: Classified["account"];
   if (kind === "channel") {
+    // The open names the option's payee where its payee account is that payee or its distribution holds it.
+    const names = open !== null && (open.payee === ref.payee || open.recipients.includes(ref.payee));
+    // The deposit's beneficiary: the option's payee where the open names it, else the distribution's first recipient, or
+    // the open's payee where the distribution is empty.
+    const beneficiary = open === null ? "" : names ? ref.payee : (open.recipients[0] ?? open.payee);
     moved =
       open === null || failed
         ? []
@@ -500,15 +510,14 @@ async function classify(
             {
               asset: open.mint,
               amount: open.deposit.toString(),
-              to: open.recipients.includes(ref.payee) ? ref.payee : (open.recipients[0] ?? open.channel),
+              to: beneficiary,
               contract: open.channel,
-              ...(open.recipients.length === 0 ? {} : { beneficiary: open.recipients.includes(ref.payee) ? ref.payee : open.recipients[0]! }),
+              beneficiary,
               transaction: signature,
               place: placeOf(channels[0]!.i),
             },
           ];
-    account =
-      open === null || open.recipients.length === 0 ? "none" : open.recipients.includes(ref.payee) ? "payee" : "other";
+    account = open === null ? "none" : names ? "payee" : "other";
   } else {
     const transfers = transfersOf(o, failed ? { ...landed, inner: [] } : landed, ref.payer, signature).filter((t) => t.fromBuyer);
     moved = failed ? [] : transfers.map(({ fromBuyer: _, ...m }) => m);
