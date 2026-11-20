@@ -536,6 +536,11 @@ function fieldValue(record: LnHeaderFields, name: string): string | null | undef
  * body that is not bytes or is over 1 MiB, a header record that is not a record of strings or lists of strings or a
  * bound field's value outside the scheme's form, a tool name that is empty, arguments or `_meta` that are not a JSON
  * object, or a value RFC 8785 cannot write.
+ *
+ * A seller's server computes it from the request that will execute, with the option's `extra.requestBindingProfile`
+ * and `extra.requestBindingParams` and the document's `resource.url`, and writes it as the option's `extra.requestHash`,
+ * the invoice's `h` and the requirements it validates a payment against (profile `x402/exact/lnbtc/payment-hash`, rules
+ * 2, 5 and 10); the buyer's `build` computes it from the buyer's intended request and holds it to `extra.requestHash`.
  */
 export function requestHash(profile: unknown, params: unknown, request: unknown, resourceUrl: unknown): string | Refusal {
   if (!bindingParams(profile, params)) return refusal("ln/request-binding-malformed");

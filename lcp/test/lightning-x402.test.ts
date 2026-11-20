@@ -8,12 +8,12 @@ import { decode as lightDecode } from "light-bolt11-decoder";
 import bolt11 from "bolt11";
 import { isRefusal, type AtrHash } from "../src/index.js";
 import { pairingOf } from "../src/index.js";
-import { requestHash } from "../src/internal/lightning.js";
 import {
   checkPreimage,
   decodeBolt11,
   exactLnbtcPaymentHash as ln,
   invoiceH,
+  requestHash,
   validateExactLnbtc,
   type Bolt11,
   type LnUnsigned,

@@ -23,6 +23,12 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   name to `eip155:` and the chain id of `@x402/evm` 2.31.0's v1 table (`EVM_NETWORK_CHAIN_ID_MAP`, from
   `@x402/evm/v1`), gives an `eip155` CAIP-2 id as given, and answers undefined for anything else, so every reader of
   the method names its network as `ap2/checkout-mandate/x402`'s `reference` does. `reference` does not change.
+- `requestHash(profile, params, request, resourceUrl)` (`@integraledger/lcp/lightning`): x402 Lightning's request hash
+  (the scheme's Request Binding, `http:1` or `mcp:1`), as 64 lowercase hex digits, which `build` already computed from
+  the buyer's intended request. A seller's server computes it from the request that will execute and writes it as the
+  option's `extra.requestHash`, the invoice's `h` and the requirements it validates a payment against (profile
+  `x402/exact/lnbtc/payment-hash`, rule 10). Its refusals are `build`'s: `ln/request-hash-mismatch` and
+  `ln/request-binding-malformed`.
 
 ### Fixed
 

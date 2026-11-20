@@ -321,9 +321,9 @@
     {
       "unit": "Lightning's payment-hash form on x402",
       "exports": {
-        "./lightning": ["ExactLnbtcReason", "ExactLnbtcValidation", "LnChoice", "LnHeaderFields", "LnbtcRequest", "checkPreimage", "exactLnbtcPaymentHash", "validateExactLnbtc", "X402Advertise", "X402Read"]
+        "./lightning": ["ExactLnbtcReason", "ExactLnbtcValidation", "LnChoice", "LnHeaderFields", "LnbtcRequest", "checkPreimage", "exactLnbtcPaymentHash", "requestHash", "validateExactLnbtc", "X402Advertise", "X402Read"]
       },
-      "use": "Any resource server offers x402's exact scheme on Lightning with the ATR committing the invoice's payment hash, checks a presented proof by x402's validation and the preimage check before it serves, and any buyer's client makes x402's checks of the invoice before it pays; a settler's /settle for the scheme runs the same validation.",
+      "use": "Any resource server offers x402's exact scheme on Lightning with the ATR committing the invoice's payment hash, computes the request hash it writes as the option's extra.requestHash and the invoice's h from the request that will execute, checks a presented proof by x402's validation and the preimage check before it serves, and any buyer's client makes x402's checks of the invoice before it pays; a settler's /settle for the scheme runs the same validation.",
       "fixedBy": "x402's scheme_exact_lnbtc.md; BOLT 11; x402-exact-lnbtc-payment-hash.md."
     },
     {

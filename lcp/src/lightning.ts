@@ -62,6 +62,7 @@ import { LIGHTNING } from "./internal/data/lightning.js";
 import type { Act } from "./internal/read.js";
 import type { Entry, NoRead } from "./internal/registry.js";
 export type { Broadcaster } from "./internal/broadcaster.js";
+export { requestHash } from "./internal/lightning.js";
 export type { ExactLnbtcReason, ExactLnbtcValidation, LnbtcRequest, LnHeaderFields } from "./internal/lightning.js";
 export type { X402Advertise, X402Read } from "./internal/x402.js";
 
