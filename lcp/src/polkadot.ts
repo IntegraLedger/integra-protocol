@@ -526,7 +526,7 @@ function eraAt(xt: Uint8Array, at: number): { era: PolkadotEra; next: number } |
  * extensions' explicit bytes: the era (`CheckMortality`) and the compact nonce (`CheckNonce`). An extrinsic whose era or
  * nonce does not decode is `polkadot/extrinsic-malformed`.
  */
-function signedOf(xt: Uint8Array): { signer: Uint8Array; era: PolkadotEra; nonce: bigint; sigStart: number; sigEnd: number } | Refusal {
+function signedOf(xt: Uint8Array): Signed | Refusal {
   const split = splitSigned(xt);
   if (isRefusal(split)) return split;
   const era = eraAt(xt, split.end);
@@ -534,7 +534,54 @@ function signedOf(xt: Uint8Array): { signer: Uint8Array; era: PolkadotEra; nonce
   if (era === null || nonce === null) return refusal("polkadot/extrinsic-malformed");
   // The length prefix, the version byte and the 33 bytes of `MultiAddress::Id` come before the signature's variant.
   const sigStart = compactAt(xt, 0)!.next + 34;
-  return { signer: split.signer, era: era.era, nonce: nonce.value, sigStart, sigEnd: split.end };
+  return { signer: split.signer, era: era.era, nonce: nonce.value, sigStart, sigEnd: split.end, extensions: split.end };
+}
+
+/**
+ * A signed item's signer, era and account nonce; where its signature starts and ends; and where the explicit bytes of
+ * its extensions from `CheckMortality` on start, which the call follows.
+ */
+type Signed = { signer: Uint8Array; era: PolkadotEra; nonce: bigint; sigStart: number; sigEnd: number; extensions: number };
+
+/** Polkadot Asset Hub, the network whose runtime signs a v5 general transaction through `VerifyMultiSignature`. */
+const ASSET_HUB: PolkadotNetwork = "polkadot:68d56f15f85d3136970ec16946040bc1";
+
+/**
+ * The signer of a v5 general transaction on Polkadot Asset Hub under extension version 1, whose extensions are, in order,
+ * `UnitTransactionExtension`, `VerifyMultiSignature`, `AuthorizeCall`, `AsPgas`, `AsDotnsGateway`, `RestrictOrigins`,
+ * `CheckNonZeroSender`, `CheckSpecVersion`, `CheckTxVersion`, `CheckGenesis`, `CheckMortality`, `CheckNonce` and the
+ * rest of extension version 0's (the runtime's metadata v16 at spec 2005003): the length prefix, `0x45` (version 5, a
+ * general transaction), the extension version `0x01`, `VerifyMultiSignature`'s variant `Signed` (`0x01`) with its
+ * `MultiSignature` and the signer's 32-byte account, `AsPgas` and `AsDotnsGateway` each `None` (`0x00`), and
+ * `RestrictOrigins`, a bool; then the era and the compact nonce, as in a signed v4 extrinsic. Null for any other item,
+ * one over `POLKADOT_BOUNDS.extrinsic` bytes included.
+ */
+function generalOf(xt: Uint8Array): Signed | null {
+  const length = compactAt(xt, 0);
+  if (length === null || xt.length > MAX_EXTRINSIC) return null;
+  const at = length.next;
+  if (xt[at] !== 0x45 || xt[at + 1] !== 0x01 || xt[at + 2] !== 0x01) return null;
+  const sigStart = at + 3;
+  const variant = xt[sigStart];
+  const size = variant === 0 || variant === 1 ? 64 : variant === 2 || variant === 3 ? 65 : -1;
+  if (size < 0) return null;
+  const sigEnd = sigStart + 1 + size;
+  const tail = sigEnd + 32;
+  if (tail + 3 > xt.length || xt[tail] !== 0x00 || xt[tail + 1] !== 0x00 || (xt[tail + 2] !== 0x00 && xt[tail + 2] !== 0x01)) return null;
+  const extensions = tail + 3;
+  const era = eraAt(xt, extensions);
+  const nonce = era === null ? null : compactAt(xt, era.next);
+  if (era === null || nonce === null) return null;
+  return { signer: new Uint8Array(xt.subarray(sigEnd, tail)), era: era.era, nonce: nonce.value, sigStart, sigEnd, extensions };
+}
+
+/** The signed preamble the search reads of an item on `network`: a signed v4 extrinsic's, or a v5 one's (`generalOf`). */
+function signedItemOf(xt: Uint8Array, network: PolkadotNetwork): Signed | null {
+  const length = compactAt(xt, 0);
+  if (length === null) return null;
+  if (xt[length.next] === 0x45) return network === ASSET_HUB ? generalOf(xt) : null;
+  const s = signedOf(xt);
+  return isRefusal(s) ? null : s;
 }
 
 // ── settlement ───────────────────────────────────────────────────────────────────────────────────────────────────────
@@ -718,19 +765,29 @@ function holds(bytes: Uint8Array, needle: Uint8Array): boolean {
 }
 
 /**
- * What the search reads of an item: `bare`, an unsigned or v5 bare item; `signed`, a signed v4 extrinsic with its signer
- * where its address is a 32-byte account, its era and its nonce; `undecoded`, any other, which could be the signer's.
+ * What the search reads of an item on `network`: `bare`, an unsigned or v5 bare item; `signed`, a signed v4 extrinsic
+ * with its signer where its address is a 32-byte account, or on Polkadot Asset Hub a v5 general transaction its
+ * `VerifyMultiSignature` signs (`generalOf`), with its era and its nonce; `undecoded`, any other, which could be the
+ * signer's.
  */
 type Item =
   | { kind: "bare" }
   | { kind: "signed"; signer: Uint8Array | null; era: PolkadotEra | null; nonce: bigint | null }
   | { kind: "undecoded" };
 
-function itemOf(xt: Uint8Array): Item {
+function itemOf(xt: Uint8Array, network: PolkadotNetwork): Item {
   const length = compactAt(xt, 0);
   if (length === null || length.value !== BigInt(xt.length - length.next)) return { kind: "undecoded" };
   const version = xt[length.next];
   if (version === 0x04 || version === 0x05) return { kind: "bare" };
+  if (version === 0x45) {
+    if (network !== ASSET_HUB) return { kind: "undecoded" };
+    // Over the bound: only its signer is read, so that an item of the signer's is held to the bound.
+    const over = xt.length > MAX_EXTRINSIC ? generalOf(xt.subarray(0, MAX_EXTRINSIC)) : null;
+    if (over !== null) return { kind: "signed", signer: over.signer, era: null, nonce: null };
+    const general = generalOf(xt);
+    return general === null ? { kind: "undecoded" } : { kind: "signed", signer: general.signer, era: general.era, nonce: general.nonce };
+  }
   if (version !== 0x84) return { kind: "undecoded" };
   if (xt.length > MAX_EXTRINSIC && xt[length.next + 1] === 0x00 && xt.length >= length.next + 34) {
     // Over the bound: only its signer is read, so that an item of the signer's is held to the bound.
@@ -743,10 +800,10 @@ function itemOf(xt: Uint8Array): Item {
   return address === 0x00 || address === 0x03 ? { kind: "undecoded" } : { kind: "signed", signer: null, era: null, nonce: null };
 }
 
-/** The signed body of a signed v4 extrinsic, its signature apart, or null. */
-function bodyOf(xt: Uint8Array): Uint8Array | null {
-  const s = signedOf(xt);
-  return isRefusal(s) ? null : concat(xt.subarray(compactAt(xt, 0)!.next, s.sigStart), xt.subarray(s.sigEnd));
+/** The signed body of a signed item on `network` (`signedItemOf`), its signature apart, or null. */
+function bodyOf(xt: Uint8Array, network: PolkadotNetwork): Uint8Array | null {
+  const s = signedItemOf(xt, network);
+  return s === null ? null : concat(xt.subarray(compactAt(xt, 0)!.next, s.sigStart), xt.subarray(s.sigEnd));
 }
 
 /** The last block that can include an extrinsic of `era` that the chain validated at `head`, as the settler takes it. */
@@ -771,7 +828,8 @@ class Stop {
  * 8: the payment is read by the signer's account nonce, never by the extrinsic's hash. The read takes the finalized
  * height, the latest head, and the account's nonce at each; then reads the timepoint a settler named, the hint, and the
  * search's earlier finds; then searches every block after the position the caller gave up to the latest head, at most
- * `POLKADOT_BOUNDS.searchBlocks` blocks a call, decoding each item's preamble: the signer's extrinsic at the signed nonce
+ * `POLKADOT_BOUNDS.searchBlocks` blocks a call, decoding each item's preamble, a signed v4 extrinsic's or, on Polkadot
+ * Asset Hub, that of a v5 general transaction `VerifyMultiSignature` signs: the signer's extrinsic at the signed nonce
  * is the instrument's, and every extrinsic whose bytes hold the remark of H is read for the search for H. An extrinsic
  * meets the profile's success where it dispatched (`success`) with `Remarked` for the remark; on the act `payment` it
  * names the payee's account where a transfer it made reaches `payTo`'s 32-byte account. The era's last block is proven
@@ -864,10 +922,10 @@ async function readPolkadot(
   );
 
   const found = new Map<string, Found>();
-  const presentedBody = bodyOf(fromHex(ref.extrinsic));
+  const presentedBody = bodyOf(fromHex(ref.extrinsic), ref.network);
   /** Classifies the item at `index` of a block, read whole, where it is the instrument's or holds the remark. */
   const classify = async (block: Hex | bigint, index: number, xt: Uint8Array): Promise<"ok" | "undecoded" | "again"> => {
-    const item = itemOf(xt);
+    const item = itemOf(xt, ref.network);
     if (item.kind === "undecoded") return "undecoded";
     const mine = item.kind === "signed" && item.signer !== null && equalBytes(item.signer, signer);
     if (mine && xt.length > MAX_EXTRINSIC) throw new Stop("too-large");
@@ -885,15 +943,15 @@ async function readPolkadot(
     const x = at.read;
     const succeeded = x.success && hasEvent(x, "system", "Remarked", (d) => typeof d[1] === "string" && hashEquals(d[1], remarkHash));
     if (!succeeded && !instrument) return "ok";
-    const split = splitSigned(xt);
-    const start = isRefusal(split) ? null : callStart(xt, split.end);
+    const signed = signedItemOf(xt, ref.network);
+    const start = signed === null ? null : callStart(xt, signed.extensions);
     // The account the call runs as, the payer where the signer signed as the payer or acted for it through a wrapper.
     const runs = item.kind === "signed" && item.signer !== null && start !== null ? originOf(xt, start, item.signer) : null;
     const forPayer = runs !== null && equalBytes(runs.origin, signer);
     // The transfer calls of zero that ran as the payer, read from the signed call and the events that show it ran.
     const tree = start === null ? null : callAt(xt, start, 0);
     const zeros = !succeeded || tree === null || item.kind !== "signed" || item.signer === null ? [] : zeroCallsRun(tree.call, item.signer, signer, x.events);
-    const signedTo = isRefusal(split) || succeeded ? null : signedTransfers(xt, split.end);
+    const signedTo = signed === null || succeeded ? null : signedTransfers(xt, signed.extensions);
     const transaction = `${x.at.hash.toLowerCase()}-${index}`;
     // What it moved where it dispatched: an extrinsic that did not meet the profile's success keeps what its events show.
     const moved = succeeded ? movedOf(x, signer, zeros, transaction) : x.success ? movedOf(x, signer, [], transaction) : [];
@@ -904,7 +962,7 @@ async function readPolkadot(
     const given = item.kind === "signed" && signerHex !== undefined && others.some((o) => o.signer === signerHex && o.nonce === String(item.nonce));
     // The payment presented: the extrinsic compared with the presented one by its signed body, its signer among it and
     // its signature apart, the members the payer signed that its bytes hold.
-    const body = bodyOf(xt);
+    const body = bodyOf(xt, ref.network);
     const presented = body === null || presentedBody === null ? "unshown" : equalBytes(body, presentedBody) ? "yes" : "no";
     const seen: Seen<bigint, PolkadotMark> = {
       transaction,

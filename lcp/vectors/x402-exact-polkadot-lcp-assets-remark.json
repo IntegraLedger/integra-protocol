@@ -1,5 +1,5 @@
 {
- "about": "Vectors for the x402/exact/polkadot/lcp-assets-remark pairing of @integraledger/lcp's polkadot entry point. H is SHA-256(\"abc\"). V1 is a real extrinsic read live (block 21,053,708, index 3); V2's call was printed by @polkadot/api 16.5.6 and equals a hand encoding in Python; V3's extrinsic was accepted by TaggedTransactionQueue_validate_transaction on Polkadot Asset Hub (Invalid(Payment): signature and extensions accepted, the account unfunded); every BLAKE2b-256 is b2sum -l 256 (GNU coreutils 9.4). The eraNonce rows' signer, era and nonce are as @polkadot/types 17.0.1 decodes them under Polkadot Asset Hub's transaction extensions (eraNonce's about). Reader fixtures take Sidecar's answer shapes; heights are decimal strings. The upper-case remark rows replace the 77 remark bytes of V3 and V2's call with lcp:sha256:0x and H's digits in upper case; the signature is V3's and does not cover those bytes, which bound does not verify. The recover and status rows with another call put it after V3's signed preamble and extensions, SCALE by hand with each call's pallet and call index as Polkadot Asset Hub's runtime has them (polkadot-fellows/runtimes at 30696143, system-parachains/asset-hubs/asset-hub-polkadot/src/lib.rs:1731-1776: System 0, Balances 10, Utility 40, Proxy 42, Assets 50, ForeignAssets 53; polkadot-sdk at 23b84ba4: utility batch 0, batch_all 2, force_batch 4, proxy.proxy 0, balances transfer_keep_alive 3, assets transfer_keep_alive 9), and recompute the length prefix; the signature is V3's and does not cover that call, which neither recover nor status verifies. The re-signed status rows replace V3's signature with 64 bytes of 0x11, and one its era bytes a502 with b502. A status row's events with another call are constructed in Sidecar's shape, each as the pallet emits it (pallet_proxy's ProxyExecuted, pallet_utility's BatchInterrupted, ItemFailed, ItemCompleted and BatchCompletedWithErrors, pallet_balances' Transfer, the assets pallet's Transferred under foreignAssets). Status rows are read with the act payment at the finality the row gives, finalized where it gives none, after the position the row gives, by the signer's account nonce as the profile's rule 8 states it: the reader fixture answers V4's raw extrinsics at block 100 and one bare v4 item (length, 0x04, a two-byte call) at every other height from 90 to 120, the row's finalized and head heights, the account nonce at each, and the chain's validation of the presented extrinsic (valid at the height given, or not valid); these answers are constructed, not recorded. Each expected answer is derived by hand from read-status.md and the profile's rule 8; each transfer of what moved is named by the extrinsic's timepoint and its place, the index of its event among the fixture's events as the endpoint lists them, and only a transfer whose from is the payer is what moved (Balances' Transfer { from, to, amount } and the assets pallet's Transferred { asset_id, from, to, amount }, polkadot-sdk at 23b84ba4, substrate/frame/balances/src/lib.rs:349 and substrate/frame/assets/src/lib.rs:701-706). The wrapper rows read the account a call runs as: a delegate's proxy.proxy runs its call as its real, the payer, its preamble V3's with the delegate's account (0x22 bytes) as the signer; and a delegate's multisig.as_multi_threshold_1 (Multisig is pallet 41, polkadot-fellows/runtimes at 30696143, system-parachains/asset-hubs/asset-hub-polkadot/src/lib.rs:1767; as_multi_threshold_1 is call 0, polkadot-sdk at 23b84ba4, substrate/frame/multisig/src/lib.rs:311-337) with one other signatory (0x55 bytes) runs it as the multisig account, BLAKE2b-256 by hashlib of modlpy/utilisuba, the compact count and the sorted accounts, and the threshold 1 as a u16 (substrate/frame/multisig/src/lib.rs:645-648, :789-808), which that row gives as the reference's signer: a multisig account holds no key, so no reference reads it from a presented extrinsic, and the row constructs it. The answer names the delegate as the signer and the wrapper as its authority. The rows of a transfer call of zero inside nested batches read when such a call ran from the utility pallet's own dispatch (polkadot-sdk at 23b84ba4, substrate/frame/utility/src/lib.rs:117-125 for the events, :214-237 utility.batch dispatching its calls in order and depositing BatchInterrupted with the failing call's index and stopping, :323-350 batch_all, :419-441 force_batch depositing ItemFailed or ItemCompleted for each call and BatchCompletedWithErrors or BatchCompleted after them), each call's own events undone where it failed; their events are as those lines emit them, the failing balances.transfer_keep_alive's error Balances' InsufficientBalance (substrate/frame/balances/src/lib.rs:441, error 2 of pallet 10) and the refused call's frame_system CallFiltered (substrate/frame/system/src/lib.rs:955, error 5 of pallet 0), and each transfer of zero is named by its call's path.",
+ "about": "Vectors for the x402/exact/polkadot/lcp-assets-remark pairing of @integraledger/lcp's polkadot entry point. H is SHA-256(\"abc\"). V1 is a real extrinsic read live (block 21,053,708, index 3); V2's call was printed by @polkadot/api 16.5.6 and equals a hand encoding in Python; V3's extrinsic was accepted by TaggedTransactionQueue_validate_transaction on Polkadot Asset Hub (Invalid(Payment): signature and extensions accepted, the account unfunded); every BLAKE2b-256 is b2sum -l 256 (GNU coreutils 9.4). The eraNonce rows' signer, era and nonce are as @polkadot/types 17.0.1 decodes them under Polkadot Asset Hub's transaction extensions (eraNonce's about). Reader fixtures take Sidecar's answer shapes; heights are decimal strings. The upper-case remark rows replace the 77 remark bytes of V3 and V2's call with lcp:sha256:0x and H's digits in upper case; the signature is V3's and does not cover those bytes, which bound does not verify. The recover and status rows with another call put it after V3's signed preamble and extensions, SCALE by hand with each call's pallet and call index as Polkadot Asset Hub's runtime has them (polkadot-fellows/runtimes at 30696143, system-parachains/asset-hubs/asset-hub-polkadot/src/lib.rs:1731-1776: System 0, Balances 10, Utility 40, Proxy 42, Assets 50, ForeignAssets 53; polkadot-sdk at 23b84ba4: utility batch 0, batch_all 2, force_batch 4, proxy.proxy 0, balances transfer_keep_alive 3, assets transfer_keep_alive 9), and recompute the length prefix; the signature is V3's and does not cover that call, which neither recover nor status verifies. The re-signed status rows replace V3's signature with 64 bytes of 0x11, and one its era bytes a502 with b502. A status row's events with another call are constructed in Sidecar's shape, each as the pallet emits it (pallet_proxy's ProxyExecuted, pallet_utility's BatchInterrupted, ItemFailed, ItemCompleted and BatchCompletedWithErrors, pallet_balances' Transfer, the assets pallet's Transferred under foreignAssets). Status rows are read with the act payment at the finality the row gives, finalized where it gives none, after the position the row gives, by the signer's account nonce as the profile's rule 8 states it: the reader fixture answers V4's raw extrinsics at block 100 and one bare v4 item (length, 0x04, a two-byte call) at every other height from 90 to 120, the row's finalized and head heights, the account nonce at each, and the chain's validation of the presented extrinsic (valid at the height given, or not valid); these answers are constructed, not recorded. Each expected answer is derived by hand from read-status.md and the profile's rule 8; each transfer of what moved is named by the extrinsic's timepoint and its place, the index of its event among the fixture's events as the endpoint lists them, and only a transfer whose from is the payer is what moved (Balances' Transfer { from, to, amount } and the assets pallet's Transferred { asset_id, from, to, amount }, polkadot-sdk at 23b84ba4, substrate/frame/balances/src/lib.rs:349 and substrate/frame/assets/src/lib.rs:701-706). The wrapper rows read the account a call runs as: a delegate's proxy.proxy runs its call as its real, the payer, its preamble V3's with the delegate's account (0x22 bytes) as the signer; and a delegate's multisig.as_multi_threshold_1 (Multisig is pallet 41, polkadot-fellows/runtimes at 30696143, system-parachains/asset-hubs/asset-hub-polkadot/src/lib.rs:1767; as_multi_threshold_1 is call 0, polkadot-sdk at 23b84ba4, substrate/frame/multisig/src/lib.rs:311-337) with one other signatory (0x55 bytes) runs it as the multisig account, BLAKE2b-256 by hashlib of modlpy/utilisuba, the compact count and the sorted accounts, and the threshold 1 as a u16 (substrate/frame/multisig/src/lib.rs:645-648, :789-808), which that row gives as the reference's signer: a multisig account holds no key, so no reference reads it from a presented extrinsic, and the row constructs it. The answer names the delegate as the signer and the wrapper as its authority. The rows of a transfer call of zero inside nested batches read when such a call ran from the utility pallet's own dispatch (polkadot-sdk at 23b84ba4, substrate/frame/utility/src/lib.rs:117-125 for the events, :214-237 utility.batch dispatching its calls in order and depositing BatchInterrupted with the failing call's index and stopping, :323-350 batch_all, :419-441 force_batch depositing ItemFailed or ItemCompleted for each call and BatchCompletedWithErrors or BatchCompleted after them), each call's own events undone where it failed; their events are as those lines emit them, the failing balances.transfer_keep_alive's error Balances' InsufficientBalance (substrate/frame/balances/src/lib.rs:441, error 2 of pallet 10) and the refused call's frame_system CallFiltered (substrate/frame/system/src/lib.rs:955, error 5 of pallet 0), and each transfer of zero is named by its call's path. The two status rows on a version 5 general transaction carry a real one: Polkadot Asset Hub block 23,351,613 (0x653b14b743d070972626b8bd188b83b260b3a6f115347f9148e24c20f765c214), index 2, as chain_getBlock answers it from polkadot-asset-hub-rpc.polkadot.io, a balances.transfer_keep_alive under extension version 1 whose VerifyMultiSignature is Signed by 0xfc06d74b…1615, era (64, 52) and nonce 2961, the extensions in the order Metadata_metadata_at_version(16) lists them at that runtime (spec 2005003); AccountNonceApi_account_nonce for that account answers 2961 at the block's parent and 2962 at the block, and its TransactionFeePaid event names the same account. The row of the signer's own transaction takes that account and nonce as the reference's, and its record's events are the block's System.Events for index 2, decoded by @polkadot/types 17.0.1 under the block's metadata and put in Sidecar's shape (substrate-api-sidecar 20.14.1 answers 500 for this block); its hash is that transaction's BLAKE2b-256 (b2sum -l 256).",
  "fixed": {
   "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
   "O": {
@@ -1963,6 +1963,136 @@
      ],
      "presented": "no",
      "signer": "0xf0a9102f0c58b6b1616671d59b86bfe96ab7211ce9f3eec1a3f6b43e24cc957e"
+    }
+   },
+   {
+    "case": "validation answered valid at 50, finalized 110, the nonce not past the signed one; block 100 holds a v5 general transaction another account signed through VerifyMultiSignature (Polkadot Asset Hub block 23,351,613, index 2): the search reads its signer, is read whole and empty: instrument-unused",
+    "after": "95",
+    "finalized": "110",
+    "head": "111",
+    "nonceFinal": "0",
+    "nonceHead": "0",
+    "valid": "50",
+    "raws": [
+     "0x0c040000",
+     "0x61024501010140d62ffd2441816c90bac2d81787d695f0cf769b81866dcd8d9179cac6837965d8baaa669263c78e16d26be5a15809b3f319af50d0d80dbd56bfba27c58c678efc06d74bd9d7de6456da760f0084d08b5b6b0715bdd1ac579ff04fba71af16150000014503452e0000000a03008c1ff8c698fb18dc8ba4d160ada14a5eecfa8d3b29cae15aa63c6e5f2295fd080b7478a51f9707"
+    ],
+    "expect": {
+     "state": "failed",
+     "reason": "instrument-unused",
+     "finality": "finalized",
+     "foreign": []
+    }
+   },
+   {
+    "case": "the reference's signer and signed nonce those of a v5 general transaction it signed through VerifyMultiSignature (Polkadot Asset Hub block 23,351,613, index 2: a balances.transfer_keep_alive, nonce 2961), which holds no remark and dispatched: the nonce consumed by it at block 100: instrument-consumed",
+    "signer": "0xfc06d74bd9d7de6456da760f0084d08b5b6b0715bdd1ac579ff04fba71af1615",
+    "nonce": "2961",
+    "after": "95",
+    "finalized": "110",
+    "head": "111",
+    "nonceFinal": "2962",
+    "nonceHead": "2962",
+    "valid": "invalid",
+    "raws": [
+     "0x0c040000",
+     "0x0c040001",
+     "0x61024501010140d62ffd2441816c90bac2d81787d695f0cf769b81866dcd8d9179cac6837965d8baaa669263c78e16d26be5a15809b3f319af50d0d80dbd56bfba27c58c678efc06d74bd9d7de6456da760f0084d08b5b6b0715bdd1ac579ff04fba71af16150000014503452e0000000a03008c1ff8c698fb18dc8ba4d160ada14a5eecfa8d3b29cae15aa63c6e5f2295fd080b7478a51f9707"
+    ],
+    "change": {
+     "hash": "0x8c9672782a70f39e5c49e396da7a6d7c2ddf33a8d592b039e879e722b5a34433",
+     "success": true,
+     "events": [
+      {
+       "pallet": "balances",
+       "method": "Withdraw",
+       "data": [
+        "16hT6kXqtr4HyY1f6iWopdSb6DiAckD4vtjMbd2e6gkShCzu",
+        "9941438"
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "NewAccount",
+       "data": [
+        "14AjCgiWP2kuhtHsoDcEazsQNyPpoqCALjHUPwXk1Mv6iqD9"
+       ]
+      },
+      {
+       "pallet": "balances",
+       "method": "Endowed",
+       "data": [
+        "14AjCgiWP2kuhtHsoDcEazsQNyPpoqCALjHUPwXk1Mv6iqD9",
+        "8345652394100"
+       ]
+      },
+      {
+       "pallet": "balances",
+       "method": "Transfer",
+       "data": [
+        "16hT6kXqtr4HyY1f6iWopdSb6DiAckD4vtjMbd2e6gkShCzu",
+        "14AjCgiWP2kuhtHsoDcEazsQNyPpoqCALjHUPwXk1Mv6iqD9",
+        "8345652394100"
+       ]
+      },
+      {
+       "pallet": "balances",
+       "method": "Deposit",
+       "data": [
+        "16hT6kXqtr4HyY1f6iWopdSb6DiAckD4vtjMbd2e6gkShCzu",
+        "455028"
+       ]
+      },
+      {
+       "pallet": "balances",
+       "method": "Deposit",
+       "data": [
+        "13UVJyLkAxdQn6zM3Gz49SmCLi8SZW3bdtm7DTY29ScavqW2",
+        "9486410"
+       ]
+      },
+      {
+       "pallet": "transactionPayment",
+       "method": "TransactionFeePaid",
+       "data": [
+        "16hT6kXqtr4HyY1f6iWopdSb6DiAckD4vtjMbd2e6gkShCzu",
+        "9486410",
+        "0"
+       ]
+      },
+      {
+       "pallet": "system",
+       "method": "ExtrinsicSuccess",
+       "data": [
+        {
+         "weight": {
+          "refTime": "558787000",
+          "proofSize": "14230"
+         },
+         "class": "Normal",
+         "paysFee": "Yes"
+        }
+       ]
+      }
+     ]
+    },
+    "expect": {
+     "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+     "position": "100",
+     "finality": "finalized",
+     "signer": "0xfc06d74bd9d7de6456da760f0084d08b5b6b0715bdd1ac579ff04fba71af1615",
+     "foreign": [],
+     "state": "failed",
+     "reason": "instrument-consumed",
+     "moved": [
+      {
+       "asset": "native",
+       "amount": "8345652394100",
+       "to": "0x8c1ff8c698fb18dc8ba4d160ada14a5eecfa8d3b29cae15aa63c6e5f2295fd08",
+       "transaction": "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-2",
+       "place": 3
+      }
+     ]
     }
    }
   ],

@@ -38,6 +38,15 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   optional `network` beside `asset` and answers 0 for those tokens on that network, 1 on any other and where no
   network is given, and refuses a network that is not Starknet's (`starknet/network-malformed`). The option filter
   refused `"0"` on every token.
+- `polkadotStatus` (`x402/exact/polkadot/lcp-assets-remark`) reads a version 5 general transaction that
+  `VerifyMultiSignature` signs on Polkadot Asset Hub (`0x45`, extension version 1, the variant `Signed`) as it reads a
+  signed v4 extrinsic: its signer, era and account nonce, and its call. Such transactions land on Polkadot Asset Hub
+  (block 23,351,613, index 2), and a payer can consume its account nonce with one; the search read each as an item it
+  could not decode, so a range that held one was never read whole and its answer stayed `pending`,
+  `search-incomplete`, and a payer's nonce consumed by one was never answered. Every other general transaction, and
+  every one on Westend Asset Hub, whose runtime lists no signature extension, is still an item the search cannot
+  decode. The profile's rule 8 states it; `x402-exact-polkadot-lcp-assets-remark.json` gains two status rows on that
+  transaction.
 
 ## [0.6.2] - 2026-11-19
 

@@ -63,6 +63,7 @@ type Row = {
   readerError?: boolean;
   raws?: string[];
   signer?: string;
+  nonce?: string;
 };
 /**
  * A reader of the file's fixtures: V4's raw extrinsics at block 100 (or the row's `raws`), and one bare item at every
@@ -292,9 +293,10 @@ describe("x402-exact-polkadot-lcp-assets-remark.json", () => {
 
   it("V4: status for each fixture", async () => {
     for (const row of rowsOf(V.V4.status, "x402-exact-polkadot-lcp-assets-remark.json V4.status")) {
-      // A row may name the reference's signer, the account its extrinsic's call runs as.
+      // A row may name the reference's signer, the account its extrinsic's call runs as, and its signed nonce.
       const signer = row.signer === undefined ? {} : { signer: row.signer as `0x${string}` };
-      const ref = { ...V.V4.reference, ...signer, h: H, ...(row.hint ? { transaction: `${V.V4.block}-${V.V4.index}` } : {}) };
+      const nonce = row.nonce === undefined ? {} : { nonce: row.nonce };
+      const ref = { ...V.V4.reference, ...signer, ...nonce, h: H, ...(row.hint ? { transaction: `${V.V4.block}-${V.V4.index}` } : {}) };
       expect(withStrings(await polkadotStatus(ref, readerOf(row), queryOf(row))), row.case).toEqual(row.expect);
     }
   });
