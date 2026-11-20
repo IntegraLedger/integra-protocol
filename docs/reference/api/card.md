@@ -308,6 +308,14 @@ value that is not an object gets `card/tap-signature-input-malformed`, as `bound
 
 ***
 
+### issuedDigest
+
+> `const` **issuedDigest**: *typeof* [`digestJson`](index.md#digestjson) = `digestJson`
+
+The option digest the issuer keeps: SHA-256 over the RFC 8785 form.
+
+***
+
 ### MAX\_CHARGE\_REFERENCE
 
 > `const` **MAX\_CHARGE\_REFERENCE**: `255` = `255`

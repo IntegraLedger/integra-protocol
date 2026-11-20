@@ -64,6 +64,14 @@ agreement URL after the link when one is given.
 
 ## Variables
 
+### issuedDigest
+
+> `const` **issuedDigest**: *typeof* [`digestJson`](index.md#digestjson) = `digestJson`
+
+The option digest the issuer keeps: SHA-256 over the RFC 8785 form.
+
+***
+
 ### paymentRequest
 
 > `const` **paymentRequest**: `Readonly`\<\{ `advertise`: (`_doc`, `h`, `link`, `offer`, `agreementUrl?`) => [`Refusal`](index.md#refusal) \| [`AckValues`](#ackvalues); `bound`: (`_presented`) => `Promise`\<[`Refusal`](index.md#refusal)\>; `broadcaster`: (`presented`) => `Promise`\<[`Broadcaster`](index.md#broadcaster)\>; `build`: (`_doc`, `_h`) => `Promise`\<[`Refusal`](index.md#refusal)\>; `claims`: `boolean`; `data`: [`PairingData`](index.md#pairingdata); `id`: `"ack/payment-request"`; `pattern`: [`LcpPattern`](x402.md#lcppattern); `read`: (`doc`) => [`Refusal`](index.md#refusal) \| \{ `agreement?`: `string`; `h`: `` `0x${string}` ``; `link`: `string`; `offer`: \{ `options`: readonly [`Json`](index.md#json)[]; \}; \}; `tie`: (`options`) => \[`"ack"`, \{ `paymentOptions`: readonly [`AckPaymentOption`](#ackpaymentoption)[]; \}\]; `unplaced`: (`option`) => [`Refusal`](index.md#refusal) \| [`AckPaymentOption`](#ackpaymentoption); \}\>

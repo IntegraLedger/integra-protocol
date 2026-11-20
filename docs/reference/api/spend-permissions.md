@@ -380,6 +380,31 @@ which must be a return the profile's rule 8 takes, of at most `MAX_HEADER_BYTES`
 
 ***
 
+### issuedDigest()
+
+> **issuedDigest**(`given`): `Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
+
+The digest a resource server keeps of an offer it issued (profile rule 9): SHA-256 over the RFC 8785 form of
+`{network, manager, permission}`, `permission` holding `spender`, `token`, `allowance`, `period`, `start`, `end`
+and `extraData` in the wire form, addresses and hex lowercase: the members the resource server fixes at issue alone.
+It takes the offer as `advertise` takes it, `salt` absent or present; the offer the `402` body places, as `read`
+takes it; and a return, as rule 8 takes it, on either route. It leaves out `salt`, which is H, `account`, which is
+the account's, and `accepts`, which a return does not carry, so the offer as issued, as placed and as returned has
+one digest, and an offer that differs in a member it covers has another. Any other value is
+`spend-permissions/option-malformed`.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `given` | [`SpendPermissionOffer`](#spendpermissionoffer) \| [`SpendPermissionOfferInput`](#spendpermissionofferinput) \| [`SpendPermissionReturn`](#spendpermissionreturn) |
+
+#### Returns
+
+`Promise`\<[`Refusal`](index.md#refusal) \| `` `0x${string}` ``\>
+
+***
+
 ### permissionHash()
 
 > **permissionHash**(`permission`, `network`, `manager`): [`Refusal`](index.md#refusal) \| `` `0x${string}` ``

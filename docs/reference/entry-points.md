@@ -27,7 +27,7 @@ Import each entry point by its subpath. Every entry point is ESM with its own ty
 | [`@integraledger/lcp/evm`](#integraledgerlcpevm) | eip155 rail pieces: EIP-3009 and Permit2 typed data, the settlement read from a token's events, the read of a signed pull authorization's use, ERC-7710 permission contexts, the commerce-payments escrow's pieces, and x402's Permit2 proxy addresses. |
 | [`@integraledger/lcp/hedera`](#integraledgerlcphedera) | Hedera: the x402 pairings `x402/exact/hedera` (the ATR hash as the signed body memo) and `x402/exact/hedera/transfer-executor` (the hash advertised in the challenge only), with the transaction wire form and the Mirror Node settlement read. |
 | [`@integraledger/lcp/lightning`](#integraledgerlcplightning) | BOLT11 invoices and the Lightning pairings: on x402 (`x402/exact/lnbtc/payment-hash`) the ATR commits the option's `extra.paymentHash`, and on MPP the seller's node writes the ATR hash as the invoice's description hash `h`. |
-| [`@integraledger/lcp/mpp`](#integraledgerlcpmpp) | The `mpp` entry point: MPP's challenge pieces, its three fields (`encodeChallenge` writes a `WWW-Authenticate` value, `decodeCredential` reads an `Authorization` value, `encodeReceipt` writes a `Payment-Receipt` value) and its pairings: the EVM charges, defined here, and every other MPP charge, session and subscription pairing but Lightning's, re-exported from its module. |
+| [`@integraledger/lcp/mpp`](#integraledgerlcpmpp) | The `mpp` entry point: MPP's challenge pieces, its three fields (`encodeChallenge` writes a `WWW-Authenticate` value, `encodeCredential` and `decodeCredential` write and read an `Authorization` value, `encodeReceipt` and `decodeReceipt` write and read a `Payment-Receipt` value) and its pairings: the EVM charges, defined here, and every other MPP charge, session and subscription pairing but Lightning's, re-exported from its module. |
 | [`@integraledger/lcp/near`](#integraledgerlcpnear) | NEAR: the pairing `x402/exact/near`. The payer signs a NEP-366 delegate action for one NEP-141 `ft_transfer` whose `memo` argument is the ATR hash's LCP string; a facilitator's relayer submits it. |
 | [`@integraledger/lcp/polkadot`](#integraledgerlcppolkadot) | Polkadot Asset Hub: the profile pairing `x402/exact/polkadot/lcp-assets-remark`, in which the payer signs one extrinsic that transfers an asset and remarks the ATR hash's LCP string. |
 | [`@integraledger/lcp/spend-permissions`](#integraledgerlcpspend-permissions) | The Spend Permission exchange and the pairing `spend-permissions/eip155`: an account's approval, on the SpendPermissionManager, of a Spend Permission whose `salt` is the ATR hash, as the sale's agreement. |
@@ -78,12 +78,12 @@ import { A2A_EXTENSION_URIS, agentExtension, binding, … } from "@integraledger
 ACK Payment Requests and receipts, and the pairing `ack/payment-request`: the ATR hash as the `id` of the seller-signed Payment Request, in LCP's string form, with the link beside the request in the 402 body.
 
 ```ts no-check
-import { fromReceipt, paymentRequest, tie } from "@integraledger/lcp/ack";
+import { fromReceipt, issuedDigest, paymentRequest, … } from "@integraledger/lcp/ack";
 ```
 
 **Pairings:** `ack/payment-request`.
 
-**Values (3):** `fromReceipt`, `paymentRequest`, `tie`.
+**Values (4):** `fromReceipt`, `issuedDigest`, `paymentRequest`, `tie`.
 
 **Types (4):** `AckBody`, `AckPaymentOption`, `AckValues`, `Broadcaster`.
 
@@ -148,12 +148,12 @@ import { AVM_MAX_ENTRY, AVM_MAX_GROUP, AVM_MAX_LIFE, … } from "@integraledger/
 The `card` entry point: the ATR hash on a card checkout, on five paths: Visa TAP, Mastercard Agent Pay, Visa Intelligent Commerce, Mastercard Verifiable Intent (Immediate and Autonomous) and the plain card checkout.
 
 ```ts no-check
-import { agentPay, disclosureDigest, MAX_CHARGE_REFERENCE, … } from "@integraledger/lcp/card";
+import { agentPay, disclosureDigest, issuedDigest, … } from "@integraledger/lcp/card";
 ```
 
 **Pairings:** `card/mastercard-agent-pay`, `card/mastercard-vi/autonomous`, `card/mastercard-vi/immediate`, `card/seller-reference`, `card/visa-tap`, `card/visa-vic`.
 
-**Values (17):** `agentPay`, `disclosureDigest`, `MAX_CHARGE_REFERENCE`, `MAX_CHECKOUT_ID`, `MAX_CHECKOUT_JWT`, `MAX_TAP_COMPONENTS`, `MAX_TAP_FIELD`, `MAX_TAP_MEMBERS`, `MAX_TAP_PATH`, `MAX_VI_DISCLOSURES`, `MAX_VI_LAYER`, `sellerReference`, `tie`, `viAutonomous`, `viImmediate`, `visaTap`, `visaVic`.
+**Values (18):** `agentPay`, `disclosureDigest`, `issuedDigest`, `MAX_CHARGE_REFERENCE`, `MAX_CHECKOUT_ID`, `MAX_CHECKOUT_JWT`, `MAX_TAP_COMPONENTS`, `MAX_TAP_FIELD`, `MAX_TAP_MEMBERS`, `MAX_TAP_PATH`, `MAX_VI_DISCLOSURES`, `MAX_VI_LAYER`, `sellerReference`, `tie`, `viAutonomous`, `viImmediate`, `visaTap`, `visaVic`.
 
 **Types (17):** `Broadcaster`, `CardOption`, `CardPairing`, `CardPairingId`, `CardScheme`, `CardValues`, `ChargePresented`, `ChargeRef`, `TapPresented`, `TapUnsigned`, `ViAutonomous`, `ViCheckoutChoice`, `ViCheckoutUnsigned`, `VicPresented`, `VicUnsigned`, `ViImmediate`, `ViUnsigned`.
 
@@ -265,7 +265,7 @@ import { chargeLightning, checkPreimage, decodeBolt11, … } from "@integraledge
 
 ## `@integraledger/lcp/mpp`
 
-The `mpp` entry point: MPP's challenge pieces, its three fields (`encodeChallenge` writes a `WWW-Authenticate` value, `decodeCredential` reads an `Authorization` value, `encodeReceipt` writes a `Payment-Receipt` value) and its pairings: the EVM charges, defined here, and every other MPP charge, session and subscription pairing but Lightning's, re-exported from its module.
+The `mpp` entry point: MPP's challenge pieces, its three fields (`encodeChallenge` writes a `WWW-Authenticate` value, `encodeCredential` and `decodeCredential` write and read an `Authorization` value, `encodeReceipt` and `decodeReceipt` write and read a `Payment-Receipt` value) and its pairings: the EVM charges, defined here, and every other MPP charge, session and subscription pairing but Lightning's, re-exported from its module.
 
 ```ts no-check
 import { attributionMemo, CARRIER, challengeBound, … } from "@integraledger/lcp/mpp";
@@ -273,7 +273,7 @@ import { attributionMemo, CARRIER, challengeBound, … } from "@integraledger/lc
 
 **Pairings:** `mpp/charge/card`, `mpp/charge/evm/authorization`, `mpp/charge/evm/hash`, `mpp/charge/evm/permit2`, `mpp/charge/evm/transaction`, `mpp/charge/lcp/hedera`, `mpp/charge/nearintents`, `mpp/charge/solana`, `mpp/charge/solana/unsponsored`, `mpp/charge/stripe`, `mpp/charge/tempo/split-memo`, `mpp/charge/tempo/split-memo/push`, `mpp/charge/usdc/evm`, `mpp/charge/usdc/gateway`, `mpp/charge/usdc/solana`, `mpp/charge/usdc/stacks`, `mpp/charge/xrpl`, `mpp/session/evm`, `mpp/session/hedera/stock`, `mpp/session/solana/memo`, `mpp/session/solana/stock`, `mpp/session/tempo`, `mpp/session/xrpl`, `mpp/session/xrpl/stock`, `mpp/subscription/solana`, `mpp/subscription/stripe`, `mpp/subscription/tempo`.
 
-**Values (60):** `attributionMemo`, `CARRIER`, `challengeBound`, `challengeH`, `challengeHash`, `challengeId`, `chargeCard`, `chargeLcpHedera`, `chargeNearIntents`, `chargeSolana`, `chargeSolanaUnsponsored`, `chargeStripe`, `chargeUsdcEvm`, `chargeUsdcGateway`, `chargeUsdcSolana`, `chargeUsdcStacks`, `chargeXrpl`, `checkAttribution`, `decodeCredential`, `encodeChallenge`, `encodeReceipt`, `evmAuthorization`, `evmChannelId`, `evmHash`, `evmPermit2`, `evmSessionAuthorizationNonce`, `evmTransaction`, `FETCHED`, `hederaStockStatus`, `issuedDigest`, `keySearch`, `LEGAL_CONTEXT_METADATA_KEY`, `MPP_BINDINGS`, `network`, `pairingsOf`, `pairingsOfPlaced`, `parseChallenges`, `place`, `problem`, `read`, `sessionEvm`, `sessionHederaStock`, `sessionResume`, `sessionSolanaMemo`, `sessionSolanaStock`, `sessionStatus`, `sessionTempo`, `sessionXrpl`, `sessionXrplStock`, `subscriptionSolana`, `subscriptionStripe`, `subscriptionTempo`, `tempoSplitMemo`, `tempoSplitMemoPush`, `tie`, `toX402`, `transferPresent`, `usdcGatewaySalt`, `usdcNonce`, `usdcRequestHash`.
+**Values (62):** `attributionMemo`, `CARRIER`, `challengeBound`, `challengeH`, `challengeHash`, `challengeId`, `chargeCard`, `chargeLcpHedera`, `chargeNearIntents`, `chargeSolana`, `chargeSolanaUnsponsored`, `chargeStripe`, `chargeUsdcEvm`, `chargeUsdcGateway`, `chargeUsdcSolana`, `chargeUsdcStacks`, `chargeXrpl`, `checkAttribution`, `decodeCredential`, `decodeReceipt`, `encodeChallenge`, `encodeCredential`, `encodeReceipt`, `evmAuthorization`, `evmChannelId`, `evmHash`, `evmPermit2`, `evmSessionAuthorizationNonce`, `evmTransaction`, `FETCHED`, `hederaStockStatus`, `issuedDigest`, `keySearch`, `LEGAL_CONTEXT_METADATA_KEY`, `MPP_BINDINGS`, `network`, `pairingsOf`, `pairingsOfPlaced`, `parseChallenges`, `place`, `problem`, `read`, `sessionEvm`, `sessionHederaStock`, `sessionResume`, `sessionSolanaMemo`, `sessionSolanaStock`, `sessionStatus`, `sessionTempo`, `sessionXrpl`, `sessionXrplStock`, `subscriptionSolana`, `subscriptionStripe`, `subscriptionTempo`, `tempoSplitMemo`, `tempoSplitMemoPush`, `tie`, `toX402`, `transferPresent`, `usdcGatewaySalt`, `usdcNonce`, `usdcRequestHash`.
 
 **Types (74):** `Broadcaster`, `ChannelKind`, `ChargeRefBase`, `EvmLogEntry`, `EvmMark`, `EvmMoved`, `EvmQuery`, `EvmSearchReader`, `GatewayChargeChoice`, `GatewayPreimage`, `GatewaySaltInput`, `HederaNetwork`, `HederaQuery`, `HederaSessionUnsigned`, `HederaStockReader`, `HederaStockRef`, `HederaStockStatus`, `HederaVoucherTypedData`, `LandedCredential`, `LcpHederaChoice`, `LcpHederaLanded`, `LcpHederaRef`, `LcpHederaUnsigned`, `LcpRail`, `LcpValidation`, `MppChallenge`, `MppChoice`, `MppCredential`, `MppEip3009Ref`, `MppEvmReader`, `MppEvmStatus`, `MppIntent`, `MppMethod`, `MppNamedRef`, `MppPairingId`, `MppPermit2Ref`, `MppReceipt`, `MppSessionOpeningRef`, `MppUnsigned`, `NearIntentsRef`, `Presentation`, `RailSessionChoice`, `RailSessionUnsigned`, `ReceiveTypedData`, `Seen`, `SessionChoice`, `SessionRef`, `SessionStatus`, `SessionUnsigned`, `SessionWithin`, `SessionWithinUnsigned`, `Signed`, `SolanaChargeChoice`, `SolanaChargeUnsigned`, `SolanaSessionChoice`, `SolanaSessionUnsigned`, `SolanaTablesCredential`, `StacksChargeChoice`, `StockQuery`, `StripeSubscriptionReceipt`, `TempoLandedCredential`, `TempoSplitLanded`, `TempoSplitQuery`, `TempoSplitRef`, `TempoSplitStatus`, `TokenDomain`, `UsdcUnsigned`, `VoucherTypedData`, `WithinSigningRequest`, `X402Mapped`, `XrplChargeChoice`, `XrplChargeUnsigned`, `XrplQuery`, `XrplSessionUnsigned`.
 
@@ -315,7 +315,7 @@ import { APPROVE_SELECTOR, APPROVE_WITH_SIGNATURE_SELECTOR, approvedIn, … } fr
 
 **Pairings:** `spend-permissions/eip155`.
 
-**Values (16):** `APPROVE_SELECTOR`, `APPROVE_WITH_SIGNATURE_SELECTOR`, `approvedIn`, `checkReturn`, `decodeSpendPermissionHeader`, `encodeSpendPermissionHeader`, `IS_APPROVED_SELECTOR`, `IS_REVOKED_SELECTOR`, `permissionHash`, `SPEND_PERMISSION_APPROVED_TOPIC`, `SPEND_PERMISSION_DOMAIN`, `SPEND_PERMISSION_HEADER`, `SPEND_PERMISSION_REVOKED_TOPIC`, `SPEND_PERMISSION_TYPEHASH`, `spendPermissionsEip155`, `tie`.
+**Values (17):** `APPROVE_SELECTOR`, `APPROVE_WITH_SIGNATURE_SELECTOR`, `approvedIn`, `checkReturn`, `decodeSpendPermissionHeader`, `encodeSpendPermissionHeader`, `IS_APPROVED_SELECTOR`, `IS_REVOKED_SELECTOR`, `issuedDigest`, `permissionHash`, `SPEND_PERMISSION_APPROVED_TOPIC`, `SPEND_PERMISSION_DOMAIN`, `SPEND_PERMISSION_HEADER`, `SPEND_PERMISSION_REVOKED_TOPIC`, `SPEND_PERMISSION_TYPEHASH`, `spendPermissionsEip155`, `tie`.
 
 **Types (16):** `Broadcaster`, `EvmMark`, `EvmQuery`, `EvmReadRefBase`, `OfferedPermission`, `SpendPermission`, `SpendPermissionBody`, `SpendPermissionChoice`, `SpendPermissionError`, `SpendPermissionOffer`, `SpendPermissionOfferInput`, `SpendPermissionRef`, `SpendPermissionReturn`, `SpendPermissionRoute`, `SpendPermissionTypedData`, `SpendPermissionUnsigned`.
 

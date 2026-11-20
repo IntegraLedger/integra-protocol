@@ -1,14 +1,14 @@
 ---
 title: "@integraledger/lcp/mpp"
-description: "The `mpp` entry point: MPP's challenge pieces, its three fields (`encodeChallenge` writes a `WWW-Authenticate` value, `decodeCredential` reads an `Authorization` value, `encodeReceipt` writes a `Payment-Receipt` value) and its pairings: the EVM charges, defined here, and every other MPP charge, session and subscription pairing but Lightning's, re-exported from its module."
+description: "The `mpp` entry point: MPP's challenge pieces, its three fields (`encodeChallenge` writes a `WWW-Authenticate` value, `encodeCredential` and `decodeCredential` write and read an `Authorization` value, `encodeReceipt` and `decodeReceipt` write and read a `Payment-Receipt` value) and its pairings: the EVM charges, defined here, and every other MPP charge, session and subscription pairing but Lightning's, re-exported from its module."
 ---
 
 # @integraledger/lcp/mpp
 
 The `mpp` entry point: MPP's challenge pieces, its three fields (`encodeChallenge` writes a `WWW-Authenticate`
-value, `decodeCredential` reads an `Authorization` value, `encodeReceipt` writes a `Payment-Receipt` value) and its
-pairings: the EVM charges, defined here, and every other MPP charge, session and subscription pairing but
-Lightning's, re-exported from its module.
+value, `encodeCredential` and `decodeCredential` write and read an `Authorization` value, `encodeReceipt` and
+`decodeReceipt` write and read a `Payment-Receipt` value) and its pairings: the EVM charges, defined here, and every
+other MPP charge, session and subscription pairing but Lightning's, re-exported from its module.
 
 The EVM charges are `authorization` (the signed nonce is keccak256 of the JSON array [id, realm]), `permit2` (the
 signed witness carries that value), and `transaction` and `hash` (nothing signed carries H). The re-exported charges
@@ -2019,6 +2019,31 @@ read: H, the challenge's id and the payment are the reads of `challengeBound`, `
 
 ***
 
+### decodeReceipt()
+
+> **decodeReceipt**(`fieldValue`): [`Refusal`](index.md#refusal) \| [`MppReceipt`](#mppreceipt)
+
+The receipt a `Payment-Receipt` field value carries, the inverse of `encodeReceipt`: base64url without padding in its
+canonical form only, the form `mppx` 0.17.6's `Receipt.serialize` writes and the one `decodeCredential` reads (padded
+base64 is refused), of at most 65,536 bytes (`MAX_HEADER_BYTES`, the bound lcp applies to a header field value),
+measured before it decodes, of well-formed UTF-8 of one JSON object nested at most 64 levels deep, held to the
+receipt `encodeReceipt` writes: `status` `success`, a `method` of lowercase ASCII letters, an RFC 3339 `timestamp`
+and a string `reference`; every other member is kept as given. A value that does not decode so, a longer one among
+them, and a receipt `encodeReceipt` refuses, is `mpp/receipt-malformed`. A buyer's client reads it from a successful
+response; the receipt says what the seller reports, and nothing here reads the payment.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `fieldValue` | `string` |
+
+#### Returns
+
+[`Refusal`](index.md#refusal) \| [`MppReceipt`](#mppreceipt)
+
+***
+
 ### encodeChallenge()
 
 > **encodeChallenge**(`challenge`): `string` \| [`Refusal`](index.md#refusal)
@@ -2041,6 +2066,33 @@ character other than tab, DEL, or one above U+00FF), or whose field value is ove
 | Parameter | Type |
 | ------ | ------ |
 | `challenge` | [`MppChallenge`](#mppchallenge) |
+
+#### Returns
+
+`string` \| [`Refusal`](index.md#refusal)
+
+***
+
+### encodeCredential()
+
+> **encodeCredential**(`credential`): `string` \| [`Refusal`](index.md#refusal)
+
+A credential as a `Payment` credential field value, which `decodeCredential` reads back: `Payment`, a space, then
+base64url without padding of the UTF-8 of its JSON, in the form `mppx` 0.17.6's `Credential.serialize` writes:
+`challenge`, its own members in their order but `meta`, which is left out, with `opaque` and then `request` last,
+then `payload`, then `source` where the credential has one that is not empty, an empty `source` being left out. Each
+other member is written as given: `request` and `opaque` stay the base64url the challenge carries, and a member whose
+value is `undefined` is left out of the challenge. The client sends it in the field its challenge selects,
+`Authorization`, or `Payment-Authorization` where the challenge carries `header`. A credential `credentialShape`'s
+gate refuses, one that is not then JSON (an `undefined` inside the payload, a function, a `bigint`, a non-finite
+number, a lone surrogate or an instance of a class), and one whose value `decodeCredential` refuses, over 65,536
+bytes among them, is `mpp/credential-malformed`.
+
+#### Parameters
+
+| Parameter | Type |
+| ------ | ------ |
+| `credential` | [`MppCredential`](#mppcredential) |
 
 #### Returns
 
