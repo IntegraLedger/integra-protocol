@@ -1,5 +1,5 @@
 {
-  "about": "Vectors for spend-permissions/eip155, the Spend Permission exchange of the profile spend-permissions-eip155.md: the entry point spend-permissions of @integraledger/lcp. H = SHA-256(\"abc\") (FIPS 180-2 B.1) and L a link from a random token. The manager is the SpendPermissionManager's address @coinbase/cdp-sdk 1.60.0 names (src/spend-permissions/constants.ts:1), on Base Sepolia (eip155:84532), the token Base Sepolia's USDC, the account and the spender Hardhat's published development keys #0 and #1, which hold nothing. Every hash, selector, topic, call and event encoding is viem 2.57.4's: hashTypedData over the domain {name \"Spend Permission Manager\", version \"1\", chainId, verifyingContract} with the type SpendPermission as SpendPermissionManager.sol states it (coinbase/spend-permissions e0004e63, :92-94, :561-578, :772-775), toFunctionSelector, encodeFunctionData, encodeEventTopics and encodeAbiParameters over the ABI written from that file's lines :29-48, :132, :138, :277, :293, :397, :406, :476 and :485; the signature is viem's signTypedData of key #0. The header values are Node's Buffer base64url (RFC 4648 §5, no padding) of JSON.stringify's UTF-8. A refusal row's expected code is lcp's own, from the profile's rules; no outside oracle gives a code: each row changes one member of the good input the file holds and names the code the profile gives it. The approval's receipts in `approvedIn` are constructed from the encodings above; the manager's own getHash read on a deployment is not in this file, which holds no chain read.",
+  "about": "Vectors for spend-permissions/eip155, the Spend Permission exchange of the profile spend-permissions-eip155.md: the entry point spend-permissions of @integraledger/lcp. H = SHA-256(\"abc\") (FIPS 180-2 B.1) and L a link from a random token. The manager is the SpendPermissionManager's address @coinbase/cdp-sdk 1.60.0 names (src/spend-permissions/constants.ts:1), on Base Sepolia (eip155:84532), the token Base Sepolia's USDC, the account and the spender Hardhat's published development keys #0 and #1, which hold nothing. Every hash, selector, topic, call and event encoding is viem 2.57.4's: hashTypedData over the domain {name \"Spend Permission Manager\", version \"1\", chainId, verifyingContract} with the type SpendPermission as SpendPermissionManager.sol states it (coinbase/spend-permissions e0004e63, :92-94, :561-578, :772-775), toFunctionSelector, encodeFunctionData, encodeEventTopics and encodeAbiParameters over the ABI written from that file's lines :29-48, :132, :138, :277, :293, :397, :406, :476 and :485; the signature is viem's signTypedData of key #0. The header values are Node's Buffer base64url (RFC 4648 §5, no padding) of JSON.stringify's UTF-8. A refusal row's expected code is lcp's own, from the profile's rules; no outside oracle gives a code: each row changes one member of the good input the file holds and names the code the profile gives it. The approval's receipts in `approvedIn` are constructed from the encodings above; the manager's own getHash read on a deployment is not in this file, which holds no chain read. The issued digests in `issuedDigest` are Python 3.12.3's json and hashlib over rule 9's members, as its about states.",
   "fixed": {
     "H": "0xba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad",
     "L": "https://atr.seller.example/7c8acfa2-f800-4192-89e9-1cef9833180f",
@@ -1136,6 +1136,381 @@
             "decline": "signed-not-bound"
           }
         ]
+      }
+    ]
+  },
+  "issuedDigest": {
+    "about": "Profile rule 9's issued digest: SHA-256 over the RFC 8785 form of `members`, the offer's network, manager and permission members fixed at issue, written as rule 1 writes them with addresses and hex lowercase. Each row starts from the value at `from`, a path into this file, with each of `changes` set. Every `same` row has the digest `expect`: the offer as issued, as placed and as returned on both routes, salt, account and accepts being no member the digest covers. Each `differ` row changes one member it covers and has its own digest. Every digest was computed from the rule with Python 3.12.3's json and hashlib, importing no lcp code: RFC 8785 as json.dumps(sort_keys=True, separators=(',',':')) over these members, which hold ASCII strings alone; SHA-256. A refusal row's code is lcp's own, the code the offer's form is refused with.",
+    "members": {
+      "network": "eip155:84532",
+      "manager": "0xf85210b21cc50302f477ba56686d2019dc9b67ad",
+      "permission": {
+        "spender": "0x70997970c51812dc3a010c7d01b50e0d17dc79c8",
+        "token": "0x036cbd53842c5426634e7929541ec2318f3dcf7e",
+        "allowance": "1000000",
+        "period": "86400",
+        "start": "1790000000",
+        "end": "1800000000",
+        "extraData": "0x"
+      }
+    },
+    "expect": "0x637a5a46cc7edae745b73c488aaabc3739d297631ee6ab7d8e6149558715b4aa",
+    "same": [
+      {
+        "case": "the offer as issued, as advertise takes it, salt absent",
+        "from": [
+          "fixed",
+          "offerInput"
+        ]
+      },
+      {
+        "case": "the offer as issued with salt H",
+        "from": [
+          "fixed",
+          "offerInput"
+        ],
+        "changes": [
+          {
+            "path": [
+              "permission",
+              "salt"
+            ],
+            "value": "84342368487090800366523834928142263660104883695016514377462985829716817089965"
+          }
+        ]
+      },
+      {
+        "case": "the offer as the 402 body places it",
+        "from": [
+          "fixed",
+          "offer"
+        ]
+      },
+      {
+        "case": "the return on the route signature",
+        "from": [
+          "header",
+          "signature",
+          "return"
+        ]
+      },
+      {
+        "case": "the return on the route transaction",
+        "from": [
+          "header",
+          "transaction",
+          "return"
+        ]
+      },
+      {
+        "case": "a return whose account is another account",
+        "from": [
+          "header",
+          "signature",
+          "return"
+        ],
+        "changes": [
+          {
+            "path": [
+              "permission",
+              "account"
+            ],
+            "value": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc"
+          }
+        ]
+      },
+      {
+        "case": "the offer placed under another H, salt and legalContext.value both that H",
+        "from": [
+          "fixed",
+          "offer"
+        ],
+        "changes": [
+          {
+            "path": [
+              "permission",
+              "salt"
+            ],
+            "value": "102987336249554097029535212322581322789799900648198034993379397001115665086549"
+          },
+          {
+            "path": [
+              "legalContext",
+              "value"
+            ],
+            "value": "0xe3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          }
+        ]
+      },
+      {
+        "case": "the offer accepting the route signature alone, accepts being no member the digest covers",
+        "from": [
+          "fixed",
+          "offer"
+        ],
+        "changes": [
+          {
+            "path": [
+              "accepts"
+            ],
+            "value": [
+              "signature"
+            ]
+          }
+        ]
+      },
+      {
+        "case": "the offer with spender and manager in mixed-case hex, compared by their bytes",
+        "from": [
+          "fixed",
+          "offer"
+        ],
+        "changes": [
+          {
+            "path": [
+              "permission",
+              "spender"
+            ],
+            "value": "0x70997970C51812dc3A010C7d01b50e0d17dc79C8"
+          },
+          {
+            "path": [
+              "manager"
+            ],
+            "value": "0xF85210B21cC50302F477BA56686d2019dC9b67Ad"
+          }
+        ]
+      }
+    ],
+    "differ": [
+      {
+        "case": "network another chain",
+        "from": [
+          "fixed",
+          "offer"
+        ],
+        "changes": [
+          {
+            "path": [
+              "network"
+            ],
+            "value": "eip155:8453"
+          }
+        ],
+        "expect": "0x8eba51a00be492ada1cce8e083863e9da204dba7c696902d90dd2be6569f56e3"
+      },
+      {
+        "case": "manager another address",
+        "from": [
+          "fixed",
+          "offer"
+        ],
+        "changes": [
+          {
+            "path": [
+              "manager"
+            ],
+            "value": "0x90f79bf6eb2c4f870365e785982e1f101e93b906"
+          }
+        ],
+        "expect": "0x0f310d95e06b652f510f4d91b26bf4c9a438dde72ebe1b14f4416b2942d1109c"
+      },
+      {
+        "case": "spender another account",
+        "from": [
+          "fixed",
+          "offer"
+        ],
+        "changes": [
+          {
+            "path": [
+              "permission",
+              "spender"
+            ],
+            "value": "0x3c44cdddb6a900fa2b585dd299e03d12fa4293bc"
+          }
+        ],
+        "expect": "0xbe67be2f1ccdd4640cb8826737c6419e79362aea510cea5ce2c9ca8c3f257929"
+      },
+      {
+        "case": "token Base's USDC",
+        "from": [
+          "fixed",
+          "offer"
+        ],
+        "changes": [
+          {
+            "path": [
+              "permission",
+              "token"
+            ],
+            "value": "0x833589fcd6edb6e08f4c7c32d4f71b54bda02913"
+          }
+        ],
+        "expect": "0xcea89f901e5be5b5ea1c1447bb0848778ff5386e69b9df0ccaa2dd4b903a212a"
+      },
+      {
+        "case": "allowance one more",
+        "from": [
+          "fixed",
+          "offer"
+        ],
+        "changes": [
+          {
+            "path": [
+              "permission",
+              "allowance"
+            ],
+            "value": "1000001"
+          }
+        ],
+        "expect": "0xf620c272ba6d9d565a02ba2c9a54e90a84315b5c9bcebe4cf1358017e65b9ec0"
+      },
+      {
+        "case": "period one more",
+        "from": [
+          "fixed",
+          "offer"
+        ],
+        "changes": [
+          {
+            "path": [
+              "permission",
+              "period"
+            ],
+            "value": "86401"
+          }
+        ],
+        "expect": "0x13eeeccb31729a96443ec1903d63368274c26f4fafb4d74a5263179b6baf7265"
+      },
+      {
+        "case": "start one more",
+        "from": [
+          "fixed",
+          "offer"
+        ],
+        "changes": [
+          {
+            "path": [
+              "permission",
+              "start"
+            ],
+            "value": "1790000001"
+          }
+        ],
+        "expect": "0x16ce49db7f885a19a1c15c506805f424c72a64b3238978ce88b52687742b2dae"
+      },
+      {
+        "case": "end one more",
+        "from": [
+          "fixed",
+          "offer"
+        ],
+        "changes": [
+          {
+            "path": [
+              "permission",
+              "end"
+            ],
+            "value": "1800000001"
+          }
+        ],
+        "expect": "0xea1f6335548f4f61e46e95de225a110c884e327a21c4e8f69c8e851cc5d11740"
+      },
+      {
+        "case": "extraData one byte",
+        "from": [
+          "fixed",
+          "offer"
+        ],
+        "changes": [
+          {
+            "path": [
+              "permission",
+              "extraData"
+            ],
+            "value": "0x00"
+          }
+        ],
+        "expect": "0x046aaad8b354e595995579ae65566246eb4ea824ed4de6e7067d9ffd5e09f8d0"
+      }
+    ],
+    "refusals": [
+      {
+        "case": "the 402 body, not the offer it holds",
+        "from": [
+          "fixed",
+          "body"
+        ],
+        "expect": "spend-permissions/option-malformed"
+      },
+      {
+        "case": "an offer as issued whose permission holds account",
+        "from": [
+          "fixed",
+          "offerInput"
+        ],
+        "changes": [
+          {
+            "path": [
+              "permission",
+              "account"
+            ],
+            "value": "0xf39fd6e51aad88f6f4ce6ab8827279cfffb92266"
+          }
+        ],
+        "expect": "spend-permissions/option-malformed"
+      },
+      {
+        "case": "an offer as issued the manager refuses, start not before end",
+        "from": [
+          "fixed",
+          "offerInput"
+        ],
+        "changes": [
+          {
+            "path": [
+              "permission",
+              "start"
+            ],
+            "value": "1800000000"
+          }
+        ],
+        "expect": "spend-permissions/option-malformed"
+      },
+      {
+        "case": "an offer as placed whose salt is not its legalContext.value",
+        "from": [
+          "fixed",
+          "offer"
+        ],
+        "changes": [
+          {
+            "path": [
+              "permission",
+              "salt"
+            ],
+            "value": "1"
+          }
+        ],
+        "expect": "spend-permissions/option-malformed"
+      },
+      {
+        "case": "a return holding both signature and transaction",
+        "from": [
+          "header",
+          "signature",
+          "return"
+        ],
+        "changes": [
+          {
+            "path": [
+              "transaction"
+            ],
+            "value": "0x7777777777777777777777777777777777777777777777777777777777777777"
+          }
+        ],
+        "expect": "spend-permissions/option-malformed"
       }
     ]
   }

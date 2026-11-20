@@ -1,7 +1,7 @@
 // spend-permissions/eip155 against vectors/spend-permissions-eip155.json: the permission's hash, the encodings, the
-// offer, the account's typed data and call, the header, the resource server's checks, the reference and the read of
-// the transaction that should hold the approval. Every expected value is the file's, each hash and encoding viem's
-// output, which this test also recomputes.
+// offer, the account's typed data and call, the header, the resource server's checks, the issued digest, the reference
+// and the read of the transaction that should hold the approval. Every expected value is the file's, each hash and
+// encoding viem's output, which this test also recomputes, and each issued digest Python's json and hashlib's.
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { encodeAbiParameters, encodeFunctionData, hashTypedData, parseAbi, recoverTypedDataAddress } from "viem";
@@ -19,6 +19,7 @@ import {
   checkReturn,
   decodeSpendPermissionHeader,
   encodeSpendPermissionHeader,
+  issuedDigest,
   permissionHash,
   spendPermissionsEip155 as pairing,
 } from "../src/spend-permissions.js";
@@ -235,6 +236,25 @@ describe("spend-permissions-eip155.json: the return", () => {
       expect(codeOf(await pairing.reference(presented, F.offer, given))).toBe(r.expect);
     });
   }
+});
+
+describe("spend-permissions-eip155.json: the issued digest", () => {
+  type Row = { case: string; from: string[]; changes?: { path: string[]; value: unknown }[]; expect: string };
+  const valueOf = (r: Row): never => {
+    let v: unknown = r.from.reduce<unknown>((o, k) => (o as Obj)[k], V);
+    for (const c of r.changes ?? []) v = changed(v, c.path, c.value);
+    return v as never;
+  };
+  const D = V.issuedDigest;
+
+  it("one digest for the offer as issued, as placed and as returned; another for each member it covers changed", async () => {
+    for (const r of rowsOf<Row>(D.same, "issuedDigest.same", { exact: 9 })) expect([r.case, await issuedDigest(valueOf(r))]).toEqual([r.case, D.expect]);
+    for (const r of rowsOf<Row>(D.differ, "issuedDigest.differ", { exact: 9 })) {
+      expect(r.expect).not.toBe(D.expect);
+      expect([r.case, await issuedDigest(valueOf(r))]).toEqual([r.case, r.expect]);
+    }
+    for (const r of rowsOf<Row>(D.refusals, "issuedDigest.refusals", { exact: 5 })) expect([r.case, codeOf(await issuedDigest(valueOf(r)))]).toEqual([r.case, r.expect]);
+  });
 });
 
 describe("spend-permissions-eip155.json: approvedIn", () => {

@@ -15,7 +15,7 @@
  *
  * @module
  */
-import { fromLegalContext, hashEquals, isHttpsLink, toLcpString, type AtrHash, type Json } from "./core.js";
+import { digestJson, fromLegalContext, hashEquals, isHttpsLink, toLcpString, type AtrHash, type Json } from "./core.js";
 import { jsonBytes, normalHash, sameJson } from "./fields.js";
 import { agreementIn, agreementUrlFault } from "./internal/agreement.js";
 import { bytesOfHexDigits, fromBase64, fromBase64Url, hexOf, toBase64, toBase64Url } from "./rail-bytes.js";
@@ -186,6 +186,9 @@ const SD_JWT_BOUNDS = { maxBytes: MAX_VI_LAYER, maxDisclosures: MAX_VI_DISCLOSUR
 export function tie(options: readonly CardOption[]): ["card", { options: readonly CardOption[] }] {
   return ["card", { options }];
 }
+
+/** The option digest the issuer keeps: SHA-256 over the RFC 8785 form. */
+export const issuedDigest: typeof digestJson = digestJson;
 
 /**
  * The legal context, with `legalContextAgreementUrl` after the link when `agreementUrl` is given, and the

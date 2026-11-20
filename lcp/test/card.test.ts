@@ -7,6 +7,7 @@ import { digestJson, type AtrHash } from "../src/index.js";
 import {
   agentPay,
   disclosureDigest,
+  issuedDigest,
   sellerReference,
   tie,
   viAutonomous,
@@ -90,8 +91,11 @@ describe("C1 values and digests", () => {
     expect(visaTap.advertise({}, H, V.C1.httpLink.link, V.C1.advertise.offer)).toEqual(refused(V.C1.httpLink.expect));
   });
 
-  it("digestJson of each option is the printed SHA-256", async () => {
-    for (const row of rowsOf(V.C1.digestJson, "card.json C1.digestJson")) expect(await digestJson(row.option)).toBe(row.expect);
+  it("digestJson and issuedDigest of each option are the printed SHA-256", async () => {
+    for (const row of rowsOf(V.C1.digestJson, "card.json C1.digestJson")) {
+      expect(await digestJson(row.option)).toBe(row.expect);
+      expect(await issuedDigest(row.option)).toBe(row.expect);
+    }
   });
 
   it("a malformed option is card/option-malformed", () => {

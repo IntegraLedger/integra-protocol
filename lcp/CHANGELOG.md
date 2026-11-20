@@ -60,6 +60,15 @@ rename exports and pairing ids and change a function's arguments or answers; a p
 - `named`, optional, on `Named`, `Seen` and `ForeignItem`: the account an act names apart from what it moved. The read
   of `mpp/subscription/tempo` sets it to the activation's one recipient, the account the key authorization it carries
   lets its key pay. The profile `read-status` (rules 13 and 14) and each pairing's profile state what is recorded.
+- `issuedDigest` from `@integraledger/lcp/card`, `@integraledger/lcp/ack` and `@integraledger/lcp/spend-permissions`,
+  as every other surface's entry point exports it, so a seller or resource server that keeps only a digest of each
+  option it issued tells whether what a buyer presents answers one of them. On `card` and `ack` it is SHA-256 over the
+  RFC 8785 form of the option as issued, as on `acp`, `ap2` and `ucp`. On `spend-permissions` (profile
+  `spend-permissions/eip155`, rule 9) it covers the members the resource server fixes at issue alone: `network`,
+  `manager`, and the permission's `spender`, `token`, `allowance`, `period`, `start`, `end` and `extraData`, leaving
+  out `salt` (H), `account` and `accepts`, so the offer as `advertise` takes it, the offer the `402` body places and a
+  return of it on either route have one digest; any other value is `spend-permissions/option-malformed`.
+  `spend-permissions-eip155.json` gains the rows.
 
 ### Fixed
 

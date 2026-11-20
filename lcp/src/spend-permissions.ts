@@ -9,7 +9,7 @@
  *
  * @module
  */
-import { hashEquals, isHttpsLink, isOtherSchemeLink, toLegalContext, type AtrHash } from "./core.js";
+import { digestJson, hashEquals, isHttpsLink, isOtherSchemeLink, toLegalContext, type AtrHash } from "./core.js";
 import { hexOf, type Hex } from "./evm-abi.js";
 import { chainIdOf, isAddress, isObject, jsonBytes, normalHash } from "./fields.js";
 import { carriesRefused, isRefusal, refusal, type Refusal } from "./refusal.js";
@@ -387,6 +387,48 @@ function unplaced(option: SpendPermissionOffer): SpendPermissionOfferInput | Spe
 /** The ATR's binding slot: the offer exactly as issued. */
 export function tie(offer: SpendPermissionOffer): ["spendPermission", SpendPermissionOffer] {
   return ["spendPermission", offer];
+}
+
+/** The members of an offer, or of a return, that the resource server fixes at issue; undefined for any other value. */
+function fixedAtIssue(v: unknown): { network: Eip155; manager: Hex; permission: Permission } | undefined {
+  if (!isObject(v) || carriesRefused(v)) return undefined;
+  const keys = Object.keys(v);
+  if (keys.includes("signature") || keys.includes("transaction")) {
+    const r = returnOf(v);
+    return r === undefined || r === "signature" ? undefined : r;
+  }
+  if (keys.includes("legalContext")) {
+    const o = offerOf(v);
+    return isRefusal(o) ? undefined : o;
+  }
+  const given = v["permission"];
+  if (keys.length !== 4 || !["network", "manager", "permission", "accepts"].every((k) => keys.includes(k)) || !isObject(given)) {
+    return undefined;
+  }
+  const permission = permissionOf("salt" in given ? given : { ...given, salt: "0" }, false);
+  if (chainIdOf(v["network"]) === undefined || !isAddress(v["manager"]) || routesOf(v["accepts"]) === undefined) return undefined;
+  if (permission === undefined || managerRefuses(permission)) return undefined;
+  return { network: v["network"] as Eip155, manager: (v["manager"] as string).toLowerCase() as Hex, permission };
+}
+
+/**
+ * The digest a resource server keeps of an offer it issued (profile rule 9): SHA-256 over the RFC 8785 form of
+ * `{network, manager, permission}`, `permission` holding `spender`, `token`, `allowance`, `period`, `start`, `end`
+ * and `extraData` in the wire form, addresses and hex lowercase: the members the resource server fixes at issue alone.
+ * It takes the offer as `advertise` takes it, `salt` absent or present; the offer the `402` body places, as `read`
+ * takes it; and a return, as rule 8 takes it, on either route. It leaves out `salt`, which is H, `account`, which is
+ * the account's, and `accepts`, which a return does not carry, so the offer as issued, as placed and as returned has
+ * one digest, and an offer that differs in a member it covers has another. Any other value is
+ * `spend-permissions/option-malformed`.
+ */
+export async function issuedDigest(
+  given: SpendPermissionOfferInput | SpendPermissionOffer | SpendPermissionReturn,
+): Promise<Hex | Refusal> {
+  const f = fixedAtIssue(given);
+  if (f === undefined) return refusal("spend-permissions/option-malformed");
+  const { account: _account, ...offered } = f.permission;
+  const { salt: _salt, ...permission } = wirePermission(offered);
+  return digestJson({ network: f.network, manager: f.manager, permission });
 }
 
 /**

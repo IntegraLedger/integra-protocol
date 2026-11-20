@@ -9,6 +9,7 @@
  * @module
  */
 import {
+  digestJson,
   fromLcpString,
   fromLegalContext,
   hashEquals,
@@ -68,6 +69,9 @@ const TOKEN_BEFORE_0_10 = "paymentToken";
 export function tie(options: readonly AckPaymentOption[]): ["ack", { paymentOptions: readonly AckPaymentOption[] }] {
   return ["ack", { paymentOptions: options }];
 }
+
+/** The option digest the issuer keeps: SHA-256 over the RFC 8785 form. */
+export const issuedDigest: typeof digestJson = digestJson;
 
 /**
  * The Payment Request `id` (`lcp:sha256:H`) and the legal context the seller's stack places beside the request, with

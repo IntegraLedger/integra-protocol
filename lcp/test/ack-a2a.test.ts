@@ -48,6 +48,7 @@ describe("ack-payment-request.json", () => {
     expect(ack.tie([K.fixed.O])).toEqual(K.K1.expectSlot);
     expect(pr.tie).toBe(ack.tie);
     expect(await digestJson(K.fixed.O)).toBe(K.K1.digestOfO);
+    expect(await ack.issuedDigest(K.fixed.O)).toBe(K.K1.digestOfO);
   });
 
   it("K2: read takes H from the signed token", () => {

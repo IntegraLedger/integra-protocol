@@ -137,7 +137,7 @@
     {
       "unit": "ACK payment requests",
       "exports": {
-        "./ack": ["AckBody", "AckPaymentOption", "AckValues", "fromReceipt", "paymentRequest", "tie"]
+        "./ack": ["AckBody", "AckPaymentOption", "AckValues", "fromReceipt", "issuedDigest", "paymentRequest", "tie"]
       },
       "use": "Any ACK seller carries H as its Payment Request's id, and any buyer or auditor reads it back from the request and its receipt.",
       "fixedBy": "ack-payment-request.md; ACK's Payment Request."
@@ -169,7 +169,7 @@
     {
       "unit": "Card checkouts",
       "exports": {
-        "./card": ["CardOption", "CardPairing", "CardPairingId", "CardScheme", "CardValues", "ChargePresented", "ChargeRef", "TapPresented", "TapUnsigned", "VicPresented", "VicUnsigned", "ViAutonomous", "ViCheckoutChoice", "ViCheckoutUnsigned", "ViImmediate", "ViUnsigned", "agentPay", "disclosureDigest", "sellerReference", "tie", "viAutonomous", "viImmediate", "visaTap", "visaVic"]
+        "./card": ["CardOption", "CardPairing", "CardPairingId", "CardScheme", "CardValues", "ChargePresented", "ChargeRef", "TapPresented", "TapUnsigned", "VicPresented", "VicUnsigned", "ViAutonomous", "ViCheckoutChoice", "ViCheckoutUnsigned", "ViImmediate", "ViUnsigned", "agentPay", "disclosureDigest", "issuedDigest", "sellerReference", "tie", "viAutonomous", "viImmediate", "visaTap", "visaVic"]
       },
       "use": "Any agent or merchant on a card checkout carries H through Visa's Trusted Agent Protocol, Mastercard Agent Pay, Visa Intelligent Commerce, Mastercard's Verifiable Intent or the plain checkout, and a seller keys its record of a card payment by its own processor reference.",
       "fixedBy": "card-visa-tap.md; card-mastercard-agent-pay.md; card-visa-vic.md; card-mastercard-vi.md; card-seller-reference.md; card.json; charge-reference.json."
@@ -517,7 +517,7 @@
       "exports": {
         "./spend-permissions": [
           "spendPermissionsEip155", "tie", "SPEND_PERMISSION_HEADER", "encodeSpendPermissionHeader", "decodeSpendPermissionHeader",
-          "checkReturn", "approvedIn", "permissionHash", "SPEND_PERMISSION_TYPEHASH", "SPEND_PERMISSION_DOMAIN", "APPROVE_SELECTOR",
+          "checkReturn", "approvedIn", "permissionHash", "issuedDigest", "SPEND_PERMISSION_TYPEHASH", "SPEND_PERMISSION_DOMAIN", "APPROVE_SELECTOR",
           "APPROVE_WITH_SIGNATURE_SELECTOR", "IS_APPROVED_SELECTOR", "IS_REVOKED_SELECTOR", "SPEND_PERMISSION_APPROVED_TOPIC",
           "SPEND_PERMISSION_REVOKED_TOPIC", "SpendPermission", "OfferedPermission", "SpendPermissionRoute", "SpendPermissionRef",
           "SpendPermissionError", "SpendPermissionOffer", "SpendPermissionBody", "SpendPermissionOfferInput", "SpendPermissionReturn",
