@@ -756,6 +756,17 @@ function isV1Header(h: unknown): h is SvmV1Header {
  * (one holding a lone surrogate has no UTF-8 form) is `svm/input-malformed`, with nothing built.
  */
 export async function buildSvmMessage(i: SvmBuildInput): Promise<Uint8Array<ArrayBuffer> | Refusal> {
+  return buildTokenMessage(i, []);
+}
+
+/**
+ * `buildSvmMessage`'s message with `extra` appended to `TransferChecked`'s accounts after its four: a Token-2022 mint's
+ * transfer-hook accounts (`transferHookAccounts`).
+ */
+export async function buildTokenMessage(
+  i: SvmBuildInput,
+  extra: readonly { readonly address: string; readonly role: number }[],
+): Promise<Uint8Array<ArrayBuffer> | Refusal> {
   if (!isBuildInput(i)) return refusal("svm/input-malformed");
   const memo = new TextEncoder().encode(i.memo);
   let kit: Kit;
@@ -781,6 +792,7 @@ export async function buildSvmMessage(i: SvmBuildInput): Promise<Uint8Array<Arra
         { address: address(i.mint), role: AccountRole.READONLY },
         { address: destination, role: AccountRole.WRITABLE },
         { address: address(i.payer), role: AccountRole.READONLY_SIGNER },
+        ...extra.map((x) => ({ address: address(x.address), role: x.role })),
       ],
       data: concat(Uint8Array.of(0x0c), u64le(i.amount), Uint8Array.of(i.decimals)),
     },

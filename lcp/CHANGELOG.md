@@ -8,6 +8,17 @@ rename exports and pairing ids and change a function's arguments or answers; a p
 
 ## [Unreleased]
 
+### Added
+
+- `SvmChoice.reader` (`x402/exact/solana`): with a reader of the option's network, `build` pays a Token-2022 mint whose
+  `TransferHook` extension names a program. It reads the mint at `confirmed`, resolves the hook's extra accounts for
+  `Execute` from the program's validation account as the spl-transfer-hook interface states them, and appends them,
+  the program and the validation account to `TransferChecked`, at a compute unit limit of 400,000 where the choice
+  names none. Without the hook's accounts Token-2022 refuses such a transfer, so no build paid one before. A list that
+  does not resolve, or an account resolved that would sign, is the new code `svm/transfer-hook-unresolved`; a failed
+  read is `svm/unreadable`. The profile's rule 9 states it; `test/fixtures/svm-transfer-hook.json` records a devnet
+  transfer whose hook accounts the build reproduces.
+
 ### Fixed
 
 - The Solana channel openings' read (`svmChannelStatus` and `svmOpeningStatus` of `@integraledger/lcp/svm`, the

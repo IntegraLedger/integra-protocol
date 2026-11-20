@@ -432,6 +432,7 @@ export const REFUSAL_CODES: ReadonlySet<string> = new Set([
   "svm/pda-not-found",
   "svm/peer-missing",
   "svm/read-first",
+  "svm/transfer-hook-unresolved",
   "svm/tx-malformed",
   "svm/tx-too-large",
   "svm/unreadable",

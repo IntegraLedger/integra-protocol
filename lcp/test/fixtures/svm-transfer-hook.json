@@ -1,0 +1,42 @@
+{
+ "about": "A Token-2022 transfer on Solana devnet whose mint's TransferHook extension names a program, and the accounts that transfer's hook resolution reads. landed is the account list of the TransferChecked instruction (inner instruction 0 of top-level instruction 2) of transaction 2MdTqdXCdkRkyMyMT7CdWZUiE7piwPogJHFx5Tf3RT4CDGBYziKtNTyCiQ3cEMBGTpMfVXNcaxeaPB4kkmWyWMVz, slot 524,291,208, err null, as getTransaction answers it at finalized from api.devnet.solana.com: the source (the authority's associated token account), the mint, the destination (the payee's associated token account), the authority, the hook's five extra accounts, its validation account and its program; transfer is that instruction's amount and decimals, its authority, the owner of its destination and the mint. accounts are the mint, the validation account, the source and the destination as getMultipleAccounts answers them at confirmed (context slot 524,293,281), each its owner and its data in hex: the mint names the hook program 4pAyJK95P3p2vvCngmQ5gvY7XcAnAcAbzUbk7m7cqJAj, whose list for Execute holds three literal addresses and two PDAs of the first of them, from the literal permit, the mint and the owner read from the source's, then the destination's, data at offset 32. @solana-program/token-2022 0.16.1's resolveExtraAccountMetasForExecute answers the same five accounts, then the program and the validation account, each read-only.",
+ "network": "solana:EtWTRABZaYq6iMfeYKouRu166VU2xqa1",
+ "transfer": {
+  "mint": "GPmDBAjz1cBG2PJdh1nMkFQXNRGLqf8KjDgonwUMEFXk",
+  "payer": "9h9k28K7Y2aVUVz2SCiHHjansc3xCxcr8SYcG2B58XX8",
+  "payTo": "3ok9zizEVFHipswA3e5o2RchfbXBiPp1B3wNUXjQB8WQ",
+  "amount": "1347558370",
+  "decimals": 6
+ },
+ "landed": [
+  "AcabXHGTMFM4VUkTJibmf8HHZavJXxi29YCFghQfuk9f",
+  "GPmDBAjz1cBG2PJdh1nMkFQXNRGLqf8KjDgonwUMEFXk",
+  "JDMiJYXXJPkkrSeqxVcJq5ybTigWgwi7BFhfpHKDtCyd",
+  "9h9k28K7Y2aVUVz2SCiHHjansc3xCxcr8SYcG2B58XX8",
+  "FxFe3bgEREzwqZsgdBMECupwuNuYLZ89ZmPCMzk4bvdG",
+  "4Aqjh5upG2meagsP6CSh1bxrpBgrntjcgS3F8YiLuH1Z",
+  "7D4NKQrsLWjD5vyrgAp61mWa5hvdEgtHu6qia13vCGZy",
+  "A1g2E7qbGrwcKbLf3rHMwX1Mq8JAEzMTPNLDvix9MFS",
+  "8jVzkQrL2pzYYnB5nhVeEg61XspJXwtotUR2tgeQ86uU",
+  "92zS9YrtcoWYkks3Mcr7o3tRwMXo4SfHBQtFPLDYYTrd",
+  "4pAyJK95P3p2vvCngmQ5gvY7XcAnAcAbzUbk7m7cqJAj"
+ ],
+ "accounts": {
+  "GPmDBAjz1cBG2PJdh1nMkFQXNRGLqf8KjDgonwUMEFXk": {
+   "owner": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+   "data": "0000000000000000000000000000000000000000000000000000000000000000000000000080c6a47e8d030006010000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010e004000000000000000000000000000000000000000000000000000000000000000000038a8a1f6b9df84408a3e43758be7b419c249ba7ce526d44d3618bb8da6cfb908120040000000000000000000000000000000000000000000000000000000000000000000e4b411ec2a8f546d84fb3fc0b5406986f50aea5b94ff9b2b5c2c1f23cbaa6e1713005a000000000000000000000000000000000000000000000000000000000000000000e4b411ec2a8f546d84fb3fc0b5406986f50aea5b94ff9b2b5c2c1f23cbaa6e17050000004150504c45050000004150504c450000000000000000"
+  },
+  "92zS9YrtcoWYkks3Mcr7o3tRwMXo4SfHBQtFPLDYYTrd": {
+   "owner": "4pAyJK95P3p2vvCngmQ5gvY7XcAnAcAbzUbk7m7cqJAj",
+   "data": "692565c54bfb661ab30000000500000000de2b1d0e824dc2c3ac056da8aba3f73b05a24b10bd8e7df59ad8c9cf935ad04b0000002f1864e33c48876d1f227a4916ed229a1e353677f8cb539b716bc5a50dd4ea900000005c3ce6222c05a4e9e67ed416de1f589bc389d458c3d282d6bdc6e9e16224e35c00008501067065726d697403010400202000000000000000000000000000000000000000008501067065726d69740301040220200000000000000000000000000000000000000000"
+  },
+  "AcabXHGTMFM4VUkTJibmf8HHZavJXxi29YCFghQfuk9f": {
+   "owner": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+   "data": "e4b411ec2a8f546d84fb3fc0b5406986f50aea5b94ff9b2b5c2c1f23cbaa6e1781269cb00e8323858335bebeb6f52e774c3d0a91c232d9483823aad3c1ee6d6379a6f1b80500000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002070000000f00010000"
+  },
+  "JDMiJYXXJPkkrSeqxVcJq5ybTigWgwi7BFhfpHKDtCyd": {
+   "owner": "TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb",
+   "data": "e4b411ec2a8f546d84fb3fc0b5406986f50aea5b94ff9b2b5c2c1f23cbaa6e1729b0e2fde0bcf8960de99b8593c2ddc02c8341efa14c6bb768c730d5a97520e5cfa301410100000000000000000000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000002070000000f00010000"
+  }
+ }
+}

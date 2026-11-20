@@ -8,7 +8,8 @@ import { toLcpString, type AtrHash } from "./core.js";
 import {
   COMPUTE_BUDGET,
   MEMO_V4,
-  buildSvmMessage,
+  TOKEN_2022,
+  buildTokenMessage,
   decodeSvmTx,
   isKey,
   keyBytes,
@@ -36,6 +37,7 @@ import {
   type SvmStatus,
   x402SvmReference,
 } from "./internal/svm-read.js";
+import { transferHookAccounts } from "./internal/svm-transfer-hook.js";
 import { isObject, normalHash } from "./fields.js";
 import {
   acceptedBy,
@@ -70,6 +72,12 @@ export type { SvmPaymentPayload } from "./internal/svm.js";
 export type { X402Read } from "./internal/x402.js";
 
 const ID = "x402/exact/solana" as const;
+/**
+ * The compute unit limit `build` writes where it resolves a transfer hook and its caller names none: @x402/svm 2.31.0's
+ * default maximum, `DEFAULT_MAX_COMPUTE_UNITS` (`dist/esm/chunk-DAIKIZVB.mjs:16`), which its facilitator admits, since
+ * the hook program's own cost is its own and no rule states it.
+ */
+const HOOK_COMPUTE_UNITS = 400_000;
 const MAX_MEMO = 256;
 const U64_LIMIT = 1n << 64n;
 const DECIMAL = /^[0-9]{1,20}$/;
@@ -90,6 +98,13 @@ export interface SvmChoice {
   recentBlockhash: string;
   computeUnitLimit?: number;
   computeUnitPrice?: bigint;
+  /**
+   * A reader of the option's network, through whose `account` `build` reads a Token-2022 mint at `confirmed` and, where
+   * its `TransferHook` extension names a program, the accounts the transfer hook needs (the profile's rule 9). Absent,
+   * `build` reads nothing and writes `TransferChecked` with its four accounts, which a mint whose hook names a program
+   * does not take.
+   */
+  reader?: Pick<SvmReader, "network" | "account">;
 }
 
 function utf8Length(s: string): number {
@@ -164,7 +179,10 @@ function read(doc: PaymentRequired): X402Read | Refusal {
  * The message the payer signs for the chosen option, whose one memo is the option's `extra.memo`: version 1 where the
  * option's `extra.transactionVersions` holds 1, as @x402/svm 2.31.0's exact client writes it, else v0 (`builtVersion`).
  * H is checked first, then the form of the choice's payer, token program, decimals, blockhash and compute budget
- * (`isPayerInput`), then its document and option, then the option's memo against H.
+ * (`isPayerInput`) and its reader, then its document and option, then the option's memo against H. With a reader,
+ * a Token-2022 mint whose `TransferHook` extension names a program has its hook's accounts appended to
+ * `TransferChecked` (`transferHookAccounts`), at a compute unit limit of 400,000 where the choice names none; a reader of
+ * another network is `svm/wrong-reader`.
  */
 async function build(c: SvmChoice, h: AtrHash): Promise<SvmUnsigned | Refusal> {
   if (normalHash(h) === null) return refusal("x402/payload-malformed");
@@ -172,6 +190,7 @@ async function build(c: SvmChoice, h: AtrHash): Promise<SvmUnsigned | Refusal> {
   if (!isPayerInput(c) || !Number.isInteger(c.decimals) || c.decimals < 0 || c.decimals > 255) {
     return refusal("svm/input-malformed");
   }
+  if (c.reader !== undefined && (!isObject(c.reader) || typeof c.reader.account !== "function")) return refusal("svm/input-malformed");
   const ok = chosen(c.required, c.accepted, filter);
   if (ok !== true) return ok;
   const { accepted, required } = c;
@@ -179,7 +198,13 @@ async function build(c: SvmChoice, h: AtrHash): Promise<SvmUnsigned | Refusal> {
   if (version === null) return refusal("x402/option-malformed");
   const memo = accepted.extra!["memo"];
   if (memo !== toLcpString(h)) return refusal("svm/carrier-mismatch");
-  const message = await buildSvmMessage({
+  if (c.reader !== undefined && c.reader.network !== accepted.network) return refusal("svm/wrong-reader");
+  const hook =
+    c.reader === undefined || c.tokenProgram !== TOKEN_2022
+      ? []
+      : await transferHookAccounts(c.reader, { mint: accepted.asset, payer: c.payer, payTo: accepted.payTo, amount: BigInt(accepted.amount) });
+  if (isRefusal(hook)) return hook;
+  const message = await buildTokenMessage({
     feePayer: accepted.extra!["feePayer"] as string,
     payer: c.payer,
     mint: accepted.asset,
@@ -189,10 +214,10 @@ async function build(c: SvmChoice, h: AtrHash): Promise<SvmUnsigned | Refusal> {
     amount: BigInt(accepted.amount),
     recentBlockhash: c.recentBlockhash,
     memo,
-    computeUnitLimit: c.computeUnitLimit ?? 40_000,
+    computeUnitLimit: c.computeUnitLimit ?? (hook.length > 0 ? HOOK_COMPUTE_UNITS : 40_000),
     computeUnitPrice: c.computeUnitPrice ?? 1n,
     ...(version === 1 ? { v1: X402_V1 } : {}),
-  });
+  }, hook);
   if (isRefusal(message)) return message;
   const signing = svmSigning(message, c.payer);
   return {
