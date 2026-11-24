@@ -414,17 +414,20 @@ function channelIxs(o: Opened) {
  * count u32 ‖ (recipient 32 ‖ bps u16) per recipient; its accounts name the payer first, the payee third, the mint fourth
  * and the channel sixth (`openInstructionData`, `buildChannelMessage`; `@solana/mpp` 0.7.0
  * `src/generated/payment-channels/instructions/open.ts`). The payee is a seed of the channel's address, and the
- * program's `distribute` pays the payee's token account (`instructions/distribute.ts`). Null where the instruction is no
- * `open` of that form.
+ * program's `distribute` pays the payee's token account only the remainder the distribution leaves (`sharesOf`). Null
+ * where the instruction is no `open` of that form.
  */
 function openOf(o: Opened, ix: { program: number; accounts: readonly number[]; data: Uint8Array }) {
   const d = ix.data;
   if (d[0] !== 1 || d.length < 33 || ix.accounts.length < 6) return null;
+  const view = new DataView(d.buffer, d.byteOffset, d.byteLength);
   const deposit = u64At(d, 9)!;
-  const count = new DataView(d.buffer, d.byteOffset, d.byteLength).getUint32(29, true);
+  const count = view.getUint32(29, true);
   if (d.length < 33 + 34 * count) return null;
-  const recipients: string[] = [];
-  for (let r = 0; r < count; r++) recipients.push(keyString(d.subarray(33 + 34 * r, 65 + 34 * r)));
+  const recipients: { recipient: string; bps: number }[] = [];
+  for (let r = 0; r < count; r++) {
+    recipients.push({ recipient: keyString(d.subarray(33 + 34 * r, 65 + 34 * r)), bps: view.getUint16(65 + 34 * r, true) });
+  }
   return {
     payer: o.keys[ix.accounts[0]!] ?? "",
     payee: o.keys[ix.accounts[2]!] ?? "",
@@ -433,6 +436,40 @@ function openOf(o: Opened, ix: { program: number; accounts: readonly number[]; d
     deposit,
     recipients,
   };
+}
+
+/**
+ * The transaction's one top-level payment-channels `open` and its place, where its payment-channels instructions are
+ * exactly one `open` (discriminator 1), which reads, and any number of `top_up`s (3); else null. A `top_up` only adds to
+ * a deposit, so an opening with one beside its `open` is still the opening (profile `mpp-session-hedera-solana-xrpl.md`,
+ * rule 2: the act "holds exactly one `open`"). Any other payment-channels instruction beside it, a `request_close`
+ * among them, which starts the channel's close in the opening itself so that the payer may seal and withdraw once its
+ * grace period passes, leaves the transaction no opening.
+ */
+function theOpen(o: Opened): { open: NonNullable<ReturnType<typeof openOf>>; at: number } | null {
+  const channels = channelIxs(o);
+  const opens = channels.filter(({ ix }) => ix.data[0] === 1);
+  if (opens.length !== 1 || channels.some(({ ix }) => ix.data[0] !== 1 && ix.data[0] !== 3)) return null;
+  const open = openOf(o, opens[0]!.ix);
+  return open === null ? null : { open, at: opens[0]!.i };
+}
+
+/**
+ * What the payment-channels program's `distribute` pays each account from `amount`, in its order, one entry per account
+ * it pays more than nothing: each recipient of the open's distribution `floor(amount × bps / 10,000)`, then the open's
+ * payee account its implicit remainder share, `floor(amount × (10,000 − Σ bps) / 10,000)`, each part rounded down on
+ * its own and an account named twice taking both (`payment-channels` `instructions/distribute.rs`, `state/channel.rs`
+ * `delta_for_bps`, `instructions/helpers/distribution.rs` `payee_bps`). An account whose part is 0 bps, the payee
+ * account where the recipients' bps sum to 10,000 (or past it, which the program's `open` refuses), or rounds down to
+ * 0, is paid nothing and not listed. The rounding dust the program sweeps to its treasury at seal is no share of any
+ * account the open names, and is not listed.
+ */
+function sharesOf(open: NonNullable<ReturnType<typeof openOf>>, amount: bigint): { to: string; amount: bigint }[] {
+  const sum = open.recipients.reduce((t, r) => t + BigInt(r.bps), 0n);
+  const parts = [...open.recipients.map((r) => ({ to: r.recipient, bps: BigInt(r.bps) })), { to: open.payee, bps: sum < 10_000n ? 10_000n - sum : 0n }];
+  const out = new Map<string, bigint>();
+  for (const p of parts) out.set(p.to, (out.get(p.to) ?? 0n) + (amount * p.bps) / 10_000n);
+  return [...out].filter(([, a]) => a > 0n).map(([to, a]) => ({ to, amount: a }));
 }
 
 /** The H the one top-level Memo holding an LCP string carries, where exactly one does; else null. */
@@ -472,13 +509,15 @@ type Classified = Seen<bigint, Reached>;
  * (exactly one top-level Memo holds an LCP string, and it is H's); its signer against the reference's payer and the
  * option's payee (`payer` where the buyer signed it and is not the payee, `payee` where the payee signed it, else
  * `other`); its kind (a transfer pairing's act holds no payment-channels instruction, a channel pairing's exactly one
- * `open`); the account it names (`payee` where a transfer of the buyer's reaches the payee or an `open` names the payee as
- * its payee account or in its distribution, `other` where it moves value elsewhere or the `open` names another payee,
- * `none` where it moves nothing), for a failed result the
+ * `open`, beside which only `top_up`s may stand); the account it names (`payee` where a transfer of
+ * the buyer's reaches the payee or the program's distribution of the `open`'s deposit pays the payee more than nothing,
+ * `other` where it moves value elsewhere or the distribution pays the payee nothing, `none` where it moves nothing), for a failed result the
  * destination of what the payer signed, its top-level instructions, since that result moved nothing; whether it consumed the
  * act's single-use value (the same signed message, or the reference's durable nonce advanced); whether it is an act the
  * caller gave by its reference; whether its message is the one presented (by its digest, or, for a payment presented
- * as a transaction alone, by that transaction); what moved, each transfer by its transaction and place, none for a failed result.
+ * as a transaction alone, by that transaction); what moved, each transfer by its transaction and place, and an `open`'s
+ * deposit as each account's share the program's distribution pays from it (`sharesOf`), each at the `open`'s place, none
+ * for a failed result.
  */
 async function classify(
   kind: SvmActKind,
@@ -491,33 +530,31 @@ async function classify(
 ): Promise<Classified> {
   const digest = await svmDigest(o.tx);
   const channels = channelIxs(o);
-  const open = channels.length === 1 ? openOf(o, channels[0]!.ix) : null;
+  const one = theOpen(o);
+  const open = one?.open ?? null;
   // A failed result moved nothing: the account it names is the destination in what the payer signed, its top-level
   // instructions, and what moved is empty.
   const failed = landed.err !== null && landed.err !== undefined;
   let moved: Moved[];
   let account: Classified["account"];
   if (kind === "channel") {
-    // The open names the option's payee where its payee account is that payee or its distribution holds it.
-    const names = open !== null && (open.payee === ref.payee || open.recipients.includes(ref.payee));
-    // The deposit's beneficiary: the option's payee where the open names it, else the distribution's first recipient, or
-    // the open's payee where the distribution is empty.
-    const beneficiary = open === null ? "" : names ? ref.payee : (open.recipients[0] ?? open.payee);
+    // The deposit as the program's distribution pays it out: one share per account, each its own beneficiary. The open
+    // names the option's payee only where the program pays the payee a share of more than nothing, so an open whose
+    // distribution sends the whole deposit elsewhere names another account, whatever its payee account or its list.
+    const shares = one === null ? [] : sharesOf(one.open, one.open.deposit);
     moved =
-      open === null || failed
+      one === null || failed
         ? []
-        : [
-            {
-              asset: open.mint,
-              amount: open.deposit.toString(),
-              to: beneficiary,
-              contract: open.channel,
-              beneficiary,
-              transaction: signature,
-              place: placeOf(channels[0]!.i),
-            },
-          ];
-    account = open === null ? "none" : names ? "payee" : "other";
+        : shares.map((s) => ({
+            asset: one.open.mint,
+            amount: s.amount.toString(),
+            to: s.to,
+            contract: one.open.channel,
+            beneficiary: s.to,
+            transaction: signature,
+            place: placeOf(one.at),
+          }));
+    account = one === null ? "none" : shares.some((s) => s.to === ref.payee) ? "payee" : "other";
   } else {
     const transfers = transfersOf(o, failed ? { ...landed, inner: [] } : landed, ref.payer, signature).filter((t) => t.fromBuyer);
     moved = failed ? [] : transfers.map(({ fromBuyer: _, ...m }) => m);
@@ -1010,7 +1047,7 @@ export function svmOpeningStatus(ref: SvmRef, reader: SvmReader, query: SvmQuery
 
 /**
  * The read keys of a signed transaction: its message digest; the fee payer (static key 0); the buyer: an `open`'s
- * payer where the transaction holds one payment-channels `open`, else the first signer other than the fee payer, or
+ * payer where the transaction holds one payment-channels `open` (`theOpen`), else the first signer other than the fee payer, or
  * the fee payer where it signs alone; the fee payer's signature as the transaction id when that slot is signed; and what
  * bounds the message's life: the recent blockhash, or the durable nonce it uses. A message `staticNonce` refuses has no
  * reference.
@@ -1024,8 +1061,7 @@ export async function svmReference(
   const keys = tx.keys.map(keyString);
   const signers = keys.slice(0, tx.signatures.length);
   const opened: Opened = { tx, keys, signers };
-  const channels = channelIxs(opened);
-  const open = channels.length === 1 ? openOf(opened, channels[0]!.ix) : null;
+  const open = theOpen(opened)?.open ?? null;
   const feePayer = keys[0]!;
   const payer = open !== null && open.payer !== "" ? open.payer : (signers.find((s) => s !== feePayer) ?? feePayer);
   const digest = await svmDigest(tx);

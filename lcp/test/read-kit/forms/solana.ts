@@ -34,7 +34,7 @@ import type { Act } from "../../../src/internal/read.js";
 import type { SvmLanded, SvmReader, SvmRef, SvmSignature, SvmStatus } from "../../../src/internal/svm-read.js";
 import { decodeSvmTx, svmDigest } from "../../../src/internal/svm.js";
 import type { CaseAnswer, CaseMark, DeclaredForm, Inapplicable, ReadCase } from "../form.js";
-import { answering, READ_STATUS } from "../harness.js";
+import { answering, opening, READ_STATUS } from "../harness.js";
 
 type Seen = ReadCase["facts"]["seen"][number];
 
@@ -290,14 +290,16 @@ const HELD_MESSAGE: readonly Inapplicable[] = [
 
 /**
  * On the channel openings (`x402/upto/solana`, `x402/batch-settlement/solana`, `mpp/session/solana/memo`): the act holds
- * exactly one `open`, whose one deposit into the channel's token account is what moved.
+ * exactly one `open`, whose one deposit into the channel's token account is what moved, recorded as its shares at the `open`'s
+ * place.
  */
 const ONE_TRANSFER: Inapplicable = {
   case: "each transfer of what moved is named by its transaction and its place in it, in the pairing's own spelling",
   stated:
     `${ENTRY}, on x402/upto/solana, x402/batch-settlement/solana and mpp/session/solana/memo: each transfer of what moved ` +
     "is named by its transaction and its place in it, since the act of each is an opening that holds exactly one open, " +
-    "whose one deposit into the channel's token account is what moved, a transaction holding more being no act of these pairings",
+    "beside which only top_ups may stand, whose one deposit into the channel's token account is what " +
+    "moved, recorded as its shares at the open's place, a transaction holding more than one open being no act of these pairings",
 };
 
 /**
@@ -311,10 +313,22 @@ const NAMES_PAYEE: readonly Inapplicable[] = READ_STATUS.cases
     stated: `${ENTRY}, on the channel openings: an act of the pairing's kind that names no account, since every open names its payee, its third account`,
   }));
 
+/**
+ * On the channel openings that carry H: a payment act that transferred zero to the payee's account, since the program's
+ * `open` refuses a deposit of zero (`DepositMustBeNonZero`), and a share of the deposit that rounds down to zero is no
+ * payment to the payee, the program paying it nothing.
+ */
+const ZERO_DEPOSIT: readonly Inapplicable[] = opening(
+  "a payment act carrying H that transferred zero",
+  `${ENTRY}, on x402/upto/solana, x402/batch-settlement/solana and mpp/session/solana/memo: a payment act carrying H ` +
+    "that transferred zero, since the program's open refuses a deposit of zero, and a share that rounds down to zero, " +
+    "which the program pays nothing, is read as no payment to the payee, by design setting aside for it read-status rule 9's zero",
+);
+
 /** The declared cases of a pairing at coverage `full`, every Solana read holding the signed message it was presented. */
 const FULL: readonly Inapplicable[] = [BELOW, ...GATE, ...HELD_MESSAGE];
 /** The same, on the channel openings that carry H. */
-const OPENING: readonly Inapplicable[] = [...FULL, ONE_TRANSFER, ...NAMES_PAYEE];
+const OPENING: readonly Inapplicable[] = [...FULL, ONE_TRANSFER, ...NAMES_PAYEE, ...ZERO_DEPOSIT];
 /** At coverage `none` the read makes no search, so no case is held by the search's gate; its act is an opening. */
 const NONE: readonly Inapplicable[] = [BELOW, ...HELD_MESSAGE, ...NAMES_PAYEE];
 

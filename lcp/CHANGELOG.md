@@ -6,6 +6,30 @@ rename exports and pairing ids and change a function's arguments or answers; a p
 [Upgrading](../docs/upgrading.md) states what 0.6's patch releases add, and each change a caller of 0.5.x makes for
 0.6.0.
 
+## [Unreleased]
+
+### Fixed
+
+- The Solana channel openings' read (`svmChannelStatus` and `svmOpeningStatus` of `@integraledger/lcp/svm`, the
+  `status` of `x402/upto/solana`, `x402/batch-settlement/solana`, `mpp/session/solana/memo` and
+  `mpp/session/solana/stock`) reports the deposit as the payment-channels program's `distribute` pays it out: one
+  `Moved` per account the distribution pays more than nothing, each recipient `floor(deposit × bps / 10,000)` and the
+  `open`'s payee account the remainder of 10,000 bps, rounded down, each its own `to` and `beneficiary`, all at the
+  `open`'s place. The `open` names the option's payee only where its own share is more than nothing. It counted the
+  whole deposit to the option's payee wherever the `open` named that payee as its payee account or anywhere in its
+  distribution, so an `open` whose distribution gave a third account all 10,000 bps read `settled` with the deposit
+  moved to the seller, whom the program pays nothing, and one naming the seller at 1 bps read the whole deposit where
+  the program pays the seller 1/10,000 of it. Such an `open` now names `other`, as a transfer to another account does,
+  and a split one lists each share. `Moved.to` and `Moved.beneficiary` of an `open` with no distribution are unchanged.
+  The read kit's case of a payment act that transferred zero is declared inapplicable to the three channel openings
+  that carry H, in their profiles, the program refusing a deposit of zero.
+- The same read, and `svmReference`, take as the opening a transaction whose payment-channels instructions are exactly
+  one `open` and any `top_up`s, as profile `mpp/session/hedera-solana-xrpl` rule 2 states ("holds exactly one
+  `open`"). They required exactly one payment-channels instruction, so an opening with a `top_up` beside its `open`,
+  which the stock `@solana/mpp` 0.7.0 server accepts and from which the seller collects, read `failed`,
+  `instrument-consumed`. What moved is still the `open`'s deposit alone. An `open` beside a `request_close`, which
+  starts the channel's close in the opening itself, is still no opening.
+
 ## [0.6.3] - 2026-11-20
 
 ### Added
