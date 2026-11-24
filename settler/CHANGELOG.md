@@ -23,6 +23,10 @@ configuration, the answers or the storage.
   reasons: `invalid_exact_xrpl_payload_sendmax_not_allowed` on XRP (0.5.1: `paths_not_allowed`), and on an issued
   currency `sendmax_required`, `sendmax_iou_mismatch` and `sendmax_too_low`; `DeliverMin` is refused
   `invalid_exact_xrpl_payload_delivermin_not_allowed` (0.5.1: `paths_not_allowed`) (note row 10).
+- `xrpl`, multisigned payer: a signer whose account the ledger does not hold, which a signer list allows and rippled
+  executes, made `/verify` and `/settle` answer `unexpected_verify_error`. Such a signer is taken where it signs with the
+  key its address derives from, and refused `invalid_exact_xrpl_payload_signer_not_authorized` otherwise, as rippled
+  does (note row 23).
 
 ## [0.5.1] - 2026-11-20
 

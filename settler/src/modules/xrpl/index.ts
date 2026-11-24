@@ -233,11 +233,13 @@ async function multisigChecks(c: XrplConfig, node: XrplNode, payload: PaymentPay
     seen.add(who);
     const data = encodeForMultiSigning(tx as unknown as Transaction, who);
     if (!verifyKeypairSignature(data, sig, key)) return { reason: "invalid_exact_xrpl_payload_signature" };
+    // rippled's rule for each signer: a key that is the signer's regular key, or its master key where the master key is
+    // not disabled; a signer with no account signs with its master key, the key its address derives from.
     const derived = deriveAddress(key);
+    const auth = await node.signerAuthorization(who);
     if (derived !== who) {
-      const auth = await node.authorization(who);
-      if (auth.regularKey !== derived) return { reason: "invalid_exact_xrpl_payload_signer_not_authorized" };
-    } else if ((await node.authorization(who)).isMasterKeyDisabled) {
+      if (auth === null || auth.regularKey !== derived) return { reason: "invalid_exact_xrpl_payload_signer_not_authorized" };
+    } else if (auth !== null && auth.isMasterKeyDisabled) {
       return { reason: "invalid_exact_xrpl_payload_signer_not_authorized" };
     }
     weight += list.weights.get(who) ?? 0;

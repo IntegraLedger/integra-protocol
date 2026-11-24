@@ -139,11 +139,25 @@ export async function validatedLedger(url: string, deadline: number): Promise<nu
 /** The account's flag that disables its master key (`lsfDisableMaster`). */
 const DISABLE_MASTER = 0x00100000;
 
+/** An account's regular key and whether its master key is disabled, from its `account_data`. */
+function authorizationOf(data: Record<string, unknown>): { regularKey?: string; isMasterKeyDisabled: boolean } {
+  const flags = int(data["Flags"]) ?? 0;
+  return {
+    ...(typeof data["RegularKey"] === "string" ? { regularKey: data["RegularKey"] } : {}),
+    isMasterKeyDisabled: (flags & DISABLE_MASTER) !== 0,
+  };
+}
+
 /** What the class and the own module read of the payer's account and the ledger, and how they submit. */
 export interface XrplNode {
   validatedLedger(): Promise<number>;
   sequence(account: string): Promise<number>;
   authorization(account: string): Promise<{ regularKey?: string; isMasterKeyDisabled: boolean }>;
+  /**
+   * A signer's account at the validated ledger as `authorization` reads it, or null where no such account exists: a
+   * signer list's entries need not be funded accounts, and such a signer signs with the key its address derives from.
+   */
+  signerAuthorization(account: string): Promise<{ regularKey?: string; isMasterKeyDisabled: boolean } | null>;
   ticket(account: string, ticketSequence: number): Promise<boolean>;
   /** The account's signer list at the validated ledger: its quorum and each signer's weight, or none. */
   signerList(account: string): Promise<{ quorum: number; weights: ReadonlyMap<string, number> } | null>;
@@ -174,12 +188,12 @@ export function xrplNode(url: string, waitMs: number): XrplNode {
       return int((await accountData(account, "current"))["Sequence"]) ?? failedOf("account_info", {});
     },
     async authorization(account) {
-      const data = await accountData(account, "validated");
-      const flags = int(data["Flags"]) ?? 0;
-      return {
-        ...(typeof data["RegularKey"] === "string" ? { regularKey: data["RegularKey"] } : {}),
-        isMasterKeyDisabled: (flags & DISABLE_MASTER) !== 0,
-      };
+      return authorizationOf(await accountData(account, "validated"));
+    },
+    async signerAuthorization(account) {
+      const r = await call("account_info", { account, ledger_index: "validated" });
+      if (r["error"] === "actNotFound") return null;
+      return authorizationOf(isObject(r["account_data"]) ? r["account_data"] : failedOf("account_info", r));
     },
     async ticket(account, ticketSequence) {
       const r = await call("ledger_entry", { ticket: { account, ticket_seq: ticketSequence }, ledger_index: "validated" });

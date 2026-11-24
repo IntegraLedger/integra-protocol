@@ -25,10 +25,13 @@ const WALLETS = [3, 4, 5].map((b) => Wallet.fromEntropy(new Uint8Array(16).fill(
 
 let node: Stub | undefined;
 let settler: Serving | undefined;
+/** Accounts the node holds no `account_info` for: `actNotFound`, as rippled answers for an address never funded. */
+let unfunded: ReadonlySet<string> = new Set();
 afterEach(async () => {
   await settler?.close();
   await node?.close();
   settler = node = undefined;
+  unfunded = new Set();
 });
 
 /** A validated ledger below the payments' LastLedgerSequence, 1000; the payer's next Sequence is 7, the signed one. */
@@ -37,6 +40,7 @@ function answer(method: string, p: Record<string, unknown>, quorum: number): unk
     case "ledger":
       return { ledger_index: 990, validated: true, status: "success" };
     case "account_info":
+      if (unfunded.has(p["account"] as string)) return { account: p["account"], error: "actNotFound", ledger_index: 990, validated: true, status: "error" };
       return { account_data: { Account: p["account"], Sequence: 7, Flags: 0 }, ledger_index: 990, validated: true, status: "success" };
     case "account_objects":
       return {
@@ -271,6 +275,28 @@ describe("a multisigned payment in an issued currency carries SendMax as the cla
       const p = payment(multisigned(change), req);
       expect([name, await routed(r, p).facilitator.verify(p.payload, p.requirements)]).toEqual([name, { isValid: false, invalidReason: reason }]);
     }
+    expect(methods()).not.toContain("submit");
+  });
+});
+
+describe("a multisigned payment whose signers hold no account (note row 23)", () => {
+  it("verifies a quorum whose signers hold no account, each signing with the key its address derives from", async () => {
+    const [, two] = V.multisigned.rows as { blob: string }[];
+    unfunded = new Set(SIGNERS);
+    const r = await registrationOn(2);
+    const p = payment(two!.blob, V.V2.accepted);
+    expect(await routed(r, p).facilitator.verify(p.payload, p.requirements)).toEqual({ isValid: true, payer: PAYER });
+  });
+
+  it("refuses a signer that holds no account and signs with a key its address does not derive from, submitting nothing", async () => {
+    // The first wallet signs as the third signer: its key derives the first signer's address, and the third holds no account.
+    unfunded = new Set([SIGNERS[2]!]);
+    const r = await registrationOn(2);
+    const p = payment(multisigned({}, [WALLETS[0]!, WALLETS[1]!], [SIGNERS[2]!]), V.V2.accepted);
+    expect(await routed(r, p).facilitator.settle(p.payload, p.requirements)).toMatchObject({
+      success: false,
+      errorReason: "invalid_exact_xrpl_payload_signer_not_authorized",
+    });
     expect(methods()).not.toContain("submit");
   });
 });
