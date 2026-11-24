@@ -6,6 +6,41 @@ rename exports and pairing ids and change a function's arguments or answers; a p
 [Upgrading](../docs/upgrading.md) states what 0.6's patch releases add, and each change a caller of 0.5.x makes for
 0.6.0.
 
+## [Unreleased]
+
+### Fixed
+
+- `mpp/session/tempo`: the stock server (mppx 0.17.6 and 0.21.1) refused every session lcp built, at each step; a
+  session now completes against it on a Tempo node.
+  - `build`'s opening signs its voucher at the challenge's `amount`, the request the opening pays, as mppx's client
+    does (`createOpenPayload`'s `initialAmount`); it signed 0, which the stock server refuses ("voucher amount is less
+    than request amount"). A request whose `amount` is not a decimal is `mpp/request-malformed`, and a `deposit` below
+    it `mpp/input-malformed`.
+  - `build`'s `funding.validBefore` is the challenge's `expires`, or the choice's `now` plus 240 seconds where that is
+    earlier (the choice is made before the funding is approved and signed, so the window is counted from it and kept
+    within the node's 300 seconds with a 60-second margin); a `now` that is not a non-negative safe integer is
+    `mpp/input-malformed`. It was the challenge's `expires`, which Tempo's node refuses whenever it is more
+    than 300 seconds past the block's timestamp, as a 300-second challenge's is when the block lags the second the
+    challenge was issued.
+  - `buildWithin`'s voucher and close carry `source`, the payer's DID, the opening transaction's sender, as mppx's client
+    writes it on every session credential; the stock server refused them without it ("credential source does not match
+    channel").
+  - `buildWithin`'s close on the v2 reserve has two requests, the final voucher and then
+    `CloseAuthorization(bytes32 channelId,uint96 cumulativeAmount)` under the voucher's domain (the new type
+    `CloseAuthorizationTypedData`, in `WithinSigningRequest`), and `complete` takes the two signatures in that order and
+    writes the second as the payload's `closeSignature`, which mppx's credential schema requires and its
+    `verifyCloseAuthorization` holds to the payer or the authorized signer; given one signature it answers
+    `mpp/credential-malformed`. A v2 voucher, and a v1 close, are one request as before.
+- Tempo's configurable account signature (type `0x05`, Tempo T14: `0x05` ‖ rlp([account, config, approvals])) is read
+  as the account it names: as a transaction's sender (the `mpp/session/tempo` opening and the transactions its
+  `status` reads, the Tempo split-memo charge, and the Tempo nonce and key-slot reads) and as a key authorization's
+  signer (`mpp/subscription/tempo`). It was
+  `tempo/tx-malformed` and `tempo/key-authorization-malformed`, while a node with T14 active (Moderato from 2026-11-24,
+  mainnet from 2026-12-08) includes it. The owners' approvals and the account's stored commitment are not verified, as
+  a keychain signature's key is not: the node decides. A `0x05` signature of any other form is refused as before.
+- `mpp-session-tempo.json`: buyer B6's opening carries the voucher at the request's amount, 100, and its signature;
+  `TS4.expectVoucherOpen` and `TS5.expectVoucherOpen` are the opening vouchers' digests.
+
 ## [0.6.3] - 2026-11-20
 
 ### Added

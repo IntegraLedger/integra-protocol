@@ -35,6 +35,10 @@ const P256 = 0x01;
 const WEBAUTHN = 0x02;
 const KEYCHAIN_V1 = 0x03;
 const KEYCHAIN_V2 = 0x04;
+/** A configurable account's signature (Tempo T14): `0x05` ‖ rlp([account, config, approvals]). */
+const CONFIGURABLE = 0x05;
+/** The most owner approvals a configurable account signature carries, as read here. */
+const MAX_OWNER_APPROVALS = 8;
 
 /**
  * The envelope's items: `0x76` or `0x78`, then an RLP list of 14 items (13 fields and the sender's signature), or 15
@@ -109,21 +113,56 @@ function primitiveSigner(sig: Uint8Array, hash: Uint8Array): Hex | Refusal {
 }
 
 /**
+ * The account a configurable account signature names: `0x05` ‖ rlp([account, config, approvals]), the account 20 bytes
+ * not all zero, the config a list, the approvals one to eight byte strings, each a primitive signature by its form (65
+ * bytes; `0x01` and 129 bytes; `0x02` and 128 to 2,048 bytes). Any other form is `tempo/tx-malformed`. Tempo's node
+ * returns that account as the signer once the owners' approvals reach the embedded config's threshold and the config
+ * matches the account's stored commitment (tempoxyz/tempo `f80ab3c7`,
+ * `crates/primitives/src/transaction/configurable_account/mod.rs`: `ConfigurableAccountSignature`, `recover_account`,
+ * `validate_account_commitment`). Neither the approvals nor the commitment is checked here, as a keychain signature's
+ * key is not checked against the account's keychain: the account is the one the signature names, and the node decides
+ * whether its owners approved.
+ */
+function configurableAccount(sig: Uint8Array): Hex | Refusal {
+  const bad = refusal("tempo/tx-malformed");
+  const top = rlpDecode(sig.subarray(1), MAX_WIRE_DEPTH);
+  if (top === undefined || top.kind !== "list" || top.items.length !== 3) return bad;
+  const [account, config, approvals] = top.items as [RlpItem, RlpItem, RlpItem];
+  if (account.kind !== "bytes" || account.bytes.length !== 20 || account.bytes.every((b) => b === 0)) return bad;
+  if (config.kind !== "list" || approvals.kind !== "list") return bad;
+  if (approvals.items.length === 0 || approvals.items.length > MAX_OWNER_APPROVALS) return bad;
+  for (const a of approvals.items) {
+    if (a.kind !== "bytes") return bad;
+    const n = a.bytes.length;
+    const primitive =
+      n === SECP256K1_LENGTH ||
+      (a.bytes[0] === P256 && n === 1 + P256_LENGTH) ||
+      (a.bytes[0] === WEBAUTHN && n >= 1 + WEBAUTHN_MIN && n <= 1 + WEBAUTHN_MAX);
+    if (!primitive) return bad;
+  }
+  return hexOf(account.bytes);
+}
+
+/** The signer of an account signature over `hash`: a primitive signature's signer, or the account a `0x05` names. */
+function accountSigner(sig: Uint8Array, hash: Uint8Array): Hex | Refusal {
+  return sig.length !== SECP256K1_LENGTH && sig[0] === CONFIGURABLE ? configurableAccount(sig) : primitiveSigner(sig, hash);
+}
+
+/**
  * The sender of a signed `0x76` transaction, or of the `0x78` form, as Tempo recovers it from the sender's signature
  * over what the sender signed (`senderSigned`), a `0x78` envelope whose item 11 names another account being
  * `tempo/tx-malformed`: a primitive signature's signer, or for a keychain signature (`0x04`, a 20-byte account and a
- * primitive signature over keccak256(`0x04` ‖ that hash ‖ the account)) that account. A keychain signature of type
+ * primitive signature over keccak256(`0x04` ‖ that hash ‖ the account)) that account, or for a configurable account
+ * signature (`0x05`, Tempo T14) the account it names (`configurableAccount`). A keychain signature of type
  * `0x03` is `tempo/tx-malformed`: Tempo's transaction specification rejects that format from T1C onward ("Keychain";
  * "Transaction Validation", step 1), and Tempo's node refuses it once T1C is active (tempoxyz/tempo `7d4fd03`,
  * `crates/revm/src/handler.rs`: `validate_version(cfg.spec().is_t1c())`, which answers `LegacyKeychainSignature`), from
  * timestamp 1773327600 on chain 4217 and 1773068400 on chain 42431 (`crates/hardfork/src/constants.rs`,
- * `MAINNET_T1C_TIMESTAMP` and `MODERATO_T1C_TIMESTAMP`). Any other signature is `tempo/tx-malformed`, a `0x05` type
- * byte among them: Tempo's transaction specification lists the secp256k1, P256, WebAuthn and keychain signature types
- * and no other ("Signature Types"), and its signature validation takes any other format as invalid ("Transaction
- * Validation", step 1: "Otherwise invalid"). Tempo's node answers any other type byte "Unknown signature type
- * identifier" (tempoxyz/tempo `7d4fd03`, `crates/primitives/src/transaction/tt_signature.rs`:
- * `TempoSignature::from_bytes` reads `0x03` and `0x04` and passes every other signature to
- * `PrimitiveSignature::from_bytes`, which reads 65 bytes, `0x01` and `0x02`).
+ * `MAINNET_T1C_TIMESTAMP` and `MODERATO_T1C_TIMESTAMP`). Any other signature is `tempo/tx-malformed`. The `0x05` type
+ * is read because Tempo's node includes it once T14 is active ("accounts with multiple signers sign with the `0x05`
+ * multisig signature… If you parse or verify Tempo transaction signatures yourself, handle this type", Tempo's T14
+ * upgrade notes; scheduled on chain 42431 from 2026-11-24 15:00 UTC and on chain 4217 from 2026-12-08 15:00 UTC); before
+ * T14 the node answers it "Unknown signature type identifier", so no such transaction lands.
  */
 export function tempoSender(wire: Uint8Array): Hex | Refusal {
   const items = decodeEnvelope(wire);
@@ -144,7 +183,7 @@ function signerOf(items: readonly RlpItem[]): Hex | Refusal {
     const inner = primitiveSigner(sig.subarray(21), keccak(concat([Uint8Array.of(KEYCHAIN_V2), hash, account])));
     return isRefusal(inner) ? inner : hexOf(account);
   }
-  return primitiveSigner(sig, hash);
+  return accountSigner(sig, hash);
 }
 
 /**
@@ -186,7 +225,8 @@ export function carriedKeyAuthorization(wire: Uint8Array): Hex | undefined | Ref
 
 /**
  * The account whose root key signed a key authorization, rlp([authorization, signature]): the signature's signer over
- * keccak256 of the authorization's bytes as received (`primitiveSigner`), the digest the root key signs
+ * keccak256 of the authorization's bytes as received (`primitiveSigner`), or the account a configurable account
+ * signature (`0x05`) names (`configurableAccount`), the digest the root key signs
  * (`KeyAuthorizationUnsigned`). Any other form is `tempo/key-authorization-malformed`.
  */
 export function keyAuthorizationSigner(signed: Uint8Array): Hex | Refusal {
@@ -195,6 +235,6 @@ export function keyAuthorizationSigner(signed: Uint8Array): Hex | Refusal {
   if (top === undefined || top.kind !== "list" || top.items.length !== 2) return bad;
   const [auth, sig] = top.items as [RlpItem, RlpItem];
   if (auth.kind !== "list" || sig.kind !== "bytes") return bad;
-  const signer = primitiveSigner(sig.bytes, keccak(auth.raw));
+  const signer = accountSigner(sig.bytes, keccak(auth.raw));
   return isRefusal(signer) ? bad : (signer.toLowerCase() as Hex);
 }

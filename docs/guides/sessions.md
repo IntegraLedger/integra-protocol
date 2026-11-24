@@ -160,7 +160,16 @@ voucher or the close. It does not build a top-up, which is a further deposit (`m
 the pairing's draft does not define, such as a `topUp` on the XRP Ledger, is `mpp/session-action`, as `channel.kind`
 answers it. On the XRP Ledger session the voucher and the close name the channel's payer, the opening's `Account`, by
 `source`, `did:pkh:xrpl:{network}:{address}`, as the opening's credential does: the stock server refuses a credential
-without it.
+without it. On the Tempo session they name the payer, the opening transaction's sender, the same way,
+`did:pkh:eip155:{chainId}:{address}`, as mppx's own client does; the stock server refuses a voucher or close without it.
+A Tempo v2 close is two signing requests, the final voucher and then
+`CloseAuthorization(bytes32 channelId,uint96 cumulativeAmount)` under the voucher's domain, and `complete` takes the two
+signatures in that order and writes the second as `closeSignature`, which the stock server requires.
+
+A Tempo session's opening signs its voucher at the challenge's `amount`, the price of the request the opening pays, as
+mppx's client does; the stock server refuses an opening whose voucher is below it. The opening's `funding.validBefore`
+is the challenge's `expires`, or the choice's `now` plus 240 seconds where that is earlier: Tempo's node refuses an
+expiring-nonce transaction whose `validBefore` is more than 300 seconds past the block's timestamp.
 
 On MPP, `buildWithin` reads the within challenge, the challenge of the seller's 402 within the channel, as the
 pairing's `channel.kind`, `channel.ref` and `channel.boundWithin` read the payment that carries it, with their code for

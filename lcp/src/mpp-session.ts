@@ -164,6 +164,19 @@ export interface VoucherTypedData {
   message: { channelId: Hex; cumulativeAmount: bigint };
 }
 
+/**
+ * The second typed data a Tempo v2 close signs: `CloseAuthorization(bytes32 channelId,uint96 cumulativeAmount)` under
+ * the voucher's domain, "TIP20 Channel Reserve". Its members are the voucher's and its primary type is another, so a
+ * voucher's signature is not a close authorization. The payer or the channel's authorized signer signs it, and the
+ * close carries the signature as `closeSignature` beside the final voucher's `signature`.
+ */
+export interface CloseAuthorizationTypedData {
+  domain: { name: "TIP20 Channel Reserve"; version: "1"; chainId: number; verifyingContract: Hex };
+  primaryType: "CloseAuthorization";
+  types: { CloseAuthorization: [{ name: "channelId"; type: "bytes32" }, { name: "cumulativeAmount"; type: "uint96" }] };
+  message: { channelId: Hex; cumulativeAmount: bigint };
+}
+
 export type SessionUnsigned = {
   funding:
     | {
@@ -285,15 +298,16 @@ export interface SessionWithin {
 
 /** A request to the buyer's signer for an in-channel payment. */
 export type WithinSigningRequest =
-  | { kind: "eip712"; typedData: VoucherTypedData | HederaVoucherTypedData }
+  | { kind: "eip712"; typedData: VoucherTypedData | HederaVoucherTypedData | CloseAuthorizationTypedData }
   | { kind: "ed25519-raw"; message: Uint8Array<ArrayBuffer>; signer: string }
   | { kind: "xrpl-claim"; channelId: string; drops: bigint; bytes: Uint8Array<ArrayBuffer> };
 
 /**
- * One signing request; `complete` takes its one signature and returns the in-channel credential, measured as `bound`
- * measures every credential: one over the credential size bound, 64 KiB, its challenge included, is
- * `mpp/credential-malformed`, as each session pairing's `channel.kind`, `channel.ref` and `channel.boundWithin`
- * refuse it.
+ * The signing requests, signed in order; `complete` takes one signature per request, in that order, and returns the
+ * in-channel credential, measured as `bound` measures every credential: one over the credential size bound, 64 KiB,
+ * its challenge included, is `mpp/credential-malformed`, as each session pairing's `channel.kind`, `channel.ref` and
+ * `channel.boundWithin` refuse it. There is one request, except for a Tempo v2 close, which has two: the final voucher,
+ * then the close authorization (`CloseAuthorizationTypedData`).
  */
 export interface SessionWithinUnsigned {
   requests: readonly WithinSigningRequest[];
@@ -358,6 +372,14 @@ function oneHexSignature(signatures: readonly string[]): Hex | Refusal {
   return isHexBytes(s, 1, MAX_SIGNATURE_BYTES) ? s : refusal("mpp/credential-malformed");
 }
 
+/** The two signatures of a Tempo v2 close's `complete`, in the requests' order: each `0x` and 1 to 8192 bytes of hex. */
+function twoHexSignatures(signatures: readonly string[]): [Hex, Hex] | Refusal {
+  if (!Array.isArray(signatures) || signatures.length !== 2) return refusal("mpp/credential-malformed");
+  const [a, b] = signatures;
+  if (!isHexBytes(a, 1, MAX_SIGNATURE_BYTES) || !isHexBytes(b, 1, MAX_SIGNATURE_BYTES)) return refusal("mpp/credential-malformed");
+  return [a, b];
+}
+
 const SESSION_EVM = "mpp/session/evm" as const;
 const SESSION_TEMPO = "mpp/session/tempo" as const;
 const SUBSCRIPTION = "mpp/subscription/tempo" as const;
@@ -380,6 +402,17 @@ export const EVM_CLOSE_SELECTORS = Object.freeze(["0x0d65c51d", "0x79d35ded", "0
 const TEMPO_V1_DEFAULT_CHAIN = 4217;
 /** The shortest voucher signature `complete` takes: one byte. */
 const SHORTEST_SIGNATURE = "0x00";
+/**
+ * How long after the buyer's clock (the choice's `now`) a Tempo opening's `validBefore` is set, at most, in seconds.
+ * Tempo's node refuses an expiring-nonce transaction whose `validBefore` is more than 300 seconds after the including
+ * block's timestamp, or less than about 3 seconds after it. `now` is read when the payment is chosen, before the
+ * funding and the voucher are approved and signed (a gate may sign much later, with an external signer), so the window
+ * is counted from the choice and kept well below the node's 300: 240 seconds leaves 60 for a buyer's clock ahead of
+ * the node's and a block that lags the second, and the whole rest for the signing and the broadcast.
+ */
+const TEMPO_VALIDITY_SECONDS = 240;
+/** A request `amount`: a decimal integer without leading zeros, at most 78 digits. */
+const DECIMAL_AMOUNT = /^(?:0|[1-9][0-9]{0,77})$/;
 const MAX_WIRE = 65_536;
 /** `open(address,address,uint128,bytes32,address)`: the selector and five words. */
 const OPEN_CALL_BYTES = 164;
@@ -1884,7 +1917,7 @@ async function evmBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWith
 
 /**
  * The one `eip712` voucher request, and the credential of the draft's members: action, channel, amount, signature;
- * its challenge is the snapshot `withinChecks` holds.
+ * its challenge is the snapshot `withinChecks` holds, and its `source`, where given, the payer's DID.
  */
 function withinUnsigned(
   challenge: WithinChallenge,
@@ -1892,6 +1925,7 @@ function withinUnsigned(
   typedData: VoucherTypedData,
   channelId: Hex,
   descriptor?: Json,
+  source?: string,
 ): SessionWithinUnsigned {
   const action = w.action;
   const cumulativeAmount = w.cumulativeAmount.toString();
@@ -1902,7 +1936,46 @@ function withinUnsigned(
       if (isRefusal(signature)) return signature;
       return measured({
         challenge,
+        ...(source === undefined ? {} : { source }),
         payload: { action, channelId, cumulativeAmount, signature, ...(descriptor === undefined ? {} : { descriptor }) },
+      });
+    },
+  };
+}
+
+/**
+ * A Tempo v2 close: two `eip712` requests, the final voucher and then
+ * `CloseAuthorization(bytes32 channelId,uint96 cumulativeAmount)` under the voucher's domain with the voucher's
+ * message, and the credential of the voucher's members with the second signature as `closeSignature`, and `source`,
+ * the payer's DID. The reference server refuses a v2 close without `closeSignature`: mppx 0.17.6's and 0.21.1's
+ * credential schema requires it (`tempo/Methods.js`), and `verifyCloseAuthorization` holds it to the payer or the
+ * authorized signer over that type, so the voucher's signature in its place is refused too.
+ */
+function tempoCloseUnsigned(
+  challenge: WithinChallenge,
+  w: SessionWithin,
+  typedData: VoucherTypedData,
+  channelId: Hex,
+  descriptor: Json | undefined,
+  source: string,
+): SessionWithinUnsigned {
+  const cumulativeAmount = w.cumulativeAmount.toString();
+  const authorization: CloseAuthorizationTypedData = {
+    domain: { name: "TIP20 Channel Reserve", version: "1", chainId: typedData.domain.chainId, verifyingContract: typedData.domain.verifyingContract },
+    primaryType: "CloseAuthorization",
+    types: { CloseAuthorization: [{ name: "channelId", type: "bytes32" }, { name: "cumulativeAmount", type: "uint96" }] },
+    message: { channelId, cumulativeAmount: w.cumulativeAmount },
+  };
+  return {
+    requests: [{ kind: "eip712", typedData }, { kind: "eip712", typedData: authorization }],
+    complete(signatures: readonly string[]): MppCredential | Refusal {
+      const signed = twoHexSignatures(signatures);
+      if (isRefusal(signed)) return signed;
+      const [signature, closeSignature] = signed;
+      return measured({
+        challenge,
+        source,
+        payload: { action: "close", channelId, cumulativeAmount, signature, closeSignature, ...(descriptor === undefined ? {} : { descriptor }) },
       });
     },
   };
@@ -2102,18 +2175,35 @@ async function tempoKeys(input: unknown): Promise<Omit<SessionRef, "payee"> | Re
  * whose sender is not `from`, or whose `open` call names another payee, operator, token or authorizedSigner, is
  * `tempo/descriptor-mismatch` on v2 and `mpp/channel-not-bound` on v1. Nothing else in the transaction is compared with
  * what `build` made, its deposit among them: `bound` does not read it.
+ *
+ * The opening's voucher is signed at the challenge's `amount`, the price of the request the opening pays, as the
+ * reference client signs it (mppx `createOpenPayload`, `initialAmount`): the stock server refuses an opening whose
+ * voucher is below it ("voucher amount is less than request amount"). A request whose `amount` is not a decimal is
+ * `mpp/request-malformed`, and a `deposit` below it, which could not pay the request it opens for,
+ * `mpp/input-malformed`. `funding.validBefore` is the challenge's `expires`, or 240 seconds after the choice's `now`
+ * where that is earlier (`TEMPO_VALIDITY_SECONDS`), and a `now` that is not a non-negative safe integer is
+ * `mpp/input-malformed`: Tempo's node refuses an expiring-nonce transaction whose `validBefore` is more than 300
+ * seconds after the block's timestamp, so a 300-second challenge's `expires` is refused whenever the block's timestamp
+ * is behind the second the challenge was issued.
  */
 async function tempoBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUnsigned | Refusal> {
   const o = offerFor(choice, h, SESSION_TEMPO);
   if (isRefusal(o)) return o;
-  const validBefore = expiresOf(o);
-  if (isRefusal(validBefore)) return validBefore;
+  const expires = expiresOf(o);
+  if (isRefusal(expires)) return expires;
+  const now = choice.now;
+  if (!Number.isSafeInteger(now) || now < 0) return refusal("mpp/input-malformed");
+  const validBefore = Math.min(expires, now + TEMPO_VALIDITY_SECONDS);
   const p = paramsOf(o.challenge);
   if (isRefusal(p)) return p;
+  const price = o.request["amount"];
+  if (typeof price !== "string" || !DECIMAL_AMOUNT.test(price)) return refusal("mpp/request-malformed");
+  const initialAmount = BigInt(price);
   const deposit = choice.deposit;
   if (typeof deposit !== "bigint" || deposit <= 0n || deposit >= (p.version === "v2" ? U96 : U128)) {
     return refusal("mpp/input-malformed");
   }
+  if (deposit < initialAmount) return refusal("mpp/input-malformed");
   const signer = choice.authorizedSigner ?? ZERO;
   if (!isAddress(signer)) return refusal("mpp/input-malformed");
   const operator = (p.details["operator"] as Hex | undefined) ?? ZERO;
@@ -2162,7 +2252,7 @@ async function tempoBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUns
         transaction: signedTx,
         authorizedSigner: signer,
         ...(!isRefusal(c) && "descriptor" in c && c.descriptor !== undefined ? { descriptor: c.descriptor } : {}),
-        cumulativeAmount: "0",
+        cumulativeAmount: initialAmount.toString(),
         signature: voucherSignature,
       },
     };
@@ -2184,8 +2274,8 @@ async function tempoBuild(choice: SessionChoice, h: AtrHash): Promise<SessionUns
       if (isRefusal(c)) return c;
       const channelId = c.payload["channelId"] as Hex;
       return p.version === "v2"
-        ? voucherData("TIP20 Channel Reserve", "uint96", p.chainId, p.escrow, channelId)
-        : voucherData("Tempo Stream Channel", "uint128", p.chainId, p.escrow, channelId);
+        ? voucherData("TIP20 Channel Reserve", "uint96", p.chainId, p.escrow, channelId, initialAmount)
+        : voucherData("Tempo Stream Channel", "uint128", p.chainId, p.escrow, channelId, initialAmount);
     },
     complete(signedTx: Hex, voucherSignature: Hex): MppCredential | Refusal {
       const c = held(signedTx, voucherSignature);
@@ -2220,7 +2310,10 @@ function tempoCloseRef(chosen: MppChallenge, channel: string): SessionRef | Refu
 /**
  * A voucher, or a close's final voucher, on the channel the held opening opened: under "Tempo Stream Channel" with
  * `uint128` on v1, and under "TIP20 Channel Reserve" with `uint96` on v2, whose credential also carries the opening's
- * descriptor. The channel id, the escrow, the chain and the descriptor come from the opening. The within challenge is
+ * descriptor. Every credential carries `source`, the DID of the payer, the opening transaction's sender. A v2 close has a
+ * second request, the close authorization, whose signature the credential carries as `closeSignature`
+ * (`tempoCloseUnsigned`); a v1 close is its final voucher alone. The channel id, the escrow, the chain and the
+ * descriptor come from the opening. The within challenge is
  * read as `channel.boundWithin` reads it beside that payload: under `v2`, its escrow, chain and operator must give the
  * opening's channel id with the opening's descriptor, else `tempo/descriptor-mismatch` (so a v2 within challenge over a
  * v1 opening, whose payment carries no descriptor, too); under `v1` over a v2 opening, `mpp/not-bound-within`. A
@@ -2242,12 +2335,16 @@ async function tempoBuildWithin(w: SessionWithin, h: AtrHash): Promise<SessionWi
     const salt = descriptorSalt(descriptor === undefined ? { channelId: o.channel } : { channelId: o.channel, descriptor }, pw);
     if (isRefusal(salt)) return salt;
   } else if (p.version === "v2") return refusal("mpp/not-bound-within");
+  // The payer, the opening transaction's sender, as the reference client writes it on every session credential
+  // (mppx `serializeCredential`); mppx 0.21.1 refuses a voucher or close whose `source` is not the channel's payer.
+  const source = `did:pkh:eip155:${p.chainId}:${o.sender}`;
   if (p.version === "v2") {
     const typedData = voucherData("TIP20 Channel Reserve", "uint96", p.chainId, p.escrow, o.channel, w.cumulativeAmount);
-    return withinUnsigned(held.challenge, w, typedData, o.channel, descriptor);
+    if (w.action === "close") return tempoCloseUnsigned(held.challenge, w, typedData, o.channel, descriptor, source);
+    return withinUnsigned(held.challenge, w, typedData, o.channel, descriptor, source);
   }
   const typedData = voucherData("Tempo Stream Channel", "uint128", p.chainId, p.escrow, o.channel, w.cumulativeAmount);
-  return withinUnsigned(held.challenge, w, typedData, o.channel);
+  return withinUnsigned(held.challenge, w, typedData, o.channel, undefined, source);
 }
 
 // ── mpp/subscription/tempo.

@@ -467,6 +467,7 @@ describe("mpp-session-tempo.json", () => {
       kind: "tempo-call",
       chainId: 42431,
       call: { to: f.escrowV2, data: T.TS1.expectCalldata },
+      // The challenge's expires (fixed.now + 60), earlier than fixed.now + 240.
       validBefore: 1790000060,
       broadcast: false,
     });
@@ -485,7 +486,10 @@ describe("mpp-session-tempo.json", () => {
       .toBe(T.TS3.expectChannelId);
     const voucher = u.voucher(toHex(wire));
     expect(voucher).toMatchObject({ domain: { name: "TIP20 Channel Reserve", chainId: 42431, verifyingContract: f.escrowV2 } });
-    expect(hashTypedData(forViem(voucher))).toBe(T.TS4.expectVoucher0);
+    // The opening's voucher is at the request's amount, 100, as mppx's client signs it; the same voucher at 0 is TS4's.
+    expect(voucher).toMatchObject({ message: { channelId: T.TS3.expectChannelId, cumulativeAmount: 100n } });
+    expect(hashTypedData(forViem(voucher))).toBe(T.TS4.expectVoucherOpen);
+    expect(hashTypedData(forViem({ ...(voucher as object), message: { channelId: T.TS3.expectChannelId, cumulativeAmount: 0n } }))).toBe(T.TS4.expectVoucher0);
     const v250 = { ...(voucher as object), message: { channelId: T.TS3.expectChannelId, cumulativeAmount: 250n } };
     affix(hashTypedData(forViem(v250)), T.TS4.expectVoucher250);
     expect(hashTypedData(forViem(v250))).toBe(T.TS4.expectVoucher250.whole);
@@ -570,6 +574,50 @@ describe("mpp-session-tempo.json", () => {
     expect(ref).not.toHaveProperty("validBefore");
   });
 
+  // The stock server refuses an opening whose voucher is below the request's amount (mppx 0.17.6 and 0.21.1,
+  // CredentialVerification.js assertOpenCredentialCoversRequest: "voucher amount is less than request amount"), and
+  // its client signs the opening's voucher at that amount (ChannelOps.js createOpenPayload, initialAmount).
+  it("the opening's voucher and credential are at the request's amount; a deposit below it, or an amount that is not a decimal, builds nothing", async () => {
+    const withAmount = (amount: Json) => challenge("tempo", "session", JSON.stringify({ ...JSON.parse(f.requestV2), amount }));
+    const build = (ch: MppChallenge, d: bigint) => sessionTempo.build({ challenge: placed(ch), from: f.payer, now: f.now, deposit: d }, H);
+    for (const amount of ["100", "0", "250"]) {
+      const u = unsignedOf(await build(withAmount(amount), deposit));
+      const wire = await openWire((u.funding as { call: { data: ViemHex } }).call.data);
+      const voucher = u.voucher(toHex(wire)) as { message: { cumulativeAmount: bigint } };
+      expect(voucher.message.cumulativeAmount).toBe(BigInt(amount));
+      const cred = u.complete(toHex(wire), await payer.signTypedData(forViem(voucher))) as MppCredential;
+      expect(cred.payload["cumulativeAmount"]).toBe(amount);
+      expect(await sessionTempo.bound(cred)).toBe(H);
+    }
+    // A deposit equal to the amount builds; one below it could not pay the request the opening is for.
+    expect(unsignedOf(await build(withAmount("100"), 100n)).funding.kind).toBe("tempo-call");
+    expect(await build(withAmount("100"), 99n)).toEqual({ refused: true, code: "mpp/input-malformed" });
+    for (const amount of [undefined, 100, "-1", "01", "1.5", "0x64", ""]) {
+      expect(await build(withAmount(amount as Json), deposit)).toEqual({ refused: true, code: "mpp/request-malformed" });
+    }
+  });
+
+  // Tempo's node refuses an expiring-nonce transaction whose validBefore is more than 300 s after the block's timestamp
+  // ("expiring nonce valid_before (…) too far in the future: must be within 300s of block timestamp"); viem's Tempo
+  // the choice's now is read before the funding is approved and signed, so the window is counted from it: 240 s, capped
+  // at the challenge's expiry.
+  it("funding.validBefore is the earlier of the challenge's expires and the choice's now + 240; a now that is not a non-negative safe integer builds nothing", async () => {
+    const expires = 1790000060;
+    const at = async (now: number) => {
+      const u = await sessionTempo.build({ challenge: placed(V2), from: f.payer, now, deposit }, H);
+      return "funding" in (u as object) ? (u as SessionUnsigned).funding : u;
+    };
+    expect(await at(f.now)).toMatchObject({ validBefore: expires });
+    expect(await at(f.now - 300)).toMatchObject({ validBefore: f.now - 60 });
+    expect(await at(expires - 241)).toMatchObject({ validBefore: expires - 1 });
+    expect(await at(expires - 240)).toMatchObject({ validBefore: expires });
+    expect(await at(expires + 3600)).toMatchObject({ validBefore: expires });
+    expect(await at(0)).toMatchObject({ validBefore: 240 });
+    for (const now of [-1, 1.5, Number.NaN, 2 ** 53, "1790000000" as unknown as number, undefined as unknown as number]) {
+      expect(await at(now)).toEqual({ refused: true, code: "mpp/input-malformed" });
+    }
+  });
+
   it("TS5: v1's open, byte for byte as eth-abi and viem encode it, channel id and voucher", async () => {
     const v1Open = parseAbi(["function open(address payee, address token, uint128 deposit, bytes32 salt, address authorizedSigner)"]);
     expect(encodeFunctionData({ abi: v1Open, functionName: "open", args: [f.recipient.toLowerCase(), f.pathUSD, deposit, H, ZERO] })).toBe(
@@ -596,8 +644,10 @@ describe("mpp-session-tempo.json", () => {
     expect(toBytes(u.funding.call.data).length).toBe(164);
     const voucher = u.voucher(toHex(await openWire(u.funding.call.data, sig65, f.escrowV1)));
     expect(voucher).toMatchObject({ domain: { name: "Tempo Stream Channel" }, message: { channelId: T.TS5.expectChannelId } });
-    affix(hashTypedData(forViem(voucher)), T.TS5.expectVoucher);
-    expect(hashTypedData(forViem(voucher))).toBe(T.TS5.expectVoucher.whole);
+    affix(hashTypedData(forViem(voucher)), T.TS5.expectVoucherOpen);
+    expect(hashTypedData(forViem(voucher))).toBe(T.TS5.expectVoucherOpen.whole);
+    const zero = { ...(voucher as object), message: { channelId: T.TS5.expectChannelId, cumulativeAmount: 0n } };
+    expect(hashTypedData(forViem(zero))).toBe(T.TS5.expectVoucher.whole);
     expect(sessionTempo.closeRef(V1, T.TS5.expectChannelId)).toEqual(T.TS5.expectCloseRef);
     expect(T.TS5.expectCloseRef.bindingLog.topic0).toBe(CHANNEL_CLOSED_V1_TOPIC);
   });

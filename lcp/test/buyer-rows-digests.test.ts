@@ -103,7 +103,7 @@ describe("B6 payments built from their inputs where the file records the signed 
     await signedBy(voucher, p.voucherSignature, f.payer);
   });
 
-  it("mpp/session/tempo: the open's wire has TS2's length and SHA-256, and the zero voucher's digest is TS4's", async () => {
+  it("mpp/session/tempo: the open's wire has TS2's length and SHA-256, and the opening voucher's digest, at the request's amount, is TS4's", async () => {
     const d = load("mpp-session-tempo.json");
     const f = d.fixed;
     const p = presented(d, "mpp/session/tempo").payload;
@@ -120,7 +120,8 @@ describe("B6 payments built from their inputs where the file records the signed 
       primaryType: "Voucher",
       message: { channelId: p.channelId, cumulativeAmount: BigInt(p.cumulativeAmount) },
     } as TypedDataDefinition);
-    expect(voucher).toBe(d.TS4.expectVoucher0);
+    expect(p.cumulativeAmount).toBe(JSON.parse(f.requestV2).amount);
+    expect(voucher).toBe(d.TS4.expectVoucherOpen);
     await signedBy(voucher, p.signature, f.payer);
   });
 

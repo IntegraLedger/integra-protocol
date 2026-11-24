@@ -38,6 +38,31 @@ The reference fields every logs-searching read takes.
 
 ***
 
+### CloseAuthorizationTypedData
+
+The second typed data a Tempo v2 close signs: `CloseAuthorization(bytes32 channelId,uint96 cumulativeAmount)` under
+the voucher's domain, "TIP20 Channel Reserve". Its members are the voucher's and its primary type is another, so a
+voucher's signature is not a close authorization. The payer or the channel's authorized signer signs it, and the
+close carries the signature as `closeSignature` beside the final voucher's `signature`.
+
+#### Properties
+
+| Property | Type |
+| ------ | ------ |
+| <a id="property-domain"></a> `domain` | `object` |
+| `domain.chainId` | `number` |
+| `domain.name` | `"TIP20 Channel Reserve"` |
+| `domain.verifyingContract` | `` `0x${string}` `` |
+| `domain.version` | `"1"` |
+| <a id="property-message"></a> `message` | `object` |
+| `message.channelId` | `` `0x${string}` `` |
+| `message.cumulativeAmount` | `bigint` |
+| <a id="property-primarytype"></a> `primaryType` | `"CloseAuthorization"` |
+| <a id="property-types"></a> `types` | `object` |
+| `types.CloseAuthorization` | \[\{ `name`: `"channelId"`; `type`: `"bytes32"`; \}, \{ `name`: `"cumulativeAmount"`; `type`: `"uint96"`; \}\] |
+
+***
+
 ### EvmLogEntry
 
 A log as `eth_getLogs` gives it: the log, the transaction that emitted it, its block and its index in that block.
@@ -858,10 +883,11 @@ cumulative amount to sign; and the action.
 
 ### SessionWithinUnsigned
 
-One signing request; `complete` takes its one signature and returns the in-channel credential, measured as `bound`
-measures every credential: one over the credential size bound, 64 KiB, its challenge included, is
-`mpp/credential-malformed`, as each session pairing's `channel.kind`, `channel.ref` and `channel.boundWithin`
-refuse it.
+The signing requests, signed in order; `complete` takes one signature per request, in that order, and returns the
+in-channel credential, measured as `bound` measures every credential: one over the credential size bound, 64 KiB,
+its challenge included, is `mpp/credential-malformed`, as each session pairing's `channel.kind`, `channel.ref` and
+`channel.boundWithin` refuse it. There is one request, except for a Tempo v2 close, which has two: the final voucher,
+then the close authorization (`CloseAuthorizationTypedData`).
 
 #### Properties
 
@@ -1123,16 +1149,16 @@ The token's EIP-712 domain `name` and `version`, which x402's verification reads
 
 | Property | Type |
 | ------ | ------ |
-| <a id="property-domain"></a> `domain` | `object` |
+| <a id="property-domain-1"></a> `domain` | `object` |
 | `domain.chainId` | `number` |
 | `domain.name` | `"EVM Payment Channel"` \| `"Tempo Stream Channel"` \| `"TIP20 Channel Reserve"` |
 | `domain.verifyingContract` | `` `0x${string}` `` |
 | `domain.version` | `"1"` |
-| <a id="property-message"></a> `message` | `object` |
+| <a id="property-message-1"></a> `message` | `object` |
 | `message.channelId` | `` `0x${string}` `` |
 | `message.cumulativeAmount` | `bigint` |
-| <a id="property-primarytype"></a> `primaryType` | `"Voucher"` |
-| <a id="property-types"></a> `types` | `object` |
+| <a id="property-primarytype-1"></a> `primaryType` | `"Voucher"` |
+| <a id="property-types-1"></a> `types` | `object` |
 | `types.Voucher` | \[\{ `name`: `"channelId"`; `type`: `"bytes32"`; \}, \{ `name`: `"cumulativeAmount"`; `type`: `"uint128"` \| `"uint96"`; \}\] |
 
 ***
@@ -1595,7 +1621,7 @@ refuses one over the credential size bound, 64 KiB, with `mpp/credential-malform
 
 ### WithinSigningRequest
 
-> **WithinSigningRequest** = \{ `kind`: `"eip712"`; `typedData`: [`VoucherTypedData`](#vouchertypeddata) \| [`HederaVoucherTypedData`](hedera.md#hederavouchertypeddata); \} \| \{ `kind`: `"ed25519-raw"`; `message`: `Uint8Array`\<`ArrayBuffer`\>; `signer`: `string`; \} \| \{ `bytes`: `Uint8Array`\<`ArrayBuffer`\>; `channelId`: `string`; `drops`: `bigint`; `kind`: `"xrpl-claim"`; \}
+> **WithinSigningRequest** = \{ `kind`: `"eip712"`; `typedData`: [`VoucherTypedData`](#vouchertypeddata) \| [`HederaVoucherTypedData`](hedera.md#hederavouchertypeddata) \| [`CloseAuthorizationTypedData`](#closeauthorizationtypeddata); \} \| \{ `kind`: `"ed25519-raw"`; `message`: `Uint8Array`\<`ArrayBuffer`\>; `signer`: `string`; \} \| \{ `bytes`: `Uint8Array`\<`ArrayBuffer`\>; `channelId`: `string`; `drops`: `bigint`; `kind`: `"xrpl-claim"`; \}
 
 A request to the buyer's signer for an in-channel payment.
 
