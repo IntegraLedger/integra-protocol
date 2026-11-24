@@ -18,6 +18,11 @@ configuration, the answers or the storage.
   and never final `failed`, and a read during which a ledger closed could answer final and the next read pending. The
   search now ends at the validated ledger of the same `server_info` answer, as the Binder's XRPL reader's does; the
   reader no longer calls `ledger_current` (note row 29).
+- `xrpl`, multisigned payer: a payment in an issued currency carrying `SendMax`, which the class requires of one, was
+  refused `invalid_exact_xrpl_payload_paths_not_allowed`. The own path now takes the class's `SendMax` rule and
+  reasons: `invalid_exact_xrpl_payload_sendmax_not_allowed` on XRP (0.5.1: `paths_not_allowed`), and on an issued
+  currency `sendmax_required`, `sendmax_iou_mismatch` and `sendmax_too_low`; `DeliverMin` is refused
+  `invalid_exact_xrpl_payload_delivermin_not_allowed` (0.5.1: `paths_not_allowed`) (note row 10).
 
 ## [0.5.1] - 2026-11-20
 

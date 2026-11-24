@@ -4,7 +4,7 @@
 // hash, a code, the payer's instrument) or the ledger's rule the case names.
 import { readFileSync } from "node:fs";
 import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
-import { decode, encode, hashes } from "xrpl";
+import { decode, ECDSA, encode, hashes, multisign, Wallet } from "xrpl";
 import { afterEach, describe, expect, it } from "vitest";
 import { serveSettler } from "../src/core.js";
 import type { Module, Registration, X402Payment } from "../src/module.js";
@@ -19,6 +19,9 @@ const PAYER = V.fixed.payer as string;
 /** The multisigned rows' signers, from Ed25519 entropy 03x16, 04x16 and 05x16, as the vector file names them. */
 const SIGNERS = ["rPPdduC9MRTrXZP1J7MQyEKKEYiFigWZ6Q", "rfPaNmieF15VqV752Q8qAc6ugtkKhWsA2R", "rH9ESAdrFfDAZtCZGa7JiwNJfKnC6CmGFQ"];
 const PRESENTED = V.buyer.rows[1].input.presented;
+
+/** The signers' wallets, from the same entropy. */
+const WALLETS = [3, 4, 5].map((b) => Wallet.fromEntropy(new Uint8Array(16).fill(b), { algorithm: ECDSA.ed25519 }));
 
 let node: Stub | undefined;
 let settler: Serving | undefined;
@@ -221,6 +224,53 @@ describe("a multisigned payment, through the own path", () => {
       success: false,
       errorReason: "invalid_exact_xrpl_payload_signature",
     });
+    expect(methods()).not.toContain("submit");
+  });
+});
+
+/** V2's Payment with `change` applied, multisigned by `signers`, each signing as the account `as` names, else its own. */
+function multisigned(change: Record<string, unknown>, signers = WALLETS.slice(0, 2), as: (string | undefined)[] = []): string {
+  const { TxnSignature, SigningPubKey, ...tx } = decode(V.V2.blob) as Record<string, unknown>;
+  void TxnSignature;
+  void SigningPubKey;
+  const unsigned: Record<string, unknown> = { ...tx, Fee: "48", SigningPubKey: "", ...change };
+  for (const [k, v] of Object.entries(unsigned)) if (v === undefined) delete unsigned[k];
+  return multisign(signers.map((w, i) => w.sign(unsigned as never, as[i] ?? true).tx_blob));
+}
+
+describe("a multisigned payment in an issued currency carries SendMax as the class requires it (note row 10)", () => {
+  const ISSUER = SIGNERS[2]!;
+  const USD = (value: string, issuer = ISSUER) => ({ currency: "USD", issuer, value });
+  const accepted = { ...V.V2.accepted, asset: "USD", amount: "10", extra: { ...V.V2.accepted.extra, issuer: ISSUER } } as PaymentRequirements;
+
+  it("verifies a SendMax of the Amount, and one above it (a transfer fee), and settles one", async () => {
+    const r = await registrationOn(2);
+    for (const sendMax of ["10", "10.05"]) {
+      const p = payment(multisigned({ Amount: USD("10"), SendMax: USD(sendMax) }), accepted);
+      expect([sendMax, await routed(r, p).facilitator.verify(p.payload, p.requirements)]).toEqual([sendMax, { isValid: true, payer: PAYER }]);
+    }
+    const p = payment(multisigned({ Amount: USD("10"), SendMax: USD("10") }), accepted);
+    expect(await routed(r, p).facilitator.settle(p.payload, p.requirements)).toMatchObject({ success: true, payer: PAYER });
+  });
+
+  it("refuses with the class's reasons: no SendMax, one below the Amount, of another issuer, Paths; and any SendMax on XRP", async () => {
+    const r = await registrationOn(2);
+    const rows: [string, Record<string, unknown>, PaymentRequirements, string][] = [
+      ["no SendMax", { Amount: USD("10") }, accepted, "invalid_exact_xrpl_payload_sendmax_required"],
+      ["SendMax below", { Amount: USD("10"), SendMax: USD("9.99") }, accepted, "invalid_exact_xrpl_payload_sendmax_too_low"],
+      ["another issuer", { Amount: USD("10"), SendMax: USD("10", SIGNERS[1]!) }, accepted, "invalid_exact_xrpl_payload_sendmax_iou_mismatch"],
+      [
+        "Paths",
+        { Amount: USD("10"), SendMax: USD("10"), Paths: [[{ currency: "USD", issuer: SIGNERS[1]! }]] },
+        accepted,
+        "invalid_exact_xrpl_payload_paths_not_allowed",
+      ],
+      ["XRP with SendMax", { SendMax: "1000000" }, V.V2.accepted, "invalid_exact_xrpl_payload_sendmax_not_allowed"],
+    ];
+    for (const [name, change, req, reason] of rows) {
+      const p = payment(multisigned(change), req);
+      expect([name, await routed(r, p).facilitator.verify(p.payload, p.requirements)]).toEqual([name, { isValid: false, invalidReason: reason }]);
+    }
     expect(methods()).not.toContain("submit");
   });
 });

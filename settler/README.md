@@ -463,7 +463,9 @@ Each member, one entry per network unless it says otherwise:
   (default 30 000); `maxFeeDrops`, optional, the most fee a payment may sign (the class's default, 10 000). The node
   may answer in API version 1's members or version 2's (`tx` answers `tx` and `meta`, or `tx_blob` and `meta_blob`);
   lcp's read searches the payer's history to the validated ledger `server_info` names. Both paths
-  refuse a payment that names a `Delegate` or carries `Memos`, as x402's scheme requires. For `upto`, the payer opens a
+  refuse a payment that names a `Delegate` or carries `Memos`, as x402's scheme requires. The multisigned path makes
+  the class's checks of the `Payment`'s form, its rule for `SendMax` among them (none on XRP; on an issued currency,
+  required, of the `Amount`'s currency and issuer and no less than it). For `upto`, the payer opens a
   payment channel to `payTo` and signs one claim off the ledger; at `/settle` the resource server adds
   `settlementTransaction`, a `PaymentChannelClaim` its `payTo` key signed for the actual charge with `tfClose`, which the
   module checks and submits unchanged; `/verify` refuses a payload that already carries one, as the scheme requires.
