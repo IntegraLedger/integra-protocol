@@ -115,7 +115,14 @@ export function svmReader(network: SolanaNetwork, url: string, deadline: number)
       return result === null ? { notFound: true, slot: at } : landedOf(result);
     },
     async signatures(address, page) {
-      const result = await call("getSignaturesForAddress", [address, page]);
+      // lcp gives `minContextSlot` as a bigint, which JSON cannot carry: the node takes it as a JSON number, within the
+      // range this reader reads a slot in.
+      const { minContextSlot, ...rest } = page;
+      if (minContextSlot !== undefined && (minContextSlot < 0n || minContextSlot > BigInt(Number.MAX_SAFE_INTEGER))) {
+        return malformed("getSignaturesForAddress's minContextSlot is not a slot");
+      }
+      const options = minContextSlot === undefined ? rest : { ...rest, minContextSlot: Number(minContextSlot) };
+      const result = await call("getSignaturesForAddress", [address, options]);
       if (!Array.isArray(result)) return malformed("getSignaturesForAddress is not a list");
       return result.map((s): SvmSignature => {
         if (!isObject(s) || typeof s["signature"] !== "string") return malformed("a signature entry");

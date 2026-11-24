@@ -4,6 +4,15 @@ Every release of `@integraledger/profile-facilitator`, the settler, with what an
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The package is 0.x: a minor release may change the
 configuration, the answers or the storage.
 
+## [Unreleased]
+
+### Fixed
+
+- The `solana` module's reader sends lcp's `minContextSlot` to the node as a JSON number. 0.5.1 passed lcp's bigint to
+  `JSON.stringify`, which threw, so every read whose search lcp bounds by a slot (an opening read with its search, a
+  transfer read) answered `unreadable`, and a settle whose class's answer was lost answered pending for good. A
+  `minContextSlot` outside the slots the reader reads (0 to 2^53 - 1) is refused as a malformed call, sending nothing.
+
 ## [0.5.1] - 2026-11-20
 
 ### Changed
