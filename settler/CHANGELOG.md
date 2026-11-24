@@ -4,6 +4,19 @@ Every release of `@integraledger/profile-facilitator`, the settler, with what an
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The package is 0.x: a minor release may change the
 configuration, the answers or the storage.
 
+## [Unreleased]
+
+### Fixed
+
+- `sui`: `/verify` answered `isValid: true` for a payment whose gas coin the buyer had spent after signing, and
+  `/settle` then answered `unexpected_settle_error` (`settlement_pending` where the coin was merged away).
+  Sui's simulation takes an owned input at its latest version and answers success; execution refuses the transaction
+  (the object's version "is unavailable for consumption"). Before the simulation, the module now reads the objects the
+  transaction names at a version (its gas payment, each owned or immutable input, each object it receives) from the
+  GraphQL endpoint (`multiGetObjects`) and refuses `invalid_transaction` (`sui/object-version-unavailable`) at
+  `/verify` and `/settle` where one is at a later version, no longer live, or held under another digest at that
+  version. A version the endpoint's index does not yet hold shows nothing, and the simulation decides as before.
+
 ## [0.5.1] - 2026-11-20
 
 ### Changed

@@ -2,7 +2,8 @@
  * Sui: the settler's own facilitator for the pairing `x402/exact/sui`, written to x402's Sui scheme
  * (`scheme_exact_sui.md`), which x402 specifies and publishes no code for, and to lcp's profile `x402-exact-sui.md`. The
  * payer signs one programmable transaction carrying H as its one unused `Pure` input; the module checks it (the network,
- * the signature, the gas path the option fixes, a simulation showing the payee's credit) and executes it unchanged.
+ * the signature, the gas path the option fixes, each object it names at a version still at that version, a simulation
+ * showing the payee's credit) and executes it unchanged.
  * It serves the paths where the buyer pays gas and where none is paid (`extra.gasless`), and holds no key: x402's
  * sponsored path needs a gas station, whose wire x402's scheme does not state and whose caller is the buyer's client,
  * so an option naming one is refused. A transaction the buyer already executed is judged at `/verify` by its effects and not refused for having executed; its `/settle`
@@ -19,7 +20,7 @@ import { isObject, type InvalidReason, type OperatorEntry } from "../../answers.
 import { NodeError, sleep } from "../../http.js";
 import { outcomeOf, type Core, type Module, type ModuleStarter } from "../../module.js";
 import { settleReason as settleReasonOf, unexpectedSettle, unexpectedVerify } from "../../unexpected.js";
-import { GraphqlFault, suiNode, type Effects, type Latest, type SuiNode } from "./node.js";
+import { GraphqlFault, suiNode, type Effects, type Executed, type Latest, type ObjectRef, type SuiNode } from "./node.js";
 
 /** The configuration's member `sui`: one entry per network the settler serves. */
 export interface SuiConfig {
@@ -173,13 +174,20 @@ export function suiModule(c: SuiNetworkConfig, core: Core): Module {
     } catch (e) {
       return no(unexpectedVerify(log, { event: "node-call-failed", ...about(i), call: "transaction" }, e));
     }
-    if (read.executed !== null) {
-      const { bytes, effects } = read.executed;
-      if (toBase64(bytes) !== toBase64(i.tx.bytes)) return no(unexpectedVerify(log, { event: "node-answer-differs", ...about(i), call: "transaction" }));
-      if (effects.status !== "SUCCESS") return no("invalid_transaction_state", "sui/executed-failed");
-      if (!credited(i, effects)) return no("invalid_payload", "sui/payee-not-credited");
-      return { executed: effects, latest: read.latest };
+    if (read.executed !== null) return judged(i, read.executed, read.latest);
+    // Sui's simulation takes an owned input at its latest version, not the version the transaction names, and answers
+    // success for one the buyer has since spent; execution refuses it. The node's index is read instead: an input it
+    // shows moved past the version named can never be taken. Where it shows that, the transaction is read again by its
+    // digest, the payment itself being what may have moved it since the first read.
+    let moved: ObjectRef | null;
+    try {
+      moved = await node.unavailable(objectInputs(i.v1), deadline);
+      if (moved !== null) read = await node.transaction(i.tx.digest, deadline);
+    } catch (e) {
+      return no(unexpectedVerify(log, { event: "node-call-failed", ...about(i), call: "multiGetObjects" }, e));
     }
+    if (read.executed !== null) return judged(i, read.executed, read.latest);
+    if (moved !== null) return no("invalid_transaction", "sui/object-version-unavailable");
     let simulated: Effects;
     try {
       simulated = await node.simulate(i.tx.bytes, deadline);
@@ -190,6 +198,15 @@ export function suiModule(c: SuiNetworkConfig, core: Core): Module {
     if (simulated.status !== "SUCCESS") return no("invalid_transaction", "sui/simulation-failed");
     if (!credited(i, simulated)) return no("invalid_payload", "sui/payee-not-credited");
     return { executed: null, latest: read.latest };
+  }
+
+  /** A transaction already executed, judged by its effects: its bytes, status success, the payee's credit. */
+  function judged(i: Inspected, executed: Executed, latest: Latest): Checked | No {
+    const { bytes, effects } = executed;
+    if (toBase64(bytes) !== toBase64(i.tx.bytes)) return no(unexpectedVerify(log, { event: "node-answer-differs", ...about(i), call: "transaction" }));
+    if (effects.status !== "SUCCESS") return no("invalid_transaction_state", "sui/executed-failed");
+    if (!credited(i, effects)) return no("invalid_payload", "sui/payee-not-credited");
+    return { executed: effects, latest };
   }
 
   async function verify(payload: PaymentPayload, requirements: PaymentRequirements): Promise<VerifyResponse> {
@@ -316,6 +333,23 @@ export function suiModule(c: SuiNetworkConfig, core: Core): Module {
     },
   };
   return module;
+}
+
+/**
+ * The objects the transaction takes at a version it names: its gas payment, and each owned or immutable object and
+ * each object it receives among its inputs. A shared object is named by its initial version and is not among them.
+ */
+function objectInputs(v1: V1): ObjectRef[] {
+  const refs = [...(v1.gasData.payment ?? [])];
+  if (v1.kind.$kind === "ProgrammableTransaction") {
+    for (const input of v1.kind.ProgrammableTransaction.inputs) {
+      if (input.$kind !== "Object") continue;
+      const o = input.Object;
+      if (o.$kind === "ImmOrOwnedObject") refs.push(o.ImmOrOwnedObject);
+      else if (o.$kind === "Receiving") refs.push(o.Receiving);
+    }
+  }
+  return refs.map((r) => ({ objectId: normalizeSuiAddress(r.objectId), version: BigInt(r.version), digest: r.digest }));
 }
 
 function refusedVerify(r: No): VerifyResponse {

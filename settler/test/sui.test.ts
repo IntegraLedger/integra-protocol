@@ -95,6 +95,10 @@ interface Chain {
   /** Where execution differs from the simulation: a failed result, or the node's refusal. */
   executeAs?: "FAILURE" | "refused";
   reader?: ReaderRow;
+  /** The node's index of objects by id: the version a key names (its digest), and the latest. Absent: holds neither. */
+  objects?: Record<string, { at: { version: number; digest: string } | null; now: { version: number } | null }>;
+  /** Called on each objects read: the chain may change between the module's reads. */
+  onObjects?: () => void;
 }
 
 const TX: Record<string, string> = {
@@ -164,6 +168,15 @@ function answer(text: string, v: Record<string, unknown>): unknown {
       },
     };
   }
+  if (text.includes("multiGetObjects")) {
+    chain.onObjects?.();
+    const at = (v["at"] as { address: string; version: number }[]).map((k) => {
+      const o = chain.objects?.[k.address]?.at;
+      return o === undefined || o === null || o.version !== k.version ? null : o;
+    });
+    const now = (v["now"] as { address: string }[]).map((k) => chain.objects?.[k.address]?.now ?? null);
+    return { at, now };
+  }
   if (text.includes("simulateTransaction")) {
     if (chain.simulation === "refused") return "refused";
     return { simulateTransaction: { effects: effectsJson(chain.simulation.status, null, chain.simulation.changes) } };
@@ -197,6 +210,9 @@ async function startNode(): Promise<string> {
   node = await stub((_path, body) => {
     const { query, variables } = body as { query: string; variables: Record<string, unknown> };
     queries.push({ text: query, variables });
+    // Sui GraphQL's maxQueryPayloadSize, 5000 on the public testnet and mainnet endpoints, counts the whole body.
+    const size = JSON.stringify(body).length;
+    if (size > 5000) return { data: null, errors: [{ message: `Query payload too large: ${size}B > 5000B` }] };
     if (chain.reader?.readerError === true) return new RawBody("<html>bad gateway</html>");
     const data = answer(query, variables);
     if (data === "refused") return { data: null, errors: [{ message: "Transaction validator signing failed" }] };
@@ -205,7 +221,7 @@ async function startNode(): Promise<string> {
   return node.url;
 }
 
-const kinds = () => queries.map((q) => /(serviceConfig|transactions\(first|simulateTransaction|executeTransaction|objects\(first|transaction\(digest)/.exec(q.text)?.[1]);
+const kinds = () => queries.map((q) => /(serviceConfig|transactions\(first|simulateTransaction|executeTransaction|multiGetObjects|objects\(first|transaction\(digest)/.exec(q.text)?.[1]);
 
 beforeEach(() => {
   chain = {
@@ -399,4 +415,104 @@ describe("lcp's read vectors (V4) through the module's reader", () => {
       expect(plain(await exactSui.status(ref, reader, q as never))).toEqual(row.expect);
     });
   }
+});
+
+describe("an input the buyer has spent since signing (row 12)", () => {
+  // Sui's simulation takes an owned input at its latest version and answers success for a gas coin the buyer has since
+  // spent; execution refuses it ("object … version 0x8 … is unavailable for consumption, current version: 0x9", a Sui
+  // localnet, sui 1.84.2). The node's index (`multiGetObjects`) is the oracle the module reads instead.
+  const GAS_ID = `0x${"a1".repeat(32)}`;
+  const DIGEST = V.V2.tx.digest as string;
+  /** Recipe R paying gas with the coin `GAS_ID` at version 7. */
+  async function withGasCoin(): Promise<Uint8Array> {
+    const tx = new Transaction();
+    tx.setSender(buyer.toSuiAddress());
+    tx.pure(rawH());
+    const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(10000)]);
+    tx.transferObjects([coin!], tx.pure.address(PAY_TO));
+    tx.setGasPrice(1000);
+    tx.setGasBudget(5000000);
+    tx.setGasPayment([ref("a1", 7)]);
+    tx.setExpiration({ Epoch: 1234 });
+    return tx.build();
+  }
+  const refused = { isValid: false, invalidReason: "invalid_transaction", invalidMessage: "sui/object-version-unavailable" };
+
+  it("refuses at /verify and /settle a gas coin the index shows at a later version, simulating and executing nothing", async () => {
+    chain.objects = { [GAS_ID]: { at: { version: 7, digest: DIGEST }, now: { version: 8 } } };
+    const { module: m } = await moduleOn();
+    const p = await signedBy(buyer, await withGasCoin());
+    expect(await m.facilitator.verify(p, O)).toEqual(refused);
+    expect(queries.find((q) => q.text.includes("multiGetObjects"))!.variables).toEqual({ at: [{ address: GAS_ID, version: 7 }], now: [{ address: GAS_ID }] });
+    expect(await m.facilitator.settle(p, O)).toEqual({ success: false, errorReason: "invalid_transaction", errorMessage: "sui/object-version-unavailable", transaction: "", network: NETWORK });
+    expect(kinds()).not.toContain("simulateTransaction");
+    expect(executions).toEqual([]);
+  });
+
+  it("refuses a gas coin the index no longer holds as live (merged away), though it holds the version named", async () => {
+    chain.objects = { [GAS_ID]: { at: { version: 7, digest: DIGEST }, now: null } };
+    const { module: m } = await moduleOn();
+    expect(await m.facilitator.verify(await signedBy(buyer, await withGasCoin()), O)).toEqual(refused);
+  });
+
+  it("refuses a reference whose version the index holds under another digest", async () => {
+    chain.objects = { [GAS_ID]: { at: { version: 7, digest: "11111111111111111111111111111111" }, now: { version: 7 } } };
+    const { module: m } = await moduleOn();
+    expect(await m.facilitator.verify(await signedBy(buyer, await withGasCoin()), O)).toEqual(refused);
+  });
+
+  it("refuses an owned input other than gas the buyer has spent (the gasless path's coin)", async () => {
+    const GASLESS: PaymentRequirements = { ...O, asset: "0xa1ec7fc00a6f40db9693ad1415d0c193ad3906494428cf252621037bd7117e29::usdc::USDC", extra: { gasless: true } };
+    chain.simulation = { status: "SUCCESS", changes: credit("10000", GASLESS.asset) };
+    chain.objects = { [`0x${"c1".repeat(32)}`]: { at: { version: 3, digest: DIGEST }, now: { version: 4 } } };
+    const { module: m } = await moduleOn();
+    expect(await m.facilitator.verify(await signedBy(buyer, await gasless(), GASLESS), GASLESS)).toEqual(refused);
+  });
+
+  it("twin: verifies and settles the same payment while its gas coin is still at the version named", async () => {
+    chain.objects = { [GAS_ID]: { at: { version: 7, digest: DIGEST }, now: { version: 7 } } };
+    const { module: m } = await moduleOn();
+    const bytes = await withGasCoin();
+    const p = await signedBy(buyer, bytes);
+    expect(await m.facilitator.verify(p, O)).toEqual({ isValid: true, payer: buyer.toSuiAddress() });
+    expect(kinds()).toContain("simulateTransaction");
+    expect(await m.facilitator.settle(p, O)).toEqual({ success: true, transaction: digestOf(bytes), network: NETWORK, payer: buyer.toSuiAddress() });
+  });
+
+  it("twin: an index that does not yet hold the version named shows nothing, and the simulation decides", async () => {
+    chain.objects = { [GAS_ID]: { at: null, now: { version: 6 } } };
+    const { module: m } = await moduleOn();
+    expect(await m.facilitator.verify(await signedBy(buyer, await withGasCoin()), O)).toEqual({ isValid: true, payer: buyer.toSuiAddress() });
+  });
+
+  it("reads every one of 40 gas coins in requests within the endpoint's 5000-byte payload, refusing the last one spent", async () => {
+    const ids = Array.from({ length: 40 }, (_, k) => `0x${(k + 1).toString(16).padStart(64, "0")}`);
+    const tx = new Transaction();
+    tx.setSender(buyer.toSuiAddress());
+    tx.pure(rawH());
+    const [coin] = tx.splitCoins(tx.gas, [tx.pure.u64(10000)]);
+    tx.transferObjects([coin!], tx.pure.address(PAY_TO));
+    tx.setGasPrice(1000);
+    tx.setGasBudget(5000000);
+    tx.setGasPayment(ids.map((objectId) => ({ objectId, version: "1234567890", digest: DIGEST })));
+    tx.setExpiration({ Epoch: 1234 });
+    const p = await signedBy(buyer, await tx.build());
+    chain.objects = Object.fromEntries(ids.map((id) => [id, { at: { version: 1234567890, digest: DIGEST }, now: { version: 1234567890 } }]));
+    const { module: m } = await moduleOn();
+    expect(await m.facilitator.verify(p, O)).toEqual({ isValid: true, payer: buyer.toSuiAddress() });
+    const reads = queries.filter((q) => q.text.includes("multiGetObjects"));
+    expect(reads.length).toBeGreaterThan(1);
+    expect(reads.flatMap((q) => (q.variables["now"] as { address: string }[]).map((k) => k.address))).toEqual(ids);
+    chain.objects[ids[39]!] = { at: { version: 1234567890, digest: DIGEST }, now: { version: 1234567891 } };
+    expect(await m.facilitator.verify(p, O)).toEqual(refused);
+  });
+
+  it("judges by its effects a payment that itself moved the coin between the module's two reads", async () => {
+    const bytes = await withGasCoin();
+    chain.objects = { [GAS_ID]: { at: { version: 7, digest: DIGEST }, now: { version: 8 } } };
+    chain.onObjects = () => chain.executed.set(digestOf(bytes), { bytes, status: "SUCCESS", checkpoint: 6, changes: credit() });
+    const { module: m } = await moduleOn();
+    expect(await m.facilitator.verify(await signedBy(buyer, bytes), O)).toEqual({ isValid: true, payer: buyer.toSuiAddress() });
+    expect(kinds()).not.toContain("simulateTransaction");
+  });
 });

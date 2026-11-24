@@ -6,6 +6,15 @@ rename exports and pairing ids and change a function's arguments or answers; a p
 [Upgrading](../docs/upgrading.md) states what 0.6's patch releases add, and each change a caller of 0.5.x makes for
 0.6.0.
 
+## [Unreleased]
+
+### Changed
+
+- Profile `x402-exact-sui`, rule 8: a passing simulation no longer reads as showing that the transaction "would
+  succeed". Sui's simulation takes each owned input at its latest version and answers success for a transaction whose
+  gas coin the buyer has since spent, which execution refuses; the rule now has the settler also check that each object
+  the transaction names at a version is still at that version. No code in this package changes.
+
 ## [0.6.3] - 2026-11-20
 
 ### Added
