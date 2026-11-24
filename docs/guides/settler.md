@@ -406,7 +406,10 @@ Each member, one entry per network unless it says otherwise:
 - **`sui`**: an object `{ networks }`: `network` (`sui:mainnet`, `sui:testnet` or `sui:devnet`); `graphql`, the seller's
   GraphQL endpoint. It serves the path where the buyer pays gas and the gasless path (`extra.gasless`), and holds no
   key. A transaction the buyer already executed is judged at `/verify` by its effects, and not refused for having
-  executed; its `/settle` answers a failure naming it. The kind's `extra.acceptsZero` names `x402/exact/sui`: a
+  executed; its `/settle` answers a failure naming it. One not executed is refused `invalid_transaction`
+  (`sui/object-version-unavailable`) where the GraphQL endpoint shows an object it names at a version, its gas coin or
+  an owned input, at a later version or no longer live: Sui's simulation answers success for it, and execution
+  refuses it. The kind's `extra.acceptsZero` names `x402/exact/sui`: a
   transfer of 0 executes where the buyer pays gas (Sui testnet transaction
   `7EjfN1kqGng3phZjqgCzy8RRRXCP2Ybt7mikGgjBUwKA`, status `SUCCESS`, its only balance change the sender's gas), and at
   0 the signed transfer must name the option's payee. lcp's option filter refuses 0 on the gasless path.
