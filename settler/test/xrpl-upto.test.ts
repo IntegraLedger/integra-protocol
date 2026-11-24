@@ -2,10 +2,13 @@
 // made by the vector's create, and its claim, which the module checks against the channel at the validated ledger; and
 // the PaymentChannelClaim the resource server signs at settlement, made and signed by xrpl.js with the key the vector's
 // `other` entropy derives, which the stub's ledger names as payTo's regular key. The rippled stub answers every call as
-// the ledger the vector's create makes would: the channel's fields are the create's, its balance 0.
+// the ledger the vector's create makes would: the channel's fields are the create's, its balance 0. A submitted claim
+// lands as `landing` says: validated, its metadata deleting the channel with the `Balance` the claim carries (`delivers`)
+// or with the balance unchanged, as rippled closes a channel expired by the landing ledger (`expired`); or not yet
+// validated (`pending`).
 import { readFileSync } from "node:fs";
 import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
-import { ECDSA, encodeForSigningClaim, hashes, Wallet } from "xrpl";
+import { decode, ECDSA, encodeForSigningClaim, hashes, Wallet } from "xrpl";
 import { afterEach, describe, expect, it } from "vitest";
 import { serveSettler } from "../src/core.js";
 import { listed } from "../src/modules/index.js";
@@ -26,6 +29,29 @@ const VALIDATED = 990;
 const SERVER = Wallet.fromEntropy(Buffer.alloc(16, 3), { algorithm: ECDSA.ed25519 });
 /** A key payTo does not answer to: the vector's `elsewhere` entropy. */
 const STRANGER = Wallet.fromEntropy(Buffer.alloc(16, 4), { algorithm: ECDSA.ed25519 });
+
+let landing: "delivers" | "expired" | "pending" = "delivers";
+const submitted = new Map<string, string>();
+
+/** The `tx` answer for a submitted blob, as `landing` lands it. */
+function landed(hash: string): unknown {
+  const blob = submitted.get(hash);
+  if (blob === undefined) return { error: "txnNotFound", status: "error" };
+  if (landing === "pending") return { hash, validated: false, status: "success" };
+  const tx = decode(blob) as Record<string, unknown>;
+  const after = landing === "delivers" && typeof tx["Balance"] === "string" ? tx["Balance"] : "0";
+  const channel = { LedgerEntryType: "PayChannel", LedgerIndex: tx["Channel"] };
+  const final = { Account: CREATE.Account, Destination: CREATE.Destination, Amount: CREATE.Amount, Balance: after };
+  return {
+    hash,
+    validated: true,
+    meta: {
+      TransactionResult: "tesSUCCESS",
+      AffectedNodes: [{ DeletedNode: { ...channel, FinalFields: final, ...(after === "0" ? {} : { PreviousFields: { Balance: "0" } }) } }],
+    },
+    status: "success",
+  };
+}
 
 function answer(method: string, p: Record<string, unknown>): unknown {
   switch (method) {
@@ -50,10 +76,13 @@ function answer(method: string, p: Record<string, unknown>): unknown {
       return { ledger_index: VALIDATED, ledger: { close_time: CLOSE_TIME }, validated: true, status: "success" };
     case "account_info":
       return { account_data: { Account: p["account"], Flags: 0, RegularKey: SERVER.classicAddress, Sequence: 1 }, validated: true, status: "success" };
-    case "submit":
-      return { engine_result: "tesSUCCESS", tx_json: { hash: hashes.hashSignedTx(p["tx_blob"] as string) }, status: "success" };
+    case "submit": {
+      const hash = hashes.hashSignedTx(p["tx_blob"] as string);
+      submitted.set(hash, p["tx_blob"] as string);
+      return { engine_result: "tesSUCCESS", tx_json: { hash }, status: "success" };
+    }
     case "tx":
-      return { validated: true, meta: { TransactionResult: "tesSUCCESS" }, status: "success" };
+      return landed(p["transaction"] as string);
     default:
       return { error: "unknownCmd", status: "error" };
   }
@@ -65,6 +94,8 @@ afterEach(async () => {
   await settler?.close();
   await node?.close();
   settler = node = undefined;
+  landing = "delivers";
+  submitted.clear();
 });
 
 async function serve(): Promise<Serving> {
@@ -179,6 +210,67 @@ describe("x402/upto/xrpl through the XRPL module", () => {
     }).tx_blob;
     const paid = { ...P, payload: { ...P.payload, settlementTransaction: close } };
     expect(await s.settle(body(paid, zero))).toEqual({ success: true, transaction: hashes.hashSignedTx(close), network: NETWORK, payer: CREATE.Account, amount: "0" });
+  });
+
+  it("answers a claim that closed an expired channel delivering nothing as failed, at the settle and at a repeat", async () => {
+    const s = await serve();
+    landing = "expired";
+    const settleTerms = V.fixed.OSettle as PaymentRequirements;
+    const blob = settlement(SERVER, settleTerms.amount);
+    const paid = { ...P, payload: { ...P.payload, settlementTransaction: blob } };
+    const hash = hashes.hashSignedTx(blob);
+    expect(await s.settle(body(paid, settleTerms))).toEqual({
+      success: false,
+      errorReason: "transaction_failed",
+      errorMessage: `the channel's Balance is 0 drops after the claim (0 delivered by it), below the charge of ${settleTerms.amount}`,
+      transaction: hash,
+      network: NETWORK,
+      payer: CREATE.Account,
+    });
+    expect(await s.settle(body(paid, settleTerms))).toMatchObject({ success: false, transaction: hash });
+    expect(methods().filter((m) => m === "submit")).toHaveLength(1);
+  });
+
+  it("answers a repeat after a lost answer by the claim's delivery: failed where it delivered nothing", async () => {
+    const s = await serve();
+    landing = "pending";
+    const settleTerms = V.fixed.OSettle as PaymentRequirements;
+    const blob = settlement(SERVER, settleTerms.amount);
+    const paid = { ...P, payload: { ...P.payload, settlementTransaction: blob } };
+    const hash = hashes.hashSignedTx(blob);
+    expect(await s.settle(body(paid, settleTerms))).toMatchObject({ success: false, errorReason: "settlement_pending", transaction: hash });
+    landing = "expired";
+    expect(await s.settle(body(paid, settleTerms))).toMatchObject({ success: false, transaction: hash });
+    expect(await s.settle(body(paid, settleTerms))).toMatchObject({ success: false, transaction: hash });
+    expect(methods().filter((m) => m === "submit")).toHaveLength(1);
+  }, 15_000);
+
+  it("answers a repeat after a lost answer by the claim's delivery: settled where it delivered the charge (twin)", async () => {
+    const s = await serve();
+    landing = "pending";
+    const settleTerms = V.fixed.OSettle as PaymentRequirements;
+    const blob = settlement(SERVER, settleTerms.amount);
+    const paid = { ...P, payload: { ...P.payload, settlementTransaction: blob } };
+    const hash = hashes.hashSignedTx(blob);
+    expect(await s.settle(body(paid, settleTerms))).toMatchObject({ success: false, errorReason: "settlement_pending", transaction: hash });
+    landing = "delivers";
+    expect(await s.settle(body(paid, settleTerms))).toMatchObject({ success: true, transaction: hash, payer: CREATE.Account });
+    expect(methods().filter((m) => m === "submit")).toHaveLength(1);
+  }, 15_000);
+
+  it("refuses a /settle carrying no settlement transaction with the scheme's code, below the maximum as at it", async () => {
+    const s = await serve();
+    const below = V.fixed.OSettle as PaymentRequirements;
+    expect(BigInt(below.amount)).toBeLessThan(BigInt(P.payload["maxAmount"] as string));
+    for (const r of [below, O]) {
+      expect(await s.settle(body(P, r))).toMatchObject({ success: false, errorReason: "invalid_upto_xrpl_missing_settlement_transaction" });
+    }
+    expect(methods()).not.toContain("submit");
+    // The /verify of the same payment against requirements below its maximum is still held to the requirements as given.
+    expect(await s.verify(body(P, below))).toMatchObject({ isValid: false, invalidReason: "invalid_payload" });
+    // And a /verify whose accepted is the requirements but whose maxAmount is not their amount keeps the scheme's code.
+    const asked = { ...O, amount: "1" };
+    expect(await s.verify(body({ ...P, accepted: asked }, asked))).toMatchObject({ isValid: false, invalidReason: "invalid_upto_xrpl_payload_amount_mismatch" });
   });
 
   it("refuses a claim signed by a key payTo does not answer to, submitting nothing", async () => {

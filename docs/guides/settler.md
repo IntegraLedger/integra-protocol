@@ -422,7 +422,11 @@ Each member, one entry per network unless it says otherwise:
   refuse a payment that names a `Delegate` or carries `Memos`, as x402's scheme requires. For `upto`, the payer opens a
   payment channel to `payTo` and signs one claim off the ledger; at `/settle` the resource server adds
   `settlementTransaction`, a `PaymentChannelClaim` its `payTo` key signed for the actual charge with `tfClose`, which the
-  module checks and submits unchanged; `/verify` refuses a payload that already carries one, as the scheme requires.
+  module checks and submits unchanged; `/verify` refuses a payload that already carries one, and `/settle` one that
+  carries none `invalid_upto_xrpl_missing_settlement_transaction` at any charge, as the scheme requires. A claim in a
+  validated ledger with `tesSUCCESS` is a success only where its metadata shows the channel's `Balance` at or above the
+  charge: a claim on a channel that expired by the ledger it lands in closes it delivering nothing and still answers
+  `tesSUCCESS`, and is answered `transaction_failed`, at the settle and at a repeat after a lost answer alike.
 
 The `cardano`, `concordium` and `ton` modules take an lcp reader in `reader` rather than a node's URL, and lcp ships the
 interface but no implementation: `CardanoReader` of `@integraledger/lcp/cardano`, `CcdReader` of

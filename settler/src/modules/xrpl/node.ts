@@ -130,6 +130,30 @@ export async function validatedLedger(url: string, deadline: number): Promise<nu
 /** The account's flag that disables its master key (`lsfDisableMaster`). */
 const DISABLE_MASTER = 0x00100000;
 
+/**
+ * What a transaction's metadata shows of each payment channel it modified or deleted, by the channel's id in upper
+ * case: its `Balance`, the drops the channel has delivered to its destination, before the transaction and after it. A
+ * channel whose `Balance` the transaction left unchanged has no `PreviousFields.Balance`, and reads the same on both.
+ */
+export type ChannelBalances = ReadonlyMap<string, { readonly before: bigint; readonly after: bigint }>;
+
+const DROPS = /^[0-9]{1,19}$/;
+
+/** The channel balances of a JSON (not binary) transaction answer's `meta`, as `ChannelBalances` states them. */
+export function channelBalancesOf(meta: Record<string, unknown>): ChannelBalances {
+  const out = new Map<string, { before: bigint; after: bigint }>();
+  for (const n of Array.isArray(meta["AffectedNodes"]) ? meta["AffectedNodes"] : []) {
+    if (!isObject(n)) continue;
+    const node = isObject(n["ModifiedNode"]) ? n["ModifiedNode"] : isObject(n["DeletedNode"]) ? n["DeletedNode"] : undefined;
+    if (node === undefined || node["LedgerEntryType"] !== "PayChannel" || typeof node["LedgerIndex"] !== "string") continue;
+    const final = isObject(node["FinalFields"]) ? node["FinalFields"]["Balance"] : undefined;
+    const previous = isObject(node["PreviousFields"]) ? (node["PreviousFields"]["Balance"] ?? final) : final;
+    if (typeof final !== "string" || typeof previous !== "string" || !DROPS.test(final) || !DROPS.test(previous)) continue;
+    out.set(node["LedgerIndex"].toUpperCase(), { before: BigInt(previous), after: BigInt(final) });
+  }
+  return out;
+}
+
 /** What the class and the own module read of the payer's account and the ledger, and how they submit. */
 export interface XrplNode {
   validatedLedger(): Promise<number>;
@@ -139,14 +163,20 @@ export interface XrplNode {
   /** The account's signer list at the validated ledger: its quorum and each signer's weight, or none. */
   signerList(account: string): Promise<{ quorum: number; weights: ReadonlyMap<string, number> } | null>;
   simulate(blob: string): Promise<{ engineResult: string; engineResultMessage?: string }>;
-  /** Submits the signed blob and waits up to `waitMs` for it in a validated ledger. */
-  submit(blob: string): Promise<{ hash: string; validated: boolean; resultCode: string }>;
+  /**
+   * Submits the signed blob and waits up to `waitMs` for it in a validated ledger; once validated, with the channel
+   * balances its metadata shows.
+   */
+  submit(blob: string): Promise<{ hash: string; validated: boolean; resultCode: string; channels?: ChannelBalances }>;
   /** The `PayChannel` ledger entry `id` names at the validated ledger, its fields as the server gives them, or none. */
   payChannel(id: string): Promise<Record<string, unknown> | null>;
   /** The validated ledger's index and its close time, in seconds since the Ripple epoch. */
   validatedClose(): Promise<{ index: number; closeTime: number }>;
-  /** A transaction by its hash: whether a validated ledger holds it, and its result; none where the server holds none. */
-  transaction(hash: string): Promise<{ validated: boolean; resultCode: string } | null>;
+  /**
+   * A transaction by its hash: whether a validated ledger holds it, its result, and the channel balances its metadata
+   * shows; none where the server holds none.
+   */
+  transaction(hash: string): Promise<{ validated: boolean; resultCode: string; channels?: ChannelBalances } | null>;
 }
 
 /** The node calls over the server at `url`, each bounded by the node bounds; a submission waits up to `waitMs`. */
@@ -223,7 +253,7 @@ export function xrplNode(url: string, waitMs: number): XrplNode {
       if (r["error"] === "txnNotFound") return null;
       const meta = r["meta"];
       if (!isObject(meta) || typeof meta["TransactionResult"] !== "string") return { validated: false, resultCode: "" };
-      return { validated: r["validated"] === true, resultCode: meta["TransactionResult"] };
+      return { validated: r["validated"] === true, resultCode: meta["TransactionResult"], channels: channelBalancesOf(meta) };
     },
     async submit(blob) {
       const sent = await call("submit", { tx_blob: blob });
@@ -233,7 +263,7 @@ export function xrplNode(url: string, waitMs: number): XrplNode {
       for (;;) {
         const r = await call("tx", { transaction: hash });
         if (r["validated"] === true && isObject(r["meta"]) && typeof r["meta"]["TransactionResult"] === "string") {
-          return { hash, validated: true, resultCode: r["meta"]["TransactionResult"] };
+          return { hash, validated: true, resultCode: r["meta"]["TransactionResult"], channels: channelBalancesOf(r["meta"]) };
         }
         if (performance.now() + 1_000 > until) return { hash, validated: false, resultCode: engine };
         await sleep(1_000);
