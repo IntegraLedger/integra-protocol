@@ -398,11 +398,17 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
 
     /**
      * The answer, once lcp's read shows the instrument final, and the row made final. A success is this settler's only
-     * where it sent the payment (`sent`, every transaction its submissions for the claim named) and the read shows
-     * settled one of those transactions, or the payment presented itself, which lcp's read can name otherwise than the
-     * submission did (a Polkadot extrinsic by its timepoint, not its hash); and only to the call that made the row
-     * final. A landed act that is another body than the one presented is never that call's success. One that landed by
-     * another route is `invalid_transaction_state` naming it. A failed instrument is `invalid_transaction_state` naming
+     * where it sent the payment and the read shows settled one of the transactions its submissions for the claim named
+     * (`sent`), or the payment presented itself, which lcp's read can name otherwise than the submission did (a Polkadot
+     * extrinsic by its timepoint, not its hash); and only to the call that made the row final. It sent the payment where
+     * `sent` names a transaction, or where a settle holding the claim gave it to the class's settle (`submitted`), whose
+     * answer naming the transaction can be lost: the node's answer to the send dropped, a class that answers `""` on
+     * any failure after its broadcast, a class's settle that outlasts the hold, or the settler stopped before the
+     * answer. A class's failure naming nothing reads the same whether or not the node took the send, so a claim given to
+     * the class is this settler's even where the payment then landed by another route. A landed act that is another
+     * body than the one presented is never that call's success. One that landed by another route where no settle gave
+     * the claim to the class (no claim, or a claim refused before the class's settle) is `invalid_transaction_state`
+     * naming it. A failed instrument is `invalid_transaction_state` naming
      * the transaction the read found, or the last one the settler sent, or the class's own failure where it named the
      * transaction it sent.
      */
@@ -410,6 +416,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
       a: Attempt,
       read: Extract<ChainRead, { outcome: "final" }>,
       sent: readonly string[],
+      submitted: boolean,
       payer: string | undefined,
       claimed: number | undefined,
       classAnswer?: SettleResponse,
@@ -424,7 +431,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
           await release(a, {});
           return failed("invalid_transaction_state", answer.transaction, a.network);
         }
-        if (mine !== undefined || (sent.length > 0 && answer.presented === "yes")) {
+        if (mine !== undefined || ((sent.length > 0 || submitted) && answer.presented === "yes")) {
           const transaction = mine ?? answer.transaction;
           const success = { success: true as const, transaction, network: a.network, payer: payer ?? "" };
           const wrote = await finish(a, { outcome: "settled", answer: success, transaction, ...kept });
@@ -474,6 +481,13 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
         await release(a, {});
         return unexpectedSettle(log, { ...about(a), event: "settle-deadline-passed", before: "submission", settleWaitMs });
       }
+      try {
+        // Before anything can be sent: a lost answer, or a stop before it, is then still known as this settler's.
+        await inTime(record.submitting(a.network, a.key), a.deadline);
+      } catch (e) {
+        await release(a, {});
+        return unexpectedSettle(log, { ...about(a, { ...(payer === undefined ? {} : { payer }) }), event: "store-call-failed", call: "submitting" }, e);
+      }
       let s: SettleResponse | undefined;
       let thrown: { cause: unknown } | undefined;
       try {
@@ -508,7 +522,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
       }
       const read = await readChain(a, { since, transaction: all.at(-1) });
       if (thrown !== undefined && (read.outcome === "final" || all.length > 0)) log(failure, thrown.cause);
-      if (read.outcome === "final") return byFinalRead(a, read, all, s?.payer ?? payer, claimed, s);
+      if (read.outcome === "final") return byFinalRead(a, read, all, true, s?.payer ?? payer, claimed, s);
       const live = read.answer;
       await release(a, live.state === "pending" && live.search !== undefined ? { search: live.search } : {});
       if (s !== undefined && named !== undefined) {
@@ -531,7 +545,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
         if (current.final) return answerFinal(a, current);
         if (current.heldUntil <= Date.now()) {
           const read = await readChain(a, current);
-          if (read.outcome === "final") return byFinalRead(a, read, current.sent, current.payer, current.claimed);
+          if (read.outcome === "final") return byFinalRead(a, read, current.sent, current.submitted, current.payer, current.claimed);
           if (read.answer.state === "pending" && read.answer.reason === "below-mark" && read.answer.transaction !== undefined) {
             return pending(read.answer.transaction, a.network);
           }
@@ -573,7 +587,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
         return watch(a, again ?? { ...row, heldUntil: Date.now() + settleWaitMs });
       }
       const read = await readChain(a, took);
-      if (read.outcome === "final") return byFinalRead(a, read, took.sent, took.payer, took.claimed);
+      if (read.outcome === "final") return byFinalRead(a, read, took.sent, took.submitted, took.payer, took.claimed);
       const live = read.answer;
       const search = live.state === "pending" && live.search !== undefined ? { search: live.search } : {};
       if (live.state === "pending" && live.reason === "instrument-live" && resendable(a.instrumented)) {
@@ -595,6 +609,34 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
       }
       if (took.transaction !== undefined) return pending(took.transaction, a.network);
       return unexpectedSettle(log, { ...about(a), event: "claim-unread", reason: live.reason });
+    }
+
+    /**
+     * A later message the record does not hold (`Instrumented.unrecorded`): what the kind declares, the fee budget, then
+     * the class's check and its settle, each time it is sent. Its answer is the class's; nothing is stored.
+     */
+    async function unrecorded(a: Attempt): Promise<SettleAnswer | SettleResponse> {
+      const excluded = declared(a.kind, a.module, a.payment, a.instrumented, "settle");
+      if (excluded !== undefined) return failed(excluded, "", a.network);
+      if (gated(a.module, a.payment)) {
+        let spent: boolean;
+        try {
+          spent = await inTime(fees.spent(a.network, Date.now()), a.deadline);
+        } catch (e) {
+          return unexpectedSettle(log, { ...about(a), event: "store-call-failed", call: "fee" }, e);
+        }
+        if (spent) return failed("fee_budget_spent", "", a.network);
+      }
+      const v = await settling.verify(a.payment.payload, a.payment.requirements);
+      if (!v.isValid) return failed(settleReason(v.invalidReason ?? "invalid_payload"), "", a.network);
+      let s: SettleResponse;
+      try {
+        s = await settling.settle(a.payment.payload, a.payment.requirements);
+      } catch (e) {
+        return unexpectedSettle(log, { ...about(a), event: "settle-error" }, e);
+      }
+      if (s.transaction !== "") void countFee(a, s.transaction);
+      return s;
     }
 
     /**
@@ -635,7 +677,8 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
         if (m.descriptor.verifyForbidden === true) return invalid("unsupported_scheme");
         const i = await m.record.instrument(p);
         if ("refused" in i) return { isValid: false, invalidReason: i.refused, ...(i.message === undefined ? {} : { invalidMessage: i.message }) };
-        const landed = m.descriptor.verifiesLanded === true;
+        // A message the record does not hold (`Instrumented.unrecorded`) is judged by the class alone.
+        const landed = m.descriptor.verifiesLanded === true || i.unrecorded === true;
         if (!landed) {
           let row: Row | undefined;
           try {
@@ -695,6 +738,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
           deadline,
           waitUntil: deadline - answerReserve(settleWaitMs),
         };
+        if (i.unrecorded === true) return await unrecorded(a);
         let row: Row | undefined;
         try {
           row = await inTime(record.read(network, a.key), deadline);
@@ -713,7 +757,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
         if (!v.isValid) {
           const read = await readChain(a, {});
           const lapsed = read.answer.state === "failed" && read.answer.reason === "instrument-unused";
-          if (read.outcome === "final" && !lapsed) return byFinalRead(a, read, [], v.payer, undefined);
+          if (read.outcome === "final" && !lapsed) return byFinalRead(a, read, [], false, v.payer, undefined);
           return failed(settleReason(v.invalidReason ?? "invalid_payload"), "", network);
         }
         // The claim, with the chain's position the module reads for it, where its read searches from one.
@@ -746,7 +790,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
         }
         if (!won) {
           const now = await inTime(record.read(network, a.key), deadline).catch(() => undefined);
-          return watch(a, now ?? { pairing: i.pairing, claimed, heldUntil: claimed + settleWaitMs, final: false, sent: [] });
+          return watch(a, now ?? { pairing: i.pairing, claimed, heldUntil: claimed + settleWaitMs, final: false, sent: [], submitted: false });
         }
         // The fee budget, the submission and the answer.
         return await submit(a, v.payer, transaction === undefined ? [] : [transaction], claimed, since);

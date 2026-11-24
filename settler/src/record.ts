@@ -68,8 +68,10 @@ export const RECORD_SCHEMA = `CREATE TABLE IF NOT EXISTS instrument (
   search jsonb,
   since jsonb,
   keep_until bigint,
+  submitted boolean NOT NULL DEFAULT false,
   PRIMARY KEY (network, key)
 );
+ALTER TABLE instrument ADD COLUMN IF NOT EXISTS submitted boolean NOT NULL DEFAULT false;
 CREATE INDEX IF NOT EXISTS instrument_final_keep ON instrument (keep_until) WHERE final AND keep_until IS NOT NULL;
 CREATE TABLE IF NOT EXISTS fee (
   network text NOT NULL,
@@ -156,6 +158,11 @@ export interface Row {
   readonly search?: unknown;
   /** The chain's position the module read just before the claim, from which its reads search. */
   readonly since?: unknown;
+  /**
+   * Whether a settle holding the claim gave the payment to the class's settle, which may have sent it although no
+   * answer naming a transaction came back (the answer lost, or the settler stopped before it).
+   */
+  readonly submitted: boolean;
 }
 
 /** What makes a row final. */
@@ -185,6 +192,8 @@ export interface InstrumentRecord {
   retake(network: string, key: string, now: number, holdMs: number): Promise<Row | undefined>;
   /** Adds a transaction the settler's submission named to a claim that is not final, as the one the row names. */
   sent(network: string, key: string, transaction: string): Promise<void>;
+  /** Marks a claim that is not final as given to the class's settle; it stays marked. */
+  submitting(network: string, key: string): Promise<void>;
   /** Ends this call's hold of a claim that is not final, keeping the search position of its read. */
   release(network: string, key: string, learnt: { search?: unknown }): Promise<void>;
   /**
@@ -209,6 +218,7 @@ function rowOf(r: {
   payer: string | null;
   search: unknown;
   since: unknown;
+  submitted: boolean;
 }): Row {
   return {
     pairing: r.pairing,
@@ -223,11 +233,12 @@ function rowOf(r: {
     ...(r.payer === null ? {} : { payer: r.payer }),
     ...(r.search === null || r.search === undefined ? {} : { search: fromStored(r.search) }),
     ...(r.since === null || r.since === undefined ? {} : { since: fromStored(r.since) }),
+    submitted: r.submitted,
   };
 }
 
 /** The columns of a row, as `rowOf` reads them. */
-const COLUMNS = "pairing, claimed, held_until, final, outcome, answer, transaction, sent, body, payer, search, since";
+const COLUMNS = "pairing, claimed, held_until, final, outcome, answer, transaction, sent, body, payer, search, since, submitted";
 
 /** The record over `pool`, its tables created. */
 export async function openRecord(pool: pg.Pool): Promise<InstrumentRecord> {
@@ -274,6 +285,9 @@ export async function openRecord(pool: pg.Pool): Promise<InstrumentRecord> {
            WHERE network = $1 AND key = $2 AND NOT final`,
         [network, key, transaction],
       );
+    },
+    async submitting(network, key) {
+      await pool.query(`UPDATE instrument SET submitted = true WHERE network = $1 AND key = $2 AND NOT final`, [network, key]);
     },
     async release(network, key, learnt) {
       await pool.query(

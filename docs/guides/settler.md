@@ -342,7 +342,22 @@ Each member, one entry per network unless it says otherwise:
   `transferWithAuthorization` of 0 succeeds, emitting `AuthorizationUsed` and a `Transfer` of 0 (`eth_simulateV1` at
   block 61198157); at block 61194449, x402's `exact` and `upto` Permit2 proxies revert `InvalidAmount` and the
   commerce-payments escrow's `authorize` reverts `ZeroAmount`; batch settlement's facilitator requires a deposit above
-  0.
+  0. The later messages of the two multi-step schemes, which a resource server sends after the payment opened, go to
+  the class as x402's own code sends them: `auth-capture`'s `capture`, `void` and `refund` (x402's lifecycle manager,
+  and the hold's own payload the resource server stamps `capture` after its handler or `void` on cancel), and
+  `batch-settlement`'s `claim`, `settle` and `refund` (x402's channel manager, whose requirements are its own, at
+  amount `"0"`). The class checks each (the receiver authorizer's signature, or its own where `authCapture` delegates
+  that authorizer to it; the escrow's or the channel's state), and the escrow or the channel contract bounds what it
+  moves by what the opening funded. An escrow message is its own row, keyed by what its receiver authorizer signs (its
+  type, the twelve members of the escrow's `PaymentInfo` whose hash it binds, and but for a void its amount and the
+  escrow amounts it expects), so one message, however spelt, is sent once; a channel's refund by the digest of its payload. A channel's `claim` and `settle` are not recorded:
+  the manager sends the same settle in every round, and the contract claims only above the channel's recorded total
+  and settles only what is claimed and unpaid, to the channel's receiver. At `/settle` of a `claim` or `settle`, which
+  the batch class's `verify` does not take, the class's `settle` makes the check, simulating the call before it sends;
+  at `/verify` the class's `verify` answers them, as without the settler. An escrow refund for the default `delegated`
+  operator is funded by the operator's own address, the seller's gas key: the class refuses it unless `authCapture`
+  sets `refundFunding`. An escrow message the class refused with nothing sent is not sent again: a repeat of it is
+  answered `unexpected_settle_error`.
 - **`erc7710`**: `network`; `rpc`; `signer`, the seller's gas key, whose node must answer `eth_simulateV1`. The key
   sends from its first address, so that address is the delegate the leaf delegation must name (or the reference
   implementation's wildcard delegate), and the account the simulation runs from. It registers nothing of its own: on
@@ -384,6 +399,12 @@ Each member, one entry per network unless it says otherwise:
   sent it, then `/settle` of its deposit before the resource server's handler runs and of its claim after, each
   carrying the `type` (`deposit`, `claim`) that server adds. A claim needs the voucher of the option's
   `extra.receiverAuthorizer`, which the module does not sign: the resource server signs it with its own key.
+  `batch-settlement`'s `claim`, `seal` and `settle`, which x402's channel manager sends, go to the class's `settle`,
+  which checks each before it sends anything (the channel, its status, and the payer authorizer's voucher), each time
+  they are sent: they are not recorded, and the program moves nothing twice for them; the class's `verify`, which takes
+  only what a buyer sends, answers them at `/verify`. Its server-signed voucher mode
+  (`extra.voucherSigner` `"server"`) is not served: lcp's option filter names no pairing for it, and its deposit is
+  refused `invalid_payment_requirements`.
 - **`starknet`**: an object `{ networks }`, one entry per network: `network`; `rpc`, a JSON-RPC node (specification 0.9
   or later) that serves `starknet_traceTransaction` and `starknet_simulateTransactions`; `executor`, an `address` and
   its `signer`, the account the payer's outside execution names as its caller, stated as `extra.feePayer`, which

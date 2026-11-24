@@ -177,6 +177,21 @@ export interface Instrumented {
    */
   readonly nonce: PairingData["nonce"];
   readonly keep: Keep;
+  /**
+   * Set where the payment is a later message of a multi-step scheme, on an instrument an earlier payment opened (an
+   * auth-capture escrow's capture, void or refund; a batch-settlement channel's claim, settle or refund): its
+   * requirements' amount is not an amount it pays, so the kind's zero-amount rule does not hold it. What it moves is
+   * bounded on chain by what the opening funded.
+   */
+  readonly later?: true;
+  /**
+   * Set where the payment is a later message that carries no single-use value and whose effect the class and the chain
+   * make inert on a repeat (a batch-settlement channel's claim, seal or settle: a claim moves only above the total the
+   * channel records, a settle only what is claimed and not yet paid out, to the channel's own receiver). It is not
+   * recorded: it goes to the class's check and settle each time it is sent, and the answer is the class's, since x402's
+   * channel manager sends the same settle message in every round.
+   */
+  readonly unrecorded?: true;
 }
 
 /**

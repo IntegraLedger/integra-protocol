@@ -109,11 +109,20 @@ function payerOf(payload: PaymentPayload): string | undefined {
   return undefined;
 }
 
+/** Whether the class's own `settle` is the check of a payment at `/settle`: a batch settlement's `claim` or `settle`. */
+function settleChecks(scheme: EvmScheme, payload: PaymentPayload): boolean {
+  const kind = (payload.payload as Record<string, unknown> | undefined)?.["type"];
+  return scheme === "batch-settlement" && (kind === "claim" || kind === "settle");
+}
+
 /**
  * The class behind the profile's pure checks: a payment they refuse is answered with their reason and never reaches
  * the class; every other call is the class's own, its `getExtra` and `getSigners` included. At `/settle` of `upto`,
  * whose requirements carry the charge, the class's `verify` is given them at the maximum the payment accepted, as its
- * own `settle` verifies the permit before it submits.
+ * own `settle` verifies the permit before it submits. At `/settle` of a batch settlement's `claim` or `settle`, which
+ * the class's `verify` does not take (it answers `invalid_batch_settlement_evm_payload_type`), the class's check is its
+ * own `settle`, which simulates the contract's call before it sends anything; at `/verify` the class's `verify` answers
+ * them, as it answers them without the settler.
  */
 function checked(scheme: EvmScheme, inner: SchemeNetworkFacilitator, pairings: readonly string[]): SchemeNetworkFacilitator {
   return {
@@ -127,6 +136,7 @@ function checked(scheme: EvmScheme, inner: SchemeNetworkFacilitator, pairings: r
         const payer = payerOf(payload);
         return payer === undefined ? { isValid: false, invalidReason: a.refused } : { isValid: false, invalidReason: a.refused, payer };
       }
+      if (phaseOf(context) === "settle" && settleChecks(scheme, payload)) return { isValid: true };
       const held = scheme === "upto" && phaseOf(context) === "settle" ? { ...requirements, amount: payload.accepted.amount } : requirements;
       return inner.verify(payload, held, context);
     },

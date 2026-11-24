@@ -384,7 +384,22 @@ Each member, one entry per network unless it says otherwise:
   `transferWithAuthorization` of 0 succeeds, emitting `AuthorizationUsed` and a `Transfer` of 0 (`eth_simulateV1` at
   block 61198157); at block 61194449, x402's `exact` and `upto` Permit2 proxies revert `InvalidAmount` and the
   commerce-payments escrow's `authorize` reverts `ZeroAmount`; batch settlement's facilitator requires a deposit above
-  0.
+  0. The later messages of the two multi-step schemes, which a resource server sends after the payment opened, go to
+  the class as x402's own code sends them: `auth-capture`'s `capture`, `void` and `refund` (x402's lifecycle manager,
+  and the hold's own payload the resource server stamps `capture` after its handler or `void` on cancel), and
+  `batch-settlement`'s `claim`, `settle` and `refund` (x402's channel manager, whose requirements are its own, at
+  amount `"0"`). The class checks each (the receiver authorizer's signature, or its own where `authCapture` delegates
+  that authorizer to it; the escrow's or the channel's state), and the escrow or the channel contract bounds what it
+  moves by what the opening funded. An escrow message is its own row, keyed by what its receiver authorizer signs (its
+  type, the twelve members of the escrow's `PaymentInfo` whose hash it binds, and but for a void its amount and the
+  escrow amounts it expects), so one message, however spelt, is sent once; a channel's refund by the digest of its payload. A channel's `claim` and `settle` are not recorded:
+  the manager sends the same settle in every round, and the contract claims only above the channel's recorded total
+  and settles only what is claimed and unpaid, to the channel's receiver. At `/settle` of a `claim` or `settle`, which
+  the batch class's `verify` does not take, the class's `settle` makes the check, simulating the call before it sends;
+  at `/verify` the class's `verify` answers them, as without the settler. An escrow refund for the default `delegated`
+  operator is funded by the operator's own address, the seller's gas key: the class refuses it unless `authCapture`
+  sets `refundFunding`. An escrow message the class refused with nothing sent is not sent again: a repeat of it is
+  answered `unexpected_settle_error`.
 - **`erc7710`**: `network`; `rpc`; `signer`, the seller's gas key, whose node must answer `eth_simulateV1`. The key
   sends from its first address, so that address is the delegate the leaf delegation must name (or the reference
   implementation's wildcard delegate), and the account the simulation runs from. It registers nothing of its own: on
@@ -426,6 +441,12 @@ Each member, one entry per network unless it says otherwise:
   sent it, then `/settle` of its deposit before the resource server's handler runs and of its claim after, each
   carrying the `type` (`deposit`, `claim`) that server adds. A claim needs the voucher of the option's
   `extra.receiverAuthorizer`, which the module does not sign: the resource server signs it with its own key.
+  `batch-settlement`'s `claim`, `seal` and `settle`, which x402's channel manager sends, go to the class's `settle`,
+  which checks each before it sends anything (the channel, its status, and the payer authorizer's voucher), each time
+  they are sent: they are not recorded, and the program moves nothing twice for them; the class's `verify`, which takes
+  only what a buyer sends, answers them at `/verify`. Its server-signed voucher mode
+  (`extra.voucherSigner` `"server"`) is not served: lcp's option filter names no pairing for it, and its deposit is
+  refused `invalid_payment_requirements`.
 - **`starknet`**: an object `{ networks }`, one entry per network: `network`; `rpc`, a JSON-RPC node (specification 0.9
   or later) that serves `starknet_traceTransaction` and `starknet_simulateTransactions`; `executor`, an `address` and
   its `signer`, the account the payer's outside execution names as its caller, stated as `extra.feePayer`, which
@@ -622,7 +643,9 @@ await settler.close();
 4. The record: a payment it holds, claimed or final, is refused `invalid_transaction_state`, since `isValid: true`
    tells the caller that a settle may follow.
 5. What the kind declares: an amount of zero whose pairing `extra.acceptsZero` does not name, and a form outside the
-   pairings of the module the payment goes to, are refused `invalid_payment_requirements`.
+   pairings of the module the payment goes to, are refused `invalid_payment_requirements`. A later message of a
+   multi-step scheme (an escrow's capture, void or refund; a channel's claim, settle or refund) pays no option's
+   amount, and the zero rule does not hold it.
 6. The fee budget, where the module's key pays the fee: a spent budget is refused `fee_budget_spent`.
 7. The class's verify, unchanged, with its own reasons.
 8. lcp's read of the chain: a payment the chain shows final (landed, or consumed by another act) is refused
@@ -635,13 +658,17 @@ The answer is `{isValid: true, payer}` or `{isValid: false, invalidReason, inval
 
 1. Steps 1 to 3 of `/verify`, with `errorMessage` for `invalidMessage`; `lnbtc` is served here.
 2. The record: a final row is answered `invalid_transaction_state` naming the transaction it holds, never a second
-   success.
+   success. A batch settlement's `claim` and `settle` (and `seal` on `solana`), which carry no single-use value and
+   which the channel contract or program makes inert on a repeat, are not recorded: what the kind declares, the fee
+   budget, the class's check and its settle are made each time, and the answer is the class's.
 3. What the kind declares, as `/verify` checks it.
 4. A claim the record holds that is not final, which another settle holds or whose hold has ended: it is answered as
    [the record](#the-record-and-what-a-repeat-answers) says, and no step below is made.
-5. The class's verify. Where it refuses, lcp's read of the chain: a payment the chain shows landed, or whose value
-   another act consumed, is stored final and answered `invalid_transaction_state` naming its transaction; otherwise the
-   class's refusal is the answer, nothing is stored, and a repeat is checked again.
+5. The class's verify. On `evm` and `solana`, batch settlement's `claim` and `settle` (and `seal` on `solana`), which
+   x402's channel manager sends and the class's verify never takes, are checked by the class's settle before it sends
+   anything. Where it refuses, lcp's read of the chain: a payment the chain shows landed, or whose value another act
+   consumed, is stored final and answered `invalid_transaction_state` naming its transaction; otherwise the class's
+   refusal is the answer, nothing is stored, and a repeat is checked again.
 6. Where the module's read searches from a position no x402 call carries (a ledger, a slot, a block), the chain's
    position, read just before the claim, which the row keeps for every later read.
 7. The claim: one conditional insert of the payment's row, held by this settle for `settleWaitMs`, so that of two
@@ -676,7 +703,7 @@ row a claim, which a repeat reads again. A claim is never removed.
 |---|---|
 | A final row | `invalid_transaction_state` naming the transaction the row holds. Never a second success, as x402's `exact` family requires: a consumed payment produces a settlement failure. |
 | A claim another settle holds | It reads the row every second and sends nothing, until that settle answers or its hold ends; then the row's answer, or lcp's read. It answers `settlement_pending` naming the transaction where one is known, and `unexpected_settle_error` where none is known when its wait ends. |
-| A claim whose hold has ended | It takes the claim and reads the chain. A payment the chain shows final is stored and answered. The identical signed payment is submitted again only where the pairing's `nonce` is `single-use` in lcp's registry, the row is not named by the digest of the signed payment, the read shows the value unconsumed and its validity open, the body is the one that claimed the row, and the class's verify passes again. Another body under the same instrument is answered `invalid_transaction_state`. Otherwise `settlement_pending` naming the transaction sent, or `unexpected_settle_error` where none is known. |
+| A claim whose hold has ended | It takes the claim and reads the chain. A payment the chain shows final is stored and answered: a success where a settle holding the claim gave it to the class's settle and the read shows the payment it presented settled, whatever the class answered: a failure naming no transaction is the same answer whether or not the node took the send (its answer lost, a class that names nothing on any failure after its broadcast), as is no answer (the settler stopped, or the class's settle outlasted the hold), so the payment landing by another route after that is answered success too. The identical signed payment is submitted again only where the pairing's `nonce` is `single-use` in lcp's registry, the row is not named by the digest of the signed payment, the read shows the value unconsumed and its validity open, the body is the one that claimed the row, and the class's verify passes again. Another body under the same instrument is answered `invalid_transaction_state`. Otherwise `settlement_pending` naming the transaction sent, or `unexpected_settle_error` where none is known. |
 | No row, and the store cannot be read | `settlement_pending` where the payment's transaction id is known before it is sent, else `unexpected_settle_error`: the settler cannot know whether it was sent. |
 
 When the wait ends first, `/settle` answers `{success: false, errorReason: "settlement_pending", transaction}`; x402
