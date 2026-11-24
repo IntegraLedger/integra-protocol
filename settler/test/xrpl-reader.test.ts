@@ -5,7 +5,9 @@
 // they name no `api_version`. Every expected answer is lcp's read of the recorded history, or the recorded value.
 import { readFileSync } from "node:fs";
 import type { AtrHash } from "@integraledger/lcp";
-import { hashes } from "xrpl";
+import { exactXrpl } from "@integraledger/lcp/x402-exact-xrpl";
+import { xrplStatus } from "@integraledger/lcp/xrpl";
+import { decode, hashes } from "xrpl";
 import { afterEach, describe, expect, it } from "vitest";
 import { xrplReader } from "../src/modules/xrpl/node.js";
 import { stub, type Stub } from "./support.js";
@@ -57,6 +59,7 @@ async function serverAs(version: Version, extra: (method: string, p: Record<stri
   });
   return xrplReader("xrpl:1", node.url, performance.now() + 10_000);
 }
+const methods = () => node!.calls.map((c) => (c.body as { method: string }).method);
 
 /** The recorded account_tx's transactions, as rippled answered them (API version 2). */
 const LANDED = F.calls.find((c) => c.request.method === "account_tx")!.answer.result["transactions"] as Record<string, unknown>[];
@@ -83,5 +86,40 @@ describe("the settler's XRPL reader takes a landed transaction in every form rip
     const hash = hashes.hashSignedTx(t["tx_blob"] as string);
     const reader = await serverAs(1, (m) => (m === "tx" ? { tx: { TransactionType: "Payment" }, meta: { TransactionResult: "tesSUCCESS" }, hash, validated: true, status: "success" } : undefined));
     await expect(reader.tx(hash, null)).rejects.toThrow(/^malformed: tx: /);
+  });
+});
+
+describe("the settler's XRPL reader names the validated ledger as the latest a search reads to", () => {
+  it("answers `server_info`'s validated ledger as both, and asks the server nothing else", async () => {
+    const reader = await serverAs(2);
+    expect(await reader.server()).toMatchObject({ validated: VALIDATED, latest: VALIDATED });
+    expect(methods()).toEqual(["server_info"]);
+  });
+
+  it("refuses a `server_info` that names no validated ledger", async () => {
+    const reader = await serverAs(2, (m) => (m === "server_info" ? { info: { complete_ledgers: "empty" }, status: "success" } : undefined));
+    await expect(reader.server()).rejects.toThrow(/^malformed: server_info: /);
+  });
+});
+
+// lcp's own reading of the recorded history, through the settler's reader on both versions: the payment's Sequence was
+// taken by the buyer's delegated Payment, which the search to the validated ledger reads whole: final failed.
+describe("lcp's read through the settler's reader, over the recorded Testnet history", () => {
+  const r = F.reads.find((x) => x.name === "delegated")!;
+  it.each([1, 2] as const)("on API version %i: failed, instrument-consumed, at the validated mark", async (version) => {
+    // The payment as the buyer presented it, its option's invoice the recorded H: lcp's reference names its instrument.
+    const accepted = { scheme: "exact", network: "xrpl:1", amount: String(decode(r.blob)["Amount"]), asset: "XRP", payTo: F.payee, maxTimeoutSeconds: 60, extra: { areFeesSponsored: false, invoiceId: `lcp:sha256:${r.h}` } };
+    const signed = await exactXrpl.reference({ x402Version: 2, accepted, payload: { signedTxBlob: r.blob } } as never, accepted as never);
+    if ("code" in signed) throw new Error(signed.code);
+    expect(signed.h).toBe(r.h);
+    const ref = { ...signed, fromLedger: r.fromLedger };
+    const reader = await serverAs(version);
+    expect(await xrplStatus(ref, reader, { act: "payment", finality: "validated" })).toMatchObject({
+      state: "failed",
+      reason: "instrument-consumed",
+      finality: "validated",
+      transaction: F.delegated,
+      signer: F.delegate,
+    });
   });
 });
