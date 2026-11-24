@@ -172,11 +172,19 @@ export interface Instrumented {
   readonly pairing: PairingId;
   readonly instrument: Instrument;
   /**
-   * The pairing's `nonce`, as lcp's registry states it: only under `single-use` may a held claim send the identical
-   * signed payment again, and only where the read shows the value unconsumed and its validity open.
+   * The pairing's `nonce`, as lcp's registry states it: under `single-use` a held claim may send the identical signed
+   * payment again where the read shows the value unconsumed and its validity open; otherwise only as `landsOnce` says.
    */
   readonly nonce: PairingData["nonce"];
   readonly keep: Keep;
+  /**
+   * For an instrument named by its digest whose read can show nothing of it: the chain itself takes the act its settle
+   * performs at most once, however many transactions are sent for it, so a held claim the read shows nothing of
+   * (`not-found`) and for which no transaction is known sent may be given to the class again. Solana's `upto` claim is
+   * one: it settles and seals its channel in one transaction, the payment-channels program refuses a second settle on a
+   * sealed channel, and x402's class refuses a claim whose channel it does not read open before it sends anything.
+   */
+  readonly landsOnce?: true;
 }
 
 /**

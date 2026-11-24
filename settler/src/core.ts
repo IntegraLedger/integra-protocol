@@ -398,11 +398,17 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
 
     /**
      * The answer, once lcp's read shows the instrument final, and the row made final. A success is this settler's only
-     * where it sent the payment (`sent`, every transaction its submissions for the claim named) and the read shows
-     * settled one of those transactions, or the payment presented itself, which lcp's read can name otherwise than the
-     * submission did (a Polkadot extrinsic by its timepoint, not its hash); and only to the call that made the row
-     * final. A landed act that is another body than the one presented is never that call's success. One that landed by
-     * another route is `invalid_transaction_state` naming it. A failed instrument is `invalid_transaction_state` naming
+     * where it sent the payment and the read shows settled one of the transactions its submissions for the claim named
+     * (`sent`), or the payment presented itself, which lcp's read can name otherwise than the submission did (a Polkadot
+     * extrinsic by its timepoint, not its hash); and only to the call that made the row final. It sent the payment where
+     * `sent` names a transaction, or where a settle holding the claim gave it to the class's settle (`submitted`), whose
+     * answer naming the transaction can be lost: the node's answer to the send dropped, a class that answers `""` on
+     * any failure after its broadcast, a class's settle that outlasts the hold, or the settler stopped before the
+     * answer. A class's failure naming nothing reads the same whether or not the node took the send, so a claim given to
+     * the class is this settler's even where the payment then landed by another route. A landed act that is another
+     * body than the one presented is never that call's success. One that landed by another route where no settle gave
+     * the claim to the class (no claim, or a claim refused before the class's settle) is `invalid_transaction_state`
+     * naming it. A failed instrument is `invalid_transaction_state` naming
      * the transaction the read found, or the last one the settler sent, or the class's own failure where it named the
      * transaction it sent.
      */
@@ -410,6 +416,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
       a: Attempt,
       read: Extract<ChainRead, { outcome: "final" }>,
       sent: readonly string[],
+      submitted: boolean,
       payer: string | undefined,
       claimed: number | undefined,
       classAnswer?: SettleResponse,
@@ -424,7 +431,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
           await release(a, {});
           return failed("invalid_transaction_state", answer.transaction, a.network);
         }
-        if (mine !== undefined || (sent.length > 0 && answer.presented === "yes")) {
+        if (mine !== undefined || ((sent.length > 0 || submitted) && answer.presented === "yes")) {
           const transaction = mine ?? answer.transaction;
           const success = { success: true as const, transaction, network: a.network, payer: payer ?? "" };
           const wrote = await finish(a, { outcome: "settled", answer: success, transaction, ...kept });
@@ -474,6 +481,13 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
         await release(a, {});
         return unexpectedSettle(log, { ...about(a), event: "settle-deadline-passed", before: "submission", settleWaitMs });
       }
+      try {
+        // Before anything can be sent: a lost answer, or a stop before it, is then still known as this settler's.
+        await inTime(record.submitting(a.network, a.key), a.deadline);
+      } catch (e) {
+        await release(a, {});
+        return unexpectedSettle(log, { ...about(a, { ...(payer === undefined ? {} : { payer }) }), event: "store-call-failed", call: "submitting" }, e);
+      }
       let s: SettleResponse | undefined;
       let thrown: { cause: unknown } | undefined;
       try {
@@ -508,7 +522,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
       }
       const read = await readChain(a, { since, transaction: all.at(-1) });
       if (thrown !== undefined && (read.outcome === "final" || all.length > 0)) log(failure, thrown.cause);
-      if (read.outcome === "final") return byFinalRead(a, read, all, s?.payer ?? payer, claimed, s);
+      if (read.outcome === "final") return byFinalRead(a, read, all, true, s?.payer ?? payer, claimed, s);
       const live = read.answer;
       await release(a, live.state === "pending" && live.search !== undefined ? { search: live.search } : {});
       if (s !== undefined && named !== undefined) {
@@ -531,7 +545,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
         if (current.final) return answerFinal(a, current);
         if (current.heldUntil <= Date.now()) {
           const read = await readChain(a, current);
-          if (read.outcome === "final") return byFinalRead(a, read, current.sent, current.payer, current.claimed);
+          if (read.outcome === "final") return byFinalRead(a, read, current.sent, current.submitted, current.payer, current.claimed);
           if (read.answer.state === "pending" && read.answer.reason === "below-mark" && read.answer.transaction !== undefined) {
             return pending(read.answer.transaction, a.network);
           }
@@ -556,9 +570,11 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
 
     /**
      * A claim the record holds that is not final. Where another settle holds it, this one watches. Otherwise it takes
-     * the claim, reads the chain, and submits the identical signed payment again only where the form's nonce is
-     * single-use, the read shows the value unconsumed and its validity open (`instrument-live`), the body is the one
-     * that claimed the row, and `/verify`'s checks pass for it again.
+     * the claim, reads the chain, and submits the identical signed payment again only where the body is the one that
+     * claimed the row, `/verify`'s checks pass for it again, and either the form's nonce is single-use and the read
+     * shows the value unconsumed and its validity open (`instrument-live`), or the instrument is named by its digest,
+     * its module states the chain takes its act once (`landsOnce`), the read shows nothing of it (`not-found`) and no
+     * transaction is known sent for it.
      */
     async function held(a: Attempt, row: Row): Promise<SettleAnswer | SettleResponse> {
       if (row.heldUntil > Date.now()) return watch(a, row);
@@ -573,10 +589,13 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
         return watch(a, again ?? { ...row, heldUntil: Date.now() + settleWaitMs });
       }
       const read = await readChain(a, took);
-      if (read.outcome === "final") return byFinalRead(a, read, took.sent, took.payer, took.claimed);
+      if (read.outcome === "final") return byFinalRead(a, read, took.sent, took.submitted, took.payer, took.claimed);
       const live = read.answer;
       const search = live.state === "pending" && live.search !== undefined ? { search: live.search } : {};
-      if (live.state === "pending" && live.reason === "instrument-live" && resendable(a.instrumented)) {
+      const again =
+        live.state === "pending" &&
+        ((live.reason === "instrument-live" && resendable(a.instrumented)) || (live.reason === "not-found" && unsentOnce(a.instrumented, took)));
+      if (again) {
         if (took.body !== bodyOf(a.payment)) {
           // Another body under the claimed instrument (a copy signed again): never sent in place of the one claimed.
           await release(a, search);
@@ -598,11 +617,21 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
     }
 
     /**
-     * Whether a held claim may be sent again: only where the form's nonce is single-use, and never for an instrument
-     * named by the digest of its signed payment, which one settler submits once.
+     * Whether a held claim the read shows live may be sent again: only where the form's nonce is single-use, and never
+     * for an instrument named by the digest of its signed payment, whose read cannot show its value unconsumed
+     * (`unsentOnce` decides those).
      */
     function resendable(i: Instrumented): boolean {
       return i.nonce === "single-use" && i.instrument.by !== "digest";
+    }
+
+    /**
+     * Whether a held claim named by its digest may be given to the class again although its read shows nothing: only
+     * where the module states that the chain takes its act at most once (`landsOnce`) and no transaction is known sent
+     * for the claim. A transaction known sent is answered pending, as for any other form.
+     */
+    function unsentOnce(i: Instrumented, row: Row): boolean {
+      return i.instrument.by === "digest" && i.landsOnce === true && row.sent.length === 0 && row.transaction === undefined;
     }
 
     /** The transaction an instrument keyed by its transaction id names, which is known before it is sent. */
@@ -713,7 +742,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
         if (!v.isValid) {
           const read = await readChain(a, {});
           const lapsed = read.answer.state === "failed" && read.answer.reason === "instrument-unused";
-          if (read.outcome === "final" && !lapsed) return byFinalRead(a, read, [], v.payer, undefined);
+          if (read.outcome === "final" && !lapsed) return byFinalRead(a, read, [], false, v.payer, undefined);
           return failed(settleReason(v.invalidReason ?? "invalid_payload"), "", network);
         }
         // The claim, with the chain's position the module reads for it, where its read searches from one.
@@ -746,7 +775,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
         }
         if (!won) {
           const now = await inTime(record.read(network, a.key), deadline).catch(() => undefined);
-          return watch(a, now ?? { pairing: i.pairing, claimed, heldUntil: claimed + settleWaitMs, final: false, sent: [] });
+          return watch(a, now ?? { pairing: i.pairing, claimed, heldUntil: claimed + settleWaitMs, final: false, sent: [], submitted: false });
         }
         // The fee budget, the submission and the answer.
         return await submit(a, v.payer, transaction === undefined ? [] : [transaction], claimed, since);

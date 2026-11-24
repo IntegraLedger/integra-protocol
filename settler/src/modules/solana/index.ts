@@ -301,6 +301,10 @@ function moduleOf(
             instrument: { by: "digest", network, digest: collectionDigest(network, p) },
             nonce: "unshown",
             keep: { until: "settler" },
+            // An `upto` claim (every `upto` settle that is not its opening) is x402's settle_and_seal and distribute in
+            // one transaction: the program settles a channel once and refuses a second settle on a sealed one, and the
+            // class reads the channel open before it sends. Batch settlement's later messages are not stated so.
+            ...(pairing.id === uptoSvm.id ? { landsOnce: true as const } : {}),
           };
         }
         const r = await checked(c.network, pairing, p.payload, p.requirements);
