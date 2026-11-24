@@ -304,6 +304,17 @@ export const MAX_TVM_ATTACHED_ABOVE_FORWARD = 30_000_000n;
  * the search is held at the last masterchain block read.
  */
 export const MAX_TVM_LISTED = 256;
+
+/**
+ * The seconds from the buyer's `now` to the `valid_until` it signs, as the stock client sets them (@x402/tvm 2.30.0's
+ * exact client, the version this package pins, `dist/esm/chunk-RL5VVTCS.mjs:632-633`; 2.31.0's is the same): `maxTimeoutSeconds` less 5 above 10 seconds, else half of it
+ * rounded up. The stock facilitator refuses a `valid_until` past its own clock plus `maxTimeoutSeconds`
+ * (`invalid_exact_tvm_payload_valid_until_too_far`), so with no margin a buyer whose clock runs one second ahead is
+ * refused. lcp's Concordium build takes the same 5 seconds (`CCD_EXPIRY_MARGIN`).
+ */
+function validFor(maxTimeoutSeconds: number): number {
+  return maxTimeoutSeconds > 10 ? maxTimeoutSeconds - 5 : Math.ceil(maxTimeoutSeconds / 2);
+}
 const MAX_BOC_BYTES = MAX_TVM_BOC_BYTES;
 const MAX_CELLS = MAX_TVM_CELLS;
 const MAX_DEPTH = MAX_TVM_DEPTH;
@@ -2024,7 +2035,8 @@ function isRawAddress(s: unknown): s is string {
  * below 2^120, `"0"` among them (the agreement's floor is zero: the scheme asks the transfer to equal the amount with no
  * floor, and x402's TON facilitator and the standard Jetton wallet take a zero), a forward TON amount below 2^120 − 1 (`build` attaches more TON than it, and the attached value is a
  * `Grams`, below 2^120), and `maxTimeoutSeconds` a positive integer below 2^32, which `build` writes into the request
- * (the wallet message's `valid_until`, a `uint32`, is `now` plus `maxTimeoutSeconds`). The network is
+ * (the wallet message's `valid_until`, a `uint32`, is `now` plus `maxTimeoutSeconds` less 5 seconds, or plus half of a
+ * `maxTimeoutSeconds` of 10 or less rounded up, as the stock client writes it). The network is
  * one of the two the pairing serves, `tvm:-239` (mainnet) and `tvm:-3` (testnet), whose configuration the messages are
  * read at; any other `tvm:` network is `tvm/network-malformed`. `pairingOf`, `advertise`, `read` and `build` apply it,
  * and `bound` and `reference` hold the option a presented payment echoes to it. The asset, `payTo` and response
@@ -2156,7 +2168,7 @@ async function build(c: TvmChoice, h: AtrHash): Promise<TvmUnsigned | Refusal> {
   if (!config.workchains.has(workchainOf(wallet)) || !config.workchains.has(workchainOf(jettonWallet))) {
     return refusal("x402/option-malformed");
   }
-  const validUntil = now + accepted.maxTimeoutSeconds;
+  const validUntil = now + validFor(accepted.maxTimeoutSeconds);
   if (!isUint32(validUntil)) return refusal("x402/option-malformed");
   const forwardTon = extra["forwardTonAmount"] === undefined ? 0n : BigInt(extra["forwardTonAmount"] as string);
   if (attachNanotons <= forwardTon) return refusal("tvm/value-too-low");

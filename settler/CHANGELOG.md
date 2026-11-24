@@ -4,6 +4,20 @@ Every release of `@integraledger/profile-facilitator`, the settler, with what an
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The package is 0.x: a minor release may change the
 configuration, the answers or the storage.
 
+## [Unreleased]
+
+### Fixed
+
+- `casper`: the read of a used nonce asks the token's `used_nonces` for the item key CEP-3009 tokens write, the hex of
+  blake2b-256 over the tagged `from` and the nonce as `Bytes`, not the base64 of the raw pair, which no such token
+  holds. On Casper testnet's csprUSD, x402's default token, the old key finds nothing for a nonce the token's own
+  `AuthorizationUsed` event shows used. So a lost or retried `/settle` of a payment that landed answered `expired`;
+  it now answers as the landed payment.
+- The README's module table lists the networks each stock class takes: `hedera:mainnet` and `hedera:testnet` (not
+  `hedera:previewnet` or `hedera:devnet`, which `@x402/hedera`'s class refuses `network_mismatch`), Algorand's mainnet
+  and testnet genesis labels (`@x402/avm`'s class refuses any other, "Unsupported Algorand network"), and `aptos:1`
+  and `aptos:2` (`@x402/aptos`'s class refuses another chain id). No module's behaviour changes.
+
 ## [0.5.1] - 2026-11-20
 
 ### Changed

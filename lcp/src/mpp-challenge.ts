@@ -265,17 +265,22 @@ export function checkAttribution(memo: string, realm: string, challengeId: strin
 
 /**
  * Reads `WWW-Authenticate` field values by RFC 9110's challenge grammar and keeps the `Payment` challenges, with
- * quoted-strings unescaped and unknown parameters dropped. At most 8 KiB per value and 32 `Payment` challenges.
+ * quoted-strings unescaped and unknown parameters dropped. At most 8,192 characters per `Payment` challenge, from its
+ * scheme to its last character (the separators before the next challenge not counted), the size the MPP core draft asks a server to keep a challenge under ("Servers SHOULD
+ * keep challenges under 8KB"); at most 32 `Payment` challenges; and at most 65,536 characters per value
+ * (`MAX_HEADER_BYTES`, the bound lcp applies to a header field value), since a client reading a 402 with fetch gets
+ * every `WWW-Authenticate` line joined into one value (`Headers.get`), which mppx's `Challenge.deserializeList` reads.
  */
 export function parseChallenges(fieldValues: readonly string[]): MppChallenge[] | Refusal {
   if (!Array.isArray(fieldValues)) return refusal("mpp/header-malformed");
   const out: MppChallenge[] = [];
   for (const value of fieldValues) {
-    if (typeof value !== "string" || value.length > MAX_FIELD) return refusal("mpp/header-malformed");
+    if (typeof value !== "string" || value.length > MAX_HEADER_BYTES) return refusal("mpp/header-malformed");
     const parsed = parseField(value);
     if (parsed === undefined) return refusal("mpp/header-malformed");
     for (const c of parsed) {
       if (c.scheme.toLowerCase() !== "payment") continue;
+      if (c.end - c.start > MAX_FIELD) return refusal("mpp/header-malformed");
       if (c.duplicate) return refusal("mpp/challenge-malformed");
       for (const k of REQUIRED) if (c.params[k] === undefined || c.params[k] === "") return refusal("mpp/challenge-malformed");
       out.push(c.params as unknown as MppChallenge);
@@ -285,7 +290,8 @@ export function parseChallenges(fieldValues: readonly string[]): MppChallenge[] 
   return out;
 }
 
-type Parsed = { scheme: string; params: { [k: string]: string }; duplicate: boolean };
+/** One challenge, and where it runs in the value: from its scheme to its last character, the separators after it not counted. */
+type Parsed = { scheme: string; params: { [k: string]: string }; duplicate: boolean; start: number; end: number };
 
 /** One field value as a list of challenges, or undefined when it does not follow the grammar. */
 function parseField(s: string): Parsed[] | undefined {
@@ -353,10 +359,21 @@ function parseField(s: string): Parsed[] | undefined {
     return true;
   };
 
+  /** Where the challenge running up to `at` ends: before the separators (OWS and commas) that follow it. */
+  const trimmedEnd = (at: number): number => {
+    let e = at;
+    while (e > 0 && (s[e - 1] === " " || s[e - 1] === "\t" || s[e - 1] === ",")) e--;
+    return e;
+  };
+
   let current: Parsed | undefined;
   for (;;) {
     while (i < n && (s[i] === " " || s[i] === "\t" || s[i] === ",")) i++;
-    if (i === n) return out;
+    if (i === n) {
+      if (current !== undefined) current.end = trimmedEnd(n);
+      return out;
+    }
+    const at = i;
     const t = token();
     if (t === undefined) return undefined;
     if (paramFollows()) {
@@ -369,7 +386,8 @@ function parseField(s: string): Parsed[] | undefined {
       if (!elementEnd()) return undefined;
       continue;
     }
-    current = { scheme: t, params: {}, duplicate: false };
+    if (current !== undefined) current.end = trimmedEnd(at);
+    current = { scheme: t, params: {}, duplicate: false, start: at, end: n };
     out.push(current);
     if (i === n || s[i] === ",") continue;
     if (s[i] !== " ") return undefined;
@@ -824,7 +842,10 @@ function tempoSessionPairings(r: { [k: string]: Json }, d: { [k: string]: Json }
 
 /**
  * `subscription` on `tempo`: an access key with an address and a key type Tempo defines; `subscriptionExpires` an RFC
- * 3339 date-time from 1970, the key authorization's uint64 expiry; `chainId` a positive safe integer; `currency` and
+ * 3339 date-time whose Unix second (a fraction dropped) is above 0, the key authorization's uint64 expiry, which Tempo
+ * reads as no expiry at 0 and the draft requires explicit (draft-tempo-subscription-00: "the recurring authorization MUST have an explicit
+ * expiry"; servers "MUST reject" a `subscriptionExpires` the expiry field cannot represent, which mppx's server does at
+ * or before second 0); `chainId` a positive safe integer; `currency` and
  * `recipient` addresses and `amount` a decimal; and a period of 1 to 10^16 − 1 days or weeks that is below 2^64 seconds,
  * the key authorization's uint64 period. Else `mpp/request-malformed`.
  */
@@ -835,7 +856,7 @@ function subscriptionPairings(r: { [k: string]: Json }, d: { [k: string]: Json }
     return refusal("mpp/access-key-malformed");
   }
   const until = typeof r["subscriptionExpires"] === "string" ? unixOf(r["subscriptionExpires"]) : undefined;
-  if (until === undefined || until < 0) return refusal("mpp/request-malformed");
+  if (until === undefined || until <= 0) return refusal("mpp/request-malformed");
   if (!isPositiveInt(d["chainId"])) return refusal("mpp/chain-id-required");
   if (!isAddress(r["currency"]) || !isAddress(r["recipient"]) || !isDecimal(r["amount"])) {
     return refusal("mpp/request-malformed");

@@ -13,6 +13,7 @@
  * The module serves `casper:casper-test` and does not start on `casper:casper`, where no token has yet been shown to
  * execute `transfer_with_authorization`.
  */
+import { blake2b } from "@noble/hashes/blake2.js";
 import { fromLegalContext, isRefusal, type Act, type AtrHash, type Refusal } from "@integraledger/lcp";
 import {
   exactCasper,
@@ -127,6 +128,19 @@ export interface CasperConfig {
 const CASPER_MAINNET = "casper:casper";
 /** The dictionary in which the token package keeps a used nonce, by the profile `x402/exact/casper`, rule 10. */
 const USED_NONCES = "used_nonces";
+
+/**
+ * The item key under which a CEP-3009 token holds a used `(from, nonce)` in `used_nonces`: the lowercase hex of
+ * blake2b-256 over the pair as the token serializes it, `from` as its tagged key (the tag byte and 32 bytes) and the
+ * nonce as `Bytes` (a u32 little-endian length, then the bytes). The Odra reference token keys a `Mapping` this way,
+ * and Casper testnet's csprUSD, x402's default token, holds its used nonces there; the base64 of the raw pair it does
+ * not hold.
+ */
+function usedNonceItem(from: string, nonce: Uint8Array): string {
+  const length = Buffer.alloc(4);
+  length.writeUInt32LE(nonce.length);
+  return Buffer.from(blake2b(Buffer.concat([Buffer.from(from, "hex"), length, Buffer.from(nonce)]), { dkLen: 32 })).toString("hex");
+}
 /** The transactions of a block one page of `blockCalls` reads. */
 const PAGE = 64;
 /** The node's error codes the reader tells apart (casper-node's JSON-RPC codes, as casper-js-sdk names them). */
@@ -345,8 +359,7 @@ export function casperReader(network: CasperNetwork, url: string, deadline: numb
       const block = await blockAt(height);
       if (block === null) return null;
       const contract = await activeContract(asset, block.stateRoot);
-      // The item's key: the payer's key as the token serializes it, its tag and 32 bytes, then the nonce's 32 bytes.
-      const item = Buffer.concat([Buffer.from(from, "hex"), Buffer.from(nonce)]).toString("base64");
+      const item = usedNonceItem(from, nonce);
       const a = await rpc("state_get_dictionary_item", {
         state_root_hash: block.stateRoot,
         dictionary_identifier: { ContractNamedKey: { key: contract, dictionary_name: USED_NONCES, dictionary_item_key: item } },

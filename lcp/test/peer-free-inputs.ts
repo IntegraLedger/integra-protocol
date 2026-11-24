@@ -1088,8 +1088,8 @@ export function tvmPeerStepRows(): PeerStepRow<TvmFns>[] {
       expect: "x402/option-malformed",
     },
     {
-      case: "build of a choice whose now plus the option's timeout is 2^32",
-      call: async (f) => tonBuild(f, { now: 2 ** 32 - (TON_PLACED["maxTimeoutSeconds"] as number) }),
+      case: "build of a choice whose valid_until, now plus the option's timeout less the stock client's 5 seconds, is 2^32",
+      call: async (f) => tonBuild(f, { now: 2 ** 32 - ((TON_PLACED["maxTimeoutSeconds"] as number) - 5) }),
       expect: "x402/option-malformed",
     },
     { case: "build of a choice of the vectors' option, which carries no forwardPayload", call: async (f) => tonBuild(f, {}, TON_O), expect: "tvm/carrier-mismatch" },

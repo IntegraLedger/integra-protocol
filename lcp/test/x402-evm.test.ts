@@ -503,3 +503,47 @@ describe("V6 status and recover", () => {
 
 
 });
+
+// Row 21. EIP-55 allows an all-capitals address and x402 says nothing of case, so a seller may name its payTo or asset
+// in capitals. viem refuses an address that is neither lower case nor correctly checksummed; the stock facilitator
+// hashes the authorization's raw strings with viem, so such a payment answered invalid_exact_evm_signature though the
+// token pays it, and a viem wallet could not sign lcp's typed data. The stock client writes getAddress(payTo).
+describe("an option naming its payTo or asset in capitals", () => {
+  const caps = (a: string) => `0x${a.slice(2).toUpperCase()}` as Hex;
+  const lower = (a: string) => a.toLowerCase() as Hex;
+  const build = async (option: PaymentRequirements, from: Hex = PAYER) => {
+    const u = await exactEip3009.build({ required: { ...REQUIRED, accepts: [option] }, accepted: option, from, now: NOW }, H);
+    if ("refused" in u) throw new Error(u.code);
+    const p = u.complete(SIGNATURE) as PaymentPayload;
+    return { u, p };
+  };
+
+  it("build writes them checksummed, so viem hashes and signs what the payer signs, and the hash is the checksummed option's", async () => {
+    const plain = await build(O);
+    const upper = await build({ ...O, payTo: caps(O.payTo), asset: caps(O.asset) }, caps(PAYER));
+    expect(upper.p.payload.authorization.to).toBe(O.payTo);
+    expect(upper.p.payload.authorization.from).toBe(PAYER);
+    expect(upper.u.typedData.domain.verifyingContract).toBe(O.asset);
+    expect([upper.u.typedData.message.from, upper.u.typedData.message.to]).toEqual([PAYER, O.payTo]);
+    // viem takes the typed data as written and gives the hash of the same 20-byte addresses.
+    expect(hashTypedData(forViem(upper.u.typedData))).toBe(hashTypedData(forViem(plain.u.typedData)));
+    const a = upper.p.payload.authorization;
+    const raw = {
+      domain: { name: "USDC", version: "2", chainId: 84532, verifyingContract: upper.u.typedData.domain.verifyingContract },
+      types: { TransferWithAuthorization: plain.u.typedData.types.TransferWithAuthorization },
+      primaryType: "TransferWithAuthorization",
+      message: { from: a.from, to: a.to, value: BigInt(a.value), validAfter: BigInt(a.validAfter), validBefore: BigInt(a.validBefore), nonce: a.nonce },
+    } as unknown as Parameters<typeof hashTypedData>[0];
+    expect(hashTypedData(raw)).toBe(hashTypedData(forViem(plain.u.typedData)));
+    const signed = await privateKeyToAccount(KEY).signTypedData(forViem(upper.u.typedData));
+    expect(signed).toBe(await privateKeyToAccount(KEY).signTypedData(forViem(plain.u.typedData)));
+  });
+
+  it("the twins: a lower-case or checksummed payTo is written as given", async () => {
+    const low = await build({ ...O, payTo: lower(O.payTo), asset: lower(O.asset) }, lower(PAYER));
+    expect([low.p.payload.authorization.to, low.p.payload.authorization.from]).toEqual([lower(O.payTo), lower(PAYER)]);
+    expect(low.u.typedData.domain.verifyingContract).toBe(lower(O.asset));
+    const sum = await build(O);
+    expect([sum.p.payload.authorization.to, sum.p.payload.authorization.from]).toEqual([O.payTo, PAYER]);
+  });
+});

@@ -254,14 +254,14 @@ names, and the table gives the ones each module takes.
 
 | Member | Chain | Networks | Scheme: pairings (`confirmed`) | `extra.key` | `extra.acceptsZero` | Facilitator |
 |---|---|---|---|---|---|---|
-| `algorand` | Algorand | `algorand:<genesis hash prefix>` | `exact`: `x402/exact/algorand` (yes) | `fee-payer` | `x402/exact/algorand` | `@x402/avm`'s class; the settler's own path for a rekeyed payer signing with one key and a Falcon-key payer |
-| `aptos` | Aptos | `aptos:<chain id>` | `exact`: `x402/exact/aptos` (yes) | `fee-payer`, or `none` with `sponsor: false` | `[]` | `@x402/aptos`'s class |
+| `algorand` | Algorand | `algorand:wGHE2Pwdvd7S12BL5FaOP20EGYesN73k` (mainnet), `algorand:SGO1GKSzyE7IEPItTxCByw9x8FmnrCDe` (testnet), the two `@x402/avm`'s class takes | `exact`: `x402/exact/algorand` (yes) | `fee-payer` | `x402/exact/algorand` | `@x402/avm`'s class; the settler's own path for a rekeyed payer signing with one key and a Falcon-key payer |
+| `aptos` | Aptos | `aptos:1`, `aptos:2`, the two `@x402/aptos`'s class takes | `exact`: `x402/exact/aptos` (yes) | `fee-payer`, or `none` with `sponsor: false` | `[]` | `@x402/aptos`'s class |
 | `cardano` | Cardano | `cardano:mainnet`, `cardano:preprod`, `cardano:preview` | `exact`: `x402/exact/cardano` (yes), `x402/exact/cardano/lock` (yes) | `none` | `[]` | `@x402/cardano`'s class |
 | `casper` | Casper | `casper:casper-test` | `exact`: `x402/exact/casper` (no) | `relayer` | `[]` | `@x402/casper`'s class |
 | `concordium` | Concordium | `ccd:<genesis hash prefix>` | `exact`: `x402/exact/ccd` (no) | `fee-payer` | `x402/exact/ccd` | `@x402/concordium`'s class |
 | `evm` | EVM | `eip155:<chain id>` | `exact`: `x402/exact/eip155/eip3009` (yes), `x402/exact/eip155/permit2` (yes); `upto`: `x402/upto/eip155/permit2` (yes); `auth-capture`: `x402/auth-capture/eip155/eip3009` (yes), `x402/auth-capture/eip155/permit2` (yes); `batch-settlement`: `x402/batch-settlement/eip155` (yes) | `relayer` | `x402/exact/eip155/eip3009` on `exact`; `[]` on the others | `@x402/evm`'s classes |
 | `erc7710` | EVM | `eip155:<chain id>`, where `evm` registers `exact` | `exact` with `erc7710`: `x402/exact/eip155/erc7710` (yes), `x402/exact/eip155/erc7710-salt` (yes) | `relayer` | `[]` | the settler's own, behind the `evm` module's `exact` |
-| `hedera` | Hedera | `hedera:mainnet`, `hedera:testnet`, `hedera:previewnet`, `hedera:devnet` | `exact`: `x402/exact/hedera` (yes) | `fee-payer` | `[]` | `@x402/hedera`'s class |
+| `hedera` | Hedera | `hedera:mainnet`, `hedera:testnet`, the two `@x402/hedera`'s class takes | `exact`: `x402/exact/hedera` (yes) | `fee-payer` | `[]` | `@x402/hedera`'s class |
 | `lnbtc` | Lightning | `lnbtc:000000000019d6689c085ae165831e93`, `lnbtc:000000000933ea01ad0ee984209779ba` | `exact`: `x402/exact/lnbtc/payment-hash` (yes) | `none` | `[]` | the settler's own |
 | `near` | NEAR | `near:mainnet`, `near:testnet` | `exact`: `x402/exact/near` (yes) | `relayer` | `[]` | `@x402/near`'s class |
 | `polkadot` | Polkadot Asset Hub | `polkadot:68d56f15f85d3136970ec16946040bc1`, `polkadot:67f9723393ef76214df0118c34bbbd3d` | `exact`: `x402/exact/polkadot/lcp-assets-remark` (yes) | `none` | `[]` | the settler's own |

@@ -6,6 +6,32 @@ rename exports and pairing ids and change a function's arguments or answers; a p
 [Upgrading](../docs/upgrading.md) states what 0.6's patch releases add, and each change a caller of 0.5.x makes for
 0.6.0.
 
+## [Unreleased]
+
+### Fixed
+
+- `pairingsOf` refuses a Tempo `subscription` challenge whose `subscriptionExpires` falls in Unix
+  second 0 or before (`unixOf` drops a fraction of a second), `mpp/request-malformed`. `build` wrote such a date as a key authorization expiry of 0, which
+  Tempo reads as no expiry; draft-tempo-subscription-00 requires an explicit expiry, and mppx's server refuses it. A
+  date one second later is placed as before.
+- `parseChallenges` reads several challenges joined into one `WWW-Authenticate` value, as fetch's `Headers.get`
+  returns a 402's lines: the 8,192-character bound is now on each `Payment` challenge, the size the MPP core draft asks
+  a server to keep one under, and a value may hold up to `MAX_HEADER_BYTES` (65,536) characters. Ten challenges of
+  about 900 characters joined were refused `mpp/header-malformed`; mppx's `Challenge.deserializeList` reads them.
+- `exactTvm.build` signs `valid_until` as the stock client does: `now` plus `maxTimeoutSeconds` less 5 seconds, or plus
+  half of a `maxTimeoutSeconds` of 10 or less rounded up. With no margin, a buyer whose clock ran one second ahead of
+  the stock facilitator's was refused `invalid_exact_tvm_payload_valid_until_too_far`. Profile `x402/exact/tvm` rule 2
+  states the formula; `x402-exact-tvm.json`'s `fixed.now` moves 5 seconds so every signed value is unchanged.
+- `exactStarknet.reference` reads a presented message's `Execute After`, `Execute Before` and each call's `To` and
+  `Calldata` as a decimal string or a non-negative safe integer as well as hex, as starknet.js writes them and SNIP-12
+  hashes them to the same value: a payment starknet.js's own client built, which the chain executes, was refused
+  `starknet/typed-data-malformed`. A `Selector` stays hex only, since SNIP-12 hashes any other string there as a
+  function name. Profile `x402/exact/starknet` rule 3 states it.
+- `exactEip3009.build` writes the authorization's `from` and `to`, and the typed data's addresses, as given when lower
+  case and EIP-55 checksummed otherwise, as the stock client writes them (`getAddress`). An option naming its `payTo`
+  or asset in capitals gave a payment the stock facilitator refused `invalid_exact_evm_signature` (viem refuses an
+  all-capitals address), though the token pays it, and typed data a viem wallet could not sign.
+
 ## [0.6.3] - 2026-11-20
 
 ### Added

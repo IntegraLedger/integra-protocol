@@ -227,6 +227,57 @@ describe("x402-exact-starknet.json", () => {
     expect(await exactStarknet.bound(short)).toBe(V.S4.expectBound);
   });
 
+  // Row 20. starknet.js's own client writes the calldata of CallData.compile as decimal strings, and Execute After and
+  // Execute Before as numbers when given numbers; SNIP-12 and the account contract hash the value, and on
+  // starknet-devnet the account executed such a message, paying the payee. bound and reference read each spelling as
+  // the same felt; the twin is the hex spelling build writes, read to the same reference.
+  it("bound and reference read a message's felts written as starknet.js writes them: decimal strings and numbers", async () => {
+    const p = await pay();
+    const want = await exactStarknet.reference(p, O);
+    if ("refused" in want) throw new Error(want.code);
+    type Msg = { [k: string]: unknown; Calls: { [k: string]: unknown; Calldata: string[] }[] };
+    const respelled = (edit: (m: Msg) => void) => {
+      const q = structuredClone(p);
+      edit(q.payload.outsideExecution.typedData.message as unknown as Msg);
+      return q;
+    };
+    const dec = (felt: unknown) => BigInt(felt as string).toString(10);
+    const sdk = respelled((m) => {
+      const c = m.Calls[0]!;
+      c.Calldata = c.Calldata.map(dec);
+      m["Execute After"] = Number(m["Execute After"]);
+      m["Execute Before"] = Number(m["Execute Before"]);
+    });
+    // starknet.js hashes the respelled message to the same SNIP-12 hash, so the payer signed the same thing.
+    const hashOf = (q: typeof p) => snTypedData.getMessageHash(q.payload.outsideExecution.typedData as never, V.fixed.from);
+    expect(hashOf(sdk)).toBe(hashOf(p));
+    expect(await exactStarknet.bound(sdk)).toBe(V.S4.expectBound);
+    expect(await exactStarknet.reference(sdk, O)).toEqual(want);
+    const everyFelt = respelled((m) => {
+      for (const k of ["Execute After", "Execute Before"]) m[k] = dec(m[k]);
+      for (const c of m.Calls) c["To"] = dec(c["To"]);
+    });
+    expect(hashOf(everyFelt)).toBe(hashOf(p));
+    expect(await exactStarknet.reference(everyFelt, O)).toEqual(want);
+    // A decimal Selector is not the same message: SNIP-12's selector type hashes a string that is not hex as a name.
+    const decSelector = respelled((m) => void (m.Calls[0]!["Selector"] = dec(m.Calls[0]!["Selector"])));
+    expect(hashOf(decSelector)).not.toBe(hashOf(p));
+    expect(await exactStarknet.bound(decSelector)).toEqual({ refused: true, code: "starknet/typed-data-malformed" });
+    // Not felts in any spelling: refused as before.
+    const malformed = { refused: true, code: "starknet/typed-data-malformed" };
+    const P = (FELT_P as bigint).toString(10);
+    for (const bad of [
+      respelled((m) => void (m.Calls[0]!.Calldata[1] = P)),
+      respelled((m) => void (m.Calls[0]!.Calldata[1] = "-1")),
+      respelled((m) => void (m.Calls[0]!.Calldata[1] = "1e3")),
+      respelled((m) => void (m["Execute Before"] = 1.5)),
+      respelled((m) => void (m["Execute Before"] = -1)),
+      respelled((m) => void (m["Execute After"] = (2n ** 64n).toString(10))),
+    ]) {
+      expect(await exactStarknet.reference(bad, O)).toEqual(malformed);
+    }
+  });
+
   describe("S5: status over a constructed node", () => {
     for (const row of rowsOf(V.S5.rows, "x402-exact-starknet.json S5.rows")) {
       it(row.case, async () => {

@@ -125,7 +125,9 @@ MPP carries its three forms in HTTP fields, and the package writes and reads eac
   `id`, `realm`, `method`, `intent` or `request`, or holding one empty, a `header` other than
   `Payment-Authorization`, the one value MPP allows it, a member holding a control character or a character above
   U+00FF, which no quoted-string carries, or a value over 8,192 characters is `mpp/challenge-malformed`. A 402 offering several challenges sends one `WWW-Authenticate` field line for each.
-  `parseChallenges(fieldValues)` parses `WWW-Authenticate` field values into challenges.
+  `parseChallenges(fieldValues)` parses `WWW-Authenticate` field values into challenges, several challenges joined into
+  one value too, as fetch's `Headers.get` returns a 402's lines: each `Payment` challenge at most 8,192 characters and
+  each value at most 65,536.
 - `decodeCredential(fieldValue)` reads the credential from the field the challenge selected, `Authorization`, or
   `Payment-Authorization` where the challenge carries `header`: `Payment`, in any case, one or more spaces and the
   credential's JSON in base64url without padding, at most 65,536 bytes, held to the shape every `bound` reads first.
