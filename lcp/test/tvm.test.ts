@@ -276,6 +276,29 @@ describe("x402-exact-tvm.json", () => {
     expect("stateInit" in r || "customPayload" in r).toBe(false);
   });
 
+  // Row 19. The stock facilitator refuses a valid_until past its own clock plus maxTimeoutSeconds
+  // (invalid_exact_tvm_payload_valid_until_too_far); the stock client signs now plus maxTimeoutSeconds less 5 above
+  // 10 seconds, else half of it rounded up (@x402/tvm 2.30.0 and 2.31.0). build signs what the stock client signs, so a buyer clock
+  // up to 5 seconds ahead of the facilitator's is still taken.
+  it("build signs valid_until as the stock client does: now plus maxTimeoutSeconds less 5, or half of 10 or less rounded up", async () => {
+    const at = async (maxTimeoutSeconds: number, now: number) => {
+      const option = { ...placed, maxTimeoutSeconds };
+      const u = await exactTvm.build({ ...choice(), required: { ...required, accepts: [option] }, accepted: option, now }, H);
+      if ("refused" in u) throw new Error(u.code);
+      const r = tvmRequest(u.request.signedBoc, placed.network as TvmNetwork);
+      if ("refused" in r) throw new Error(r.code);
+      return r.validUntil;
+    };
+    const now = V.fixed.now as number;
+    const stockClient = (t: number) => now + (t > 10 ? t - 5 : Math.ceil(t / 2));
+    for (const t of [60, 300, 11, 10, 9, 2, 1]) expect([t, await at(t, now)]).toEqual([t, stockClient(t)]);
+    // Within the facilitator's bound (its clock plus maxTimeoutSeconds) for a buyer clock 5 seconds ahead of it, and
+    // still in the future at its own clock; the vector's fixed now is 5 seconds on, so V2's signed bytes are unchanged.
+    expect(await at(60, now)).toBeLessThanOrEqual(now - 5 + 60);
+    expect(await at(1, now)).toBeGreaterThan(now);
+    expect(await at(60, now)).toBe(V.V3.expectReference.validUntil);
+  });
+
   it("V2: build gives the vector's cells, request hash and settlement root", async () => {
     const u = await exactTvm.build(choice(), H);
     if ("refused" in u) throw new Error(u.code);

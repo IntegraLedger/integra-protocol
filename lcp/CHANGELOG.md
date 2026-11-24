@@ -18,6 +18,10 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   returns a 402's lines: the 8,192-character bound is now on each `Payment` challenge, the size the MPP core draft asks
   a server to keep one under, and a value may hold up to `MAX_HEADER_BYTES` (65,536) characters. Ten challenges of
   about 900 characters joined were refused `mpp/header-malformed`; mppx's `Challenge.deserializeList` reads them.
+- `exactTvm.build` signs `valid_until` as the stock client does: `now` plus `maxTimeoutSeconds` less 5 seconds, or plus
+  half of a `maxTimeoutSeconds` of 10 or less rounded up. With no margin, a buyer whose clock ran one second ahead of
+  the stock facilitator's was refused `invalid_exact_tvm_payload_valid_until_too_far`. Profile `x402/exact/tvm` rule 2
+  states the formula; `x402-exact-tvm.json`'s `fixed.now` moves 5 seconds so every signed value is unchanged.
 
 ## [0.6.3] - 2026-11-20
 
