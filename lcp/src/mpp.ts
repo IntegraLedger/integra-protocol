@@ -199,6 +199,7 @@ export {
   subscriptionTempo,
 } from "./mpp-session.js";
 export type {
+  CloseAuthorizationTypedData,
   ReceiveTypedData,
   SessionChoice,
   SessionRef,

@@ -18,6 +18,7 @@ import {
   type Hex as ViemHex,
 } from "viem";
 import { privateKeyToAccount, sign } from "viem/accounts";
+import { Session as MppxSession } from "mppx/tempo";
 import {
   place,
   sessionEvm,
@@ -216,6 +217,8 @@ describe("mpp/session/tempo: buildWithin", async () => {
 
   it("v1: under \"Tempo Stream Channel\" with uint128, TS5's digest at 0, and no descriptor", async () => {
     const zero = unsigned(await sessionTempo.buildWithin(w(v1, f.requestV1, 0n, "close"), H));
+    // A v1 close is its final voucher alone: the v1 escrow's close takes the voucher's signature.
+    expect(zero.requests).toHaveLength(1);
     const td = eip712Of(zero);
     affix(hashTypedData(forViem(td)), T.TS5.expectVoucher);
     expect(hashTypedData(forViem(td))).toBe(T.TS5.expectVoucher.whole);
@@ -229,6 +232,68 @@ describe("mpp/session/tempo: buildWithin", async () => {
     });
     expect(await sessionTempo.buildWithin(w(v1, f.requestV1, 1n, "topUp"), H)).toEqual(refused("mpp/within-action-not-built"));
     expect(await sessionTempo.buildWithin(w(v1, f.requestV1, 1n), H2)).toEqual(refused("mpp/id-not-ours"));
+  });
+
+  // mppx's client writes `source`, the payer's DID, on every session credential (0.17.6 and 0.21.1,
+  // tempo/session/client/ChannelOps.js serializeCredential); its server reads the payer from it, and refuses a voucher
+  // or close without it ("credential source does not match channel"), and 0.21.1 one naming the authorized signer.
+  it("every voucher and close carries source, the DID of the payer, the opening transaction's sender, on v2 and v1", async () => {
+    const payerDid = `did:pkh:eip155:42431:${f.payer.toLowerCase()}`;
+    for (const [opening, request] of [[v2, f.requestV2], [v1, f.requestV1]] as const) {
+      for (const action of ["voucher", "close"]) {
+        const u = unsigned(await sessionTempo.buildWithin(w(opening, request, 250n, action), H));
+        const signatures = await Promise.all(u.requests.map((r) => payer.signTypedData(forViem((r as { typedData: unknown }).typedData))));
+        const done = u.complete(signatures) as MppCredential;
+        expect(done.source).toBe(payerDid);
+        expect(done.source).toBe((opening as MppCredential).source?.toLowerCase());
+        expect(await sessionTempo.channel.ref(done)).toEqual(await sessionTempo.channel.ref(opening as MppCredential));
+        // A v1 within challenge carries no hash: boundWithin reads H from a v2 credential only.
+        expect(await sessionTempo.channel.boundWithin(done)).toEqual(opening === v2 ? H : refused("mpp/not-bound-within"));
+      }
+    }
+  });
+
+  // mppx 0.17.6 and 0.21.1: the v2 close credential's schema requires `closeSignature` (tempo/Methods.js), and
+  // verifyCloseAuthorization holds it to the payer or the authorized signer over
+  // CloseAuthorization(bytes32 channelId,uint96 cumulativeAmount) under the voucher's domain.
+  it("v2 close: the final voucher, then CloseAuthorization under the voucher's domain; complete writes closeSignature, which mppx's verifier holds to the payer", async () => {
+    const verify = (signature: ViemHex) =>
+      // viem, inside mppx's verifier, checks EIP-55 checksums, so the escrow goes lowercase (as `forViem`).
+      MppxSession.Precompile.Voucher.verifyCloseAuthorization(f.escrowV2.toLowerCase(), 42431, { channelId: T.TS3.expectChannelId, cumulativeAmount: 250n, signature }, [f.payer]);
+    const u = unsigned(await sessionTempo.buildWithin(w(v2, f.requestV2, 250n, "close"), H));
+    expect(u.requests).toHaveLength(2);
+    const [voucher, close] = u.requests.map((r) => (r as { kind: string; typedData: unknown }).typedData);
+    expect(u.requests.map((r) => r.kind)).toEqual(["eip712", "eip712"]);
+    expect(hashTypedData(forViem(voucher))).toBe(T.TS4.expectVoucher250.whole);
+    expect(close).toEqual({
+      domain: { name: "TIP20 Channel Reserve", version: "1", chainId: 42431, verifyingContract: f.escrowV2 },
+      primaryType: "CloseAuthorization",
+      types: { CloseAuthorization: [{ name: "channelId", type: "bytes32" }, { name: "cumulativeAmount", type: "uint96" }] },
+      message: { channelId: T.TS3.expectChannelId, cumulativeAmount: 250n },
+    });
+    const signature = await payer.signTypedData(forViem(voucher));
+    const closeSignature = await payer.signTypedData(forViem(close));
+    // The reference verifier takes the close authorization and refuses the voucher's signature in its place.
+    expect(verify(closeSignature)).toBe(true);
+    expect(verify(signature)).toBe(false);
+    const done = u.complete([signature, closeSignature]) as MppCredential;
+    expect(done.payload).toEqual({
+      action: "close",
+      channelId: T.TS3.expectChannelId,
+      cumulativeAmount: "250",
+      signature,
+      closeSignature,
+      descriptor: v2.payload["descriptor"],
+    });
+    expect(sessionTempo.channel.kind(done)).toBe("close");
+    expect(await sessionTempo.channel.boundWithin(done)).toBe(H);
+    expect(await sessionTempo.channel.ref(done)).toEqual(await sessionTempo.channel.ref(unsigned(await sessionTempo.buildWithin(w(v2, f.requestV2, 250n), H)).complete([signature]) as MppCredential));
+    // One signature per request, in order: one alone, three, or one that is not hex is mpp/credential-malformed.
+    for (const sigs of [[signature], [signature, closeSignature, signature], [signature, "0x"], ["0x", closeSignature], [signature, "close"]]) {
+      expect(u.complete(sigs)).toEqual(refused("mpp/credential-malformed"));
+    }
+    // A v2 voucher is one request, as before.
+    expect(unsigned(await sessionTempo.buildWithin(w(v2, f.requestV2, 250n), H)).requests).toHaveLength(1);
   });
 
   // draft-tempo-session-00 L829 at tempoxyz/mpp-specs 08e7dd87: the payload's `action` is one of "open", "topUp",
