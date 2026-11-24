@@ -9,6 +9,7 @@ import {
   challengeH,
   challengeHash,
   challengeId,
+  encodeChallenge,
   evmAuthorization,
   evmHash,
   evmPermit2,
@@ -134,6 +135,39 @@ describe("mpp-challenge.json", () => {
     }
     expect(at("1970-01-01T00:00:01Z")).toEqual(["mpp/subscription/tempo"]);
     expect(at("1970-01-01T01:00:01+01:00")).toEqual(["mpp/subscription/tempo"]);
+  });
+
+  // Row 8. A client reading a 402 with fetch gets its WWW-Authenticate lines joined into one value (Headers.get), and
+  // place takes up to 32 challenges for one sale. The core draft asks a server to keep each challenge under 8 KB, so
+  // the 8,192-character bound is on each Payment challenge, and the joined value is held to MAX_HEADER_BYTES.
+  it("parseChallenges reads up to 32 challenges joined into one field value, each challenge within 8,192 characters", () => {
+    const one = (k: number) => {
+      const c = challenge("tempo", "charge", JSON.stringify({ amount: String(1000 + k), currency: "0x20c0000000000000000000000000000000000000", recipient: "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00", methodDetails: { chainId: 42431 } }));
+      const line = encodeChallenge({ ...c, id: `id-${k}`, description: "d".repeat(600) });
+      if (typeof line !== "string") throw new Error(JSON.stringify(line));
+      return line;
+    };
+    const lines = Array.from({ length: 32 }, (_, k) => one(k));
+    const joined = lines.join(", ");
+    expect(joined.length).toBeGreaterThan(8192);
+    const read = parseChallenges([joined]);
+    expect(Array.isArray(read) && read.map((c) => c.id)).toEqual(lines.map((_, k) => `id-${k}`));
+    expect(parseChallenges([joined])).toEqual(parseChallenges(lines));
+    // A Payment challenge over 8,192 characters is refused, alone or joined; one at the bound is read, alone or joined.
+    // The padding is a parameter MPP does not define, which the reader drops.
+    const sized = (length: number) => {
+      const head = `${lines[0]}, pad="`;
+      return `${head}${"a".repeat(length - head.length - 1)}"`;
+    };
+    expect(sized(8192)).toHaveLength(8192);
+    expect(parseChallenges([sized(8192)])).toHaveLength(1);
+    expect(parseChallenges([`${sized(8192)}, ${lines[1]}`])).toHaveLength(2);
+    expect(parseChallenges([`${lines[1]},  ,${sized(8192)}`])).toHaveLength(2);
+    expect(parseChallenges([sized(8193)])).toEqual({ refused: true, code: "mpp/header-malformed" });
+    expect(parseChallenges([`${lines[1]}, ${sized(8193)}`])).toEqual({ refused: true, code: "mpp/header-malformed" });
+    expect(parseChallenges([`${sized(8193)}, ${lines[1]}`])).toEqual({ refused: true, code: "mpp/header-malformed" });
+    // The value: at most 65,536 characters, whatever it holds.
+    expect(parseChallenges([`${lines[0]}, Basic ${"a".repeat(65_536)}`])).toEqual({ refused: true, code: "mpp/header-malformed" });
   });
 
   it("S1: a Tempo subscription challenge's id is the bare base64url of H, one per 402", () => {
@@ -763,7 +797,7 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
         await evmPermit2.bound(c),
       ];
     },
-    "a WWW-Authenticate value over 8 KiB, not following RFC 9110's grammar, or over 32 Payment challenges": async () => [
+    "a Payment challenge over 8 KiB, a WWW-Authenticate value not following RFC 9110's grammar, or over 32 Payment challenges": async () => [
       parseChallenges([`Payment ${"a".repeat(8192)}`]),
       parseChallenges([i.headerBroken]),
       parseChallenges(Array.from({ length: 33 }, (_, k) => payment(k))),

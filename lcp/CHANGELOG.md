@@ -14,6 +14,10 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   second 0 or before (`unixOf` drops a fraction of a second), `mpp/request-malformed`. `build` wrote such a date as a key authorization expiry of 0, which
   Tempo reads as no expiry; draft-tempo-subscription-00 requires an explicit expiry, and mppx's server refuses it. A
   date one second later is placed as before.
+- `parseChallenges` reads several challenges joined into one `WWW-Authenticate` value, as fetch's `Headers.get`
+  returns a 402's lines: the 8,192-character bound is now on each `Payment` challenge, the size the MPP core draft asks
+  a server to keep one under, and a value may hold up to `MAX_HEADER_BYTES` (65,536) characters. Ten challenges of
+  about 900 characters joined were refused `mpp/header-malformed`; mppx's `Challenge.deserializeList` reads them.
 
 ## [0.6.3] - 2026-11-20
 
