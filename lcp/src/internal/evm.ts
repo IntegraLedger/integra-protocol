@@ -60,8 +60,28 @@ export interface Eip3009TypedData {
 }
 
 /**
+ * An address in a spelling every EIP-712 signer and verifier takes: as given when it is all lower case, else its
+ * EIP-55 checksummed form, the form the stock x402 client writes (`getAddress`). viem refuses an address that is
+ * neither lower case nor correctly checksummed, an all-capitals one among them, so an option naming its `payTo` or
+ * asset in capitals would otherwise give typed data and an authorization viem cannot sign or hash. EIP-712 signs the
+ * 20 bytes, so the spelling changes no signature. The caller has checked it is an address.
+ */
+export function signableAddress(a: Hex): Hex {
+  if (a === a.toLowerCase()) return a;
+  const lower = a.slice(2).toLowerCase();
+  const digest = keccak(lower);
+  let out = "0x";
+  for (let i = 0; i < 40; i++) {
+    const c = lower[i]!;
+    const nibble = (digest[i >> 1]! >> (i % 2 === 0 ? 4 : 0)) & 15;
+    out += c >= "a" && nibble >= 8 ? c.toUpperCase() : c;
+  }
+  return out as Hex;
+}
+
+/**
  * The EIP-712 typed data for `TransferWithAuthorization`, with the field lists in EIP-3009's order. The domain's
- * `verifyingContract` is the token.
+ * `verifyingContract` is the token. The token, `from` and `to` are written as `signableAddress` gives them.
  */
 export function eip3009TypedData(a: {
   network: Eip155;
@@ -85,7 +105,7 @@ export function eip3009TypedData(a: {
   const nonce = normalHash(a.nonce);
   if (nonce === null) return refusal("evm/field-malformed");
   return {
-    domain: { name: a.name, version: a.version, chainId, verifyingContract: a.asset },
+    domain: { name: a.name, version: a.version, chainId, verifyingContract: signableAddress(a.asset) },
     types: {
       EIP712Domain: [
         { name: "name", type: "string" },
@@ -103,7 +123,7 @@ export function eip3009TypedData(a: {
       ],
     },
     primaryType: "TransferWithAuthorization",
-    message: { from: a.from, to: a.to, value, validAfter: a.validAfter, validBefore: a.validBefore, nonce },
+    message: { from: signableAddress(a.from), to: signableAddress(a.to), value, validAfter: a.validAfter, validBefore: a.validBefore, nonce },
   };
 }
 

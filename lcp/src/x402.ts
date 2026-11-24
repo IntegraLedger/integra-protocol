@@ -45,6 +45,7 @@ import {
   isReceipt,
   receiveTypedData,
   redeemedLeafRecover,
+  signableAddress,
   transferParts,
   type EvmQuery,
   type ReceiveTypedData,
@@ -397,7 +398,10 @@ function evmFilter(id: X402PairingId): OptionFilter {
 
 /**
  * The `TransferWithAuthorization` the payer signs for the chosen option, with the hash as its nonce. H is checked
- * first, then the choice's `from` and `now`, then its document and option.
+ * first, then the choice's `from` and `now`, then its document and option. The authorization's `from` and `to`, and
+ * the typed data's addresses, are as given when lower case and EIP-55 checksummed otherwise (`signableAddress`), as
+ * the stock client writes them: the stock facilitator hashes the authorization's addresses with viem, which refuses
+ * an all-capitals address.
  */
 async function build(choice: X402Choice, h: AtrHash, act?: Act): Promise<Unsigned | Refusal> {
   const atr = normalHash(h);
@@ -425,8 +429,8 @@ async function build(choice: X402Choice, h: AtrHash, act?: Act): Promise<Unsigne
   if (isRefusal(typedData)) return typedData;
 
   const authorization = {
-    from,
-    to: accepted.payTo,
+    from: signableAddress(from),
+    to: signableAddress(accepted.payTo as Hex),
     value: accepted.amount,
     validAfter: "0",
     validBefore: validBefore.toString(),

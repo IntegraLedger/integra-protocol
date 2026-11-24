@@ -27,6 +27,10 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   hashes them to the same value: a payment starknet.js's own client built, which the chain executes, was refused
   `starknet/typed-data-malformed`. A `Selector` stays hex only, since SNIP-12 hashes any other string there as a
   function name. Profile `x402/exact/starknet` rule 3 states it.
+- `exactEip3009.build` writes the authorization's `from` and `to`, and the typed data's addresses, as given when lower
+  case and EIP-55 checksummed otherwise, as the stock client writes them (`getAddress`). An option naming its `payTo`
+  or asset in capitals gave a payment the stock facilitator refused `invalid_exact_evm_signature` (viem refuses an
+  all-capitals address), though the token pays it, and typed data a viem wallet could not sign.
 
 ## [0.6.3] - 2026-11-20
 
