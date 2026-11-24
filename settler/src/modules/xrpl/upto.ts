@@ -5,8 +5,10 @@
  * and of that claim, and refuses a payload carrying `settlementTransaction`. At `/settle` the resource server adds
  * `settlementTransaction`, a `PaymentChannelClaim` its `payTo` key signed for the actual charge with `tfClose`; the
  * module's checks before it submits (`phaseOf` the context: `settle`) and its settle check it against the payment and
- * the channel, and the settle submits it unchanged and waits for it in a validated ledger. The module holds no key and
- * pays no fee (`extra.key` `none`).
+ * the channel, and the settle submits it unchanged and waits for it in a validated ledger. A validated `tesSUCCESS` is a
+ * success only where the claim's metadata shows the channel's `Balance` at or above the charge: rippled closes a channel
+ * that has expired by the ledger the claim lands in without delivering, and still answers `tesSUCCESS`. The module holds
+ * no key and pays no fee (`extra.key` `none`).
  *
  * The record names the payment by its channel, which one claim closes: one row per channel, as the scheme's
  * duplicate-settlement rule keys it. Nothing the payer signs carries H, and lcp reads the channel's create, the
@@ -21,7 +23,7 @@ import type { Network, PaymentPayload, PaymentRequirements, SchemeNetworkFacilit
 import { decode, deriveAddress, encodeForSigning, encodeForSigningClaim, verifyKeypairSignature, type Transaction } from "xrpl";
 import { isObject } from "../../answers.js";
 import { outcomeOf, phaseOf, type Instrumented, type Module, type Refused } from "../../module.js";
-import type { XrplNode } from "./node.js";
+import type { ChannelBalances, XrplNode } from "./node.js";
 
 /** The scheme's landing margin, in seconds: two ledger closes at a pessimistic 10-second rate. */
 const MARGIN_S = 20;
@@ -54,20 +56,24 @@ interface Presented {
 }
 
 /**
- * The requirements the payment's `accepted` must equal: at `/verify` the requirements as given; with a settlement
- * transaction, the settle-time requirements with `payload.maxAmount` for `amount`, as the scheme's re-verification
- * makes them.
+ * The requirements the payment's `accepted` must equal: at `/verify` the requirements as given; at `/settle`
+ * (`settling`), or with a settlement transaction, the settle-time requirements with `payload.maxAmount` for `amount`, as
+ * the scheme's re-verification makes them. A `/settle` that carries no settlement transaction is held to the same terms
+ * as one that does, so that it reaches the scheme's `invalid_upto_xrpl_missing_settlement_transaction` at any charge.
  */
-function termsOf(payload: PaymentPayload, r: PaymentRequirements): PaymentRequirements {
-  const settling = typeof payload.payload["settlementTransaction"] === "string";
+function termsOf(payload: PaymentPayload, r: PaymentRequirements, settling: boolean): PaymentRequirements {
+  const relaxed = settling || typeof payload.payload["settlementTransaction"] === "string";
   const max = payload.payload["maxAmount"];
-  return settling && typeof max === "string" ? { ...r, amount: max } : r;
+  return relaxed && typeof max === "string" ? { ...r, amount: max } : r;
 }
 
-/** The checks that read neither the chain nor the clock: the network, then lcp's checks of the payment and its option. */
-async function pure(network: XrplNetwork, payload: PaymentPayload, r: PaymentRequirements): Promise<Presented | Failure> {
+/**
+ * The checks that read neither the chain nor the clock: the network, then lcp's checks of the payment and its option,
+ * against `termsOf` the phase.
+ */
+async function pure(network: XrplNetwork, payload: PaymentPayload, r: PaymentRequirements, settling: boolean): Promise<Presented | Failure> {
   if (r.network !== network || payload.accepted?.network !== network) return { reason: "invalid_network" };
-  const ref = await uptoXrpl.reference(payload, termsOf(payload, r) as LcpOption);
+  const ref = await uptoXrpl.reference(payload, termsOf(payload, r, settling) as LcpOption);
   if (isRefusal(ref)) return { reason: reasonOf(ref), code: ref.code };
   const p = payload.payload as Record<string, unknown>;
   for (const k of ["maxAmount", "signature", "publicKey"]) if (typeof p[k] !== "string") return { reason: "invalid_payload" };
@@ -85,6 +91,18 @@ async function pure(network: XrplNetwork, payload: PaymentPayload, r: PaymentReq
 }
 
 const isPresented = (v: Presented | Failure): v is Presented => !("reason" in v);
+
+/**
+ * The pure checks as the record holds a payment, which carries no phase: the payment under either phase's terms, the
+ * `/verify` terms first and their refusal where neither holds. The instrument is the channel, whatever the charge;
+ * the facilitator's checks then hold the payment to its own phase's terms.
+ */
+async function held(network: XrplNetwork, payload: PaymentPayload, r: PaymentRequirements): Promise<Presented | Failure> {
+  const strict = await pure(network, payload, r, false);
+  if (isPresented(strict)) return strict;
+  const relaxed = await pure(network, payload, r, true);
+  return isPresented(relaxed) ? relaxed : strict;
+}
 const same = (a: unknown, b: unknown) => typeof a === "string" && typeof b === "string" && a.toUpperCase() === b.toUpperCase();
 const int = (v: unknown) => (typeof v === "number" && Number.isSafeInteger(v) ? v : undefined);
 
@@ -123,6 +141,8 @@ async function channelChecks(
     const validAfter = int(r.extra?.["validAfter"]);
     if (validAfter !== undefined && closeTime < validAfter - RIPPLE_EPOCH) return { reason: "invalid_upto_xrpl_payload_not_yet_valid" };
   } else {
+    // The scheme's settle-time headroom, against the validated ledger: an admission floor, not a landing guarantee (rule
+    // 7). The ledger the claim lands in is not yet closed; what it did is read from the claim's metadata (`deliveredOf`).
     if (cancelAfter !== undefined && cancelAfter < closeTime + MARGIN_S) return { reason: "invalid_upto_xrpl_payload_channel_expiring" };
     if (expiration !== undefined && expiration < closeTime + MARGIN_S) return { reason: "invalid_upto_xrpl_payload_channel_expiring" };
   }
@@ -181,6 +201,23 @@ async function settlementChecks(
   return undefined;
 }
 
+/**
+ * What a claim in a validated ledger with `tesSUCCESS` delivered, by its metadata (`channels`), against the charge: the
+ * channel's `Balance` after it at or above the charge, which a claim reaches by delivering its `Balance` less what the
+ * channel already carried, and a bare close finds already reached; or the shortfall. A charge of zero asks nothing. A
+ * claim applied to a channel that expired by the ledger it lands in, by `CancelAfter` or by the payer's requested close
+ * (`Expiration`), closes the channel delivering nothing and still answers `tesSUCCESS`: the metadata, not the result
+ * code nor the settle-time headroom check, is what the landing ledger did.
+ */
+function deliveredOf(channels: ChannelBalances | undefined, channelId: string, charge: string): { delivered: true } | { delivered: false; message: string } {
+  if (!/^[0-9]{1,19}$/.test(charge)) return { delivered: false, message: `the charge ${JSON.stringify(charge)} is not a number of drops` };
+  if (BigInt(charge) === 0n) return { delivered: true };
+  const c = channels?.get(channelId.toUpperCase());
+  if (c === undefined) return { delivered: false, message: `the transaction's metadata shows no change to channel ${channelId}` };
+  if (c.after >= BigInt(charge)) return { delivered: true };
+  return { delivered: false, message: `the channel's Balance is ${c.after} drops after the claim (${c.after - c.before} delivered by it), below the charge of ${charge}` };
+}
+
 function verifyFailure(f: Failure, payer?: string): VerifyResponse {
   return { isValid: false, invalidReason: f.reason, ...(f.code ? { invalidMessage: f.code } : {}), ...(payer ? { payer } : {}) };
 }
@@ -189,7 +226,7 @@ function verifyFailure(f: Failure, payer?: string): VerifyResponse {
 function uptoFacilitator(network: XrplNetwork, node: XrplNode): SchemeNetworkFacilitator {
   /** The scheme's checks at `/verify`, or at `/settle` (`settling`), where the settlement transaction is the server's. */
   const checked = async (payload: PaymentPayload, r: PaymentRequirements, settling: boolean) => {
-    const p = await pure(network, payload, r);
+    const p = await pure(network, payload, r, settling);
     if (!isPresented(p)) return p;
     if (!settling && p.settlementTransaction !== undefined) {
       return { reason: "invalid_upto_xrpl_payload_unexpected_settlement_transaction", payer: p.payer };
@@ -222,7 +259,11 @@ function uptoFacilitator(network: XrplNetwork, node: XrplNode): SchemeNetworkFac
         return { success: false, errorReason: p.reason, ...(p.code ? { errorMessage: p.code } : {}), transaction: "", network: n, ...(payer ? { payer } : {}) };
       }
       const sent = await node.submit(p.settlementTransaction!);
-      if (sent.validated && sent.resultCode === "tesSUCCESS") return { success: true, transaction: sent.hash, network: n, payer: p.payer, amount: r.amount };
+      if (sent.validated && sent.resultCode === "tesSUCCESS") {
+        const d = deliveredOf(sent.channels, p.channelId, r.amount);
+        if (d.delivered) return { success: true, transaction: sent.hash, network: n, payer: p.payer, amount: r.amount };
+        return { success: false, errorReason: "transaction_failed", errorMessage: d.message, transaction: sent.hash, network: n, payer: p.payer };
+      }
       if (!sent.validated) return { success: false, errorReason: "settlement_pending", transaction: sent.hash, network: n, payer: p.payer };
       return { success: false, errorReason: `transaction_failed: ${sent.resultCode}`, transaction: sent.hash, network: n, payer: p.payer };
     },
@@ -239,7 +280,7 @@ export function uptoModule(network: XrplNetwork, node: XrplNode): Module {
     facilitator: uptoFacilitator(network, node),
     record: {
       async instrument(p): Promise<Instrumented | Refused> {
-        const r = await pure(network, p.payload, p.requirements);
+        const r = await held(network, p.payload, p.requirements);
         if (!isPresented(r)) return { refused: r.reason };
         return {
           pairing: uptoXrpl.id,
@@ -249,13 +290,18 @@ export function uptoModule(network: XrplNetwork, node: XrplNode): Module {
           keep: { until: "settler" },
         };
       },
-      async read(_p, at) {
+      async read(p, at) {
         // lcp reads the channel's create, the payer's act, and no claim; the claim the record holds is read by its hash.
         if (at.transaction === undefined) return outcomeOf({ state: "pending", reason: "not-found", foreign: [] });
         const t = await node.transaction(at.transaction);
         if (t === null || !t.validated) return outcomeOf({ state: "pending", reason: "not-found", foreign: [] });
         if (t.resultCode === "tesSUCCESS") {
-          return outcomeOf({ state: "settled", transaction: at.transaction, finality: "validated", presented: "yes", foreign: [] });
+          const r = await held(network, p.payload, p.requirements);
+          if (isPresented(r) && deliveredOf(t.channels, r.channelId, p.requirements.amount).delivered) {
+            return outcomeOf({ state: "settled", transaction: at.transaction, finality: "validated", presented: "yes", foreign: [] });
+          }
+          // A claim that closed the channel short of the charge: the channel is gone, and nothing can deliver it now.
+          return outcomeOf({ state: "failed", reason: "transaction-failed", transaction: at.transaction, foreign: [] });
         }
         // A claim that failed in a validated ledger consumed nothing: the channel stays open to another claim.
         return outcomeOf({ state: "pending", reason: "instrument-live", transaction: at.transaction, foreign: [] });

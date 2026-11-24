@@ -4,6 +4,23 @@ Every release of `@integraledger/profile-facilitator`, the settler, with what an
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The package is 0.x: a minor release may change the
 configuration, the answers or the storage.
 
+## [Unreleased]
+
+### Fixed
+
+- `x402/upto/xrpl`: a claim in a validated ledger with `tesSUCCESS` was answered success with the full charge whatever
+  it delivered, at `/settle` and by the record's read of a repeat after a lost answer. rippled closes a channel that has
+  expired by the ledger the claim lands in (its `CancelAfter`, or the payer's requested close, `Expiration`) without
+  delivering, and still answers `tesSUCCESS`: a claim queued past either was answered success, `amount` the charge,
+  while the seller received nothing and the payer got the deposit back. The settle and the read now confirm the
+  delivery from the claim's metadata, as the scheme says a facilitator should: a success needs the channel's `Balance`
+  after the claim at or above the charge; a claim short of it is answered `transaction_failed` and its row is final. The
+  settle-time headroom check is unchanged, an admission floor against the validated ledger as the scheme's rule 7
+  states it ([The modules](./README.md#the-modules)).
+- `x402/upto/xrpl`: `/settle` with no `settlementTransaction` at a charge below the payment's maximum was refused
+  `invalid_payload`; it is refused `invalid_upto_xrpl_missing_settlement_transaction`, as at the maximum, the scheme's
+  code. `/verify` is unchanged.
+
 ## [0.5.1] - 2026-11-20
 
 ### Changed
