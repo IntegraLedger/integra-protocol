@@ -22,6 +22,11 @@ rename exports and pairing ids and change a function's arguments or answers; a p
   half of a `maxTimeoutSeconds` of 10 or less rounded up. With no margin, a buyer whose clock ran one second ahead of
   the stock facilitator's was refused `invalid_exact_tvm_payload_valid_until_too_far`. Profile `x402/exact/tvm` rule 2
   states the formula; `x402-exact-tvm.json`'s `fixed.now` moves 5 seconds so every signed value is unchanged.
+- `exactStarknet.reference` reads a presented message's `Execute After`, `Execute Before` and each call's `To` and
+  `Calldata` as a decimal string or a non-negative safe integer as well as hex, as starknet.js writes them and SNIP-12
+  hashes them to the same value: a payment starknet.js's own client built, which the chain executes, was refused
+  `starknet/typed-data-malformed`. A `Selector` stays hex only, since SNIP-12 hashes any other string there as a
+  function name. Profile `x402/exact/starknet` rule 3 states it.
 
 ## [0.6.3] - 2026-11-20
 

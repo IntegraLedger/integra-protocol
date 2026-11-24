@@ -354,10 +354,22 @@ function chainIdValue(v: unknown): bigint | undefined {
   return shortString(v);
 }
 
-/** A `u64` of the typed data, written as a decimal or as a felt, or undefined. */
-function u64Value(v: unknown): bigint | undefined {
+/**
+ * A felt of the presented typed data's `message`, in each spelling SNIP-12 and starknet.js take there: `0x` and hex
+ * digits, a decimal string (starknet.js's `CallData.compile` writes calldata so), or a non-negative safe integer (as
+ * starknet.js writes `Execute After` and `Execute Before` given as numbers); below the STARK prime, or undefined. The
+ * account contract hashes the value, not its spelling, so each spelling of a value is one message.
+ */
+function messageFelt(v: unknown): bigint | undefined {
+  if (typeof v === "number") return Number.isSafeInteger(v) && v >= 0 ? BigInt(v) : undefined;
   if (typeof v !== "string") return undefined;
-  const n = FELT_TEXT.test(v) ? feltValue(v) : DECIMAL.test(v) ? BigInt(v) : undefined;
+  const n = FELT_TEXT.test(v) ? BigInt(v) : DECIMAL.test(v) ? BigInt(v) : undefined;
+  return n !== undefined && n < FELT_P ? n : undefined;
+}
+
+/** A `u64` of the typed data, in a spelling `messageFelt` takes, or undefined. */
+function u64Value(v: unknown): bigint | undefined {
+  const n = messageFelt(v);
   return n !== undefined && n < U64_LIMIT ? n : undefined;
 }
 
@@ -1258,6 +1270,8 @@ async function signed(presented: unknown, given?: { readonly act: Act; readonly 
   }
   if (caller !== feltValue(p.accepted.extra!["feePayer"])) return refusal("starknet/caller-not-fee-payer");
   for (const call of calls as Record<string, unknown>[]) {
+    // SNIP-12's `selector` type reads a string that is not hex as a function name and hashes its sn_keccak, so a
+    // decimal there is another message: the selector is read as hex only.
     const selector = feltValue(call["Selector"]);
     if (selector === undefined) return refusal("starknet/typed-data-malformed");
     if (selector !== TRANSFER) return refusal("starknet/selector-not-transfer");
@@ -1280,8 +1294,11 @@ async function bound(presented: unknown, given?: { readonly act: Act; readonly h
  * The read keys (profile rule 11): the payer's account, the token, the signed nonce (given the act and H, checked as
  * `bound` checks it), `settleBy`, which is `Execute Before`, the payee, the `payTo` of the option the payment answers,
  * and the outside execution as presented, each member a felt in its shortest spelling. A presented `accepted` that is
- * not that option is `x402/accepted-not-option`. `Execute After` and `Execute Before` are decimals or felts below
- * 2^64, `Execute Before` also a safe integer; each call's `To` and `Calldata` are felts.
+ * not that option is `x402/accepted-not-option`. `Execute After` and `Execute Before` are below 2^64, `Execute Before`
+ * also a safe integer; they and each call's `To` and `Calldata` are read in each spelling SNIP-12 and starknet.js hash
+ * as that value (`messageFelt`: hex, a decimal string or a safe integer), and given back as felts in their shortest
+ * spelling. The `Nonce`, `Caller` and `Selector` `bound` reads are hex: SNIP-12 hashes a `Selector` that is not hex as
+ * a name.
  */
 async function reference(
   presented: unknown,
@@ -1300,9 +1317,9 @@ async function reference(
   }
   const calls: StarknetCall[] = [];
   for (const call of s.calls) {
-    const to = feltValue(call["To"]);
+    const to = messageFelt(call["To"]);
     const data = call["Calldata"];
-    const calldata = Array.isArray(data) ? (data as Json[]).map(feltValue) : [undefined];
+    const calldata = Array.isArray(data) ? (data as Json[]).map(messageFelt) : [undefined];
     if (to === undefined || calldata.some((d) => d === undefined)) return refusal("starknet/typed-data-malformed");
     calls.push({ to: feltOf(to), selector: feltOf(TRANSFER), calldata: (calldata as bigint[]).map(feltOf) });
   }
