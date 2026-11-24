@@ -4,6 +4,27 @@ Every release of `@integraledger/profile-facilitator`, the settler, with what an
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The package is 0.x: a minor release may change the
 configuration, the answers or the storage.
 
+## [Unreleased]
+
+### Fixed
+
+- `/settle` answers success for a payment this settler sent whose answer naming the transaction was lost, once lcp's
+  read shows the payment it presented settled: a dropped answer to the send, a class that answers `transaction: ""` on
+  any failure after its broadcast (`@x402/tvm`, `@x402/aptos`, `@x402/near`, the `erc7710` module), a class's settle
+  that outlasts the claim's hold, or the settler stopped between the send and its answer. 0.5.1 stored these final as
+  `invalid_transaction_state` although the seller was paid, on every module whose instrument is not its transaction id.
+  The mark is "given to the class's settle", not "sent": a class's failure naming no transaction reads the same whether
+  or not the node took the send, so a claim once given to the class is answered success where the payment it presented
+  settles, even by another route (a buyer who retried the same signed payment through another facilitator). A payment
+  that landed by another route with no claim, or under a claim refused before the class's settle (a spent fee budget,
+  the settle's wait over), is still `invalid_transaction_state`.
+
+### Changed
+
+- The record's `instrument` table has a column `submitted`, set before the class's settle is called; every start adds
+  it where an earlier release created the table (`ALTER TABLE ... ADD COLUMN IF NOT EXISTS`). Rows an earlier release
+  left hold `false`, and are answered as 0.5.1 answered them.
+
 ## [0.5.1] - 2026-11-20
 
 ### Changed

@@ -14,6 +14,7 @@ import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { serveSettler, type SettlerConfig } from "../src/core.js";
 import { listed } from "../src/modules/index.js";
+import { RECORD_SCHEMA } from "../src/record.js";
 import { nonceOf, offering, OTHER_PAIRING, PAIRING, starter, type TestModuleConfig } from "./core-module.js";
 import { freshDatabase, onLockedPort, stub, type Stub } from "./support.js";
 
@@ -100,7 +101,7 @@ class Ledger {
   readonly consumed = new Map<string, string>();
   readonly sends: unknown[] = [];
   /** What `/send` answers instead, given the send's number from 1: nothing is consumed. */
-  sending?: (n: number) => { transaction: string; included: boolean };
+  sending?: (n: number) => { transaction: string; included: boolean; reason?: string };
   /** How long `/send` takes. */
   sendMs = 0;
   /** What `/send` does once it has taken `sendMs`, before it answers. */
@@ -355,6 +356,69 @@ describe("the record", () => {
     expect(ledger.sends).toHaveLength(2);
   });
 
+  it("answers success where its send landed and the answer naming the transaction was lost: the class answers no transaction", async () => {
+    // The node takes the send, and the answer that reaches the class names nothing, as a dropped answer to the send,
+    // or a class that answers "" on any failure after its broadcast, gives it.
+    await start();
+    const landed = nonce("lost answer");
+    ledger.sending = () => {
+      ledger.landed(V2, landed);
+      return { transaction: "", included: false, reason: "invalid_exact_evm_transaction_failed" };
+    };
+    expect(await settle(body())).toEqual({ ...success(), transaction: landed });
+    expect((await db.pool.query("SELECT final, outcome, sent, submitted FROM instrument")).rows).toEqual([
+      { final: true, outcome: "settled", sent: [], submitted: true },
+    ]);
+    expect(await settle(body())).toEqual(held(landed));
+    expect(ledger.sends).toHaveLength(1);
+  });
+
+  it("answers one success where the class's settle outlasts the hold and its payment lands: the repeat that reads it, never both", async () => {
+    await start({}, { settleWaitMs: 1_000 });
+    const landed = nonce("slow class");
+    // The send lands at once; the class's answer comes 2.5 s later and names nothing, past the claim's hold.
+    ledger.sent = async () => {
+      ledger.landed(V2, landed);
+      await new Promise((resolve) => setTimeout(resolve, 2_500));
+    };
+    const lost = { success: false, errorReason: "invalid_exact_evm_transaction_failed", transaction: "", network: NETWORK };
+    ledger.sending = () => ({ transaction: "", included: false, reason: lost.errorReason });
+    const first = settle(body());
+    await new Promise((resolve) => setTimeout(resolve, 1_300));
+    // The repeat takes the ended hold and reads the payment landed: the row says a settle gave it to the class.
+    expect(await settle(body())).toEqual({ ...success(), transaction: landed });
+    // The first, its wait over, reads nothing and gives the class's own failure: no second success.
+    expect(await first).toEqual(lost);
+    expect(await settle(body())).toEqual(held(landed));
+    expect(ledger.sends).toHaveLength(1);
+  });
+
+  it("answers success where a claim it gave to the class, which answered a failure naming nothing, later lands by another route: it cannot tell that send from its own", async () => {
+    // The stated limit: a class's failure naming no transaction is the same answer whether or not the node took the
+    // send, so a claim once given to the class is this settler's where the payment it presented settles.
+    sender = await stub((path, b) => ledger.answer(path, b), () => false);
+    await sender.close();
+    await start({ sender: sender.url });
+    expect(await settle(body())).toEqual({ success: false, errorReason: "node_unreachable", transaction: "", network: NETWORK });
+    const landed = nonce("another facilitator");
+    ledger.landed(V2, landed);
+    expect(await settle(body())).toEqual({ ...success(), transaction: landed });
+    expect(sender.calls).toEqual([]);
+  });
+
+  it("adds the submitted mark to a record 0.5.1 created, false on the rows it holds: a claim it left reads as never given to the class", async () => {
+    // 0.5.1's statements: RECORD_SCHEMA without the column and the statement that adds it.
+    const old = RECORD_SCHEMA.split("\n").filter((l) => !l.includes("submitted")).join("\n");
+    expect(old).not.toBe(RECORD_SCHEMA);
+    await db.pool.query(old);
+    await db.pool.query(
+      `INSERT INTO instrument (network, key, pairing, claimed, held_until, body) VALUES ($1, '["a claim of 0.5.1"]', $2, 1, 0, 'b')`,
+      [NETWORK, PAIRING],
+    );
+    await start();
+    expect((await db.pool.query("SELECT submitted FROM instrument")).rows).toEqual([{ submitted: false }]);
+  });
+
   it("sends a held claim again only as the body that claimed it: a copy re-signed under its nonce is sent nothing", async () => {
     sender = await stub((path, b) => ledger.answer(path, b), () => false);
     await sender.close();
@@ -423,7 +487,10 @@ describe("the fee budget", () => {
     const fresh = payment({ nonce: nonce("H2") });
     expect(await s(body(fresh))).toEqual(spent);
     expect(ledger.sends).toHaveLength(1);
-    expect((await db.pool.query("SELECT final FROM instrument ORDER BY claimed")).rows).toEqual([{ final: true }, { final: false }]);
+    expect((await db.pool.query("SELECT final, submitted FROM instrument ORDER BY claimed")).rows).toEqual([
+      { final: true, submitted: true },
+      { final: false, submitted: false },
+    ]);
     // /verify refuses a payment the settler would submit.
     expect(await verify(body(payment({ nonce: nonce("H3") })), CREDENTIAL)).toEqual({ isValid: false, invalidReason: "fee_budget_spent" });
     // A repeat of the final answer is answered from the record.
