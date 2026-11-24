@@ -260,7 +260,7 @@ describe("a multisigned payment in an issued currency carries SendMax as the cla
     expect(await routed(r, p).facilitator.settle(p.payload, p.requirements)).toMatchObject({ success: true, payer: PAYER });
   });
 
-  it("refuses with the class's reasons: no SendMax, one below the Amount, of another issuer, Paths; and any SendMax on XRP", async () => {
+  it("refuses with the class's reasons: no SendMax, one below the Amount, of another issuer, Paths, DeliverMin; and any SendMax on XRP", async () => {
     const r = await registrationOn(2);
     const rows: [string, Record<string, unknown>, PaymentRequirements, string][] = [
       ["no SendMax", { Amount: USD("10") }, accepted, "invalid_exact_xrpl_payload_sendmax_required"],
@@ -272,6 +272,8 @@ describe("a multisigned payment in an issued currency carries SendMax as the cla
         accepted,
         "invalid_exact_xrpl_payload_paths_not_allowed",
       ],
+      ["DeliverMin", { Amount: USD("10"), SendMax: USD("10"), DeliverMin: USD("10"), Flags: 0x00020000 }, accepted, "invalid_exact_xrpl_payload_delivermin_not_allowed"],
+      ["partial payment", { Amount: USD("10"), SendMax: USD("10"), Flags: 0x00020000 }, accepted, "invalid_exact_xrpl_payload_partial_payment_not_allowed"],
       ["XRP with SendMax", { SendMax: "1000000" }, V.V2.accepted, "invalid_exact_xrpl_payload_sendmax_not_allowed"],
     ];
     for (const [name, change, req, reason] of rows) {

@@ -207,11 +207,12 @@ async function multisigChecks(c: XrplConfig, node: XrplNode, payload: PaymentPay
   if (tx["SigningPubKey"] !== "") return { reason: "invalid_exact_xrpl_payload_signing_pub_key" };
   if (tx["Destination"] !== r.payTo) return { reason: "invalid_exact_xrpl_payload_destination_mismatch" };
   if (!amountMatches(tx, r)) return { reason: "invalid_exact_xrpl_payload_amount_mismatch" };
-  if (((Number(tx["Flags"] ?? 0) >>> 0) & PARTIAL_PAYMENT) !== 0) return { reason: "invalid_exact_xrpl_payload_partial_payment_not_allowed" };
   const sendMax = sendMaxFailure(tx, r);
   if (sendMax !== undefined) return { reason: sendMax };
   if (tx["Paths"] !== undefined) return { reason: "invalid_exact_xrpl_payload_paths_not_allowed" };
   if (tx["DeliverMin"] !== undefined) return { reason: "invalid_exact_xrpl_payload_delivermin_not_allowed" };
+  // The class's order: SendMax, Paths, DeliverMin, then the partial-payment flag.
+  if (((Number(tx["Flags"] ?? 0) >>> 0) & PARTIAL_PAYMENT) !== 0) return { reason: "invalid_exact_xrpl_payload_partial_payment_not_allowed" };
   if (typeof tx["Fee"] !== "string" || BigInt(tx["Fee"]) > BigInt(c.maxFeeDrops ?? DEFAULT_MAX_FEE_DROPS)) {
     return { reason: "invalid_exact_xrpl_payload_fee_too_high" };
   }
