@@ -10,7 +10,7 @@ configuration, the answers or the storage.
 
 - `xrpl`: a payment that validated after its first `/settle` answered `settlement_pending` was never answered settled:
   lcp's read through the settler's node reader answered `unreadable` for every landed transaction it read by `tx`,
-  whose binary answer names the transaction `tx` on rippled's API version 1, the settler's default (rippled 3.1.3,
+  whose binary answer names the transaction `tx` on rippled's API version 1, which rippled answers to a request naming no `api_version`, as the settler's do (rippled 3.1.3,
   xrpld 3.3.0), and `tx_blob` with `meta_blob` on version 2, while the reader took only `tx_blob` with `meta`. It now
   takes either form, from `tx` and from `account_tx` (note row 9).
 - `xrpl`: lcp's read searched the payer's history to the open ledger (`ledger_current`), which `account_tx`, reading

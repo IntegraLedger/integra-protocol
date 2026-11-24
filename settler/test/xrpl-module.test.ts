@@ -27,11 +27,14 @@ let node: Stub | undefined;
 let settler: Serving | undefined;
 /** Accounts the node holds no `account_info` for: `actNotFound`, as rippled answers for an address never funded. */
 let unfunded: ReadonlySet<string> = new Set();
+/** Members an account's `account_data` carries beyond Sequence 7 and Flags 0: a regular key, the master key disabled. */
+let accountData: ReadonlyMap<string, Record<string, unknown>> = new Map();
 afterEach(async () => {
   await settler?.close();
   await node?.close();
   settler = node = undefined;
   unfunded = new Set();
+  accountData = new Map();
 });
 
 /** A validated ledger below the payments' LastLedgerSequence, 1000; the payer's next Sequence is 7, the signed one. */
@@ -41,7 +44,7 @@ function answer(method: string, p: Record<string, unknown>, quorum: number): unk
       return { ledger_index: 990, validated: true, status: "success" };
     case "account_info":
       if (unfunded.has(p["account"] as string)) return { account: p["account"], error: "actNotFound", ledger_index: 990, validated: true, status: "error" };
-      return { account_data: { Account: p["account"], Sequence: 7, Flags: 0 }, ledger_index: 990, validated: true, status: "success" };
+      return { account_data: { Account: p["account"], Sequence: 7, Flags: 0, ...accountData.get(p["account"] as string) }, ledger_index: 990, validated: true, status: "success" };
     case "account_objects":
       return {
         account_objects: [
@@ -294,6 +297,26 @@ describe("a multisigned payment whose signers hold no account (note row 23)", ()
     const r = await registrationOn(2);
     const p = payment(multisigned({}, [WALLETS[0]!, WALLETS[1]!], [SIGNERS[2]!]), V.V2.accepted);
     expect(await routed(r, p).facilitator.settle(p.payload, p.requirements)).toMatchObject({
+      success: false,
+      errorReason: "invalid_exact_xrpl_payload_signer_not_authorized",
+    });
+    expect(methods()).not.toContain("submit");
+  });
+
+  it("refuses a funded signer whose key is not its regular key, and one whose master key is disabled, submitting nothing", async () => {
+    const [, two] = V.multisigned.rows as { blob: string }[];
+    // The first wallet signs as the third signer, a funded account whose regular key is the second signer's address.
+    accountData = new Map([[SIGNERS[2]!, { RegularKey: SIGNERS[1]! }]]);
+    const r = await registrationOn(2);
+    const wrongKey = payment(multisigned({}, [WALLETS[0]!, WALLETS[1]!], [SIGNERS[2]!]), V.V2.accepted);
+    expect(await routed(r, wrongKey).facilitator.verify(wrongKey.payload, wrongKey.requirements)).toEqual({
+      isValid: false,
+      invalidReason: "invalid_exact_xrpl_payload_signer_not_authorized",
+    });
+    // lsfDisableMaster on the first signer, which signs the vector's copy with its master key.
+    accountData = new Map([[SIGNERS[0]!, { Flags: 0x00100000 }]]);
+    const disabled = payment(two!.blob, V.V2.accepted);
+    expect(await routed(r, disabled).facilitator.settle(disabled.payload, disabled.requirements)).toMatchObject({
       success: false,
       errorReason: "invalid_exact_xrpl_payload_signer_not_authorized",
     });
