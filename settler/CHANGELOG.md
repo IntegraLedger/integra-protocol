@@ -4,6 +4,16 @@ Every release of `@integraledger/profile-facilitator`, the settler, with what an
 follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). The package is 0.x: a minor release may change the
 configuration, the answers or the storage.
 
+## [Unreleased]
+
+### Fixed
+
+- `xrpl`: a payment that validated after its first `/settle` answered `settlement_pending` was never answered settled:
+  lcp's read through the settler's node reader answered `unreadable` for every landed transaction it read by `tx`,
+  whose binary answer names the transaction `tx` on rippled's API version 1, the settler's default (rippled 3.1.3,
+  xrpld 3.3.0), and `tx_blob` with `meta_blob` on version 2, while the reader took only `tx_blob` with `meta`. It now
+  takes either form, from `tx` and from `account_tx` (note row 9).
+
 ## [0.5.1] - 2026-11-20
 
 ### Changed

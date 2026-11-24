@@ -22,11 +22,19 @@ function failedOf(method: string, r: Record<string, unknown>): never {
 
 const int = (v: unknown): number | undefined => (typeof v === "number" && Number.isSafeInteger(v) && v >= 0 ? v : undefined);
 
-/** A landed transaction from its binary `tx_blob` and `meta`. */
+/**
+ * The first of `names` that `t` holds as a string. rippled names a binary answer's members by API version and by method:
+ * `tx` answers `tx` and `meta` on API version 1, `tx_blob` and `meta_blob` on version 2; `account_tx` answers `tx_blob`
+ * and `meta` on version 1, `tx_blob` and `meta_blob` on version 2 (rippled 3.1.3; xrpld 3.3.0).
+ */
+const hexOf = (t: Record<string, unknown>, ...names: string[]): string | undefined =>
+  names.map((n) => t[n]).find((v): v is string => typeof v === "string");
+
+/** A landed transaction from its binary transaction and metadata, in any of the forms rippled answers. */
 function landedOf(t: Record<string, unknown>, method: string): XrplLanded {
-  const blob = t["tx_blob"];
-  const metaHex = t["meta"];
-  if (typeof blob !== "string" || typeof metaHex !== "string") return failedOf(method, t);
+  const blob = hexOf(t, "tx_blob", "tx");
+  const metaHex = hexOf(t, "meta_blob", "meta");
+  if (blob === undefined || metaHex === undefined) return failedOf(method, t);
   const meta = decode(metaHex);
   const result = meta["TransactionResult"];
   if (typeof result !== "string") return failedOf(method, t);
