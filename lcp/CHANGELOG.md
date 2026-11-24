@@ -6,6 +6,21 @@ rename exports and pairing ids and change a function's arguments or answers; a p
 [Upgrading](../docs/upgrading.md) states what 0.6's patch releases add, and each change a caller of 0.5.x makes for
 0.6.0.
 
+## [Unreleased]
+
+### Fixed
+
+- `xrplChannelStatus` (`x402/upto/xrpl`, `mpp/session/xrpl/stock`): a channel whose `PaymentChannelCreate` validated
+  between the read's `server_info` and its `ledger_entry` was shown by the entry, at the later validated ledger, while
+  the search for its create ended at the ledger `server_info` had stated. Where a reader's latest ledger is its
+  validated one, as the Binder's is, or where a ledger closed before the create landed, the search held no create,
+  read whole, and the read answered a final `failed`, `before-position`, for a channel the seller is then paid from.
+  The read now takes the reader's `server()` again after the entry, holds the history to that answer and searches to
+  its latest ledger, or the first answer's where that is later. On one server, whose validated ledger does not go
+  back, the search so reaches the ledger the entry was read at; behind a balancer whose second answer comes from a
+  node behind the one that read the entry, the race stays, since `XrplChannelEntry` names no ledger. One more
+  `server()` call per channel read.
+
 ## [0.6.3] - 2026-11-20
 
 ### Added

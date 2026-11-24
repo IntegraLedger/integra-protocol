@@ -74,11 +74,12 @@ export function xrplReader(network: XrplNetwork, url: string, deadline: number):
       const r = await call("server_info", {});
       const info = isObject(r["info"]) ? r["info"] : failedOf("server_info", r);
       const validated = isObject(info["validated_ledger"]) ? int(info["validated_ledger"]["seq"]) : undefined;
-      const current = await call("ledger_current", {});
-      const latest = int(current["ledger_current_index"]);
-      if (validated === undefined || latest === undefined || typeof info["complete_ledgers"] !== "string") return failedOf("server_info", r);
+      if (validated === undefined || typeof info["complete_ledgers"] !== "string") return failedOf("server_info", r);
       const id = int(info["network_id"]);
-      return { validated, latest, completeLedgers: info["complete_ledgers"], ...(id === undefined ? {} : { networkId: id }) };
+      // `latest`, the ledger a search reads to, is the validated ledger of this same answer. `account_tx` reads validated
+      // ledgers only, so a search to the open ledger (`ledger_current`) never reads whole: a consumed or lapsed payment
+      // stays pending at rest, and a read during which a ledger closes can answer final where the next read does not.
+      return { validated, latest: validated, completeLedgers: info["complete_ledgers"], ...(id === undefined ? {} : { networkId: id }) };
     },
     async tx(hash, range) {
       const r = await call("tx", { transaction: hash, binary: true, ...(range ? { min_ledger: range.min, max_ledger: range.max } : {}) });
