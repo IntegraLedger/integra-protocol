@@ -551,7 +551,9 @@ function isChannelRef(ref: unknown): ref is XrplChannelRef {
  * The read of a channel at coverage `none`, as the profile `read-status` answers it: the `PayChannel` at the validated
  * ledger (`ledger_entry`); then the `account_tx` of the channel's `Account`, or, where the validated ledger does not
  * show the channel, of the payer the presented payment names, from the ledger the create must come after, or the
- * search position the query gives, to the latest ledger the server serves, for the `PaymentChannelCreate` whose
+ * search position the query gives, to the latest ledger the server serves as `server_info` states it read again after
+ * the entry, or as it stated it first where that is later, which on one server reaches the ledger the entry was read
+ * at, for the `PaymentChannelCreate` whose
  * metadata creates the channel's entry, or, where the metadata names none, whose `Account`, `Destination` and sequence
  * or ticket give the channel's id. That create is the act where its `Account` is the payer and its `Destination` the
  * payee; one another account opened, or one to another account, took the channel and answers `failed`,
@@ -573,12 +575,21 @@ export async function xrplChannelStatus(
   const fault = precheck(query, isChannelRef(ref), reader, isObject(ref) ? (ref as XrplChannelRef).network : undefined);
   if (fault !== undefined) return fault;
   try {
-    const server = await serverOf(reader);
-    if (server.networkId !== undefined && server.networkId !== networkId(ref.network)) return unreadableAnswer("chain-mismatch");
-    let history = holds(completeRanges(server.completeLedgers), ref.fromLedger, server.validated);
+    const first = await serverOf(reader);
+    if (first.networkId !== undefined && first.networkId !== networkId(ref.network)) return unreadableAnswer("chain-mismatch");
     const channel = ref.channel.toUpperCase();
     const entry = await call(() => reader.channel(channel, "validated"));
     if (typeof entry !== "object" || entry === null) unparseable();
+    // The entry was read at the validated ledger of that call, which may be later than `first.validated`: a create
+    // validated between the two calls is shown by the entry and lies past `first.latest` where the server's latest is
+    // its validated ledger. On one server, whose validated ledger does not go back, `server_info` read again after the
+    // entry states a validated ledger no earlier than the entry's, so the search and the history it is held to end at
+    // or past the ledger the entry was read at. Behind a balancer whose second `server_info` reaches a node behind the
+    // one that read the entry, the race stays: the entry names no ledger to search to. The search never ends before
+    // the first answer's latest.
+    const server = await serverOf(reader);
+    if (server.networkId !== undefined && server.networkId !== networkId(ref.network)) return unreadableAnswer("chain-mismatch");
+    let history = holds(completeRanges(server.completeLedgers), ref.fromLedger, server.validated);
     const shown = !("notFound" in entry);
     const e = entry as Partial<XrplChannelEntry>;
     if (shown && (typeof e.account !== "string" || typeof e.destination !== "string")) unparseable();
@@ -625,7 +636,7 @@ export async function xrplChannelStatus(
       return true;
     };
     const from = isIndex(query.search) ? query.search : ref.fromLedger;
-    const s = await searchAccount(reader, opener, from, server.latest, take);
+    const s = await searchAccount(reader, opener, from, Math.max(first.latest, server.latest), take);
     if (!s.covered) history = false;
     const search = s.at === undefined ? { whole: s.whole } : { whole: s.whole, at: s.at };
     const after = query.after;
