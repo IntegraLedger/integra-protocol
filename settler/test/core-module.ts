@@ -23,6 +23,12 @@ export interface TestModuleConfig {
   readonly extra?: Record<string, unknown>;
   /** False where the module shows no fee it paid (`FeeNeeds.charged` left out). */
   readonly charged?: false;
+  /**
+   * Where set, the payment is keyed as a form with no single-use value is (an `upto` claim): by a digest of what it
+   * signed, nonce `unshown`, and its read shows nothing of it (`not-found`), as a Solana channel claim's. `lands-once`
+   * states that the chain takes its act at most once (`landsOnce`).
+   */
+  readonly digest?: "unshown" | "lands-once";
 }
 
 /** x402's EIP-3009 authorization, as payload.authorization carries it. */
@@ -95,6 +101,15 @@ function moduleOf(c: TestModuleConfig, pairing: PairingId, form: string | undefi
         const a = authorizationOf(p.payload);
         if (a === undefined) return { refused: "invalid_payload" };
         const n = nonceOf(p.payload, p.requirements);
+        if (c.digest !== undefined) {
+          return {
+            pairing,
+            instrument: { by: "digest", network: c.network, digest: `${n.signer}|${n.token}|${n.value}` },
+            nonce: "unshown",
+            keep: { until: "settler" },
+            ...(c.digest === "lands-once" ? { landsOnce: true as const } : {}),
+          };
+        }
         return {
           pairing,
           instrument: { by: "single-use", network: c.network, signer: n.signer, value: n.value, scope: n.token },
@@ -103,6 +118,7 @@ function moduleOf(c: TestModuleConfig, pairing: PairingId, form: string | undefi
         };
       },
       async read(p, at) {
+        if (c.digest !== undefined) return outcomeOf({ state: "pending", reason: "not-found", foreign: [] });
         const from = at.from === undefined ? null : String((at.from as { block: bigint }).block);
         const validBefore = authorizationOf(p.payload)!.validBefore;
         const answer = await ask(`${c.node}/read`, { ...nonceOf(p.payload, p.requirements), validBefore, from, transaction: at.transaction ?? null });

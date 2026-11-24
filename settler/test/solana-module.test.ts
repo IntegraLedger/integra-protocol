@@ -305,7 +305,9 @@ describe("the channel forms through the module", () => {
       requirements: { ...opening.requirements, amount: "1" },
     };
     const claimed = await m.record.instrument(claim);
-    expect(claimed).toMatchObject({ pairing: "x402/upto/solana", nonce: "unshown", instrument: { by: "digest", network: DEVNET } });
+    // A claim settles and seals its channel: the chain takes it once, so a held claim the class sent nothing for may be given again.
+    expect(claimed).toMatchObject({ pairing: "x402/upto/solana", nonce: "unshown", instrument: { by: "digest", network: DEVNET }, landsOnce: true });
+    expect("landsOnce" in (at as object)).toBe(false);
     expect(await m.record.instrument({ ...claim, requirements: { ...claim.requirements, amount: "2" } })).not.toEqual(claimed);
     expect(node!.calls).toEqual([]);
   });
@@ -342,6 +344,11 @@ describe("the channel forms through the module", () => {
     const row = BATCH.buyer.rows.find((r: { pairing: string; input?: { presented?: unknown } }) => r.pairing === "x402/batch-settlement/solana" && r.input?.presented !== undefined);
     const opening: X402Payment = { payload: row.input.presented, requirements: row.input.presented.accepted };
     expect(await m.record.instrument(opening)).toMatchObject({ pairing: "x402/batch-settlement/solana", nonce: "unshown", instrument: { by: "digest", network: DEVNET } });
+    // A later batch message (a top-up, a refund, a claim) is not stated to land once: a held one is never given again.
+    const later: X402Payment = { payload: { ...opening.payload, payload: { ...opening.payload.payload, type: "refund" } }, requirements: opening.requirements };
+    const laterAt = await m.record.instrument(later);
+    expect(laterAt).toMatchObject({ instrument: { by: "digest", network: DEVNET } });
+    expect("landsOnce" in (laterAt as object)).toBe(false);
     expect(node!.calls).toEqual([]);
   });
 });

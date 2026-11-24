@@ -570,9 +570,11 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
 
     /**
      * A claim the record holds that is not final. Where another settle holds it, this one watches. Otherwise it takes
-     * the claim, reads the chain, and submits the identical signed payment again only where the form's nonce is
-     * single-use, the read shows the value unconsumed and its validity open (`instrument-live`), the body is the one
-     * that claimed the row, and `/verify`'s checks pass for it again.
+     * the claim, reads the chain, and submits the identical signed payment again only where the body is the one that
+     * claimed the row, `/verify`'s checks pass for it again, and either the form's nonce is single-use and the read
+     * shows the value unconsumed and its validity open (`instrument-live`), or the instrument is named by its digest,
+     * its module states the chain takes its act once (`landsOnce`), the read shows nothing of it (`not-found`) and no
+     * transaction is known sent for it.
      */
     async function held(a: Attempt, row: Row): Promise<SettleAnswer | SettleResponse> {
       if (row.heldUntil > Date.now()) return watch(a, row);
@@ -590,7 +592,10 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
       if (read.outcome === "final") return byFinalRead(a, read, took.sent, took.submitted, took.payer, took.claimed);
       const live = read.answer;
       const search = live.state === "pending" && live.search !== undefined ? { search: live.search } : {};
-      if (live.state === "pending" && live.reason === "instrument-live" && resendable(a.instrumented)) {
+      const again =
+        live.state === "pending" &&
+        ((live.reason === "instrument-live" && resendable(a.instrumented)) || (live.reason === "not-found" && unsentOnce(a.instrumented, took)));
+      if (again) {
         if (took.body !== bodyOf(a.payment)) {
           // Another body under the claimed instrument (a copy signed again): never sent in place of the one claimed.
           await release(a, search);
@@ -612,11 +617,21 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
     }
 
     /**
-     * Whether a held claim may be sent again: only where the form's nonce is single-use, and never for an instrument
-     * named by the digest of its signed payment, which one settler submits once.
+     * Whether a held claim the read shows live may be sent again: only where the form's nonce is single-use, and never
+     * for an instrument named by the digest of its signed payment, whose read cannot show its value unconsumed
+     * (`unsentOnce` decides those).
      */
     function resendable(i: Instrumented): boolean {
       return i.nonce === "single-use" && i.instrument.by !== "digest";
+    }
+
+    /**
+     * Whether a held claim named by its digest may be given to the class again although its read shows nothing: only
+     * where the module states that the chain takes its act at most once (`landsOnce`) and no transaction is known sent
+     * for the claim. A transaction known sent is answered pending, as for any other form.
+     */
+    function unsentOnce(i: Instrumented, row: Row): boolean {
+      return i.instrument.by === "digest" && i.landsOnce === true && row.sent.length === 0 && row.transaction === undefined;
     }
 
     /** The transaction an instrument keyed by its transaction id names, which is known before it is sent. */

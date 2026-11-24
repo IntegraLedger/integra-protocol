@@ -100,8 +100,8 @@ const LEDGER_NOW = Number((V2.payload["authorization"] as Authorization).validBe
 class Ledger {
   readonly consumed = new Map<string, string>();
   readonly sends: unknown[] = [];
-  /** What `/send` answers instead, given the send's number from 1: nothing is consumed. */
-  sending?: (n: number) => { transaction: string; included: boolean; reason?: string };
+  /** What `/send` answers instead, given the send's number from 1: nothing is consumed. Undefined sends as usual. */
+  sending?: (n: number) => { transaction: string; included: boolean; reason?: string } | undefined;
   /** How long `/send` takes. */
   sendMs = 0;
   /** What `/send` does once it has taken `sendMs`, before it answers. */
@@ -118,7 +118,8 @@ class Ledger {
       this.sends.push(body);
       if (this.sendMs > 0) await new Promise((resolve) => setTimeout(resolve, this.sendMs));
       await this.sent?.();
-      if (this.sending !== undefined) return this.sending(this.sends.length);
+      const instead = this.sending?.(this.sends.length);
+      if (instead !== undefined) return instead;
       const transaction = sentFor(b);
       this.consumed.set(Ledger.key(b), transaction);
       return { transaction, included: true };
@@ -417,6 +418,51 @@ describe("the record", () => {
     );
     await start();
     expect((await db.pool.query("SELECT submitted FROM instrument")).rows).toEqual([{ submitted: false }]);
+  });
+
+  describe("a claim keyed by its digest, whose read shows nothing of it (an upto claim)", () => {
+    // The class refuses the first settle with nothing sent (a lagging node: the channel not yet visible to it).
+    const refusedUnsent = { transaction: "", included: false, reason: "invalid_upto_svm_channel_state" };
+    const refused = { success: false, errorReason: refusedUnsent.reason, transaction: "", network: NETWORK };
+
+    it("gives the identical claim to the class again where the chain takes its act once and nothing is known sent", async () => {
+      await start({ digest: "lands-once" });
+      ledger.sending = (n) => (n === 1 ? refusedUnsent : undefined);
+      expect(await settle(body())).toEqual(refused);
+      expect(await settle(body())).toEqual(success());
+      expect(ledger.sends).toHaveLength(2);
+      // Final: a repeat is answered from the record and sends nothing.
+      expect(await settle(body())).toEqual(held(sentFor(nonceOf(V2, O))));
+      expect(ledger.sends).toHaveLength(2);
+    });
+
+    it("sends nothing again where the module does not state that the chain takes its act once", async () => {
+      await start({ digest: "unshown" });
+      ledger.sending = (n) => (n === 1 ? refusedUnsent : undefined);
+      expect(await settle(body())).toEqual(refused);
+      expect(await settle(body())).toEqual({ success: false, errorReason: "unexpected_settle_error", transaction: "", network: NETWORK });
+      expect(ledger.sends).toHaveLength(1);
+    });
+
+    it("sends nothing again where a transaction is known sent for the claim: it is answered pending naming it", async () => {
+      await start({ digest: "lands-once" });
+      const named = nonce("sent, not yet shown");
+      ledger.sending = (n) => (n === 1 ? { transaction: named, included: false, reason: "transaction_failed" } : undefined);
+      expect(await settle(body())).toEqual(pendingAt(named));
+      expect(await settle(body())).toEqual(pendingAt(named));
+      expect(ledger.sends).toHaveLength(1);
+    });
+
+    it("sends another body under the claimed digest nothing: the identical claim alone is given again", async () => {
+      await start({ digest: "lands-once" });
+      ledger.sending = (n) => (n === 1 ? refusedUnsent : undefined);
+      expect(await settle(body())).toEqual(refused);
+      // A copy signed again under the nonce (one digest in this module): another body.
+      expect(await settle(body(payment({ validBefore: String(LEDGER_NOW + 60) })))).toEqual(held(""));
+      expect(ledger.sends).toHaveLength(1);
+      expect(await settle(body())).toEqual(success());
+      expect(ledger.sends).toHaveLength(2);
+    });
   });
 
   it("sends a held claim again only as the body that claimed it: a copy re-signed under its nonce is sent nothing", async () => {

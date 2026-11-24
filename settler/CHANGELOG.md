@@ -18,6 +18,14 @@ configuration, the answers or the storage.
   settles, even by another route (a buyer who retried the same signed payment through another facilitator). A payment
   that landed by another route with no claim, or under a claim refused before the class's settle (a spent fee budget,
   the settle's wait over), is still `invalid_transaction_state`.
+- `/settle` gives an `x402/upto/solana` claim (or its zero-amount cancel) to the class again where an earlier settle of
+  the identical claim was refused by the class with no transaction sent (a node that had not yet shown the channel to
+  the class: `invalid_upto_svm_channel_state`). 0.5.1 answered every such retry `unexpected_settle_error`, so the
+  seller collected nothing through the settler and the buyer's deposit stayed in the channel until the payer's forced
+  close. A claim is keyed by its digest and lcp's read shows nothing of it; it is given again only where no transaction
+  is known sent for it, since the payment-channels program settles a channel once and seals it in the same
+  transaction. Batch settlement's later messages, and every other form keyed by its digest, are still never sent
+  twice.
 
 ### Changed
 
