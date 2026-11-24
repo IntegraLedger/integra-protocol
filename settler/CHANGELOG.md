@@ -18,6 +18,27 @@ configuration, the answers or the storage.
   settles, even by another route (a buyer who retried the same signed payment through another facilitator). A payment
   that landed by another route with no claim, or under a claim refused before the class's settle (a spent fee budget,
   the settle's wait over), is still `invalid_transaction_state`.
+- The later messages of the multi-step schemes reach x402's class, as they reach it without the settler. 0.5.1 refused
+  every one, so a seller whose only facilitator was the settler delivered and could not collect:
+  - `evm` `auth-capture`: the capture, void and refund x402's lifecycle manager sends (0.5.1: `invalid_payload`, lcp's
+    reference reads no authorization in them), and the hold's own payload the resource server stamps `capture` after
+    its handler or `void` on cancel (0.5.1: `invalid_transaction_state`, the hold's final row). Each is now its own
+    row, keyed by what its receiver authorizer signs (its type, the escrow's `PaymentInfo` members, and its amounts),
+    so one message spelt two ways is sent once.
+  - `evm` `batch-settlement`: the claim, settle and refund x402's channel manager sends, under its own requirements at
+    amount `"0"` (0.5.1: `invalid_payment_requirements`, then the zero-amount rule, then the class's `verify`, which
+    takes neither a claim nor a settle). At `/settle` the class's `settle` checks a claim or settle before it sends.
+    A claim and a settle are not recorded: the manager sends the same settle in every round.
+  - `solana` `batch-settlement`: the claim, seal and settle (0.5.1: `invalid_batch_settlement_svm_payload_type`, the
+    class's `verify` asked at `/settle`), now checked at `/settle` by the class's `settle`, as `upto`'s claim is, and
+    not recorded.
+
+  What each moves is bounded on chain by what the opening funded: the escrow captures at most what is capturable and
+  refunds at most what was captured; the channel contract and program claim only above the recorded total and at most
+  the payer-signed voucher. A repeat of an escrow message is answered from its row and sends nothing. An escrow refund
+  for the default `delegated` operator is funded by the seller's gas key: the class still refuses it unless
+  `authCapture.refundFunding` is set. Limit: an escrow message the class refused with nothing sent (a lagging node) is
+  not sent again; a repeat of it answers `unexpected_settle_error`.
 
 ### Changed
 

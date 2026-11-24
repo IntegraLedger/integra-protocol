@@ -57,14 +57,45 @@ function codec(b: { reference: unknown; status: unknown; data: { nonce: Instrume
   return { reference: b.reference as Reference, status: b.status as Status, nonce: b.data.nonce };
 }
 
-/** What the pure checks found: the payment's pairing and the read keys lcp gives it, where its form has them. */
+/**
+ * What the pure checks found: the payment's pairing and the read keys lcp gives it, where its form has them; `later`
+ * where it is a later message of its scheme (`laterMessage`).
+ */
 export interface Admitted {
   readonly pairing: EvmPairing;
   readonly ref?: Ref;
+  readonly later?: true;
 }
 
 function isObject(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null && !Array.isArray(v);
+}
+
+/**
+ * The payload types x402's classes (`@x402/evm` 2.31.0) take as a later message on an instrument an earlier payment
+ * opened, which a resource server sends and the payer did not sign as a payment: `AuthCaptureEvmScheme` takes every
+ * payload of type `capture`, `void` or `refund` as the escrow's lifecycle call of that name (`isLifecyclePayload`),
+ * the hold's own payload the resource server stamps with a type (its capture after the handler, its void on cancel)
+ * among them; `BatchSettlementEvmScheme` takes `claim`, `settle` and `refund` as the channel contract's call of that
+ * name, `claim` and `settle` as x402's channel manager builds them, under requirements of its own (amount `"0"`, no
+ * `extra`) that name no lcp pairing.
+ */
+const LATER: Partial<Record<EvmScheme, readonly string[]>> = {
+  "auth-capture": ["capture", "void", "refund"],
+  "batch-settlement": ["claim", "settle", "refund"],
+};
+
+/** A payment's payload's `type`, where it states one. */
+function laterType(payload: unknown): string | undefined {
+  const body = isObject(payload) ? payload["payload"] : undefined;
+  const kind = isObject(body) ? body["type"] : undefined;
+  return typeof kind === "string" ? kind : undefined;
+}
+
+/** Whether a payment under `scheme` is a later message of the scheme, by its payload's type alone. */
+export function laterMessage(scheme: EvmScheme | "erc7710", payload: unknown): boolean {
+  const kind = laterType(payload);
+  return scheme !== "erc7710" && kind !== undefined && (LATER[scheme] ?? []).includes(kind);
 }
 
 /**
@@ -111,13 +142,18 @@ function uptoOption(p: X402Payment): PaymentRequirements {
  * names, as lcp's option filter reads it alone (`invalid_payment_requirements` otherwise), and the payment is that
  * pairing's as lcp's `reference` reads it against the option (`invalid_payload` otherwise), an `upto` option being
  * the one `uptoOption` holds it to. A batch settlement's payment that is no opening has no reference: lcp's channel
- * read holds its configuration to its voucher's channel, and the claim, settle and refund calls a resource server
- * makes of the channel, which lcp does not decode, are x402's class's to check.
+ * read holds a voucher's or top-up's configuration to its voucher's channel. A later message of the scheme
+ * (`laterMessage`: an escrow's capture, void or refund; a channel's claim, settle or refund) has no reference either,
+ * since lcp does not decode it: it is x402's class's to check, and the escrow or the channel contract bounds what it
+ * moves by what the opening funded. A batch settlement's is admitted before its requirements are read, since the
+ * channel manager's name no pairing; an auth-capture one's requirements are the option the hold answered.
  */
 export async function admit(scheme: EvmScheme | "erc7710", p: X402Payment, pairings: readonly PairingId[]): Promise<Admitted | Refused> {
   const { payload, requirements } = p;
   if (requirements.scheme !== (scheme === "erc7710" ? "exact" : scheme)) return { refused: "invalid_payment_requirements" };
   if (requirements.scheme === "exact" && exactOptionRefused(requirements)) return { refused: "invalid_payment_requirements" };
+  const later = laterMessage(scheme, payload);
+  if (later && scheme === "batch-settlement") return { pairing: batchEvm.id, later: true };
   const option = pairingOf(requirements as LcpRequirements);
   if (option === undefined) return { refused: "invalid_payment_requirements" };
   const level = option === exactErc7710.id ? pairingOfPayment(payload as never) : option;
@@ -125,9 +161,8 @@ export async function admit(scheme: EvmScheme | "erc7710", p: X402Payment, pairi
     return { refused: "invalid_payment_requirements" };
   }
   const pairing = level as EvmPairing;
+  if (later) return { pairing, later: true };
   if (pairing === batchEvm.id) {
-    const kind = isObject(payload.payload) ? payload.payload["type"] : undefined;
-    if (kind === "claim" || kind === "settle") return { pairing };
     const k = batchEvm.channel.kind(payload as never);
     if (isRefusal(k)) return { refused: "invalid_payload" };
     if (k !== "open") {
@@ -166,7 +201,14 @@ function lapse(seconds: unknown): Keep {
  * manager and the delegator in lowercase, and the leaf delegation's EIP-712 hash where the context decodes as the
  * reference manager's encoding (the hash commits to its caveats, its salt and, through its authority, the chain above
  * it; not to the signatures or the encoding's padding), else the context's bytes in lowercase hex. So one delegation is
- * one row, presented in any letter case or re-encoded.
+ * one row, presented in any letter case or re-encoded. An escrow's capture, void or refund (`Admitted.later`) is its
+ * own row, never the row of the hold whose signed authorization a payload the resource server stamps with a type still
+ * carries: the digest of what its receiver authorizer signs, whatever else the payload carries, its type, the payment
+ * (the twelve members of the escrow's `PaymentInfo`, whose hash the signature binds, each integer or address as the
+ * number it is) and, but for a void, its amount and the escrow's capturable and
+ * refundable amounts it expects. The escrow's amounts only fall as a payment's lifecycle goes on, so each such message
+ * occurs once in it, and one message spelt two ways is one row: never sent twice at once. A batch settlement's later
+ * message is keyed by the digest of its signed payload; its claim and settle are not recorded (`Instrumented.unrecorded`).
  */
 export async function instrumentOf(network: Network, p: X402Payment, a: Admitted): Promise<Instrumented | Refused> {
   const nonce = CODEC[a.pairing].nonce;
@@ -174,9 +216,18 @@ export async function instrumentOf(network: Network, p: X402Payment, a: Admitted
   const digestOf = async (signed: unknown): Promise<Instrumented | Refused> => {
     const d = await digestJson(signed as never);
     if (isRefusal(d)) return { refused: "invalid_payload" };
-    return { pairing: a.pairing, instrument: { by: "digest", network, digest: d }, nonce, keep: { until: "settler" } };
+    const unrecorded = a.later === true && a.pairing === batchEvm.id && laterType(p.payload) !== "refund";
+    return {
+      pairing: a.pairing,
+      instrument: { by: "digest", network, digest: d },
+      nonce,
+      keep: { until: "settler" },
+      ...(a.later ? { later: true } : {}),
+      ...(unrecorded ? { unrecorded: true } : {}),
+    };
   };
   const digest = () => digestOf(p.payload.payload);
+  if (a.later && (a.pairing === authCaptureEip3009.id || a.pairing === authCapturePermit2.id)) return digestOf(lifecycleKey(p.payload.payload));
   if (a.pairing === exactErc7710.id || a.pairing === exactErc7710Salt.id) {
     const r = isObject(p.payload.payload) ? p.payload.payload : {};
     const leaf = isObject(ref?.["presented"]) ? ref["presented"]["delegation"] : undefined;
@@ -212,6 +263,40 @@ export async function instrumentOf(network: Network, p: X402Payment, a: Admitted
       return digest();
   }
   return { pairing: a.pairing, instrument, nonce, keep };
+}
+
+/** A value as a signature binds it: an integer spelt in decimal or hex as its decimal digits, other text in lowercase. */
+function bound(v: unknown): unknown {
+  if (typeof v !== "string") return v;
+  return /^(?:[0-9]+|0x[0-9a-f]+)$/i.test(v) ? BigInt(v).toString(10) : v.toLowerCase();
+}
+
+/** The members of the commerce-payments escrow's `PaymentInfo`, in its order. */
+const PAYMENT_INFO = [
+  "operator",
+  "payer",
+  "receiver",
+  "token",
+  "maxAmount",
+  "preApprovalExpiry",
+  "authorizationExpiry",
+  "refundExpiry",
+  "minFeeBps",
+  "maxFeeBps",
+  "feeReceiver",
+  "salt",
+] as const;
+
+/** What the receiver authorizer of an auth-capture lifecycle message signs, as `instrumentOf` keys it. */
+function lifecycleKey(payload: unknown): Record<string, unknown> {
+  const body = isObject(payload) ? payload : {};
+  const info = isObject(body["paymentInfo"]) ? body["paymentInfo"] : {};
+  // The members the escrow's `PaymentInfo` holds, and so its hash: a member the escrow does not take changes nothing.
+  const paymentInfo = Object.fromEntries(PAYMENT_INFO.map((k) => [k, bound(info[k]) ?? null]));
+  const type = body["type"];
+  if (type === "void") return { type, paymentInfo };
+  const amounts = ["amount", "expectedCapturableAmount", "expectedRefundableAmount"].map((k) => bound(body[k]) ?? null);
+  return { type, paymentInfo, amounts };
 }
 
 /**

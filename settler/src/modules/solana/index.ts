@@ -301,6 +301,8 @@ function moduleOf(
             instrument: { by: "digest", network, digest: collectionDigest(network, p) },
             nonce: "unshown",
             keep: { until: "settler" },
+            // Batch settlement's claim, seal and settle (x402's channel manager's) are not recorded: see `batchAtSettle`.
+            ...(pairing.id === batchSvm.id && ["claim", "seal", "settle"].includes(String(p.payload.payload["type"])) ? { unrecorded: true as const } : {}),
           };
         }
         const r = await checked(c.network, pairing, p.payload, p.requirements);
@@ -361,6 +363,20 @@ const uptoAtSettle: SettleCheck = async (cls, payload, requirements, context) =>
 };
 
 /**
+ * The batch-settlement class's check at `/settle`. x402's channel manager sends `claim`, `seal` and `settle`, which the
+ * class's `verify`, the check of what a buyer sends, does not take (it answers
+ * `invalid_batch_settlement_svm_payload_type`). The class's `settle` checks each before it sends anything: the channel
+ * it derives from the configuration and that channel's status, and for a claim or a seal the payer authorizer's
+ * voucher signature and a cumulative amount above what the channel has settled and at most its deposit. Here it is
+ * valid. Every other type is checked by that `verify`.
+ */
+const batchAtSettle: SettleCheck = async (cls, payload, requirements, context) => {
+  const type = payload.payload["type"];
+  if (type === "claim" || type === "seal" || type === "settle") return { isValid: true };
+  return cls.verify(payload, requirements, context);
+};
+
+/**
  * Whether a batch-settlement payload goes through lcp's checks as an opening: a deposit that lcp's channel read does not
  * place within an open channel (a top-up), that is its `open`, and a deposit lcp cannot read, which its checks refuse.
  * Every other type is a voucher or a call on the channel the resource server makes, which lcp does not read.
@@ -390,7 +406,7 @@ export function solanaModules(config: SolanaConfig, state?: SolanaChannelState, 
   });
   // upto: lcp's filter admits a positive amount only. Batch settlement: zero through it has not been read.
   modules.push(moduleOf(c, uptoSvm, upto, [], uptoOpening, uptoAtSettle));
-  modules.push(moduleOf(c, batchSvm, batch, [], batchOpening));
+  modules.push(moduleOf(c, batchSvm, batch, [], batchOpening, batchAtSettle));
   return modules;
 }
 

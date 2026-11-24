@@ -612,6 +612,34 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
     }
 
     /**
+     * A later message the record does not hold (`Instrumented.unrecorded`): what the kind declares, the fee budget, then
+     * the class's check and its settle, each time it is sent. Its answer is the class's; nothing is stored.
+     */
+    async function unrecorded(a: Attempt): Promise<SettleAnswer | SettleResponse> {
+      const excluded = declared(a.kind, a.module, a.payment, a.instrumented, "settle");
+      if (excluded !== undefined) return failed(excluded, "", a.network);
+      if (gated(a.module, a.payment)) {
+        let spent: boolean;
+        try {
+          spent = await inTime(fees.spent(a.network, Date.now()), a.deadline);
+        } catch (e) {
+          return unexpectedSettle(log, { ...about(a), event: "store-call-failed", call: "fee" }, e);
+        }
+        if (spent) return failed("fee_budget_spent", "", a.network);
+      }
+      const v = await settling.verify(a.payment.payload, a.payment.requirements);
+      if (!v.isValid) return failed(settleReason(v.invalidReason ?? "invalid_payload"), "", a.network);
+      let s: SettleResponse;
+      try {
+        s = await settling.settle(a.payment.payload, a.payment.requirements);
+      } catch (e) {
+        return unexpectedSettle(log, { ...about(a), event: "settle-error" }, e);
+      }
+      if (s.transaction !== "") void countFee(a, s.transaction);
+      return s;
+    }
+
+    /**
      * Whether a held claim may be sent again: only where the form's nonce is single-use, and never for an instrument
      * named by the digest of its signed payment, which one settler submits once.
      */
@@ -649,7 +677,8 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
         if (m.descriptor.verifyForbidden === true) return invalid("unsupported_scheme");
         const i = await m.record.instrument(p);
         if ("refused" in i) return { isValid: false, invalidReason: i.refused, ...(i.message === undefined ? {} : { invalidMessage: i.message }) };
-        const landed = m.descriptor.verifiesLanded === true;
+        // A message the record does not hold (`Instrumented.unrecorded`) is judged by the class alone.
+        const landed = m.descriptor.verifiesLanded === true || i.unrecorded === true;
         if (!landed) {
           let row: Row | undefined;
           try {
@@ -709,6 +738,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
           deadline,
           waitUntil: deadline - answerReserve(settleWaitMs),
         };
+        if (i.unrecorded === true) return await unrecorded(a);
         let row: Row | undefined;
         try {
           row = await inTime(record.read(network, a.key), deadline);

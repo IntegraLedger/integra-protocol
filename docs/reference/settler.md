@@ -92,7 +92,9 @@ which forms it can offer with this settler, and `extra.acceptsZero` before choos
 4. The record: a payment it holds, claimed or final, is refused `invalid_transaction_state`, since `isValid: true`
    tells the caller that a settle may follow.
 5. What the kind declares: an amount of zero whose pairing `extra.acceptsZero` does not name, and a form outside the
-   pairings of the module the payment goes to, are refused `invalid_payment_requirements`.
+   pairings of the module the payment goes to, are refused `invalid_payment_requirements`. A later message of a
+   multi-step scheme (an escrow's capture, void or refund; a channel's claim, settle or refund) pays no option's
+   amount, and the zero rule does not hold it.
 6. The fee budget, where the module's key pays the fee: a spent budget is refused `fee_budget_spent`.
 7. The class's verify, unchanged, with its own reasons.
 8. lcp's read of the chain: a payment the chain shows final (landed, or consumed by another act) is refused
@@ -107,14 +109,17 @@ The answer is `{isValid: true, payer}` or `{isValid: false, invalidReason, inval
    requirements carry the charge, the `evm` module holds requirements that are the option the payment accepted in
    every member but an `amount` at or below the accepted one as that option.
 2. The record: a final row is answered `invalid_transaction_state` naming the transaction it holds, never a second
-   success.
+   success. A batch settlement's `claim` and `settle` (and `seal` on `solana`), which carry no single-use value and
+   which the channel contract or program makes inert on a repeat, are not recorded: what the kind declares, the fee
+   budget, the class's check and its settle are made each time, and the answer is the class's.
 3. What the kind declares, as `/verify` checks it.
 4. A claim the record holds that is not final, which another settle holds or whose hold has ended: it is answered as
    [the record](#the-record-and-what-a-repeat-answers) says, and no step below is made.
 5. The class's verify; on `upto`, the check the class's own settle makes before it submits. On `evm`, the permit
    against the maximum the payment accepted. On `solana`, a deposit's opening as the buyer sent it, without the `type`
    the resource server adds to each settle; a claim against an open channel, which the class's verify never takes, is
-   checked by its settle, before it sends anything. Where it refuses, lcp's read of the chain: a payment the chain
+   checked by its settle, before it sends anything. The same on `evm` and `solana` for batch settlement's `claim` and
+   `settle` (and `seal` on `solana`), which x402's channel manager sends and the class's verify never takes. Where it refuses, lcp's read of the chain: a payment the chain
    shows landed, or whose value another act consumed, is stored final and answered `invalid_transaction_state` naming
    its transaction; otherwise the class's refusal is the answer, nothing is stored, and a repeat is checked again.
 6. Where the module's read searches from a position no x402 call carries (a ledger, a slot, a block), the chain's

@@ -85,10 +85,12 @@ function optionAmount(kind: Kind, p: X402Payment, phase: Phase): string {
 /**
  * The kind's declaration, held to a payment before the class is asked: an option of amount zero whose pairing the kind
  * does not name as taking zero, and a form outside the pairings the module the payment goes to submits, are refused
- * `invalid_payment_requirements`.
+ * `invalid_payment_requirements`. A later message on an instrument an earlier payment opened (`Instrumented.later`)
+ * pays no option's amount, and the zero-amount rule does not hold it: x402's batch-settlement channel manager sends its
+ * claim and settle at amount `"0"`.
  */
 export function declared(kind: Kind, module: Module, p: X402Payment, i: Instrumented, phase: Phase): string | undefined {
-  if (/^0+$/.test(optionAmount(kind, p, phase)) && !kind.acceptsZero.includes(i.pairing)) return "invalid_payment_requirements";
+  if (i.later !== true && /^0+$/.test(optionAmount(kind, p, phase)) && !kind.acceptsZero.includes(i.pairing)) return "invalid_payment_requirements";
   if (!module.descriptor.pairings.includes(i.pairing)) return "invalid_payment_requirements";
   return undefined;
 }

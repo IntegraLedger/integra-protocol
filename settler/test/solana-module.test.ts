@@ -346,6 +346,37 @@ describe("the channel forms through the module", () => {
   });
 });
 
+describe("x402/batch-settlement/solana: the channel manager's claim, seal and settle through the settler's HTTP surface", () => {
+  // The shapes x402's Solana channel manager sends (`@x402/svm` 2.31.0 batch-settlement server), on the vector's
+  // channel. The node holds no channel account, so the class's settle refuses each with its own reason, sending nothing.
+  const row = BATCH.buyer.rows.find((r: { pairing: string; input?: { presented?: unknown } }) => r.pairing === "x402/batch-settlement/solana" && r.input?.presented !== undefined);
+  const opening: PaymentPayload = row.input.presented;
+  const { channelConfig, voucher } = opening.payload as { channelConfig: unknown; voucher: { channelId: string } };
+  const later: Record<string, Record<string, unknown>> = {
+    claim: { type: "claim", claims: [{ channelConfig, channelId: voucher.channelId, voucher }] },
+    seal: { type: "seal", channelConfig, channelId: voucher.channelId, voucher },
+    settle: { type: "settle", channels: [{ channelConfig, channelId: voucher.channelId }] },
+  };
+
+  for (const [type, payload] of Object.entries(later)) {
+    it(`gives the manager's ${type} to the class's settle at /settle, and answers it at /verify by the class's verify, as without the settler`, async () => {
+      const s = await serve();
+      const message = { ...opening, payload };
+      const settled = (await s.settle(body(message))) as { success: boolean; errorReason?: string; transaction: string };
+      expect(settled).toMatchObject({ success: false, transaction: "" });
+      // The class's own reason, not its verify's refusal of a type it does not take.
+      expect(settled.errorReason).toMatch(/^invalid_batch_settlement_svm_/);
+      expect(settled.errorReason).not.toBe("invalid_batch_settlement_svm_payload_type");
+      expect(sentWires()).toEqual([]);
+      // The same message again reaches the class again: it carries no single-use value, and the class and the program
+      // make a repeat inert.
+      expect(await s.settle(body(message))).toMatchObject({ success: false, errorReason: settled.errorReason, transaction: "" });
+      const other = { ...opening, payload: { ...payload, note: type } };
+      expect(await s.verify(body(other))).toMatchObject({ isValid: false, invalidReason: "invalid_batch_settlement_svm_payload_type" });
+    });
+  }
+});
+
 describe("the plant", () => {
   it("fails when one member of V2's payment changes: the memo's hash moves off the option's", async () => {
     const m = exactOf(await modulesOn());
