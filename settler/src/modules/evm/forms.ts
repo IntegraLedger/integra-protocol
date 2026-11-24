@@ -162,11 +162,13 @@ function lapse(seconds: unknown): Keep {
  * owner, kept to the deadline. Neither is the nonce alone, and for an agreement the nonce signed is the agreement's own
  * value, so one payer's agreement and payment under one H are two rows. A batch settlement's call and an ERC-7710
  * redemption hold no single-use value: each is keyed by a digest, for the settler's life. A batch call's is the digest
- * of its signed payload. A redemption's is the digest of the delegation it redeems as signed, whatever its spelling: the
- * manager and the delegator in lowercase, and the leaf delegation's EIP-712 hash where the context decodes as the
- * reference manager's encoding (the hash commits to its caveats, its salt and, through its authority, the chain above
- * it; not to the signatures or the encoding's padding), else the context's bytes in lowercase hex. So one delegation is
- * one row, presented in any letter case or re-encoded.
+ * of its signed payload. A redemption's is the digest of the delegation it redeems as signed, whatever its spelling, and
+ * of the sale: the manager and the delegator in lowercase, the leaf delegation's EIP-712 hash where the context decodes
+ * as the reference manager's encoding (the hash commits to its caveats, its salt and, through its authority, the chain
+ * above it; not to the signatures or the encoding's padding), else the context's bytes in lowercase hex, and the H the
+ * payment echoes. So one sale through one delegation is one row, presented in any letter case or re-encoded, and each
+ * other sale through a delegation that may be redeemed again (x402's ERC-7710 is one-time or multi-use, its caveats
+ * the limit) is its own row, which the redemption's simulation refuses once the caveats are spent.
  */
 export async function instrumentOf(network: Network, p: X402Payment, a: Admitted): Promise<Instrumented | Refused> {
   const nonce = CODEC[a.pairing].nonce;
@@ -184,6 +186,7 @@ export async function instrumentOf(network: Network, p: X402Payment, a: Admitted
       delegationManager: lower(r["delegationManager"]),
       delegator: lower(r["delegator"]),
       ...(typeof leaf === "string" ? { delegation: lower(leaf) } : { permissionContext: lower(r["permissionContext"]) }),
+      h: lower(ref?.["h"]),
     });
   }
   if (ref === undefined) return digest();

@@ -5,6 +5,7 @@
  * holds no chain's rule and no key: each module's facilitator verifies and settles, and the core decides only what its
  * record, its budget and lcp's read of the chain tell it.
  */
+import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { x402Facilitator } from "@x402/core/facilitator";
@@ -204,6 +205,12 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
     const offered: OfferedHandoff[] = [];
     // The modules started with the fee meter of their network: their keys' fees are counted as they send.
     const metered = new Set<Module>();
+    // The submission whose class's settle is running, for a module that names its transaction before it sends it.
+    const inSubmission = new AsyncLocalStorage<(transaction: string) => Promise<() => Promise<void>>>();
+    const naming = (transaction: string): Promise<() => Promise<void>> => {
+      const keep = inSubmission.getStore();
+      return keep === undefined ? Promise.reject(new Error("naming is called outside a submission's settle")) : keep(transaction);
+    };
     for (const listed of list) {
       const own = configured[listed.name];
       if (own === undefined) continue;
@@ -217,6 +224,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
           meters.add(network);
           return fees.meter(network, () => Date.now(), log);
         },
+        naming,
       };
       const started = await starter.start(own as never, core);
       if (started.close !== undefined) closers.push(started.close);
@@ -455,7 +463,8 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
     /**
      * For a claim this attempt holds: the fee budget, just before anything is sent; the submission of what
      * the payer signed, through x402's class and the kind's wrapper; then the answer: a success the class gives once
-     * it is stored final, else by lcp's read. `sent` is every transaction earlier submissions for the claim named.
+     * it is stored final, else by lcp's read. `sent` is every transaction earlier submissions for the claim named; the
+     * read also takes each one the module named before it sent it (`Core.naming`), which the row holds already.
      */
     async function submit(
       a: Attempt,
@@ -490,8 +499,33 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
       }
       let s: SettleResponse | undefined;
       let thrown: { cause: unknown } | undefined;
+      // What the module named before it sent (`Core.naming`), kept in the row before the send.
+      const before: string[] = [];
+      // Takes back a transaction named and not sent, its own bound: a refused send, or a store call that failed.
+      const withdraw = async (transaction: string): Promise<void> => {
+        const at = before.findIndex((t) => sameTransaction(t, transaction));
+        if (at >= 0) before.splice(at, 1);
+        try {
+          await inTime(record.unsent(a.network, a.key, transaction), Infinity);
+        } catch (e) {
+          log({ ...about(a, { transaction }), event: "store-call-failed", call: "unsent" }, e);
+        }
+      };
+      const keep = async (transaction: string): Promise<() => Promise<void>> => {
+        try {
+          await inTime(record.sent(a.network, a.key, transaction), a.deadline);
+        } catch (e) {
+          log({ ...about(a, { transaction }), event: "store-call-failed", call: "sent" }, e);
+          // Nothing is sent, so nothing may name it: taken back where the write landed before this. A write that lands
+          // after it, on another connection, is not taken back, and a repeat then names a transaction never sent.
+          await withdraw(transaction);
+          throw e;
+        }
+        before.push(transaction);
+        return () => withdraw(transaction);
+      };
       try {
-        s = await settling.settle(a.payment.payload, a.payment.requirements);
+        s = await inSubmission.run(keep, () => settling.settle(a.payment.payload, a.payment.requirements));
       } catch (e) {
         thrown = { cause: e };
       }
@@ -515,7 +549,8 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
         if (named === undefined) return unexpectedSettle(log, { ...about(a), event: "success-not-stored" });
         return pending(named, a.network);
       }
-      const all = named === undefined || sent.some((t) => sameTransaction(t, named)) ? sent : [...sent, named];
+      const all = [...sent];
+      for (const t of [...before, ...(named === undefined ? [] : [named])]) if (!all.some((h) => sameTransaction(h, t))) all.push(t);
       if (named !== undefined) {
         await note(a, named);
         void countFee(a, named);

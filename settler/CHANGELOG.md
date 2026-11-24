@@ -19,8 +19,28 @@ configuration, the answers or the storage.
   that landed by another route with no claim, or under a claim refused before the class's settle (a spent fee budget,
   the settle's wait over), is still `invalid_transaction_state`.
 
+- `erc7710`: a redemption whose send answer was lost, or whose settler stopped between the send and its answer, could
+  not be answered on the level that signs no H (`x402/exact/eip155/erc7710`), whose read finds the payment only by the
+  transaction the record holds: every repeat answered `unexpected_settle_error` while the seller was paid. The module
+  now signs the redemption first, the record holds its hash before it is sent (a module's `Core.naming`), and a send
+  that failed other than by the node's own JSON-RPC error is read on by that hash.
+- `erc7710`: a second sale through a delegation one sale had redeemed was refused `invalid_transaction_state` at
+  `/verify` and `/settle`, naming the first sale's transaction, for the settler's life, although x402's ERC-7710 is
+  one-time or multi-use and the delegation's caveats are the limit. A redemption is now keyed by the delegation and
+  the H the payment echoes: each sale is its own row, and the same sale presented again is answered from its row.
+
 ### Changed
 
+- `erc7710`: the module's signer must also give `signTransaction` and `sendRawTransaction` (with viem:
+  `signTransaction: async (r) => client.signTransaction(await client.prepareTransactionRequest(r))`,
+  `sendRawTransaction: (r) => client.sendRawTransaction(r)`); the settler does not start without them
+  (`erc7710 on <network>: the signer must give`). It no longer calls the signer's `writeContract`.
+- `erc7710`: the record's key of a redemption changes (the H joins it). A redemption settled by an earlier release and
+  presented again after the upgrade is not found under its old row; its simulation decides whether it is redeemed again,
+  and a multi-use delegation whose caveats allow it is. Drain or refuse repeats of payments settled before the upgrade.
+- An own module's `Core` has `naming(transaction)`, which keeps a transaction in the record of the claim whose
+  submission is calling before the module sends it, rejects where the record cannot hold it, and resolves to a
+  `withdraw` the module calls where the node refused the send, so that no repeat names a transaction never sent.
 - The record's `instrument` table has a column `submitted`, set before the class's settle is called; every start adds
   it where an earlier release created the table (`ALTER TABLE ... ADD COLUMN IF NOT EXISTS`). Rows an earlier release
   left hold `false`, and are answered as 0.5.1 answered them.

@@ -4,7 +4,7 @@
  * x402 specifies the method and leaves the `permissionContext` opaque, and no published facilitator class settles it,
  * so the module is the settler's own: it simulates the redemption the payment names, and then sends it, calling
  * `redeemDelegations` on the delegation manager the payload names with one single-call execution that transfers the
- * option's amount of its asset to `payTo`. Its key is the seller's gas key, which must be the delegate the leaf
+ * option's amount of its asset to `payTo`, signed first so that the record holds its hash before it is sent. Its key is the seller's gas key, which must be the delegate the leaf
  * delegation names (or the reference implementation's wildcard delegate); it sends the transaction and pays its gas.
  * It registers nothing of its own: it is offered to the `exact` registration the `evm` module makes on each of its
  * networks, which hands it every payment whose option names `erc7710`, and the settler does not start where the `evm`
@@ -14,8 +14,8 @@ import { decodePermissionContext, type Eip155, type Hex } from "@integraledger/l
 import { isRefusal } from "@integraledger/lcp";
 import type { Network, PaymentPayload, PaymentRequirements, SchemeNetworkFacilitator, SettleResponse, VerifyResponse } from "@x402/core/types";
 import type { FacilitatorEvmSigner } from "@x402/evm";
-import { encodeFunctionData, encodePacked, getAddress, isAddress, isHex, type Log } from "viem";
-import type { Handoff, ModuleStarter, RecordNeeds } from "../../module.js";
+import { BaseError, encodeFunctionData, encodePacked, getAddress, isAddress, isHex, keccak256, RpcRequestError, type Log } from "viem";
+import type { Core, Handoff, ModuleStarter, RecordNeeds } from "../../module.js";
 import { admit, ERC7710_PAIRINGS, instrumentOf, readOf } from "../evm/forms.js";
 import { chargedFrom, evmReader } from "../evm/node.js";
 import type { EvmModule } from "../evm/index.js";
@@ -27,9 +27,37 @@ export interface Erc7710Config {
   readonly rpc: string;
   /**
    * The seller's gas key, the delegate the leaf delegations it redeems name, as x402's EVM classes take a signer; it must
-   * simulate calls (`eth_simulateV1`), since the simulation's logs show the transfer the redemption would make.
+   * simulate calls (`eth_simulateV1`), since the simulation's logs show the transfer the redemption would make; and it
+   * must sign without sending (`Erc7710Sender`), since the module signs each redemption first and the record holds its
+   * hash before it is sent.
    */
-  readonly signer: FacilitatorEvmSigner;
+  readonly signer: FacilitatorEvmSigner & Erc7710Sender;
+}
+
+/**
+ * A key that signs a transaction without sending it, and sends one signed: with viem's wallet client,
+ * `prepareTransactionRequest` then `signTransaction`, and `sendRawTransaction`.
+ */
+export interface Erc7710Sender {
+  /**
+   * Signs, and does not send, a transaction from the key's first address calling `to` with `data`, its nonce, gas and
+   * fees filled as viem's `prepareTransactionRequest` fills them; the signed transaction, serialized.
+   */
+  signTransaction(request: { readonly to: Hex; readonly data: Hex }): Promise<Hex>;
+  /**
+   * Sends a signed, serialized transaction (`eth_sendRawTransaction`), once, without retrying (viem's action does not);
+   * the hash the node answers.
+   */
+  sendRawTransaction(request: { readonly serializedTransaction: Hex }): Promise<Hex>;
+}
+
+
+/**
+ * Whether a send failed with the node's own JSON-RPC error, so that it read the transaction and refused it. Any other
+ * failure (the connection dropped, the answer lost or late) may follow a send the node took.
+ */
+function refusedByNode(e: unknown): boolean {
+  return e instanceof BaseError && e.walk((c) => c instanceof RpcRequestError) !== null;
 }
 
 /** The reference implementation's wildcard delegate, which any redeemer may redeem as. */
@@ -120,9 +148,35 @@ function transfers(logs: readonly Pick<Log, "address" | "topics" | "data">[] | u
   );
 }
 
-/** The module's own facilitator for x402's `erc7710` method. */
-function facilitatorOf(c: Erc7710Config): SchemeNetworkFacilitator {
+/** The module's own facilitator for x402's `erc7710` method; `naming` keeps a transaction in the record before it is sent. */
+function facilitatorOf(c: Erc7710Config, naming: Core["naming"]): SchemeNetworkFacilitator {
   const signer = c.signer;
+
+  /**
+   * Sends the redemption, signed first, its hash kept in the record before the send (where the record cannot hold it,
+   * `naming` rejects and nothing is sent); a send that failed other than by the node's own refusal may have reached
+   * it, and is read on by that hash. Undefined where nothing was sent.
+   */
+  async function send(r: Redemption): Promise<Hex | undefined> {
+    const data = encodeFunctionData({ abi: REDEEM_ABI, functionName: "redeemDelegations", args: redeemCall(r) });
+    let signed: Hex;
+    try {
+      signed = await signer.signTransaction({ to: r.manager, data });
+    } catch {
+      return undefined;
+    }
+    const transaction = keccak256(signed);
+    const withdraw = await naming(transaction);
+    try {
+      await signer.sendRawTransaction({ serializedTransaction: signed });
+    } catch (e) {
+      if (refusedByNode(e)) {
+        await withdraw();
+        return undefined;
+      }
+    }
+    return transaction;
+  }
 
   /** lcp's checks, the leaf's delegate, the manager's code and the simulation, in that order; nothing is sent. */
   async function check(payload: PaymentPayload, requirements: PaymentRequirements): Promise<{ redemption: Redemption; from: Hex } | VerifyResponse> {
@@ -172,17 +226,8 @@ function facilitatorOf(c: Erc7710Config): SchemeNetworkFacilitator {
       }
       const r = checked.redemption;
       const payer = r.delegator;
-      let transaction: Hex;
-      try {
-        transaction = (await signer.writeContract({
-          address: r.manager,
-          abi: REDEEM_ABI,
-          functionName: "redeemDelegations",
-          args: redeemCall(r),
-        })) as Hex;
-      } catch {
-        return { success: false, errorReason: "invalid_transaction", transaction: "", network, payer };
-      }
+      const transaction = await send(r);
+      if (transaction === undefined) return { success: false, errorReason: "invalid_transaction", transaction: "", network, payer };
       let receipt: Awaited<ReturnType<FacilitatorEvmSigner["waitForTransactionReceipt"]>>;
       try {
         receipt = await signer.waitForTransactionReceipt({ hash: transaction });
@@ -201,7 +246,7 @@ function facilitatorOf(c: Erc7710Config): SchemeNetworkFacilitator {
  * The `erc7710` module on one network, as the hand-off the `exact` registration there takes: every payment whose option
  * names the `erc7710` method, by the option's own member, before x402's `exact` class sees it.
  */
-export function erc7710Handoff(c: Erc7710Config): Handoff & { readonly module: EvmModule } {
+export function erc7710Handoff(c: Erc7710Config, naming: Core["naming"]): Handoff & { readonly module: EvmModule } {
   const network = c.network as Network;
   const record: RecordNeeds = {
     async instrument(p) {
@@ -218,7 +263,7 @@ export function erc7710Handoff(c: Erc7710Config): Handoff & { readonly module: E
   const module: EvmModule = {
     descriptor: { name: "erc7710", key: "relayer", pairings: ERC7710_PAIRINGS, acceptsZero: [] },
     network,
-    facilitator: facilitatorOf(c),
+    facilitator: facilitatorOf(c, naming),
     record,
     fees: {
       paysFee: () => true,
@@ -241,10 +286,15 @@ export function erc7710Handoff(c: Erc7710Config): Handoff & { readonly module: E
  */
 export const starter: ModuleStarter<readonly Erc7710Config[]> = {
   name: "erc7710",
-  async start(networks) {
+  async start(networks, core) {
+    for (const c of networks) {
+      if (typeof c.signer.signTransaction !== "function" || typeof c.signer.sendRawTransaction !== "function") {
+        throw new TypeError(`erc7710 on ${c.network}: the signer must give signTransaction and sendRawTransaction`);
+      }
+    }
     return {
       registrations: [],
-      handoffs: networks.map((c) => ({ scheme: "exact", network: c.network as Network, handoff: erc7710Handoff(c) })),
+      handoffs: networks.map((c) => ({ scheme: "exact", network: c.network as Network, handoff: erc7710Handoff(c, core.naming) })),
     };
   },
 };

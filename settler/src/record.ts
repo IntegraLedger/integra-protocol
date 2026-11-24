@@ -192,6 +192,11 @@ export interface InstrumentRecord {
   retake(network: string, key: string, now: number, holdMs: number): Promise<Row | undefined>;
   /** Adds a transaction the settler's submission named to a claim that is not final, as the one the row names. */
   sent(network: string, key: string, transaction: string): Promise<void>;
+  /**
+   * Takes back from a claim that is not final a transaction a module named before it sent it and then did not send:
+   * out of `sent`, and, where the row names it, the row names the last one left, or none.
+   */
+  unsent(network: string, key: string, transaction: string): Promise<void>;
   /** Marks a claim that is not final as given to the class's settle; it stays marked. */
   submitting(network: string, key: string): Promise<void>;
   /** Ends this call's hold of a claim that is not final, keeping the search position of its read. */
@@ -282,6 +287,15 @@ export async function openRecord(pool: pg.Pool): Promise<InstrumentRecord> {
       await pool.query(
         `UPDATE instrument SET transaction = $3,
              sent = CASE WHEN $3 = ANY(sent) THEN sent ELSE array_append(sent, $3::text) END
+           WHERE network = $1 AND key = $2 AND NOT final`,
+        [network, key, transaction],
+      );
+    },
+    async unsent(network, key, transaction) {
+      await pool.query(
+        `UPDATE instrument SET sent = array_remove(sent, $3::text),
+             transaction = CASE WHEN transaction = $3 THEN (array_remove(sent, $3::text))[cardinality(array_remove(sent, $3::text))]
+               ELSE transaction END
            WHERE network = $1 AND key = $2 AND NOT final`,
         [network, key, transaction],
       );

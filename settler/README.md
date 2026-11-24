@@ -391,7 +391,17 @@ Each member, one entry per network unless it says otherwise:
   each of its networks it is offered to the `evm` module's `exact` registration, which hands it every payment whose
   option names `erc7710`. The settler does not start where the `evm` module does not register `exact` on such a
   network. It simulates the redemption the payment names, then calls `redeemDelegations` on the delegation manager the
-  payload names, with one execution that transfers the option's amount to `payTo`.
+  payload names, with one execution that transfers the option's amount to `payTo`. The signer must also give
+  `signTransaction` (a transaction to `to` with `data`, signed and not sent, its nonce, gas and fees filled; with viem,
+  `signTransaction: async (r) => client.signTransaction(await client.prepareTransactionRequest(r))`) and
+  `sendRawTransaction` (viem's, `(r) => client.sendRawTransaction(r)`): the module signs the redemption first and the
+  record holds its hash before it is sent, since the level that signs no H (`x402/exact/eip155/erc7710`) is found only
+  by the transaction the record holds. A send whose answer is lost is read on by that hash, and a repeat after the
+  settler stopped between the send and its answer finds it. A node's own JSON-RPC error to the send is a refusal,
+  nothing sent, and the record no longer holds the hash; any other failure of the send is read on by the hash. Each sale through a delegation is
+  its own row, keyed by the delegation and the H the payment echoes: x402's ERC-7710 is one-time or multi-use, its
+  caveats the limit, so a second sale through a multi-use delegation is redeemed where its simulation shows the
+  transfer, and the same sale presented again is answered from its row.
 - **`hedera`**: `network`; `signer`, the seller's fee-payer account and its key (`FacilitatorHederaSigner`): the class
   takes only a payment whose transaction id names an account it manages as `extra.feePayer`; `mirror`, the seller's
   Mirror Node REST base URL, which lcp's read and the fee count use; `archival`, optional, true where it holds every
@@ -495,6 +505,7 @@ message starts as shown:
 | Two fee budgets on one network | `<network> has two fee budgets` |
 | Postgres cannot be reached, or the tables cannot be created ([The database](#the-database)) | the driver's own error |
 | A module's member it refuses, the modules taken in the order of their names | `casper on <network>: not served` (`casper:casper`), `casper on <network>: the signer reads`, `casper on <network>: the signer's speculative execution goes to`, `casper on <network>: the signer names the chain`; `the Cardano reader serves`; `the Concordium signer and reader must serve`; `lnbtc: <network> is not an lnbtc network`; `not a Starknet network`, `the executor's address is not an account address`; `not a Stellar network`, `the source account's address is not an account strkey`, `the fee ceiling must be positive, and the inclusion fee at least 100 stroops`; `not a Sui network`; `the TON reader serves` |
+| An `erc7710` signer that does not give `signTransaction` and `sendRawTransaction` | `erc7710 on <network>: the signer must give` |
 | An `erc7710` network where the `evm` module does not register `exact` | `an own module is offered to exact on <network>, which no module registers` |
 | A module's class that states `pairings`, `key`, `acceptsZero` or `feeBudget` in its `extra` | `<network>: a module's facilitator states` |
 | Two registrations of one scheme on one network | `two registrations of <scheme> <network>` |

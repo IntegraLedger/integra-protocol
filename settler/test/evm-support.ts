@@ -8,7 +8,7 @@ import { toFacilitatorEvmSigner, type FacilitatorEvmSigner } from "@x402/evm";
 import { createWalletClient, defineChain, http, publicActions, type Hex } from "viem";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { serveSettler, type SettlerConfig } from "../src/core.js";
-import type { Erc7710Config } from "../src/modules/erc7710/index.js";
+import type { Erc7710Config, Erc7710Sender } from "../src/modules/erc7710/index.js";
 import type { EvmConfig } from "../src/modules/evm/index.js";
 import { MODULES } from "../src/modules/index.js";
 import { freshDatabase, onLockedPort } from "./support.js";
@@ -36,7 +36,7 @@ export function pointer<T>(doc: unknown, path: string): T {
  * A gas key over the node at `url`: `key` where the vector fixes the facilitator's account, else one generated here,
  * which holds nothing on any network. The receipt wait is short, so a withheld receipt ends the settle.
  */
-export function gasKey(url: string, key: Hex = generatePrivateKey()): FacilitatorEvmSigner & { readonly address: Hex } {
+export function gasKey(url: string, key: Hex = generatePrivateKey()): FacilitatorEvmSigner & Erc7710Sender & { readonly address: Hex } {
   const account = privateKeyToAccount(key);
   const chain = defineChain({
     id: 84532,
@@ -58,7 +58,12 @@ export function gasKey(url: string, key: Hex = generatePrivateKey()): Facilitato
     },
     { confirmationTimeoutMs: 400 },
   );
-  return Object.assign(signer, { address: account.address });
+  // The erc7710 module's `Erc7710Sender`: it signs first, so the record holds the hash before the send.
+  const sender: Erc7710Sender = {
+    signTransaction: async (r) => client.signTransaction((await client.prepareTransactionRequest(r)) as never),
+    sendRawTransaction: (r) => client.sendRawTransaction(r),
+  };
+  return Object.assign(signer, { address: account.address }, sender);
 }
 
 const CREDENTIAL = "ZXZtLXNldHRsZXItdGVzdA";

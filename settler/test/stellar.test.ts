@@ -44,6 +44,7 @@ const bareCore = (): Core => ({
   settleWaitMs: 5_000,
   state: undefined as never,
   meter: () => ({ sending: async () => true, included: () => {}, sent: () => {} }),
+  naming: async () => async () => {},
 });
 
 const envelopeWire = (b64: string): TransactionEnvelopeWire => xdr.TransactionEnvelope.fromXdr(b64, "base64").toXdrObject();
