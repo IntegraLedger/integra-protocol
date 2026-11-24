@@ -13,6 +13,11 @@ configuration, the answers or the storage.
   whose binary answer names the transaction `tx` on rippled's API version 1, the settler's default (rippled 3.1.3,
   xrpld 3.3.0), and `tx_blob` with `meta_blob` on version 2, while the reader took only `tx_blob` with `meta`. It now
   takes either form, from `tx` and from `account_tx` (note row 9).
+- `xrpl`: lcp's read searched the payer's history to the open ledger (`ledger_current`), which `account_tx`, reading
+  validated ledgers only, never covers, so a lapsed, consumed or `tec` payment read `pending/search-incomplete` at rest
+  and never final `failed`, and a read during which a ledger closed could answer final and the next read pending. The
+  search now ends at the validated ledger of the same `server_info` answer, as the Binder's XRPL reader's does; the
+  reader no longer calls `ledger_current` (note row 29).
 
 ## [0.5.1] - 2026-11-20
 

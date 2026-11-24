@@ -461,7 +461,8 @@ Each member, one entry per network unless it says otherwise:
 - **`xrpl`**: `network`; `node`, the seller's rippled or Clio JSON-RPC endpoint, holding the ledgers from each payment's
   issue to the validated ledger; `waitMs`, optional, how long a settle waits for its transaction in a validated ledger
   (default 30 000); `maxFeeDrops`, optional, the most fee a payment may sign (the class's default, 10 000). The node
-  may answer in API version 1's members or version 2's (`tx` answers `tx` and `meta`, or `tx_blob` and `meta_blob`). Both paths
+  may answer in API version 1's members or version 2's (`tx` answers `tx` and `meta`, or `tx_blob` and `meta_blob`);
+  lcp's read searches the payer's history to the validated ledger `server_info` names. Both paths
   refuse a payment that names a `Delegate` or carries `Memos`, as x402's scheme requires. For `upto`, the payer opens a
   payment channel to `payTo` and signs one claim off the ledger; at `/settle` the resource server adds
   `settlementTransaction`, a `PaymentChannelClaim` its `payTo` key signed for the actual charge with `tfClose`, which the
