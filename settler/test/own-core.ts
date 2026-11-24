@@ -61,5 +61,6 @@ export function testCore(o: { settleWaitMs?: number; meter?: Meter; state?: Modu
     settleWaitMs: o.settleWaitMs ?? 5_000,
     state: o.state ?? memoryState(),
     meter: () => meter,
+    naming: async () => async () => {},
   };
 }

@@ -5,6 +5,7 @@
  * holds no chain's rule and no key: each module's facilitator verifies and settles, and the core decides only what its
  * record, its budget and lcp's read of the chain tell it.
  */
+import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash, timingSafeEqual } from "node:crypto";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { x402Facilitator } from "@x402/core/facilitator";
@@ -204,6 +205,12 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
     const offered: OfferedHandoff[] = [];
     // The modules started with the fee meter of their network: their keys' fees are counted as they send.
     const metered = new Set<Module>();
+    // The submission whose class's settle is running, for a module that names its transaction before it sends it.
+    const inSubmission = new AsyncLocalStorage<(transaction: string) => Promise<() => Promise<void>>>();
+    const naming = (transaction: string): Promise<() => Promise<void>> => {
+      const keep = inSubmission.getStore();
+      return keep === undefined ? Promise.reject(new Error("naming is called outside a submission's settle")) : keep(transaction);
+    };
     for (const listed of list) {
       const own = configured[listed.name];
       if (own === undefined) continue;
@@ -217,6 +224,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
           meters.add(network);
           return fees.meter(network, () => Date.now(), log);
         },
+        naming,
       };
       const started = await starter.start(own as never, core);
       if (started.close !== undefined) closers.push(started.close);
@@ -398,11 +406,17 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
 
     /**
      * The answer, once lcp's read shows the instrument final, and the row made final. A success is this settler's only
-     * where it sent the payment (`sent`, every transaction its submissions for the claim named) and the read shows
-     * settled one of those transactions, or the payment presented itself, which lcp's read can name otherwise than the
-     * submission did (a Polkadot extrinsic by its timepoint, not its hash); and only to the call that made the row
-     * final. A landed act that is another body than the one presented is never that call's success. One that landed by
-     * another route is `invalid_transaction_state` naming it. A failed instrument is `invalid_transaction_state` naming
+     * where it sent the payment and the read shows settled one of the transactions its submissions for the claim named
+     * (`sent`), or the payment presented itself, which lcp's read can name otherwise than the submission did (a Polkadot
+     * extrinsic by its timepoint, not its hash); and only to the call that made the row final. It sent the payment where
+     * `sent` names a transaction, or where a settle holding the claim gave it to the class's settle (`submitted`), whose
+     * answer naming the transaction can be lost: the node's answer to the send dropped, a class that answers `""` on
+     * any failure after its broadcast, a class's settle that outlasts the hold, or the settler stopped before the
+     * answer. A class's failure naming nothing reads the same whether or not the node took the send, so a claim given to
+     * the class is this settler's even where the payment then landed by another route. A landed act that is another
+     * body than the one presented is never that call's success. One that landed by another route where no settle gave
+     * the claim to the class (no claim, or a claim refused before the class's settle) is `invalid_transaction_state`
+     * naming it. A failed instrument is `invalid_transaction_state` naming
      * the transaction the read found, or the last one the settler sent, or the class's own failure where it named the
      * transaction it sent.
      */
@@ -410,6 +424,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
       a: Attempt,
       read: Extract<ChainRead, { outcome: "final" }>,
       sent: readonly string[],
+      submitted: boolean,
       payer: string | undefined,
       claimed: number | undefined,
       classAnswer?: SettleResponse,
@@ -424,7 +439,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
           await release(a, {});
           return failed("invalid_transaction_state", answer.transaction, a.network);
         }
-        if (mine !== undefined || (sent.length > 0 && answer.presented === "yes")) {
+        if (mine !== undefined || ((sent.length > 0 || submitted) && answer.presented === "yes")) {
           const transaction = mine ?? answer.transaction;
           const success = { success: true as const, transaction, network: a.network, payer: payer ?? "" };
           const wrote = await finish(a, { outcome: "settled", answer: success, transaction, ...kept });
@@ -448,7 +463,8 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
     /**
      * For a claim this attempt holds: the fee budget, just before anything is sent; the submission of what
      * the payer signed, through x402's class and the kind's wrapper; then the answer: a success the class gives once
-     * it is stored final, else by lcp's read. `sent` is every transaction earlier submissions for the claim named.
+     * it is stored final, else by lcp's read. `sent` is every transaction earlier submissions for the claim named; the
+     * read also takes each one the module named before it sent it (`Core.naming`), which the row holds already.
      */
     async function submit(
       a: Attempt,
@@ -474,10 +490,42 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
         await release(a, {});
         return unexpectedSettle(log, { ...about(a), event: "settle-deadline-passed", before: "submission", settleWaitMs });
       }
+      try {
+        // Before anything can be sent: a lost answer, or a stop before it, is then still known as this settler's.
+        await inTime(record.submitting(a.network, a.key), a.deadline);
+      } catch (e) {
+        await release(a, {});
+        return unexpectedSettle(log, { ...about(a, { ...(payer === undefined ? {} : { payer }) }), event: "store-call-failed", call: "submitting" }, e);
+      }
       let s: SettleResponse | undefined;
       let thrown: { cause: unknown } | undefined;
+      // What the module named before it sent (`Core.naming`), kept in the row before the send.
+      const before: string[] = [];
+      // Takes back a transaction named and not sent, its own bound: a refused send, or a store call that failed.
+      const withdraw = async (transaction: string): Promise<void> => {
+        const at = before.findIndex((t) => sameTransaction(t, transaction));
+        if (at >= 0) before.splice(at, 1);
+        try {
+          await inTime(record.unsent(a.network, a.key, transaction), Infinity);
+        } catch (e) {
+          log({ ...about(a, { transaction }), event: "store-call-failed", call: "unsent" }, e);
+        }
+      };
+      const keep = async (transaction: string): Promise<() => Promise<void>> => {
+        try {
+          await inTime(record.sent(a.network, a.key, transaction), a.deadline);
+        } catch (e) {
+          log({ ...about(a, { transaction }), event: "store-call-failed", call: "sent" }, e);
+          // Nothing is sent, so nothing may name it: taken back where the write landed before this. A write that lands
+          // after it, on another connection, is not taken back, and a repeat then names a transaction never sent.
+          await withdraw(transaction);
+          throw e;
+        }
+        before.push(transaction);
+        return () => withdraw(transaction);
+      };
       try {
-        s = await settling.settle(a.payment.payload, a.payment.requirements);
+        s = await inSubmission.run(keep, () => settling.settle(a.payment.payload, a.payment.requirements));
       } catch (e) {
         thrown = { cause: e };
       }
@@ -501,14 +549,15 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
         if (named === undefined) return unexpectedSettle(log, { ...about(a), event: "success-not-stored" });
         return pending(named, a.network);
       }
-      const all = named === undefined || sent.some((t) => sameTransaction(t, named)) ? sent : [...sent, named];
+      const all = [...sent];
+      for (const t of [...before, ...(named === undefined ? [] : [named])]) if (!all.some((h) => sameTransaction(h, t))) all.push(t);
       if (named !== undefined) {
         await note(a, named);
         void countFee(a, named);
       }
       const read = await readChain(a, { since, transaction: all.at(-1) });
       if (thrown !== undefined && (read.outcome === "final" || all.length > 0)) log(failure, thrown.cause);
-      if (read.outcome === "final") return byFinalRead(a, read, all, s?.payer ?? payer, claimed, s);
+      if (read.outcome === "final") return byFinalRead(a, read, all, true, s?.payer ?? payer, claimed, s);
       const live = read.answer;
       await release(a, live.state === "pending" && live.search !== undefined ? { search: live.search } : {});
       if (s !== undefined && named !== undefined) {
@@ -531,7 +580,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
         if (current.final) return answerFinal(a, current);
         if (current.heldUntil <= Date.now()) {
           const read = await readChain(a, current);
-          if (read.outcome === "final") return byFinalRead(a, read, current.sent, current.payer, current.claimed);
+          if (read.outcome === "final") return byFinalRead(a, read, current.sent, current.submitted, current.payer, current.claimed);
           if (read.answer.state === "pending" && read.answer.reason === "below-mark" && read.answer.transaction !== undefined) {
             return pending(read.answer.transaction, a.network);
           }
@@ -573,7 +622,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
         return watch(a, again ?? { ...row, heldUntil: Date.now() + settleWaitMs });
       }
       const read = await readChain(a, took);
-      if (read.outcome === "final") return byFinalRead(a, read, took.sent, took.payer, took.claimed);
+      if (read.outcome === "final") return byFinalRead(a, read, took.sent, took.submitted, took.payer, took.claimed);
       const live = read.answer;
       const search = live.state === "pending" && live.search !== undefined ? { search: live.search } : {};
       if (live.state === "pending" && live.reason === "instrument-live" && resendable(a.instrumented)) {
@@ -713,7 +762,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
         if (!v.isValid) {
           const read = await readChain(a, {});
           const lapsed = read.answer.state === "failed" && read.answer.reason === "instrument-unused";
-          if (read.outcome === "final" && !lapsed) return byFinalRead(a, read, [], v.payer, undefined);
+          if (read.outcome === "final" && !lapsed) return byFinalRead(a, read, [], false, v.payer, undefined);
           return failed(settleReason(v.invalidReason ?? "invalid_payload"), "", network);
         }
         // The claim, with the chain's position the module reads for it, where its read searches from one.
@@ -746,7 +795,7 @@ export async function serveSettler<List extends readonly Listed<ModuleName, neve
         }
         if (!won) {
           const now = await inTime(record.read(network, a.key), deadline).catch(() => undefined);
-          return watch(a, now ?? { pairing: i.pairing, claimed, heldUntil: claimed + settleWaitMs, final: false, sent: [] });
+          return watch(a, now ?? { pairing: i.pairing, claimed, heldUntil: claimed + settleWaitMs, final: false, sent: [], submitted: false });
         }
         // The fee budget, the submission and the answer.
         return await submit(a, v.payer, transaction === undefined ? [] : [transaction], claimed, since);

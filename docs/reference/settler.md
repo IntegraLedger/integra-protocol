@@ -151,7 +151,7 @@ row a claim, which a repeat reads again. A claim is never removed.
 |---|---|
 | A final row | `invalid_transaction_state` naming the transaction the row holds. Never a second success, as x402's `exact` family requires: a consumed payment produces a settlement failure. |
 | A claim another settle holds | It reads the row every second and sends nothing, until that settle answers or its hold ends; then the row's answer, or lcp's read. It answers `settlement_pending` naming the transaction where one is known, and `unexpected_settle_error` where none is known when its wait ends. |
-| A claim whose hold has ended | It takes the claim and reads the chain. A payment the chain shows final is stored and answered. The identical signed payment is submitted again only where the pairing's `nonce` is `single-use` in lcp's registry, the row is not named by the digest of the signed payment, the read shows the value unconsumed and its validity open, the body is the one that claimed the row, and the class's verify passes again. Another body under the same instrument is answered `invalid_transaction_state`. Otherwise `settlement_pending` naming the transaction sent, or `unexpected_settle_error` where none is known. |
+| A claim whose hold has ended | It takes the claim and reads the chain. A payment the chain shows final is stored and answered: a success where a settle holding the claim gave it to the class's settle and the read shows the payment it presented settled, whatever the class answered: a failure naming no transaction is the same answer whether or not the node took the send (its answer lost, a class that names nothing on any failure after its broadcast), as is no answer (the settler stopped, or the class's settle outlasted the hold), so the payment landing by another route after that is answered success too. The identical signed payment is submitted again only where the pairing's `nonce` is `single-use` in lcp's registry, the row is not named by the digest of the signed payment, the read shows the value unconsumed and its validity open, the body is the one that claimed the row, and the class's verify passes again. Another body under the same instrument is answered `invalid_transaction_state`. Otherwise `settlement_pending` naming the transaction sent, or `unexpected_settle_error` where none is known. |
 | No row, and the store cannot be read | `settlement_pending` where the payment's transaction id is known before it is sent, else `unexpected_settle_error`: the settler cannot know whether it was sent. |
 
 When the wait ends first, `/settle` answers `{success: false, errorReason: "settlement_pending", transaction}`; x402
@@ -184,8 +184,10 @@ CREATE TABLE IF NOT EXISTS instrument (
   search jsonb,
   since jsonb,
   keep_until bigint,
+  submitted boolean NOT NULL DEFAULT false,
   PRIMARY KEY (network, key)
 );
+ALTER TABLE instrument ADD COLUMN IF NOT EXISTS submitted boolean NOT NULL DEFAULT false;
 CREATE INDEX IF NOT EXISTS instrument_final_keep ON instrument (keep_until) WHERE final AND keep_until IS NOT NULL;
 CREATE TABLE IF NOT EXISTS fee (
   network text NOT NULL,
@@ -208,8 +210,9 @@ CREATE TABLE IF NOT EXISTS module_state (
   settle holding the claim may no longer send (0 once it answered); `answer` is the answer as first given, once
   `final`; `transaction` the transaction the row names; `sent` every transaction the settler's submissions for the
   claim named, any of which can be the one that lands; `body` the SHA-256 of the body that claimed the row, the only
-  body sent again; `search` where the next read resumes; `since` the chain's position read just before the claim; times
-  are Unix milliseconds.
+  body sent again; `search` where the next read resumes; `since` the chain's position read just before the claim; `submitted`
+  whether a settle holding the claim gave the payment to the class's settle, set before it sends; times are Unix
+  milliseconds.
 - `fee` is the fee count: one row per transaction a keyed module submitted on a network with a budget.
 - `module_state` is the modules' durable state, under each module's name: a class's pending settlements, Cardano's
   broadcast guard, Solana's channels.

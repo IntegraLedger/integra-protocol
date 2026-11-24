@@ -9,11 +9,11 @@ import { digestJson } from "@integraledger/lcp";
 import { decodePermissionContext } from "@integraledger/lcp/evm";
 import { exactErc7710, exactErc7710Salt } from "@integraledger/lcp/x402";
 import type { PaymentPayload } from "@x402/core/types";
-import { decodeFunctionData, getAddress, type Hex } from "viem";
+import { decodeFunctionData, getAddress, HttpRequestError, keccak256, RpcRequestError, type Hex } from "viem";
 import { generatePrivateKey } from "viem/accounts";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { chainOf, evmNode, transferLog, type EvmChain, type EvmLog } from "./evm-node.js";
-import { gasKey, lcpVector, pointer, settlerOf, type Settler } from "./evm-support.js";
+import { gasKey, lcpVector, pointer, settlerOf, type RecordRow, type Settler } from "./evm-support.js";
 import type { Stub } from "./support.js";
 
 const ANVIL_2 = "0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a";
@@ -59,17 +59,18 @@ function redemptionLogs(_to: Hex, input: Hex): EvmLog[] | undefined {
 }
 
 /**
- * The digest the record keys a redemption by: its manager and delegator in lowercase, and the leaf delegation's EIP-712
- * hash as lcp's reference gives it.
+ * The digest the record keys a redemption by: its manager and delegator in lowercase, the leaf delegation's EIP-712
+ * hash and the sale's H as lcp's reference gives them.
  */
 async function leafKey(level: string, payment: PaymentPayload): Promise<string> {
   const binding = level === exactErc7710Salt.id ? exactErc7710Salt : exactErc7710;
-  const ref = (await binding.reference(payment as never, payment.accepted as never)) as unknown as { presented: { delegation: string } };
+  const ref = (await binding.reference(payment as never, payment.accepted as never)) as unknown as { presented: { delegation: string }; h: string };
   const p = payment.payload as { delegationManager: string; delegator: string };
   return (await digestJson({
     delegationManager: p.delegationManager.toLowerCase(),
     delegator: p.delegator.toLowerCase(),
     delegation: ref.presented.delegation.toLowerCase(),
+    h: ref.h.toLowerCase(),
   })) as string;
 }
 
@@ -87,18 +88,35 @@ afterEach(async () => {
   settler = node = undefined;
 }, 60_000);
 
-/** The settler with the evm module's `exact` and the erc7710 module on the network, both with the gas key `key`. */
-async function erc7710On(payment: PaymentPayload, key: Hex = ANVIL_2): Promise<{ settler: Settler; signer: { address: Hex } }> {
+/** How a test stands between the erc7710 module's key and the node's answer to its send. */
+type Send = (serializedTransaction: Hex, send: () => Promise<Hex>) => Promise<Hex>;
+
+/**
+ * The settler with the evm module's `exact` and the erc7710 module on the network, both with the gas key `key`; the
+ * erc7710 module's sends go through `send` where given.
+ */
+async function erc7710On(payment: PaymentPayload, key: Hex = ANVIL_2, send?: Send): Promise<{ settler: Settler; signer: { address: Hex } }> {
   const manager = (payment.payload as { delegationManager: string }).delegationManager;
   chain = chainOf(NOW, [payment.accepted.asset, manager]);
   chain.logsOf = redemptionLogs;
   node = await evmNode(chain);
   const signer = gasKey(node.url, key);
+  const own =
+    send === undefined
+      ? signer
+      : { ...signer, sendRawTransaction: (r: { serializedTransaction: Hex }) => send(r.serializedTransaction, () => signer.sendRawTransaction(r)) };
   settler = await settlerOf({
     evm: [{ network: NETWORK, rpc: node.url, signer, schemes: ["exact"] }],
-    erc7710: [{ network: NETWORK, rpc: node.url, signer }],
+    erc7710: [{ network: NETWORK, rpc: node.url, signer: own }],
   });
   return { settler, signer };
+}
+
+/** The payment of another sale through the same delegation: the echoed H is another. */
+function anotherSale(payment: PaymentPayload, h: Hex): PaymentPayload {
+  const extensions = structuredClone(payment.extensions) as { legalContext: { info: { value: string } } };
+  extensions.legalContext.info.value = h;
+  return { ...payment, extensions } as PaymentPayload;
 }
 
 for (const [level, V] of [
@@ -194,5 +212,85 @@ describe("x402/exact/eip155/erc7710 read by the transaction the record holds", (
     expect(await settler.settle(payment)).toEqual({ success: true, transaction: tx.hash, network: NETWORK, payer: delegator });
     expect(chain.sent).toHaveLength(1);
     expect((await settler.rows()).map((r) => [r.final, r.transaction])).toEqual([[true, tx.hash]]);
+  });
+});
+
+describe("x402/exact/eip155/erc7710: the redemption's hash is in the record before it is sent", () => {
+  const payment = pointer<PaymentPayload>(UNSALTED, "/buyer/rows/1/input/presented");
+  const delegator = getAddress((payment.payload as { delegator: Hex }).delegator);
+
+  it("signs the redemption first and keeps its hash in the claim's row before the send, so a send the node took whose answer is lost is read on by that hash and answered success, sending nothing again", async () => {
+    let atSend: RecordRow[] = [];
+    let signedHash: Hex | undefined;
+    const { settler } = await erc7710On(payment, ANVIL_2, async (serialized, send) => {
+      signedHash = keccak256(serialized);
+      atSend = await settler!.rows();
+      await send();
+      // The node took it; its answer is lost on the way back.
+      throw new HttpRequestError({ url: node!.url, details: "the answer to the send was lost" });
+    });
+    const answer = await settler.settle(payment);
+    const tx = chain.sent[0]!;
+    expect(tx.hash).toBe(signedHash);
+    expect(atSend.map((r) => [r.final, r.transaction])).toEqual([[false, tx.hash]]);
+    expect(answer).toEqual({ success: true, transaction: tx.hash, network: NETWORK, payer: delegator });
+    expect(await settler.settle(payment)).toEqual({ success: false, errorReason: "invalid_transaction_state", transaction: tx.hash, network: NETWORK });
+    expect(chain.sent).toHaveLength(1);
+  });
+
+  it("reads on by the hash a send whose answer is lost while the node withholds its receipt: settlement_pending naming it, then success once the node shows it", async () => {
+    const { settler } = await erc7710On(payment, ANVIL_2, async (_serialized, send) => {
+      await send();
+      throw new HttpRequestError({ url: node!.url, details: "the answer to the send was lost" });
+    });
+    chain.withhold = true;
+    const first = await settler.settle(payment);
+    const tx = chain.sent[0]!;
+    expect(first).toEqual({ success: false, errorReason: "settlement_pending", transaction: tx.hash, network: NETWORK });
+    chain.withhold = false;
+    expect(await settler.settle(payment)).toEqual({ success: true, transaction: tx.hash, network: NETWORK, payer: delegator });
+    expect(chain.sent).toHaveLength(1);
+  });
+
+  it("answers a send the node refused with its own JSON-RPC error as the module's failure naming no transaction, nothing sent, and takes the hash back out of the row, so no repeat names a transaction never sent", async () => {
+    const { settler } = await erc7710On(payment, ANVIL_2, async () => {
+      throw new RpcRequestError({ body: {}, error: { code: -32000, message: "insufficient funds for gas" }, url: node!.url });
+    });
+    expect(await settler.settle(payment)).toEqual({ success: false, errorReason: "invalid_transaction", transaction: "", network: NETWORK, payer: delegator });
+    expect((await settler.rows()).map((r) => [r.final, r.transaction])).toEqual([[false, null]]);
+    const again = await settler.settle(payment);
+    expect(again.transaction).toBe("");
+    expect(again.errorReason).not.toBe("settlement_pending");
+    expect(chain.sent).toHaveLength(0);
+  });
+});
+
+describe("x402/exact/eip155/erc7710: each sale through a delegation is its own row", () => {
+  const payment = pointer<PaymentPayload>(UNSALTED, "/buyer/rows/1/input/presented");
+  const delegator = getAddress((payment.payload as { delegator: Hex }).delegator);
+
+  it("redeems a second sale (another H) through the delegation one sale already redeemed, and answers the same sale again from its row", async () => {
+    const { settler } = await erc7710On(payment);
+    const first = await settler.settle(payment);
+    expect(first).toMatchObject({ success: true });
+    const second = anotherSale(payment, `0x${"ab".repeat(32)}`);
+    expect(await settler.verify(second)).toEqual({ isValid: true, payer: delegator });
+    const settled = await settler.settle(second);
+    expect(settled).toEqual({ success: true, transaction: chain.sent[1]!.hash, network: NETWORK, payer: delegator });
+    expect(settled.transaction).not.toBe(first.transaction);
+    expect(await settler.settle(second)).toEqual({ success: false, errorReason: "invalid_transaction_state", transaction: settled.transaction, network: NETWORK });
+    expect(chain.sent).toHaveLength(2);
+    expect(await settler.rows()).toHaveLength(2);
+  });
+});
+
+describe("the erc7710 module's start", () => {
+  it("refuses a signer that cannot sign a redemption without sending it, and starts with one that can", async () => {
+    const payment = pointer<PaymentPayload>(UNSALTED, "/buyer/rows/1/input/presented");
+    await erc7710On(payment);
+    const { signTransaction: _sign, sendRawTransaction: _send, ...bare } = gasKey(node!.url, ANVIL_2);
+    await expect(settlerOf({ evm: [{ network: NETWORK, rpc: node!.url, signer: bare, schemes: ["exact"] }], erc7710: [{ network: NETWORK, rpc: node!.url, signer: bare as never }] })).rejects.toThrow(
+      `erc7710 on ${NETWORK}: the signer must give signTransaction and sendRawTransaction`,
+    );
   });
 });

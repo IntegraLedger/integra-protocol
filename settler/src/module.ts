@@ -389,6 +389,15 @@ export interface Core {
    * refuses a fee budget on a network where a module with a key neither took it nor gives `FeeNeeds.charged`.
    */
   meter(network: Network): FeeMeter;
+  /**
+   * Keeps `transaction` in the record of the claim whose submission is calling, as a transaction this settler sent, for
+   * an own module that knows its transaction's id before it sends it: called after it is signed and before it is sent,
+   * so that a send whose answer is lost, or a stop before the answer, still leaves the record holding it, and lcp's read
+   * and a repeat find it. It resolves once the store has taken it, to `withdraw`, which the module calls where the node
+   * refused the send, so that nothing names a transaction never sent; where it rejects, the module sends nothing.
+   * Called outside a facilitator's `settle` that the core's submission made, it rejects.
+   */
+  naming(transaction: string): Promise<() => Promise<void>>;
 }
 
 /** An own module offered to the registration another module makes of a scheme on a network. */
