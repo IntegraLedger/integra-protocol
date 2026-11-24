@@ -13,16 +13,12 @@ configuration, the answers or the storage.
   whose binary answer names the transaction `tx` on rippled's API version 1, which rippled answers to a request naming no `api_version`, as the settler's do (rippled 3.1.3,
   xrpld 3.3.0), and `tx_blob` with `meta_blob` on version 2, while the reader took only `tx_blob` with `meta`. It now
   takes either form, from `tx` and from `account_tx` (note row 9).
-- `xrpl`: lcp's read searched the payer's history to the open ledger (`ledger_current`), which `account_tx`, reading
-  validated ledgers only, never covers, so a lapsed, consumed or `tec` payment read `pending/search-incomplete` at rest
-  and never final `failed`, and a read during which a ledger closed could answer final and the next read pending. The
-  search now ends at the validated ledger of the same `server_info` answer, as the Binder's XRPL reader's does; the
-  reader no longer calls `ledger_current` (note row 29).
 - `xrpl`, multisigned payer: a payment in an issued currency carrying `SendMax`, which the class requires of one, was
   refused `invalid_exact_xrpl_payload_paths_not_allowed`. The own path now takes the class's `SendMax` rule and
   reasons: `invalid_exact_xrpl_payload_sendmax_not_allowed` on XRP (0.5.1: `paths_not_allowed`), and on an issued
   currency `sendmax_required`, `sendmax_iou_mismatch` and `sendmax_too_low`; `DeliverMin` is refused
-  `invalid_exact_xrpl_payload_delivermin_not_allowed` (0.5.1: `paths_not_allowed`) (note row 10).
+  `invalid_exact_xrpl_payload_delivermin_not_allowed` (0.5.1: `paths_not_allowed`), checked before the partial-payment
+  flag as the class checks it (note row 10).
 - `xrpl`, multisigned payer: a signer whose account the ledger does not hold, which a signer list allows and rippled
   executes, made `/verify` and `/settle` answer `unexpected_verify_error`. Such a signer is taken where it signs with the
   key its address derives from, and refused `invalid_exact_xrpl_payload_signer_not_authorized` otherwise, as rippled
