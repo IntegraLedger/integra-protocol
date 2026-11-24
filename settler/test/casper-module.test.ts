@@ -5,6 +5,7 @@
 // token, the submission and the wait. lcp's read runs through the module's reader against a stub that serves lcp's C4
 // node rows in the node's JSON-RPC answers, each transaction written by casper-js-sdk itself.
 import { readFileSync } from "node:fs";
+import { blake2b } from "@noble/hashes/blake2.js";
 import { exactCasper } from "@integraledger/lcp/casper";
 import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
 import pg from "pg";
@@ -99,6 +100,20 @@ function execution(height: string | number, error: string | null, initiator: Any
   };
 }
 
+/**
+ * The key a token's `used_nonces` holds `(from, nonce)` under. CEP-3009 and its Odra reference token: the lowercase hex
+ * of blake2b-256 over `from` as its tagged key (33 bytes) and the nonce as `Bytes` (a u32 little-endian length, then
+ * the bytes). "base64": the base64 of the raw pair, which no CEP-3009 token holds (the settler's key before row 17).
+ */
+function itemKey(form: "cep3009" | "base64", fromHex: string, nonceHex: string): string {
+  const from = Buffer.from(fromHex, "hex");
+  const nonce = Buffer.from(nonceHex, "hex");
+  if (form === "base64") return Buffer.concat([from, nonce]).toString("base64");
+  const length = Buffer.alloc(4);
+  length.writeUInt32LE(nonce.length);
+  return Buffer.from(blake2b(Buffer.concat([from, length, nonce]), { dkLen: 32 })).toString("hex");
+}
+
 const root = (height: bigint | string) => BigInt(height).toString(16).padStart(64, "0");
 
 /** A block as `chain_get_block` answers it: its height, its own timestamp, its state root and its transactions. */
@@ -123,6 +138,8 @@ interface Chain {
   readonly node?: Any;
   /** The payment's (from, nonce), whose used-nonce item C4's node sets. */
   readonly item?: { readonly from: string; readonly nonce: string };
+  /** The item key the node holds that item under: CEP-3009's (the default), or the base64 of the raw pair. */
+  readonly keyForm?: "cep3009" | "base64";
   /** The payer's balance the class reads. */
   readonly balance?: bigint;
   /** The node takes a submitted transaction and its answer is lost on the way back. */
@@ -192,7 +209,7 @@ async function casperNode(chain: Chain): Promise<Routes & { sent: Map<string, un
         }
         // lcp's read: the item of (from, nonce) set from C4's setFrom on, at the state root of each height.
         const height = BigInt(`0x${p.state_root_hash}`);
-        const item = chain.item === undefined ? "" : Buffer.concat([Buffer.from(chain.item.from, "hex"), Buffer.from(chain.item.nonce, "hex")]).toString("base64");
+        const item = chain.item === undefined ? "" : itemKey(chain.keyForm ?? "cep3009", chain.item.from, chain.item.nonce);
         const set = named.dictionary_item_key === item && n.setFrom !== null && height >= BigInt(n.setFrom);
         if (!set) return rpcError(b.id, -32003, "Query failed");
         return rpcOk(b.id, { api_version: "2.0.0", dictionary_key: `dictionary-${"33".repeat(32)}`, stored_value: stored(sdk.CLValue.newCLValueBool(true), "Bool", true), merkle_proof: "" });
@@ -448,5 +465,37 @@ describe("the Casper module", () => {
     const read = node.calls.filter((c) => (c.body as Any).method === "info_get_transaction").map((c) => (c.body as Any).params.transaction_hash.Version1);
     expect(new Set(read)).toEqual(new Set(r.node.pages.flat().map((c: Any) => c.transaction)));
     expect(node.sent.size).toBe(0);
+  });
+
+  // Row 17. A CEP-3009 token keys used_nonces by the hex of blake2b-256 over the serialized pair. The known answer is
+  // Casper testnet's: csprUSD (x402's default token, active contract a5a6f9ba…) holds the nonce its own
+  // AuthorizationUsed event names under this key and holds nothing under the base64 of the raw pair (read 2026-11-24).
+  it("reads a used nonce under the item key a CEP-3009 token writes, and finds nothing under the base64 of the raw pair", async () => {
+    const live = {
+      from: "000a2c6f9ed44a269366ac7816d8ebbc0d9ae0233f75388ca37365008bb36c9cd6",
+      nonce: "1eab899eac0b98216e56fd6cb7a354e67138dcea9e8d8023c986d18f5ef0c669",
+    };
+    expect(itemKey("cep3009", live.from, live.nonce)).toBe("2d3bc98fae6ce10d6ec432aae90ba5ea2fd06504b2f41a7f377531478e32dad1");
+    const settled = V.C4.rows.find((r: Any) => r.expectStatus.state === "settled");
+    const asked = async (keyForm: "cep3009" | "base64") => {
+      const n = await casperNode({ node: settled.node, item: { from: V.C4.ref.from, nonce: V.C4.ref.nonce.slice(2) }, keyForm });
+      node = n;
+      const { signer } = await relayer(n.url);
+      await start([{ network: NETWORK, signer, rpc: n.url }]);
+      const answer = (await settler!.settle(body(V.C2.expectPayload))) as Any;
+      const keys = n.calls.filter((c) => (c.body as Any).method === "state_get_dictionary_item" && (c.body as Any).params.dictionary_identifier.ContractNamedKey.dictionary_name === "used_nonces");
+      await settler!.close();
+      await n.close();
+      settler = undefined;
+      node = undefined;
+      return { answer, keys: keys.map((c) => (c.body as Any).params.dictionary_identifier.ContractNamedKey.dictionary_item_key) };
+    };
+    const cep = await asked("cep3009");
+    expect(cep.answer).toMatchObject({ success: false, errorReason: "invalid_transaction_state", transaction: settled.expectStatus.transaction });
+    expect(new Set(cep.keys)).toEqual(new Set([itemKey("cep3009", V.C4.ref.from, V.C4.ref.nonce.slice(2))]));
+    // The twin: the same landed history held under the base64 of the raw pair is not a CEP-3009 token's, and the
+    // settler's read does not find it there.
+    const raw = await asked("base64");
+    expect(raw.answer).toMatchObject({ success: false, errorReason: "invalid_exact_casper_facilitator_expired", transaction: "" });
   });
 });

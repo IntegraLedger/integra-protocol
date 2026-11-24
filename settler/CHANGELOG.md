@@ -8,6 +8,11 @@ configuration, the answers or the storage.
 
 ### Fixed
 
+- `casper`: the read of a used nonce asks the token's `used_nonces` for the item key CEP-3009 tokens write, the hex of
+  blake2b-256 over the tagged `from` and the nonce as `Bytes`, not the base64 of the raw pair, which no such token
+  holds. On Casper testnet's csprUSD, x402's default token, the old key finds nothing for a nonce the token's own
+  `AuthorizationUsed` event shows used. So a lost or retried `/settle` of a payment that landed answered `expired`;
+  it now answers as the landed payment.
 - The README's module table lists the networks each stock class takes: `hedera:mainnet` and `hedera:testnet` (not
   `hedera:previewnet` or `hedera:devnet`, which `@x402/hedera`'s class refuses `network_mismatch`), Algorand's mainnet
   and testnet genesis labels (`@x402/avm`'s class refuses any other, "Unsupported Algorand network"), and `aptos:1`
