@@ -15,6 +15,7 @@ import { isRefusal, type Refusal } from "@integraledger/lcp";
 import type { PaymentRequirements as LcpOption } from "@integraledger/lcp/x402";
 import { exactXrpl } from "@integraledger/lcp/x402-exact-xrpl";
 import type { XrplNetwork, XrplRef } from "@integraledger/lcp/xrpl";
+import { compareDecimalStrings, isDecimalString, isIssuedCurrencyAmount } from "@x402/xrpl";
 import { ExactXrplScheme } from "@x402/xrpl/exact/facilitator";
 import type { Network, PaymentPayload, PaymentRequirements, SchemeNetworkFacilitator, SettleResponse, VerifyResponse } from "@x402/core/types";
 import { decode, deriveAddress, encodeForMultiSigning, verifyKeypairSignature, type Transaction } from "xrpl";
@@ -174,6 +175,24 @@ function amountMatches(tx: Record<string, unknown>, r: PaymentRequirements): boo
 }
 
 /**
+ * The `SendMax` rule the class makes of a payment signed with one key (`@x402/xrpl` 2.31.0, `verifyXrpAmount` and
+ * `verifyIouAmount`), with its reasons: none for XRP; for an issued currency, required, of the Amount's currency and
+ * issuer, and no less than the Amount, which the payer may spend to deliver it (a transfer fee). Undefined: it holds.
+ */
+function sendMaxFailure(tx: Record<string, unknown>, r: PaymentRequirements): string | undefined {
+  const sendMax = tx["SendMax"];
+  if (r.asset === "XRP") return sendMax === undefined ? undefined : "invalid_exact_xrpl_payload_sendmax_not_allowed";
+  const amount = tx["Amount"];
+  if (!isIssuedCurrencyAmount(sendMax) || !isIssuedCurrencyAmount(amount)) return "invalid_exact_xrpl_payload_sendmax_required";
+  if (sendMax.currency !== amount.currency || sendMax.issuer !== amount.issuer) return "invalid_exact_xrpl_payload_sendmax_iou_mismatch";
+  // The class's comparison throws on a value that is no plain decimal, a negative one among them: refused as too low.
+  if (!isDecimalString(sendMax.value) || !isDecimalString(amount.value) || compareDecimalStrings(sendMax.value, amount.value) < 0) {
+    return "invalid_exact_xrpl_payload_sendmax_too_low";
+  }
+  return undefined;
+}
+
+/**
  * The checks of a multisigned payment that read the chain: the Payment's form against the requirements, as the class
  * makes them for a payment signed with one key; each signer's signature over the transaction's multisigning data with
  * its own key, a key that is its master key or its regular key; the payer's signer list met by those signers' weights;
@@ -188,10 +207,12 @@ async function multisigChecks(c: XrplConfig, node: XrplNode, payload: PaymentPay
   if (tx["SigningPubKey"] !== "") return { reason: "invalid_exact_xrpl_payload_signing_pub_key" };
   if (tx["Destination"] !== r.payTo) return { reason: "invalid_exact_xrpl_payload_destination_mismatch" };
   if (!amountMatches(tx, r)) return { reason: "invalid_exact_xrpl_payload_amount_mismatch" };
+  const sendMax = sendMaxFailure(tx, r);
+  if (sendMax !== undefined) return { reason: sendMax };
+  if (tx["Paths"] !== undefined) return { reason: "invalid_exact_xrpl_payload_paths_not_allowed" };
+  if (tx["DeliverMin"] !== undefined) return { reason: "invalid_exact_xrpl_payload_delivermin_not_allowed" };
+  // The class's order: SendMax, Paths, DeliverMin, then the partial-payment flag.
   if (((Number(tx["Flags"] ?? 0) >>> 0) & PARTIAL_PAYMENT) !== 0) return { reason: "invalid_exact_xrpl_payload_partial_payment_not_allowed" };
-  if (tx["SendMax"] !== undefined || tx["Paths"] !== undefined || tx["DeliverMin"] !== undefined) {
-    return { reason: "invalid_exact_xrpl_payload_paths_not_allowed" };
-  }
   if (typeof tx["Fee"] !== "string" || BigInt(tx["Fee"]) > BigInt(c.maxFeeDrops ?? DEFAULT_MAX_FEE_DROPS)) {
     return { reason: "invalid_exact_xrpl_payload_fee_too_high" };
   }
@@ -213,11 +234,13 @@ async function multisigChecks(c: XrplConfig, node: XrplNode, payload: PaymentPay
     seen.add(who);
     const data = encodeForMultiSigning(tx as unknown as Transaction, who);
     if (!verifyKeypairSignature(data, sig, key)) return { reason: "invalid_exact_xrpl_payload_signature" };
+    // rippled's rule for each signer: a key that is the signer's regular key, or its master key where the master key is
+    // not disabled; a signer with no account signs with its master key, the key its address derives from.
     const derived = deriveAddress(key);
+    const auth = await node.signerAuthorization(who);
     if (derived !== who) {
-      const auth = await node.authorization(who);
-      if (auth.regularKey !== derived) return { reason: "invalid_exact_xrpl_payload_signer_not_authorized" };
-    } else if ((await node.authorization(who)).isMasterKeyDisabled) {
+      if (auth === null || auth.regularKey !== derived) return { reason: "invalid_exact_xrpl_payload_signer_not_authorized" };
+    } else if (auth !== null && auth.isMasterKeyDisabled) {
       return { reason: "invalid_exact_xrpl_payload_signer_not_authorized" };
     }
     weight += list.weights.get(who) ?? 0;

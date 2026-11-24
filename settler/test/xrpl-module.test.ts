@@ -4,7 +4,7 @@
 // hash, a code, the payer's instrument) or the ledger's rule the case names.
 import { readFileSync } from "node:fs";
 import type { PaymentPayload, PaymentRequirements } from "@x402/core/types";
-import { decode, encode, hashes } from "xrpl";
+import { decode, ECDSA, encode, hashes, multisign, Wallet } from "xrpl";
 import { afterEach, describe, expect, it } from "vitest";
 import { serveSettler } from "../src/core.js";
 import type { Module, Registration, X402Payment } from "../src/module.js";
@@ -20,12 +20,21 @@ const PAYER = V.fixed.payer as string;
 const SIGNERS = ["rPPdduC9MRTrXZP1J7MQyEKKEYiFigWZ6Q", "rfPaNmieF15VqV752Q8qAc6ugtkKhWsA2R", "rH9ESAdrFfDAZtCZGa7JiwNJfKnC6CmGFQ"];
 const PRESENTED = V.buyer.rows[1].input.presented;
 
+/** The signers' wallets, from the same entropy. */
+const WALLETS = [3, 4, 5].map((b) => Wallet.fromEntropy(new Uint8Array(16).fill(b), { algorithm: ECDSA.ed25519 }));
+
 let node: Stub | undefined;
 let settler: Serving | undefined;
+/** Accounts the node holds no `account_info` for: `actNotFound`, as rippled answers for an address never funded. */
+let unfunded: ReadonlySet<string> = new Set();
+/** Members an account's `account_data` carries beyond Sequence 7 and Flags 0: a regular key, the master key disabled. */
+let accountData: ReadonlyMap<string, Record<string, unknown>> = new Map();
 afterEach(async () => {
   await settler?.close();
   await node?.close();
   settler = node = undefined;
+  unfunded = new Set();
+  accountData = new Map();
 });
 
 /** A validated ledger below the payments' LastLedgerSequence, 1000; the payer's next Sequence is 7, the signed one. */
@@ -34,7 +43,8 @@ function answer(method: string, p: Record<string, unknown>, quorum: number): unk
     case "ledger":
       return { ledger_index: 990, validated: true, status: "success" };
     case "account_info":
-      return { account_data: { Account: p["account"], Sequence: 7, Flags: 0 }, ledger_index: 990, validated: true, status: "success" };
+      if (unfunded.has(p["account"] as string)) return { account: p["account"], error: "actNotFound", ledger_index: 990, validated: true, status: "error" };
+      return { account_data: { Account: p["account"], Sequence: 7, Flags: 0, ...accountData.get(p["account"] as string) }, ledger_index: 990, validated: true, status: "success" };
     case "account_objects":
       return {
         account_objects: [
@@ -220,6 +230,97 @@ describe("a multisigned payment, through the own path", () => {
     expect(await routed(r, forged).facilitator.settle(forged.payload, forged.requirements)).toMatchObject({
       success: false,
       errorReason: "invalid_exact_xrpl_payload_signature",
+    });
+    expect(methods()).not.toContain("submit");
+  });
+});
+
+/** V2's Payment with `change` applied, multisigned by `signers`, each signing as the account `as` names, else its own. */
+function multisigned(change: Record<string, unknown>, signers = WALLETS.slice(0, 2), as: (string | undefined)[] = []): string {
+  const { TxnSignature, SigningPubKey, ...tx } = decode(V.V2.blob) as Record<string, unknown>;
+  void TxnSignature;
+  void SigningPubKey;
+  const unsigned: Record<string, unknown> = { ...tx, Fee: "48", SigningPubKey: "", ...change };
+  for (const [k, v] of Object.entries(unsigned)) if (v === undefined) delete unsigned[k];
+  return multisign(signers.map((w, i) => w.sign(unsigned as never, as[i] ?? true).tx_blob));
+}
+
+describe("a multisigned payment in an issued currency carries SendMax as the class requires it (note row 10)", () => {
+  const ISSUER = SIGNERS[2]!;
+  const USD = (value: string, issuer = ISSUER) => ({ currency: "USD", issuer, value });
+  const accepted = { ...V.V2.accepted, asset: "USD", amount: "10", extra: { ...V.V2.accepted.extra, issuer: ISSUER } } as PaymentRequirements;
+
+  it("verifies a SendMax of the Amount, and one above it (a transfer fee), and settles one", async () => {
+    const r = await registrationOn(2);
+    for (const sendMax of ["10", "10.05"]) {
+      const p = payment(multisigned({ Amount: USD("10"), SendMax: USD(sendMax) }), accepted);
+      expect([sendMax, await routed(r, p).facilitator.verify(p.payload, p.requirements)]).toEqual([sendMax, { isValid: true, payer: PAYER }]);
+    }
+    const p = payment(multisigned({ Amount: USD("10"), SendMax: USD("10") }), accepted);
+    expect(await routed(r, p).facilitator.settle(p.payload, p.requirements)).toMatchObject({ success: true, payer: PAYER });
+  });
+
+  it("refuses with the class's reasons: no SendMax, one below the Amount, of another issuer, Paths, DeliverMin; and any SendMax on XRP", async () => {
+    const r = await registrationOn(2);
+    const rows: [string, Record<string, unknown>, PaymentRequirements, string][] = [
+      ["no SendMax", { Amount: USD("10") }, accepted, "invalid_exact_xrpl_payload_sendmax_required"],
+      ["SendMax below", { Amount: USD("10"), SendMax: USD("9.99") }, accepted, "invalid_exact_xrpl_payload_sendmax_too_low"],
+      ["another issuer", { Amount: USD("10"), SendMax: USD("10", SIGNERS[1]!) }, accepted, "invalid_exact_xrpl_payload_sendmax_iou_mismatch"],
+      [
+        "Paths",
+        { Amount: USD("10"), SendMax: USD("10"), Paths: [[{ currency: "USD", issuer: SIGNERS[1]! }]] },
+        accepted,
+        "invalid_exact_xrpl_payload_paths_not_allowed",
+      ],
+      ["DeliverMin", { Amount: USD("10"), SendMax: USD("10"), DeliverMin: USD("10"), Flags: 0x00020000 }, accepted, "invalid_exact_xrpl_payload_delivermin_not_allowed"],
+      ["partial payment", { Amount: USD("10"), SendMax: USD("10"), Flags: 0x00020000 }, accepted, "invalid_exact_xrpl_payload_partial_payment_not_allowed"],
+      ["XRP with SendMax", { SendMax: "1000000" }, V.V2.accepted, "invalid_exact_xrpl_payload_sendmax_not_allowed"],
+    ];
+    for (const [name, change, req, reason] of rows) {
+      const p = payment(multisigned(change), req);
+      expect([name, await routed(r, p).facilitator.verify(p.payload, p.requirements)]).toEqual([name, { isValid: false, invalidReason: reason }]);
+    }
+    expect(methods()).not.toContain("submit");
+  });
+});
+
+describe("a multisigned payment whose signers hold no account (note row 23)", () => {
+  it("verifies a quorum whose signers hold no account, each signing with the key its address derives from", async () => {
+    const [, two] = V.multisigned.rows as { blob: string }[];
+    unfunded = new Set(SIGNERS);
+    const r = await registrationOn(2);
+    const p = payment(two!.blob, V.V2.accepted);
+    expect(await routed(r, p).facilitator.verify(p.payload, p.requirements)).toEqual({ isValid: true, payer: PAYER });
+  });
+
+  it("refuses a signer that holds no account and signs with a key its address does not derive from, submitting nothing", async () => {
+    // The first wallet signs as the third signer: its key derives the first signer's address, and the third holds no account.
+    unfunded = new Set([SIGNERS[2]!]);
+    const r = await registrationOn(2);
+    const p = payment(multisigned({}, [WALLETS[0]!, WALLETS[1]!], [SIGNERS[2]!]), V.V2.accepted);
+    expect(await routed(r, p).facilitator.settle(p.payload, p.requirements)).toMatchObject({
+      success: false,
+      errorReason: "invalid_exact_xrpl_payload_signer_not_authorized",
+    });
+    expect(methods()).not.toContain("submit");
+  });
+
+  it("refuses a funded signer whose key is not its regular key, and one whose master key is disabled, submitting nothing", async () => {
+    const [, two] = V.multisigned.rows as { blob: string }[];
+    // The first wallet signs as the third signer, a funded account whose regular key is the second signer's address.
+    accountData = new Map([[SIGNERS[2]!, { RegularKey: SIGNERS[1]! }]]);
+    const r = await registrationOn(2);
+    const wrongKey = payment(multisigned({}, [WALLETS[0]!, WALLETS[1]!], [SIGNERS[2]!]), V.V2.accepted);
+    expect(await routed(r, wrongKey).facilitator.verify(wrongKey.payload, wrongKey.requirements)).toEqual({
+      isValid: false,
+      invalidReason: "invalid_exact_xrpl_payload_signer_not_authorized",
+    });
+    // lsfDisableMaster on the first signer, which signs the vector's copy with its master key.
+    accountData = new Map([[SIGNERS[0]!, { Flags: 0x00100000 }]]);
+    const disabled = payment(two!.blob, V.V2.accepted);
+    expect(await routed(r, disabled).facilitator.settle(disabled.payload, disabled.requirements)).toMatchObject({
+      success: false,
+      errorReason: "invalid_exact_xrpl_payload_signer_not_authorized",
     });
     expect(methods()).not.toContain("submit");
   });
