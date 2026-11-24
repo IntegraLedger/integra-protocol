@@ -326,13 +326,13 @@ For each pairing, where H rides, from its data's `carrier`: `signed`, the field 
 
 **Where H rides:** one Memo instruction, H's LCP string, in the open the payer signs.
 
-**What it proves:** The payer's own signed act carries this ATR's hash: a Solana transaction the buyer's account signed, whose one LCP-form Memo instruction in the `open` the seller's operator co-signed and submitted is the hash's LCP string, final at `finalized` with no error, which deposited the amount its `open` names into a payment channel whose payee or distribution names the option's payee, recorded with its mint and amount. The memo is in the transaction's instruction data on chain. Vouchers and the close do not carry the hash. It compares no amount, mint or time with the ATR's terms.
+**What it proves:** The payer's own signed act carries this ATR's hash: a Solana transaction the buyer's account signed, whose one LCP-form Memo instruction in the `open` the seller's operator co-signed and submitted is the hash's LCP string, final at `finalized` with no error, which deposited the amount its `open` names into a payment channel whose distribution pays the option's payee more than nothing, recorded with its mint and each account's share of the amount as the program pays it out. The memo is in the transaction's instruction data on chain. Vouchers and the close do not carry the hash. It compares no amount, mint or time with the ATR's terms.
 
 ### `mpp/session/solana/stock`
 
 **Where H rides:** nothing the payer signs carries H.
 
-**What it proves:** Before this opening was taken, an account signed an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The opening, a stock MPP session's payment-channel open that its payer broadcast and that carries no hash, came after it and deposited the amount its `open` names into a channel whose payee or distribution names the option's payee. This does not show that the account that signed the agreement is the opening's payer, nor that amount, recipient, mint or timing match the ATR's content.
+**What it proves:** Before this opening was taken, an account signed an agreement transaction carrying this ATR's hash on <network>, recorded in <transaction>. The opening, a stock MPP session's payment-channel open that its payer broadcast and that carries no hash, came after it and deposited the amount its `open` names into a channel whose distribution pays the option's payee more than nothing. This does not show that the account that signed the agreement is the opening's payer, nor that amount, recipient, mint or timing match the ATR's content.
 
 ### `mpp/session/tempo`
 
@@ -434,7 +434,7 @@ For each pairing, where H rides, from its data's `carrier`: `signed`, the field 
 
 **Where H rides:** the seller's Memo instruction in the channel's opening, H's LCP string, next to the scheme's own receiver-authorizer memo. The seller writes H into the option's `extra.memo`.
 
-**What it proves:** The payer's own signed act carries this ATR's hash: a Solana transaction the buyer's account signed, whose seller Memo instruction (`extra.memo`), beside the scheme's receiver-authorizer memo, is the hash's LCP string, final at `finalized` with no error, which deposited the amount its `open` names into a payment channel whose payee or distribution names the option's payee, recorded with its mint and amount. The memo is in the transaction's instruction data on chain. It compares no amount, mint or time with the ATR's terms.
+**What it proves:** The payer's own signed act carries this ATR's hash: a Solana transaction the buyer's account signed, whose seller Memo instruction (`extra.memo`), beside the scheme's receiver-authorizer memo, is the hash's LCP string, final at `finalized` with no error, which deposited the amount its `open` names into a payment channel whose distribution pays the option's payee more than nothing, recorded with its mint and each account's share of the amount as the program pays it out. The memo is in the transaction's instruction data on chain. It compares no amount, mint or time with the ATR's terms.
 
 ### `x402/exact/algorand`
 
@@ -584,7 +584,7 @@ For each pairing, where H rides, from its data's `carrier`: `signed`, the field 
 
 **Where H rides:** the Memo of the open that escrows the signed maximum in a one-request channel; H's LCP string, all of H. The seller writes H into the option's `extra.memo`.
 
-**What it proves:** The payer's own signed act carries this ATR's hash: a Solana transaction the buyer's account signed, whose one Memo instruction is the hash's LCP string, final at `finalized` with no error, which deposited the amount its `open` names into a payment channel whose payee or distribution names the option's payee, recorded with its mint and amount. The memo is in the transaction's instruction data on chain. The deposit is the signed maximum a one-request channel escrows; the amount charged from it, which may be zero, is the seller's metering, settled in a later transaction that does not carry the hash, and the rest returns to the payer. It compares no amount, mint or time with the ATR's terms.
+**What it proves:** The payer's own signed act carries this ATR's hash: a Solana transaction the buyer's account signed, whose one Memo instruction is the hash's LCP string, final at `finalized` with no error, which deposited the amount its `open` names into a payment channel whose distribution pays the option's payee more than nothing, recorded with its mint and each account's share of the amount as the program pays it out. The memo is in the transaction's instruction data on chain. The deposit is the signed maximum a one-request channel escrows; the amount charged from it, which may be zero, is the seller's metering, settled in a later transaction that does not carry the hash, and the rest returns to the payer. It compares no amount, mint or time with the ATR's terms.
 
 ### `x402/upto/xrpl`
 

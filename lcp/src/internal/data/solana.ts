@@ -36,7 +36,8 @@ const PAID =
 const deposited = (what: string, after: string): string =>
   "The payer's own signed act carries this ATR's hash: a Solana transaction the buyer's account signed, whose " +
   `${what} is the hash's LCP string, final at \`finalized\` with no error, which deposited the amount its \`open\` ` +
-  "names into a payment channel whose payee or distribution names the option's payee, recorded with its mint and amount. The " +
+  "names into a payment channel whose distribution pays the option's payee more than nothing, recorded with its mint and each " +
+  "account's share of the amount as the program pays it out. The " +
   `memo is in the transaction's instruction data on chain.${after} It compares no amount, mint or time with the ATR's ` +
   "terms.";
 
@@ -96,7 +97,7 @@ export const SOLANA = /* @__PURE__ */ freeze({
       lapse: lapse("open", ""),
       life: LIFE,
     },
-    destination: "the channel's token account, counting where the open's payee is the option's payee or its distribution holds that payee",
+    destination: "the channel's token account, counting where the open's distribution pays the option's payee more than nothing, its payee taking the remainder of 10,000 bps",
     asset: "the deposit's mint, recorded and compared with nothing",
     payer: "the buyer's account",
     confirmed: "no",
@@ -126,7 +127,7 @@ export const SOLANA = /* @__PURE__ */ freeze({
       lapse: lapse("opening", ""),
       life: LIFE,
     },
-    destination: "the channel's token account, counting where the opening's payee is the option's payee or its distribution holds that payee",
+    destination: "the channel's token account, counting where the opening's distribution pays the option's payee more than nothing, its payee taking the remainder of 10,000 bps",
     asset: "the deposit's mint, recorded and compared with nothing",
     payer: "the buyer's account",
     confirmed: "no",
@@ -202,7 +203,7 @@ export const SOLANA = /* @__PURE__ */ freeze({
       lapse: lapse("open", ""),
       life: LIFE,
     },
-    destination: "the channel's token account, counting where the open's payee is the option's payee or its distribution holds that payee",
+    destination: "the channel's token account, counting where the open's distribution pays the option's payee more than nothing, its payee taking the remainder of 10,000 bps",
     asset: "the deposit's mint, recorded and compared with nothing",
     payer: "the open's payer (account 0), never its authorizedSigner",
     confirmed: "no",
@@ -231,7 +232,7 @@ export const SOLANA = /* @__PURE__ */ freeze({
         "result; a lookup that finds nothing on a node holding the history is `not-found`, since the read makes no search",
       life: LIFE,
     },
-    destination: "the channel's token account, counting where the open's payee is the option's payee or its distribution holds that payee",
+    destination: "the channel's token account, counting where the open's distribution pays the option's payee more than nothing, its payee taking the remainder of 10,000 bps",
     asset: "the deposit's mint, recorded and compared with nothing",
     payer: "the open's payer (account 0), whose token account funds the deposit, never its authorizedSigner",
     confirmed: "yes",
@@ -239,7 +240,7 @@ export const SOLANA = /* @__PURE__ */ freeze({
       "Before this opening was taken, an account signed an agreement transaction carrying this ATR's hash on " +
       "<network>, recorded in <transaction>. The opening, a stock MPP session's payment-channel open that its payer " +
       "broadcast and that carries no hash, came after it and deposited the amount its `open` names into a channel " +
-      "whose payee or distribution names the option's payee. This does not show that the account that signed the agreement is " +
+      "whose distribution pays the option's payee more than nothing. This does not show that the account that signed the agreement is " +
       "the opening's payer, nor that amount, recipient, mint or timing match the ATR's content.",
   },
   "mpp/subscription/solana": {
