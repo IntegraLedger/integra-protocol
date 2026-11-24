@@ -6,6 +6,15 @@ rename exports and pairing ids and change a function's arguments or answers; a p
 [Upgrading](../docs/upgrading.md) states what 0.6's patch releases add, and each change a caller of 0.5.x makes for
 0.6.0.
 
+## [Unreleased]
+
+### Fixed
+
+- `pairingsOf` refuses a Tempo `subscription` challenge whose `subscriptionExpires` falls in Unix
+  second 0 or before (`unixOf` drops a fraction of a second), `mpp/request-malformed`. `build` wrote such a date as a key authorization expiry of 0, which
+  Tempo reads as no expiry; draft-tempo-subscription-00 requires an explicit expiry, and mppx's server refuses it. A
+  date one second later is placed as before.
+
 ## [0.6.3] - 2026-11-20
 
 ### Added

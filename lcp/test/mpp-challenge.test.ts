@@ -116,6 +116,26 @@ describe("mpp-challenge.json", () => {
     });
   });
 
+  // Row 7. A Tempo key authorization's expiry of 0 is no expiry, and draft-tempo-subscription-00 requires an explicit
+  // one ("the recurring authorization MUST have an explicit expiry"; servers "MUST reject" a subscriptionExpires the
+  // expiry field cannot represent, which mppx's server does at or before second 0). The twin is one second later.
+  it("a Tempo subscription whose subscriptionExpires is Unix second 0 or before is refused; one second later is placed", () => {
+    const r = {
+      amount: "10000000",
+      currency: "0x20c0000000000000000000000000000000000000",
+      methodDetails: { accessKey: { accessKeyAddress: "0x70997970C51812dc3A010C7d01b50e0d17dc79C8", keyType: "secp256k1" }, chainId: 42431 },
+      periodCount: "30",
+      periodUnit: "day",
+      recipient: "0x742d35Cc6634C0532925a3b844Bc9e7595f8fE00",
+    };
+    const at = (subscriptionExpires: string) => pairingsOf(challenge("tempo", "subscription", JSON.stringify({ ...r, subscriptionExpires })));
+    for (const zero of ["1970-01-01T00:00:00Z", "1970-01-01T00:00:00.999Z", "1970-01-01T01:00:00+01:00", "1969-12-31T23:59:59Z"]) {
+      expect([zero, at(zero)]).toEqual([zero, { refused: true, code: "mpp/request-malformed" }]);
+    }
+    expect(at("1970-01-01T00:00:01Z")).toEqual(["mpp/subscription/tempo"]);
+    expect(at("1970-01-01T01:00:01+01:00")).toEqual(["mpp/subscription/tempo"]);
+  });
+
   it("S1: a Tempo subscription challenge's id is the bare base64url of H, one per 402", () => {
     const sub = challenge(
       "tempo",
@@ -684,11 +704,12 @@ describe("mpp-challenge.json agreedRefusals: every row runs", () => {
         pairingsOf(session({ ...noChain, chainId: String(E.fixed.chainId) })),
       ];
     },
-    "a subscription challenge whose subscriptionExpires, periodUnit or periodCount is malformed": async () => {
+    "a subscription challenge whose subscriptionExpires is malformed or at or before Unix second 0, or whose periodUnit or periodCount is malformed": async () => {
       const r = JSON.parse(U.fixed.request);
       const subscription = (change: object) => challenge("tempo", "subscription", JSON.stringify({ ...r, ...change }));
       return [
         pairingsOf(subscription({ subscriptionExpires: r.subscriptionExpires.slice(0, 10) })),
+        pairingsOf(subscription({ subscriptionExpires: "1970-01-01T00:00:00Z" })),
         pairingsOf(subscription({ periodUnit: "month" })),
         pairingsOf(subscription({ periodCount: "0" })),
       ];

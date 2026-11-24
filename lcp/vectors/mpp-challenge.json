@@ -93,7 +93,7 @@
    { "case": "pairingsOf with an intent and method this entry point does not serve", "expect": "mpp/not-this-pairing" },
    { "case": "pairingsOf with a duplicate credentialTypes entry: the entry counts once", "expect": "no refusal" },
    { "case": "an EVM session challenge whose chainId is absent or not a positive integer", "expect": "mpp/chain-id-required" },
-   { "case": "a subscription challenge whose subscriptionExpires, periodUnit or periodCount is malformed", "expect": "mpp/request-malformed" },
+   { "case": "a subscription challenge whose subscriptionExpires is malformed or at or before Unix second 0, or whose periodUnit or periodCount is malformed", "expect": "mpp/request-malformed" },
    { "case": "challengeId or place with an H that is not 0x and 64 hex digits, or a position outside 0-31", "expect": "mpp/challenge-malformed" },
    { "case": "build with a malformed from, or a missing tokenDomain or spender", "expect": "mpp/input-malformed" },
    { "case": "complete with a signature outside 1 to 8192 bytes, a transaction hash not 32 bytes, or a signed transaction whose credential is over the credential size bound, 64 KiB", "expect": "mpp/credential-malformed" },

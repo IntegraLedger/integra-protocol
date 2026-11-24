@@ -824,7 +824,10 @@ function tempoSessionPairings(r: { [k: string]: Json }, d: { [k: string]: Json }
 
 /**
  * `subscription` on `tempo`: an access key with an address and a key type Tempo defines; `subscriptionExpires` an RFC
- * 3339 date-time from 1970, the key authorization's uint64 expiry; `chainId` a positive safe integer; `currency` and
+ * 3339 date-time whose Unix second (a fraction dropped) is above 0, the key authorization's uint64 expiry, which Tempo
+ * reads as no expiry at 0 and the draft requires explicit (draft-tempo-subscription-00: "the recurring authorization MUST have an explicit
+ * expiry"; servers "MUST reject" a `subscriptionExpires` the expiry field cannot represent, which mppx's server does at
+ * or before second 0); `chainId` a positive safe integer; `currency` and
  * `recipient` addresses and `amount` a decimal; and a period of 1 to 10^16 − 1 days or weeks that is below 2^64 seconds,
  * the key authorization's uint64 period. Else `mpp/request-malformed`.
  */
@@ -835,7 +838,7 @@ function subscriptionPairings(r: { [k: string]: Json }, d: { [k: string]: Json }
     return refusal("mpp/access-key-malformed");
   }
   const until = typeof r["subscriptionExpires"] === "string" ? unixOf(r["subscriptionExpires"]) : undefined;
-  if (until === undefined || until < 0) return refusal("mpp/request-malformed");
+  if (until === undefined || until <= 0) return refusal("mpp/request-malformed");
   if (!isPositiveInt(d["chainId"])) return refusal("mpp/chain-id-required");
   if (!isAddress(r["currency"]) || !isAddress(r["recipient"]) || !isDecimal(r["amount"])) {
     return refusal("mpp/request-malformed");
